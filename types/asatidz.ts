@@ -1,5 +1,5 @@
 export interface Asatidz {
-  nis: string;
+  nis?: string;
   nia: string;
   nama_asatidz: string;
   pa_pi: 'PA' | 'PI';

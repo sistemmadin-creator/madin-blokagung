@@ -3,9 +3,9 @@ export interface HierarchyNode {
 }
 
 export interface AppSettingsGlobal {
-  tree1: Record<string, any>; // Blok -> Asrama -> Kamar (Santri)
-  tree2: Record<string, any>; // Asatidz
-  tree3?: Record<string, any>;
+  tree1: string | Record<string, any>; // Blok -> Asrama -> Kode -> Kamar
+  tree2: string | Record<string, any>; // Unit -> Jurusan -> Semester -> Kelas -> Bagian
+  tree3?: string | Record<string, any>;
   hafWajib?: Record<string, number>;
   hafSunnah?: Record<string, number>;
   hafKitab?: Record<string, number>;
@@ -14,8 +14,9 @@ export interface AppSettingsGlobal {
 
 export interface ActivityLog {
   id?: string;
-  waktu: string;
-  user: string;
-  modul: string;
+  created_at?: string;
+  username: string;
+  nama: string;
   aktivitas: string;
+  detail: string;
 }

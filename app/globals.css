@@ -21,3 +21,23 @@
   background: rgba(15, 23, 42, 0.85);
   border: 1px solid rgba(30, 41, 59, 0.8);
 }
+
+@media print {
+  header, aside, nav, .print\:hidden {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  body {
+    background: white !important;
+    padding: 0 !important;
+  }
+  #piagam-print-area {
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    border: none !important;
+    page-break-after: always;
+  }
+}
