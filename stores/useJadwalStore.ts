@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
 
-export const KEY_DB_JADWAL_ASATIDZ = 'KEY_DB_JADWAL_ASATIDZ';
+export const KEY_DB_JADWAL_ASATIDZ = 'JADWAL_MENGAJAR_ASATIDZ';
 export const LIST_HARI = ['Sabtu', 'Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis'] as const;
 export type HariKbm = (typeof LIST_HARI)[number];
 

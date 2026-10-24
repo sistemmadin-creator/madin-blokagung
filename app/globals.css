@@ -2,10 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --primary-color: #0f766e;
+  --primary-hover: #115e59;
+  --sidebar-bg: #0b5751;
+  --bg-body: #f8fafc;
+  --text-main: #334155;
+  --text-muted: #64748b;
+  --card-border: #e2e8f0;
+}
+
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-800 antialiased;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    letter-spacing: -0.01em;
   }
 }
 
@@ -17,27 +29,206 @@
   border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
-.dark .glass {
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(30, 41, 59, 0.8);
+/* Card Panel Clean SaaS Style */
+.card-panel {
+  background: #ffffff;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--card-border);
 }
 
+/* Scrollbar halus & tersembunyi */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.65);
+}
+
+/* Badges Tingkat Diniyyah */
+.badge-tingkat-ula {
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
+  border: 1px solid #6ee7b7 !important;
+  font-weight: 700;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.badge-tingkat-wustho {
+  background-color: #dbeafe !important;
+  color: #1e40af !important;
+  border: 1px solid #93c5fd !important;
+  font-weight: 700;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.badge-tingkat-ulya {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  border: 1px solid #fcd34d !important;
+  font-weight: 700;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.badge-tingkat-istidad {
+  background-color: #f3e8ff !important;
+  color: #6b21a8 !important;
+  border: 1px solid #d8b4fe !important;
+  font-weight: 700;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+/* Matriks Jadwal KBM Resmi */
+.tabel-kbm-resmi {
+  border-collapse: collapse !important;
+  width: 100%;
+  font-size: 0.76rem;
+  color: #0f172a;
+}
+.tabel-kbm-resmi th,
+.tabel-kbm-resmi td {
+  border: 1px solid #334155 !important;
+  padding: 5px 6px !important;
+  vertical-align: middle !important;
+}
+.tabel-kbm-resmi thead th {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+.tabel-kbm-resmi .bg-subhead {
+  background-color: #f1f5f9 !important;
+}
+.tabel-kbm-resmi .cell-kg {
+  font-family: monospace;
+  font-weight: 700;
+  text-align: center;
+  cursor: help;
+  background-color: #fafafa;
+}
+.tabel-kbm-resmi .cell-kg:hover {
+  background-color: #e0f2fe;
+  color: #0284c7;
+}
+.cell-klik-kelas {
+  cursor: pointer !important;
+  transition: background-color 0.2s ease;
+}
+.cell-klik-kelas:hover {
+  background-color: #ecfdf5 !important;
+  color: #0f766e !important;
+}
+
+/* Matriks Tabel Daftar Pendidik */
+.tabel-daftar-pendidik {
+  border-collapse: collapse !important;
+  width: 100%;
+  font-size: 0.74rem;
+  color: #0f172a;
+}
+.tabel-daftar-pendidik th,
+.tabel-daftar-pendidik td {
+  border: 1px solid #334155 !important;
+  padding: 4px 5px !important;
+  vertical-align: middle !important;
+  text-align: center;
+}
+.tabel-daftar-pendidik thead th {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* KPI Cards untuk Absensi */
+.kpi-card {
+  background: #ffffff;
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+  border-color: #cbd5e1;
+}
+.kpi-icon-wrapper {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+.kpi-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.kpi-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+/* Isolasi Cetak Dokumen Resmi */
 @media print {
-  header, aside, nav, .print\:hidden {
+  header,
+  aside,
+  nav,
+  .no-print,
+  .no-print-kbm,
+  .no-print-fan,
+  .no-print-pendidik {
     display: none !important;
   }
   main {
     padding: 0 !important;
     margin: 0 !important;
+    width: 100% !important;
   }
   body {
     background: white !important;
     padding: 0 !important;
+    color: black !important;
   }
-  #piagam-print-area {
-    margin: 0 auto !important;
+  .card-panel {
     box-shadow: none !important;
     border: none !important;
-    page-break-after: always;
+    padding: 0 !important;
   }
 }

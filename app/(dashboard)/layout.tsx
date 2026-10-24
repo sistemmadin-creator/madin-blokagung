@@ -1,19 +1,28 @@
+'use client';
+
 import React from 'react';
 import Navbar from '@/components/layout/Navbar';
 import SidebarDesktop from '@/components/layout/SidebarDesktop';
 import BottomNavMobile from '@/components/layout/BottomNavMobile';
+import { useAppStore } from '@/stores/useAppStore';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { isSidebarCollapsed } = useAppStore();
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800">
       <Navbar />
       <SidebarDesktop />
-      <main className="flex-1 md:pl-20 pt-16 pb-20 md:pb-8 transition-all duration-300">
-        <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      <main
+        className={`pt-[70px] pb-24 md:pb-8 transition-all duration-300 ease-in-out min-h-screen ${
+          isSidebarCollapsed ? 'ml-0 md:ml-[88px]' : 'ml-0 md:ml-[260px]'
+        }`}
+      >
+        <div className="w-full p-4 md:p-8">
           {children}
         </div>
       </main>

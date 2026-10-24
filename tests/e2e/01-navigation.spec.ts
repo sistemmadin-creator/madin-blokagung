@@ -12,7 +12,7 @@ test.describe('Navigation & System Shell', () => {
     await page.goto('/santri');
 
     // Brand title in navbar
-    await expect(page.getByRole('heading', { name: /Madin Al Amiriyyah Blokagung/i })).toBeVisible();
+    await expect(page.getByText(/Madin Blokagung/i).first()).toBeVisible();
 
     // Direct sidebar links
     const directLinks = [
@@ -41,7 +41,10 @@ test.describe('Navigation & System Shell', () => {
   test('navbar hierarchy builder modal opens and closes cleanly', async ({ page }) => {
     await page.goto('/santri');
 
-    const hierarkiBtn = page.getByRole('button', { name: /Pengaturan Hierarki Sistem/i });
+    // Open profile menu pill
+    await page.getByText(/Menu Profil/i).click();
+
+    const hierarkiBtn = page.getByRole('button', { name: /Pusat Kendali Admin/i });
     await expect(hierarkiBtn).toBeVisible();
     await hierarkiBtn.click();
 
@@ -59,7 +62,10 @@ test.describe('Navigation & System Shell', () => {
   test('navbar audit logs modal opens and closes cleanly', async ({ page }) => {
     await page.goto('/santri');
 
-    const auditBtn = page.getByRole('button', { name: /Audit Log Aktivitas/i });
+    // Open profile menu pill
+    await page.getByText(/Menu Profil/i).click();
+
+    const auditBtn = page.getByRole('button', { name: /Log Aktivitas Sistem/i });
     await expect(auditBtn).toBeVisible();
     await auditBtn.click();
 

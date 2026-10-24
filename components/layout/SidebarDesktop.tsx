@@ -1,31 +1,45 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Users,
   UserCheck,
   Calendar,
-  Clock,
-  Layers,
-  BookOpen,
+  CalendarDays,
+  Building2,
+  GraduationCap,
+  Grid,
+  BarChart2,
   Award,
   ClipboardCheck,
   Zap,
-  BarChart2,
+  ChevronLeft,
   ChevronDown,
-  GraduationCap
+  BookMarked
 } from 'lucide-react';
+import { useAppStore } from '@/stores/useAppStore';
+
+interface SubMenuItem {
+  title: string;
+  href: string;
+  icon?: React.ReactNode;
+}
 
 interface MenuItem {
   title: string;
   href?: string;
   icon: React.ReactNode;
-  children?: { title: string; href: string }[];
+  children?: SubMenuItem[];
 }
 
-const menuGroups: { group: string; items: MenuItem[] }[] = [
+interface MenuGroup {
+  group: string;
+  items: MenuItem[];
+}
+
+const menuGroups: MenuGroup[] = [
   {
     group: 'Utama',
     items: [
@@ -38,23 +52,26 @@ const menuGroups: { group: string; items: MenuItem[] }[] = [
     items: [
       {
         title: 'Jadwal KBM',
+        href: '/jadwal-kbm',
         icon: <Calendar className="w-5 h-5 flex-shrink-0" />,
         children: [
-          { title: 'Jadwal KBM Per Kelas', href: '/jadwal-kbm' },
-          { title: 'Hari KBM', href: '/hari-kbm' },
+          { title: 'Jadwal KBM Per Kelas', href: '/jadwal-kbm', icon: <Calendar className="w-4 h-4 text-cyan-300" /> },
+          { title: 'Hari KBM', href: '/hari-kbm', icon: <CalendarDays className="w-4 h-4 text-amber-300" /> },
         ],
       },
       {
         title: 'Formasi Kelas',
-        icon: <Layers className="w-5 h-5 flex-shrink-0" />,
+        href: '/formasi/pa',
+        icon: <Building2 className="w-5 h-5 flex-shrink-0" />,
         children: [
-          { title: 'Formasi Putra (PA)', href: '/formasi/pa' },
-          { title: 'Formasi Putri (PI)', href: '/formasi/pi' },
+          { title: 'Kelas Putra', href: '/formasi/pa' },
+          { title: 'Kelas Putri', href: '/formasi/pi' },
         ],
       },
       {
         title: 'Fan Pelajaran',
-        icon: <BookOpen className="w-5 h-5 flex-shrink-0" />,
+        href: '/fan/pelajaran',
+        icon: <BookMarked className="w-5 h-5 flex-shrink-0" />,
         children: [
           { title: 'Daftar Fan Pelajaran', href: '/fan/pelajaran' },
           { title: 'Pengajar Fan', href: '/fan/pengajar' },
@@ -66,7 +83,7 @@ const menuGroups: { group: string; items: MenuItem[] }[] = [
   {
     group: 'PKM. Muhafadzoh',
     items: [
-      { title: 'Setoran', href: '/setoran', icon: <Clock className="w-5 h-5 flex-shrink-0" /> },
+      { title: 'Setoran', href: '/setoran', icon: <Grid className="w-5 h-5 flex-shrink-0" /> },
       { title: 'Rekap Hafalan', href: '/rekap-hafalan', icon: <BarChart2 className="w-5 h-5 flex-shrink-0" /> },
       { title: 'Cetak Piagam', href: '/piagam', icon: <Award className="w-5 h-5 flex-shrink-0" /> },
     ],
@@ -83,66 +100,134 @@ const menuGroups: { group: string; items: MenuItem[] }[] = [
 
 export default function SidebarDesktop() {
   const pathname = usePathname();
-  const [isHovered, setIsHovered] = useState(false);
-  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
+  const { isSidebarCollapsed, toggleSidebarCollapse } = useAppStore();
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
+    'Jadwal KBM': true,
+  });
 
-  const toggleSubmenu = (title: string) => {
+  // Automatically keep parent submenu open if current path is a child
+  useEffect(() => {
+    menuGroups.forEach((grp) => {
+      grp.items.forEach((item) => {
+        if (item.children) {
+          const isChildActive = item.children.some((sub) => sub.href === pathname);
+          if (isChildActive) {
+            setOpenSubmenus((prev) => ({ ...prev, [item.title]: true }));
+          }
+        }
+      });
+    });
+  }, [pathname]);
+
+  const toggleSubmenu = (title: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setOpenSubmenus((prev) => ({ ...prev, [title]: !prev[title] }));
   };
 
   return (
     <aside
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={`fixed top-16 left-0 bottom-0 bg-madin-900 text-white z-20 hidden md:flex flex-col transition-all duration-300 ease-in-out shadow-xl overflow-y-auto ${
-        isHovered ? 'w-64' : 'w-18'
+      className={`fixed top-0 left-0 bottom-0 h-screen bg-[#0b5751] text-white z-40 hidden md:flex flex-col transition-all duration-300 ease-in-out shadow-xl select-none ${
+        isSidebarCollapsed ? 'w-[88px]' : 'w-[260px]'
       }`}
     >
-      <div className="py-4 space-y-6 flex-1 px-3">
+      {/* Header Sidebar & Tombol Toggle Bulat Melayang Sesuai Gambar 1 */}
+      <div className="h-[70px] relative flex items-center px-5 flex-shrink-0 border-b border-white/10">
+        {!isSidebarCollapsed && (
+          <div className="font-bold text-white text-base tracking-tight truncate">
+            Madrasah Diniyyah
+          </div>
+        )}
+
+        {/* Tombol Bulat Melayang di Perbatasan Kanan Header Sidebar */}
+        <button
+          type="button"
+          onClick={toggleSidebarCollapse}
+          title={isSidebarCollapsed ? 'Perlebar Sidebar' : 'Lipat Sidebar'}
+          className="absolute -right-4 top-[19px] w-8 h-8 rounded-full bg-white text-slate-800 shadow-md flex items-center justify-center cursor-pointer border border-slate-200 z-50 hover:scale-110 active:scale-95 transition-all"
+        >
+          <ChevronLeft
+            className={`w-4 h-4 text-slate-700 transition-transform duration-300 ${
+              isSidebarCollapsed ? 'rotate-180' : ''
+            }`}
+          />
+        </button>
+      </div>
+
+      {/* Navigasi Menu Berkelompok */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-3 space-y-4">
         {menuGroups.map((grp) => (
           <div key={grp.group} className="space-y-1">
-            {isHovered && (
-              <p className="px-3 text-[10px] font-bold tracking-wider text-madin-300 uppercase select-none">
+            {/* Judul Grup */}
+            {!isSidebarCollapsed ? (
+              <div className="text-[10px] font-bold tracking-wider text-white/45 uppercase px-3 pt-2 pb-1">
                 {grp.group}
-              </p>
+              </div>
+            ) : (
+              <div className="border-t border-white/10 my-2 mx-2" />
             )}
+
             {grp.items.map((item) => {
-              if (item.children) {
-                const isOpen = openSubmenus[item.title];
+              const hasChildren = item.children && item.children.length > 0;
+              const isSubOpen = openSubmenus[item.title];
+              const isParentActive = hasChildren
+                ? item.children?.some((sub) => sub.href === pathname)
+                : pathname === item.href;
+
+              if (hasChildren) {
                 return (
                   <div key={item.title}>
                     <button
-                      onClick={() => toggleSubmenu(item.title)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-slate-200 hover:bg-madin-800 transition"
-                      title={!isHovered ? item.title : undefined}
+                      type="button"
+                      onClick={(e) => {
+                        if (isSidebarCollapsed) {
+                          toggleSidebarCollapse();
+                        } else {
+                          toggleSubmenu(item.title, e);
+                        }
+                      }}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl cursor-pointer text-sm font-medium transition-all ${
+                        isParentActive
+                          ? 'bg-white/20 text-white shadow-inner font-semibold'
+                          : 'text-white/85 hover:bg-white/10 hover:text-white'
+                      }`}
+                      title={isSidebarCollapsed ? item.title : undefined}
                     >
                       <div className="flex items-center gap-3">
-                        {item.icon}
-                        {isHovered && <span className="font-medium whitespace-nowrap">{item.title}</span>}
+                        <span className="flex-shrink-0">{item.icon}</span>
+                        {!isSidebarCollapsed && (
+                          <span className="truncate whitespace-nowrap">{item.title}</span>
+                        )}
                       </div>
-                      {isHovered && (
-                        <ChevronDown
-                          className={`w-4 h-4 text-madin-400 transition-transform ${
-                            isOpen ? 'rotate-180' : ''
-                          }`}
-                        />
+
+                      {!isSidebarCollapsed && (
+                        <span className="p-1 rounded hover:bg-white/10 transition">
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 text-white/70 transition-transform duration-200 ${
+                              isSubOpen ? 'rotate-180' : ''
+                            }`}
+                          />
+                        </span>
                       )}
                     </button>
-                    {isHovered && isOpen && (
-                      <div className="ml-8 mt-1 space-y-1 border-l-2 border-madin-700 pl-2">
-                        {item.children.map((sub) => {
-                          const active = pathname === sub.href;
+
+                    {/* Sub-menu Anak */}
+                    {!isSidebarCollapsed && isSubOpen && (
+                      <div className="ml-4 mt-1 pl-3 border-l border-white/15 space-y-1">
+                        {item.children?.map((sub) => {
+                          const isSubActive = pathname === sub.href;
                           return (
                             <Link
                               key={sub.href}
                               href={sub.href}
-                              className={`block px-2.5 py-1.5 text-xs rounded-md transition ${
-                                active
-                                  ? 'bg-madin-700 text-white font-semibold'
-                                  : 'text-slate-300 hover:text-white hover:bg-madin-800'
+                              className={`flex items-center gap-2 px-3 py-2 text-xs rounded-lg transition-all ${
+                                isSubActive
+                                  ? 'bg-white/25 text-white font-bold'
+                                  : 'text-white/75 hover:bg-white/10 hover:text-white'
                               }`}
                             >
-                              {sub.title}
+                              {sub.icon && <span>{sub.icon}</span>}
+                              <span className="truncate">{sub.title}</span>
                             </Link>
                           );
                         })}
@@ -152,26 +237,27 @@ export default function SidebarDesktop() {
                 );
               }
 
-              const active = pathname === item.href;
               return (
                 <Link
                   key={item.href}
                   href={item.href || '#'}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
-                    active
-                      ? 'bg-madin-700 text-white font-semibold shadow-inner'
-                      : 'text-slate-200 hover:bg-madin-800 hover:text-white'
+                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    isParentActive
+                      ? 'bg-white/20 text-white shadow-inner font-semibold'
+                      : 'text-white/85 hover:bg-white/10 hover:text-white'
                   }`}
-                  title={!isHovered ? item.title : undefined}
+                  title={isSidebarCollapsed ? item.title : undefined}
                 >
-                  {item.icon}
-                  {isHovered && <span className="font-medium whitespace-nowrap">{item.title}</span>}
+                  <span className="flex-shrink-0">{item.icon}</span>
+                  {!isSidebarCollapsed && (
+                    <span className="truncate whitespace-nowrap">{item.title}</span>
+                  )}
                 </Link>
               );
             })}
           </div>
         ))}
-      </div>
+      </nav>
     </aside>
   );
 }

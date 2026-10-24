@@ -6,7 +6,7 @@ test.describe('Modul 02: Master Data Dewan Asatidz', () => {
   });
 
   test('renders header and toolbar buttons for asatidz', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /Data Dewan Asatidz/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /(Database|Data Dewan) Asatidz/i })).toBeVisible();
 
     await expect(page.getByRole('button', { name: /Tambah Asatidz/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Filter/i })).toBeVisible();

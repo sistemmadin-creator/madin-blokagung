@@ -143,13 +143,13 @@ export default function AsatidzPage() {
       {/* Header Halaman Asatidz */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shadow-xs">
-            <UserCheck className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-xs text-emerald-700 flex items-center justify-center shrink-0">
+            <UserCheck className="w-6 h-6 text-emerald-600" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800">Data Dewan Asatidz</h1>
-            <p className="text-xs text-slate-500">
-              Direktori Tenaga Pendidik & Pengajar Madrasah Diniyyah ({asatidzList.length} asatidz)
+            <h1 className="text-xl font-bold text-slate-800 m-0">Database Asatidz</h1>
+            <p className="text-xs text-slate-500 m-0 mt-0.5">
+              Manajemen data tenaga pengajar (Asatidz) Madrasah Diniyyah ({asatidzList.length} asatidz)
             </p>
           </div>
         </div>
@@ -182,15 +182,15 @@ export default function AsatidzPage() {
 
           <button
             onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition shadow-xs"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5 text-emerald-600" />
             <span>Export Excel</span>
           </button>
 
           <button
             onClick={() => openInputModal(null)}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-blue-700 hover:bg-blue-800 text-white transition shadow-sm"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#115e59] text-white transition shadow-sm"
           >
             <UserPlus className="w-3.5 h-3.5" />
             <span>Tambah Asatidz</span>
@@ -207,7 +207,7 @@ export default function AsatidzPage() {
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
             placeholder="Cari nama asatidz, NIA, NIS, kamar, Jah..."
-            className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+            className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0f766e] focus:border-transparent"
           />
           {searchKeyword && (
             <button
@@ -224,11 +224,11 @@ export default function AsatidzPage() {
             onClick={openFilterModal}
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition ${
               activeFilterCount > 0
-                ? 'bg-blue-50 border-blue-300 text-blue-800 font-semibold'
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold'
                 : 'border-slate-200 hover:bg-slate-50 text-slate-700'
             }`}
           >
-            <Filter className="w-3.5 h-3.5 text-blue-600" />
+            <Filter className="w-3.5 h-3.5 text-emerald-600" />
             <span>
               Filter (PA/PI, Kelas, Blok, Jah)
               {activeFilterCount > 0 && ` [${activeFilterCount}]`}
@@ -259,7 +259,7 @@ export default function AsatidzPage() {
               {isLoading ? (
                 <tr>
                   <td colSpan={10} className="p-12 text-center text-slate-400">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-600" />
                     Sedang memuat direktori asatidz dari Supabase...
                   </td>
                 </tr>

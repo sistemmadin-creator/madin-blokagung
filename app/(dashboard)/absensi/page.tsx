@@ -7,17 +7,28 @@ import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { JamKbm, RecordSesiAbsensi, StatusAbsensi } from '@/types/absensi';
 import { Asatidz } from '@/types/asatidz';
 import {
-  ClipboardCheck,
+  UserCheck,
   Calendar,
-  Lock,
-  Unlock,
-  Save,
-  AlertCircle,
+  RefreshCw,
+  MessageSquare,
+  Slash,
   CheckCircle2,
+  AlertCircle,
+  UserX,
+  Repeat,
+  Save
 } from 'lucide-react';
 import ModalAturLibur from '@/components/modules/absensi/ModalAturLibur';
+import ModalListStatusKPI from '@/components/modules/absensi/ModalListStatusKPI';
+import ModalGeneratorWA from '@/components/modules/rekap-absensi/ModalGeneratorWA';
 
-const STATUS_LIST: StatusAbsensi[] = ['Hadir', 'Izin', 'Sakit', 'Alfa', 'Badal', 'Tugas'];
+const STATUS_OPTIONS: { label: StatusAbsensi; color: string }[] = [
+  { label: 'Hadir', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+  { label: 'Badal', color: 'bg-blue-100 text-blue-800 border-blue-300' },
+  { label: 'Izin', color: 'bg-amber-100 text-amber-800 border-amber-300' },
+  { label: 'Sakit', color: 'bg-orange-100 text-orange-800 border-orange-300' },
+  { label: 'Alfa', color: 'bg-rose-100 text-rose-800 border-rose-300' },
+];
 
 export default function AbsensiPage() {
   const {
@@ -35,6 +46,8 @@ export default function AbsensiPage() {
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
 
   const [showModalLibur, setShowModalLibur] = useState(false);
+  const [showModalKPI, setShowModalKPI] = useState(false);
+  const [showModalWA, setShowModalWA] = useState(false);
   const [localRecords, setLocalRecords] = useState<RecordSesiAbsensi[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -44,354 +57,390 @@ export default function AbsensiPage() {
     if (asatidzList.length === 0) fetchAsatidz();
   }, [fetchAbsensi, fetchJadwal, fetchAsatidz, asatidzList.length]);
 
-  // Determine day name in Indonesian from selectedDate
+  // Determine day name in Indonesian
   const dayNameIndo: HariKbm = useMemo(() => {
     if (!selectedDate) return 'Sabtu';
     const d = new Date(selectedDate);
-    const dayIndex = d.getDay();
     const map: Record<number, HariKbm> = {
       0: 'Ahad',
       1: 'Senin',
       2: 'Selasa',
       3: 'Rabu',
       4: 'Kamis',
-      5: 'Sabtu', // Jumat
+      5: 'Sabtu',
       6: 'Sabtu',
     };
-    return map[dayIndex] || 'Sabtu';
+    return map[d.getDay()] || 'Sabtu';
   }, [selectedDate]);
 
-  // Check if today is a holiday
-  const holidayInfo = liburMapByDate[selectedDate];
-  const isLibur = !!holidayInfo;
+  // Load schedule for this day and merge with saved records
+  useEffect(() => {
+    const hariKey = dayNameIndo.toLowerCase() as 'sabtu' | 'ahad' | 'senin' | 'selasa' | 'rabu' | 'kamis';
+    const savedRecordsForSession = absensiMapByDate[selectedDate]?.[selectedJam] || [];
 
-  // Derive which jams are saved and unlocked
-  const { savedJams, unlockedJams } = useMemo(() => {
-    const saved: Record<JamKbm, boolean> = { 1: false, 2: false, 3: false, 4: false };
-    const unlocked: Record<JamKbm, boolean> = { 1: true, 2: false, 3: false, 4: false };
-
-    const dateSessions = absensiMapByDate[selectedDate];
-    if (dateSessions) {
-      ([1, 2, 3, 4] as JamKbm[]).forEach((j) => {
-        if (dateSessions[j] && dateSessions[j].length > 0) {
-          saved[j] = true;
-        }
-      });
+    if (savedRecordsForSession.length > 0) {
+      setLocalRecords(savedRecordsForSession);
+      return;
     }
 
-    if (saved[1]) unlocked[2] = true;
-    if (saved[2]) unlocked[3] = true;
-    if (saved[3]) unlocked[4] = true;
-
-    return { savedJams: saved, unlockedJams: unlocked };
-  }, [absensiMapByDate, selectedDate]);
-
-  // Build the roster of teachers scheduled to teach for (dayNameIndo, selectedJam)
-  const scheduledSessions: RecordSesiAbsensi[] = useMemo(() => {
-    const hariKey = dayNameIndo.toLowerCase() as 'sabtu' | 'ahad' | 'senin' | 'selasa' | 'rabu' | 'kamis';
-    const list: RecordSesiAbsensi[] = [];
-
-    // Map asatidz lookup
+    // Generate from schedule
     const asatidzMap = new Map<string, Asatidz>();
     asatidzList.forEach((a) => {
-      asatidzMap.set(a.nama_asatidz.toUpperCase(), a);
-      if (a.nia) asatidzMap.set(a.nia.toUpperCase(), a);
+      if (a.nama_asatidz) asatidzMap.set(a.nama_asatidz.toUpperCase(), a);
     });
 
+    const generated: RecordSesiAbsensi[] = [];
+
     Object.values(jadwalMap).forEach((teacherRow) => {
-      const teacherName = teacherRow.nama_asatidz;
+      const nama = teacherRow.nama_asatidz;
       const dayStr = teacherRow[hariKey] || '';
       if (!dayStr) return;
 
       const lines = dayStr.split(';;').map((s) => s.trim()).filter(Boolean);
       lines.forEach((l) => {
         const parts = l.split('|').map((s) => s.trim());
-        const jamNum = parseInt((parts[0] || '').replace(/\D/g, ''), 10) as JamKbm;
+        const jamNum = parseInt((parts[0] || '').replace(/\D/g, ''), 10);
         const kelas = parts[1] || '';
         const fan = parts[2] || '';
 
         if (jamNum === selectedJam) {
-          const aObj = asatidzMap.get(teacherName.toUpperCase());
-          list.push({
+          const aObj = asatidzMap.get(nama.toUpperCase());
+          generated.push({
+            jam: selectedJam,
+            nama_asatidz: nama,
             nia: aObj?.nia || '-',
-            nama_asatidz: teacherName,
             kelas,
             fan,
-            jam: selectedJam,
-            status: 'Hadir', // Default Hadir
+            status: 'Hadir',
+            keterangan: '',
           });
         }
       });
     });
 
-    return list.sort((a, b) => a.kelas.localeCompare(b.kelas));
-  }, [jadwalMap, asatidzList, dayNameIndo, selectedJam]);
+    setLocalRecords(generated.sort((a, b) => a.nama_asatidz.localeCompare(b.nama_asatidz)));
+  }, [selectedDate, selectedJam, dayNameIndo, absensiMapByDate, jadwalMap, asatidzList]);
 
-  // Sync scheduled sessions with already saved records
-  useEffect(() => {
-    const existing = absensiMapByDate[selectedDate]?.[selectedJam];
-    if (existing && existing.length > 0) {
-      setLocalRecords(existing);
-    } else {
-      setLocalRecords(scheduledSessions);
-    }
-  }, [absensiMapByDate, selectedDate, selectedJam, scheduledSessions]);
+  // Compute 5 KPI stats
+  const kpiStats = useMemo(() => {
+    const allSessions = absensiMapByDate[selectedDate] || {};
+    let total = 0;
+    let hadir = 0;
+    let badal = 0;
+    let izinSakit = 0;
+    let alfa = 0;
+
+    [1, 2, 3, 4].forEach((j) => {
+      const records = (allSessions[j as JamKbm] || (j === selectedJam ? localRecords : []));
+      total += records.length;
+      records.forEach((r) => {
+        if (r.status === 'Hadir') hadir++;
+        else if (r.status === 'Badal') badal++;
+        else if (r.status === 'Izin' || r.status === 'Sakit') izinSakit++;
+        else if (r.status === 'Alfa') alfa++;
+      });
+    });
+
+    return { total, hadir, badal, izinSakit, alfa };
+  }, [absensiMapByDate, selectedDate, selectedJam, localRecords]);
 
   const handleStatusChange = (index: number, newStatus: StatusAbsensi) => {
     setLocalRecords((prev) => {
-      const copy = [...prev];
-      copy[index] = { ...copy[index], status: newStatus };
-      return copy;
+      const updated = [...prev];
+      updated[index] = { ...updated[index], status: newStatus };
+      return updated;
     });
   };
 
-  const handleBadalChange = (index: number, pengganti: string) => {
+  const handlePenggantiChange = (index: number, pengganti: string) => {
     setLocalRecords((prev) => {
-      const copy = [...prev];
-      copy[index] = { ...copy[index], asatidz_pengganti: pengganti };
-      return copy;
+      const updated = [...prev];
+      updated[index] = { ...updated[index], asatidz_pengganti: pengganti };
+      return updated;
     });
+  };
+
+  const handleKeteranganChange = (index: number, keterangan: string) => {
+    setLocalRecords((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], keterangan };
+      return updated;
+    });
+  };
+
+  const handleMarkAllHadir = () => {
+    setLocalRecords((prev) => prev.map((r) => ({ ...r, status: 'Hadir' })));
   };
 
   const handleSave = async () => {
-    if (isLibur) {
-      alert('Tidak dapat menyimpan presensi karena tanggal ini disetel sebagai HARI LIBUR.');
-      return;
-    }
-
     setIsSaving(true);
-    const success = await saveSessionRecords(selectedDate, selectedJam, localRecords);
+    await saveSessionRecords(selectedDate, selectedJam, localRecords);
     setIsSaving(false);
-
-    if (success) {
-      alert(`Presensi Jam Ke-${selectedJam} berhasil disimpan!`);
-    }
+    alert('Data presensi berhasil disimpan!');
   };
+
+  const isLibur = !!liburMapByDate[selectedDate];
 
   return (
     <div className="space-y-6">
-      {/* Header Presensi 4 Jam */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-madin-50 text-madin-700 flex items-center justify-center shadow-xs">
-            <ClipboardCheck className="w-6 h-6" />
+      {/* 1. Header Card Sesuai absensi.html */}
+      <div className="card-panel border-0 no-print-kbm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+          <div className="flex items-center gap-3.5">
+            <div className="w-[50px] h-[50px] rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center flex-shrink-0">
+              <UserCheck className="w-6 h-6 text-madin-700" />
+            </div>
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-800 m-0 leading-tight">
+                Absensi Asatidz
+              </h2>
+              <p className="text-slate-500 text-xs m-0 mt-0.5">
+                Presensi berbasis integrasi jadwal harian (Sabtu s/d Kamis)
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-800">Presensi KBM 4 Jam Asatidz</h1>
-            <p className="text-xs text-slate-500">
-              Sistem Presensi Berurutan Jam 1 s.d. Jam 4 ({dayNameIndo}, {selectedDate})
-            </p>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setShowModalWA(true)}
+              className="px-3.5 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs flex items-center gap-1.5"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Chat WA</span>
+            </button>
+
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white">
+              <Calendar className="w-3.5 h-3.5 text-slate-500" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="text-xs font-semibold text-slate-700 bg-transparent focus:outline-none"
+              />
+            </div>
+
+            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold">
+              {dayNameIndo}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setShowModalLibur(true)}
+              className="px-3 py-2 text-xs font-semibold rounded-lg border border-rose-300 text-rose-600 hover:bg-rose-50 transition shadow-xs flex items-center gap-1"
+            >
+              <Slash className="w-3.5 h-3.5" />
+              <span>Libur / Event</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={fetchAbsensi}
+              className="px-3 py-2 text-xs font-semibold rounded-lg border border-madin-700 text-madin-700 hover:bg-madin-50 transition shadow-xs flex items-center gap-1"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Segarkan</span>
+            </button>
           </div>
         </div>
 
-        {/* Date Selector & Holiday Button */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50">
-            <Calendar className="w-3.5 h-3.5 text-slate-500" />
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="text-xs font-semibold bg-transparent text-slate-800 focus:outline-none"
-            />
+        {/* Banner Alert Libur Jika Ada */}
+        {isLibur && (
+          <div className="mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-center justify-between">
+            <span>
+              <strong>Hari Libur Aktif:</strong> {liburMapByDate[selectedDate]?.kategori} -{' '}
+              {liburMapByDate[selectedDate]?.keterangan}
+            </span>
           </div>
+        )}
+      </div>
 
-          <button
-            onClick={() => setShowModalLibur(true)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition ${
-              isLibur
-                ? 'bg-rose-50 border-rose-300 text-rose-700'
-                : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>{isLibur ? 'Status: Libur' : 'Atur Hari Libur'}</span>
-          </button>
+      {/* 2. 5 Kartu KPI Interaktif Sesuai absensi.html */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div
+          onClick={() => setShowModalKPI(true)}
+          className="kpi-card cursor-pointer"
+          title="Klik untuk detail sesi"
+        >
+          <div className="kpi-icon-wrapper bg-emerald-50 text-emerald-700">
+            <Calendar className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="kpi-title">Total Sesi</div>
+            <div className="kpi-value">{kpiStats.total}</div>
+          </div>
+        </div>
 
-          <button
-            onClick={handleSave}
-            disabled={isSaving || isLibur || !unlockedJams[selectedJam]}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-madin-700 hover:bg-madin-800 text-white shadow-sm transition disabled:opacity-50"
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>{isSaving ? 'Menyimpan...' : `Simpan Jam Ke-${selectedJam}`}</span>
-          </button>
+        <div
+          onClick={() => setShowModalKPI(true)}
+          className="kpi-card cursor-pointer"
+          title="Klik untuk detail hadir"
+        >
+          <div className="kpi-icon-wrapper bg-emerald-100 text-emerald-800">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="kpi-title">Hadir</div>
+            <div className="kpi-value text-emerald-700">{kpiStats.hadir}</div>
+          </div>
+        </div>
+
+        <div
+          onClick={() => setShowModalKPI(true)}
+          className="kpi-card cursor-pointer"
+          title="Klik untuk detail badal"
+        >
+          <div className="kpi-icon-wrapper bg-blue-50 text-blue-700">
+            <Repeat className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="kpi-title">Terisi / Badal</div>
+            <div className="kpi-value text-blue-700">{kpiStats.badal}</div>
+          </div>
+        </div>
+
+        <div
+          onClick={() => setShowModalKPI(true)}
+          className="kpi-card cursor-pointer"
+          title="Klik untuk detail izin/sakit"
+        >
+          <div className="kpi-icon-wrapper bg-amber-50 text-amber-700">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="kpi-title">Izin / Sakit</div>
+            <div className="kpi-value text-amber-600">{kpiStats.izinSakit}</div>
+          </div>
+        </div>
+
+        <div
+          onClick={() => setShowModalKPI(true)}
+          className="kpi-card cursor-pointer"
+          title="Klik untuk detail alfa"
+        >
+          <div className="kpi-icon-wrapper bg-rose-50 text-rose-700">
+            <UserX className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="kpi-title">Kosong / Alfa</div>
+            <div className="kpi-value text-rose-600">{kpiStats.alfa}</div>
+          </div>
         </div>
       </div>
 
-      {/* Holiday Banner if Date is Libur */}
-      {isLibur && (
-        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-800">
-          <AlertCircle className="w-6 h-6 text-rose-600 flex-shrink-0" />
-          <div className="text-xs">
-            <h4 className="font-bold text-sm">Pemberitahuan Hari Libur Madrasah</h4>
-            <p>
-              Tanggal {selectedDate} disetel sebagai: <strong>{holidayInfo?.kategori}</strong>
-              {holidayInfo?.keterangan ? ` (${holidayInfo.keterangan})` : ''}.
-              Kegiatan belajar mengajar ditiadakan dan input presensi dinonaktifkan.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Tabs Jam 1, Jam 2, Jam 3, Jam 4 with Sequential Lock Indicator */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {([1, 2, 3, 4] as JamKbm[]).map((j) => {
-          const isActive = selectedJam === j;
-          const isUnlocked = unlockedJams[j];
-          const isSaved = savedJams[j];
-
-          return (
+      {/* 3. Tab Sesi Jam 1-4 & Tombol Tandai Hadir Semua */}
+      <div className="card-panel border-0 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex gap-2">
+          {([1, 2, 3, 4] as JamKbm[]).map((j) => (
             <button
               key={j}
-              disabled={!isUnlocked}
+              type="button"
               onClick={() => setSelectedJam(j)}
-              className={`p-4 rounded-xl border text-left transition flex items-center justify-between ${
-                isActive
-                  ? 'bg-madin-700 text-white border-madin-700 shadow-md ring-2 ring-madin-500/20'
-                  : isUnlocked
-                  ? 'bg-white text-slate-700 border-slate-200 hover:border-madin-300'
-                  : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition flex items-center gap-1.5 ${
+                selectedJam === j
+                  ? 'bg-madin-700 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              <div>
-                <p className="text-[11px] opacity-80 uppercase font-semibold">
-                  {j <= 2 ? 'Madin Sore (MS)' : 'Madin Malam (MB)'}
-                </p>
-                <p className="text-base font-bold">Jam Ke-{j}</p>
-                <span className="text-[10px] block mt-0.5">
-                  {isSaved ? '✓ Tersimpan Resmi' : isUnlocked ? 'Siap Diisi' : 'Terkunci'}
-                </span>
-              </div>
-
-              <div>
-                {isUnlocked ? (
-                  isSaved ? (
-                    <CheckCircle2 className={`w-5 h-5 ${isActive ? 'text-white' : 'text-emerald-600'}`} />
-                  ) : (
-                    <Unlock className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  )
-                ) : (
-                  <Lock className="w-5 h-5 text-slate-400" />
-                )}
-              </div>
+              <span>Jam Ke-{j}</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedJam === j ? 'bg-white/20' : 'bg-slate-200'}`}>
+                {absensiMapByDate[selectedDate]?.[j]?.length || 0}
+              </span>
             </button>
-          );
-        })}
-      </div>
-
-      {/* Matriks Presensi Jam Aktif */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-100 gap-2">
-          <div>
-            <h2 className="font-bold text-slate-800 text-sm">
-              Daftar Jadwal Mengajar Jam Ke-{selectedJam} ({localRecords.length} Asatidz Terjadwal)
-            </h2>
-            <p className="text-xs text-slate-400">
-              Pilih status kehadiran untuk masing-masing pengajar sebelum menekan tombol simpan
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
-            <span className="flex items-center gap-1 font-medium">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Hadir
-            </span>
-            <span className="flex items-center gap-1 font-medium">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Izin
-            </span>
-            <span className="flex items-center gap-1 font-medium">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span> Sakit
-            </span>
-            <span className="flex items-center gap-1 font-medium">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> Alfa
-            </span>
-            <span className="flex items-center gap-1 font-medium">
-              <span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span> Badal
-            </span>
-          </div>
+          ))}
         </div>
 
-        {/* Tabel Pengajar Jam Ke-X */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold select-none">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleMarkAllHadir}
+            className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition"
+          >
+            Tandai Hadir Semua
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-4 py-1.5 text-xs font-bold rounded-lg bg-madin-700 hover:bg-madin-800 text-white transition shadow-xs flex items-center gap-1.5"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>{isSaving ? 'Menyimpan...' : 'Simpan Presensi'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 4. Tabel Presensi Asatidz */}
+      <div className="card-panel border-0 p-4 md:p-6 shadow-sm">
+        <div className="table-responsive overflow-x-auto">
+          <table className="tabel-kbm-resmi w-full">
+            <thead>
               <tr>
-                <th className="p-3 w-10 text-center">No</th>
-                <th className="p-3">Nama Asatidz</th>
-                <th className="p-3">NIA</th>
-                <th className="p-3">Kelas & Fan Pelajaran</th>
-                <th className="p-3 text-center">Status Kehadiran</th>
-                <th className="p-3">Catatan / Asatidz Pengganti (Badal)</th>
+                <th style={{ width: 40 }}>NO</th>
+                <th style={{ width: 65 }}>NIA</th>
+                <th style={{ minWidth: 180 }}>NAMA ASATIDZ</th>
+                <th style={{ minWidth: 160 }}>KELAS &amp; FAN</th>
+                <th style={{ minWidth: 260 }}>STATUS KEHADIRAN</th>
+                <th style={{ minWidth: 160 }}>GURU PENGGANTI (BADAL)</th>
+                <th style={{ minWidth: 160 }}>KETERANGAN</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
+            <tbody>
               {localRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center text-slate-400">
-                    Tidak ada jadwal mengajar yang terdaftar untuk Jam Ke-{selectedJam} pada hari {dayNameIndo}.
+                  <td colSpan={7} className="text-center py-6 text-slate-400">
+                    Tidak ada jadwal mengajar pada jam ke-{selectedJam} hari {dayNameIndo}.
                   </td>
                 </tr>
               ) : (
-                localRecords.map((item, idx) => (
-                  <tr key={`${item.nama_asatidz}-${item.kelas}-${idx}`} className="hover:bg-slate-50 transition">
-                    <td className="p-3 text-center text-slate-400">{idx + 1}</td>
-                    <td className="p-3 font-bold text-slate-800 whitespace-nowrap">
-                      {item.nama_asatidz}
+                localRecords.map((r, idx) => (
+                  <tr key={`${r.nama_asatidz}-${r.kelas}-${idx}`} className="hover:bg-slate-50 transition">
+                    <td className="text-center font-bold text-slate-600">{idx + 1}</td>
+                    <td className="cell-kg font-mono font-bold">{r.nia}</td>
+                    <td className="font-semibold text-slate-800 px-2">{r.nama_asatidz}</td>
+                    <td className="px-2 text-xs">
+                      <strong>{r.kelas}</strong> <span className="text-slate-500">({r.fan})</span>
                     </td>
-                    <td className="p-3 font-mono text-slate-500">{item.nia}</td>
-                    <td className="p-3 whitespace-nowrap">
-                      <span className="font-semibold text-slate-800">{item.kelas}</span>
-                      <span className="ml-1.5 px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
-                        {item.fan}
-                      </span>
-                    </td>
-
-                    {/* Status Buttons */}
-                    <td className="p-3 text-center">
-                      <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 gap-1">
-                        {STATUS_LIST.map((st) => {
-                          const isSel = item.status === st;
-                          return (
-                            <button
-                              key={st}
-                              type="button"
-                              onClick={() => handleStatusChange(idx, st)}
-                              className={`px-2 py-1 rounded text-[11px] font-semibold transition ${
-                                isSel
-                                  ? st === 'Hadir'
-                                    ? 'bg-emerald-600 text-white shadow-xs'
-                                    : st === 'Izin'
-                                    ? 'bg-amber-600 text-white shadow-xs'
-                                    : st === 'Sakit'
-                                    ? 'bg-blue-600 text-white shadow-xs'
-                                    : st === 'Alfa'
-                                    ? 'bg-rose-600 text-white shadow-xs'
-                                    : st === 'Badal'
-                                    ? 'bg-purple-600 text-white shadow-xs'
-                                    : 'bg-indigo-600 text-white shadow-xs'
-                                  : 'text-slate-600 hover:bg-slate-200'
-                              }`}
-                            >
-                              {st}
-                            </button>
-                          );
-                        })}
+                    <td className="px-2">
+                      <div className="flex gap-1 flex-wrap">
+                        {STATUS_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.label}
+                            type="button"
+                            onClick={() => handleStatusChange(idx, opt.label)}
+                            className={`px-2 py-0.5 text-[11px] font-bold rounded border transition ${
+                              r.status === opt.label
+                                ? opt.color + ' shadow-xs'
+                                : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
                       </div>
                     </td>
-
-                    {/* Input Badal */}
-                    <td className="p-3">
-                      {item.status === 'Badal' ? (
+                    <td className="px-2">
+                      {r.status === 'Badal' ? (
                         <input
                           type="text"
-                          value={item.asatidz_pengganti || ''}
-                          onChange={(e) => handleBadalChange(idx, e.target.value)}
-                          placeholder="Nama Ustadz Badal / Pengganti..."
-                          className="w-full text-xs py-1 px-2.5 rounded border border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-600 bg-purple-50/50"
+                          value={r.asatidz_pengganti || ''}
+                          onChange={(e) => handlePenggantiChange(idx, e.target.value)}
+                          placeholder="Nama guru pengganti..."
+                          className="w-full text-xs p-1 rounded border border-blue-300 bg-blue-50/50"
                         />
                       ) : (
-                        <span className="text-slate-300 text-[11px]">-</span>
+                        <span className="text-slate-400 text-xs">-</span>
                       )}
+                    </td>
+                    <td className="px-2">
+                      <input
+                        type="text"
+                        value={r.keterangan || ''}
+                        onChange={(e) => handleKeteranganChange(idx, e.target.value)}
+                        placeholder="Keterangan..."
+                        className="w-full text-xs p-1 rounded border border-slate-200 bg-transparent focus:bg-white"
+                      />
                     </td>
                   </tr>
                 ))
@@ -401,10 +450,19 @@ export default function AbsensiPage() {
         </div>
       </div>
 
+      {/* Modals */}
       <ModalAturLibur
         isOpen={showModalLibur}
         onClose={() => setShowModalLibur(false)}
         targetDate={selectedDate}
+      />
+      <ModalListStatusKPI
+        isOpen={showModalKPI}
+        onClose={() => setShowModalKPI(false)}
+      />
+      <ModalGeneratorWA
+        isOpen={showModalWA}
+        onClose={() => setShowModalWA(false)}
       />
     </div>
   );

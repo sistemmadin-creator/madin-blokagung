@@ -10,6 +10,7 @@ export interface SetoranHafalan {
   nilai?: string;
   penjaga: string;
   tanggal: string;
+  created_at?: string;
 }
 
 export interface HafalanConfig {

@@ -3,8 +3,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useJadwalStore, LIST_HARI } from '@/stores/useJadwalStore';
-import { GraduationCap, Search, RefreshCw, Download } from 'lucide-react';
-import { exportToExcel } from '@/lib/utils/excel';
+import {
+  GraduationCap,
+  Search,
+  RefreshCw,
+  FileSpreadsheet,
+  Printer,
+  X
+} from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 export default function DaftarPendidikPage() {
   const { asatidzList, fetchAsatidz, isLoading: loadingAsatidz } = useAsatidzStore();
@@ -33,10 +40,18 @@ export default function DaftarPendidikPage() {
         kamis: { j1: '', j2: '' },
       };
 
-      const fanSet = new Set<string>();
-      let hoursUla = 0;
-      let hoursWustho = 0;
-      let hoursUlya = 0;
+      // Jenjang counts
+      const tingkatCounts = {
+        ula1: 0,
+        ula2: 0,
+        ula3: 0,
+        ula4: 0,
+        wst1: 0,
+        wst2: 0,
+        ulya1: 0,
+        ulya2: 0,
+      };
+
       let totalHours = 0;
 
       if (jadwalRow) {
@@ -50,216 +65,257 @@ export default function DaftarPendidikPage() {
             const parts = l.split('|').map((s) => s.trim());
             const jamNum = parseInt((parts[0] || '').replace(/\D/g, ''), 10);
             const kelas = parts[1] || '';
-            const fan = parts[2] || '';
 
-            if (jamNum === 1) dayPresence[k].j1 = 'X';
-            if (jamNum === 2) dayPresence[k].j2 = 'X';
-
-            if (fan) fanSet.add(fan);
+            if (jamNum === 1) dayPresence[k].j1 = kelas || '✓';
+            if (jamNum === 2) dayPresence[k].j2 = kelas || '✓';
 
             const kelasUpper = kelas.toUpperCase();
-            if (kelasUpper.includes('ULA')) hoursUla++;
-            else if (kelasUpper.includes('WUSTHO')) hoursWustho++;
-            else if (kelasUpper.includes('ULYA')) hoursUlya++;
-            totalHours++;
+            if (kelasUpper.includes('ULA') || kelasUpper.includes('1 ') || kelasUpper.includes('2 ')) {
+              if (kelasUpper.includes('1')) tingkatCounts.ula1++;
+              else if (kelasUpper.includes('2')) tingkatCounts.ula2++;
+              else if (kelasUpper.includes('3')) tingkatCounts.ula3++;
+              else tingkatCounts.ula4++;
+            } else if (kelasUpper.includes('WST') || kelasUpper.includes('WUSTHO')) {
+              if (kelasUpper.includes('1')) tingkatCounts.wst1++;
+              else tingkatCounts.wst2++;
+            } else if (kelasUpper.includes('ULYA')) {
+              if (kelasUpper.includes('1')) tingkatCounts.ulya1++;
+              else tingkatCounts.ulya2++;
+            }
+
+            if (jamNum === 1 || jamNum === 2) {
+              totalHours++;
+            }
           });
         });
       }
 
       return {
-        nia: a.nia,
-        nis: a.nis || '-',
+        kode: a.nia || '-',
         nama: a.nama_asatidz,
-        pa_pi: a.pa_pi,
+        asal: a.blok ? `Blok ${a.blok}` : (a.kamar ? `Kamar ${a.kamar}` : '-'),
         jah: a.jah_asatidz || '-',
-        domisili: a.blok ? `Blok ${a.blok} (${a.kamar || '-'})` : '-',
-        fanList: Array.from(fanSet).join(', ') || '-',
         dayPresence,
-        hoursUla,
-        hoursWustho,
-        hoursUlya,
+        tingkatCounts,
         totalHours,
       };
-    });
+    }).sort((a, b) => a.nama.localeCompare(b.nama));
   }, [asatidzList, jadwalMap]);
 
-  const filteredDossier = useMemo(() => {
+  const filteredRows = useMemo(() => {
+    if (!search.trim()) return dossierRows;
     const q = search.toLowerCase().trim();
-    if (!q) return dossierRows;
     return dossierRows.filter(
       (r) =>
         r.nama.toLowerCase().includes(q) ||
-        r.nia.toLowerCase().includes(q) ||
-        r.fanList.toLowerCase().includes(q) ||
+        r.kode.toLowerCase().includes(q) ||
+        r.asal.toLowerCase().includes(q) ||
         r.jah.toLowerCase().includes(q)
     );
   }, [dossierRows, search]);
 
-  const handleExport = () => {
-    const exportData = filteredDossier.map((r) => ({
-      NIA: r.nia,
-      NIS: r.nis,
-      Nama: r.nama,
-      Gender: r.pa_pi,
-      Jah: r.jah,
-      Domisili: r.domisili,
-      'Fan Pelajaran': r.fanList,
-      'Jam Ula': r.hoursUla,
-      'Jam Wustho': r.hoursWustho,
-      'Jam Ulya': r.hoursUlya,
-      'Total Jam': r.totalHours,
+  const handleExportExcel = () => {
+    const data = filteredRows.map((r, idx) => ({
+      NO: idx + 1,
+      KODE: r.kode,
+      'NAMA ASATIDZ': r.nama,
+      ASAL: r.asal,
+      JAH: r.jah,
+      'SABTU I': r.dayPresence.sabtu.j1 || '-',
+      'SABTU II': r.dayPresence.sabtu.j2 || '-',
+      'AHAD I': r.dayPresence.ahad.j1 || '-',
+      'AHAD II': r.dayPresence.ahad.j2 || '-',
+      'SENIN I': r.dayPresence.senin.j1 || '-',
+      'SENIN II': r.dayPresence.senin.j2 || '-',
+      'SELASA I': r.dayPresence.selasa.j1 || '-',
+      'SELASA II': r.dayPresence.selasa.j2 || '-',
+      'RABU I': r.dayPresence.rabu.j1 || '-',
+      'RABU II': r.dayPresence.rabu.j2 || '-',
+      'KAMIS I': r.dayPresence.kamis.j1 || '-',
+      'KAMIS II': r.dayPresence.kamis.j2 || '-',
+      'TOTAL JAM': r.totalHours,
     }));
-    exportToExcel(exportData, 'Daftar_Tenaga_Pendidik_Madin_Blokagung');
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Daftar_Pendidik');
+    XLSX.writeFile(wb, 'Daftar_Tenaga_Pendidik_Madin.xlsx');
   };
 
-  const isLoading = loadingAsatidz || loadingJadwal;
+  const handlePrint = () => {
+    window.print();
+  };
 
   return (
     <div className="space-y-6">
-      {/* Header Halaman */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center shadow-xs">
-            <GraduationCap className="w-6 h-6" />
+      {/* 1. Header Card Sesuai madinblokagung-main daftar-pendidik.html */}
+      <div className="card-panel border-0 no-print-kbm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+          <div className="flex items-center gap-3.5">
+            <div className="w-[50px] h-[50px] rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center flex-shrink-0">
+              <GraduationCap className="w-6 h-6 text-madin-700" />
+            </div>
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-800 m-0 leading-tight">
+                Daftar Tenaga Pendidik
+              </h2>
+              <p className="text-slate-500 text-xs m-0 mt-0.5">
+                Madrasah Diniyyah Al Amiriyyah Blokagung
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-800">Daftar Tenaga Pendidik</h1>
-            <p className="text-xs text-slate-500">
-              Katalog Profil, Beban Mengajar Mingguan & Distribusi Jam Ula/Wustho/Ulya ({dossierRows.length} Asatidz)
-            </p>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                fetchAsatidz();
+                fetchJadwal();
+              }}
+              disabled={loadingAsatidz || loadingJadwal}
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-madin-700 text-madin-700 hover:bg-madin-50 transition shadow-xs flex items-center gap-1.5"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingAsatidz ? 'animate-spin' : ''}`} />
+              <span>Segarkan Data</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-madin-700 text-madin-700 hover:bg-madin-50 transition shadow-xs flex items-center gap-1.5"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-madin-700" />
+              <span>Export Excel</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="px-4 py-2 text-xs font-bold rounded-lg bg-madin-700 hover:bg-madin-800 text-white transition shadow-xs flex items-center gap-1.5"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print / Cetak Dokumen</span>
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => { fetchAsatidz(); fetchJadwal(); }}
-            disabled={isLoading}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Muat Ulang</span>
-          </button>
+        {/* Bar Pencarian */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4">
+          <div className="relative w-full sm:w-96">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari Kode / Nama / Asal / Jah..."
+              className="w-full text-xs pl-8 pr-7 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-madin-700/20"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
 
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export Excel</span>
-          </button>
+          <span className="text-xs font-semibold text-slate-600">
+            Menampilkan <b>{filteredRows.length}</b> dari {dossierRows.length} Tenaga Pendidik
+          </span>
         </div>
       </div>
 
-      {/* Bar Pencarian */}
-      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari nama pendidik, fan, NIA..."
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-purple-600"
-          />
+      {/* 2. Area Tabel Dokumen Resmi Sesuai daftar-pendidik.html */}
+      <div className="card-panel border-0 p-4 md:p-6 shadow-sm" id="areaPrintDaftarPendidik">
+        <div className="text-center mb-4">
+          <h5 className="font-bold text-sm md:text-base text-slate-800 uppercase tracking-wide m-0">
+            Daftar Tenaga Pendidik
+          </h5>
+          <h6 className="font-bold text-slate-500 text-xs md:text-sm m-0 mt-1">
+            Madrasah Diniyyah Al Amiriyyah
+          </h6>
         </div>
-      </div>
 
-      {/* Tabel Dossier Pendidik */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto max-h-[650px] scrollbar-thin">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-700 font-bold z-10 select-none">
+        <div className="table-responsive overflow-x-auto">
+          <table className="tabel-daftar-pendidik w-full">
+            <thead>
+              {/* Baris Header 1 */}
               <tr>
-                <th rowSpan={2} className="p-3 w-10 text-center border-r border-slate-200">No</th>
-                <th rowSpan={2} className="p-3 whitespace-nowrap border-r border-slate-200">NIA / NIS</th>
-                <th rowSpan={2} className="p-3 whitespace-nowrap border-r border-slate-200">Nama Lengkap Pendidik</th>
-                <th rowSpan={2} className="p-3 whitespace-nowrap border-r border-slate-200">Amanah / Domisili</th>
-                <th rowSpan={2} className="p-3 whitespace-nowrap border-r border-slate-200">Fan Diampu</th>
-                <th colSpan={6} className="p-2 text-center border-r border-slate-200 bg-slate-100">
-                  Jadwal Mengajar Jam 1 & 2 Harian
-                </th>
-                <th colSpan={3} className="p-2 text-center border-r border-slate-200 bg-blue-50">
-                  Distribusi Jam Tingkat
-                </th>
-                <th rowSpan={2} className="p-3 text-center whitespace-nowrap bg-purple-50 text-purple-900">
-                  Total Jam
-                </th>
+                <th rowSpan={3} style={{ width: 45 }}>KODE</th>
+                <th rowSpan={3} style={{ minWidth: 180 }}>NAMA</th>
+                <th rowSpan={3} style={{ width: 80 }}>ASAL</th>
+                <th rowSpan={3} style={{ width: 100 }}>JAH</th>
+                <th colSpan={12}>HARI &amp; JAM</th>
+                <th colSpan={8}>TINGKAT dan KODE</th>
+                <th rowSpan={3} style={{ width: 45 }}>JML</th>
               </tr>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px]">
-                {['Sab', 'Ahd', 'Sen', 'Sel', 'Rab', 'Kam'].map((day) => (
-                  <th key={day} className="p-1.5 text-center border-r border-slate-200 w-12 font-mono">
-                    {day}
-                  </th>
-                ))}
-                <th className="p-1.5 text-center border-r border-slate-200 w-12 bg-blue-50 font-mono">Ula</th>
-                <th className="p-1.5 text-center border-r border-slate-200 w-12 bg-blue-50 font-mono">Wst</th>
-                <th className="p-1.5 text-center border-r border-slate-200 w-12 bg-blue-50 font-mono">Uly</th>
+              {/* Baris Header 2 (Nama Hari & Jenjang) */}
+              <tr>
+                <th colSpan={2}>Sabtu</th>
+                <th colSpan={2}>Ahad</th>
+                <th colSpan={2}>Senin</th>
+                <th colSpan={2}>Selasa</th>
+                <th colSpan={2}>Rabu</th>
+                <th colSpan={2}>Kamis</th>
+                <th colSpan={4}>ULA</th>
+                <th colSpan={2}>WST</th>
+                <th colSpan={2}>ULYA</th>
+              </tr>
+              {/* Baris Header 3 (Sub-Kolom Jam I, II & Kelas I-IV) */}
+              <tr>
+                <th style={{ width: 28 }}>I</th><th style={{ width: 28 }}>II</th>
+                <th style={{ width: 28 }}>I</th><th style={{ width: 28 }}>II</th>
+                <th style={{ width: 28 }}>I</th><th style={{ width: 28 }}>II</th>
+                <th style={{ width: 28 }}>I</th><th style={{ width: 28 }}>II</th>
+                <th style={{ width: 28 }}>I</th><th style={{ width: 28 }}>II</th>
+                <th style={{ width: 28 }}>I</th><th style={{ width: 28 }}>II</th>
+                <th style={{ width: 28 }}>I</th><th style={{ width: 28 }}>II</th><th style={{ width: 28 }}>III</th><th style={{ width: 28 }}>IV</th>
+                <th style={{ width: 28 }}>I</th><th style={{ width: 28 }}>II</th>
+                <th style={{ width: 28 }}>I</th><th style={{ width: 28 }}>II</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {isLoading ? (
+            <tbody>
+              {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={15} className="p-12 text-center text-slate-400">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-purple-600" />
-                    Memuat katalog tenaga pendidik...
-                  </td>
-                </tr>
-              ) : filteredDossier.length === 0 ? (
-                <tr>
-                  <td colSpan={15} className="p-12 text-center text-slate-400">
-                    Tidak ditemukan data tenaga pendidik.
+                  <td colSpan={25} className="text-center py-6 text-slate-400">
+                    Tidak ada data tenaga pendidik yang cocok.
                   </td>
                 </tr>
               ) : (
-                filteredDossier.map((d, idx) => (
-                  <tr key={d.nia || idx} className="hover:bg-slate-50/80 transition">
-                    <td className="p-3 text-center text-slate-400 border-r border-slate-100">{idx + 1}</td>
-                    <td className="p-3 font-mono font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">
-                      {d.nia}
-                    </td>
-                    <td className="p-3 font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">
-                      {d.nama}
-                    </td>
-                    <td className="p-3 whitespace-nowrap border-r border-slate-100">
-                      <span className="font-semibold text-emerald-800">{d.jah}</span>
-                      <span className="text-slate-400 text-[11px] block">{d.domisili}</span>
-                    </td>
-                    <td className="p-3 border-r border-slate-100 text-slate-600 text-[11px] max-w-xs truncate">
-                      {d.fanList}
-                    </td>
+                filteredRows.map((r) => (
+                  <tr key={r.nama} className="hover:bg-slate-50 transition">
+                    <td className="cell-kg font-mono font-bold">{r.kode}</td>
+                    <td className="text-left font-semibold text-slate-800 px-2">{r.nama}</td>
+                    <td className="text-xs text-slate-600 px-1">{r.asal}</td>
+                    <td className="text-xs text-slate-600 px-1">{r.jah}</td>
 
-                    {/* Presensi Jam 1 & 2 per hari */}
-                    {(['sabtu', 'ahad', 'senin', 'selasa', 'rabu', 'kamis'] as const).map((dayKey) => {
-                      const p = d.dayPresence[dayKey];
-                      const activeCount = (p.j1 ? 1 : 0) + (p.j2 ? 1 : 0);
-                      return (
-                        <td key={dayKey} className="p-1 text-center font-mono font-bold border-r border-slate-100">
-                          {activeCount > 0 ? (
-                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-800">
-                              {p.j1 && p.j2 ? 'I, II' : p.j1 ? 'I' : 'II'}
-                            </span>
-                          ) : (
-                            <span className="text-slate-300">-</span>
-                          )}
-                        </td>
-                      );
-                    })}
+                    {/* 6 Hari x 2 Jam */}
+                    <td className="text-[11px] font-mono">{r.dayPresence.sabtu.j1 || '-'}</td>
+                    <td className="text-[11px] font-mono">{r.dayPresence.sabtu.j2 || '-'}</td>
+                    <td className="text-[11px] font-mono">{r.dayPresence.ahad.j1 || '-'}</td>
+                    <td className="text-[11px] font-mono">{r.dayPresence.ahad.j2 || '-'}</td>
+                    <td className="text-[11px] font-mono">{r.dayPresence.senin.j1 || '-'}</td>
+                    <td className="text-[11px] font-mono">{r.dayPresence.senin.j2 || '-'}</td>
+                    <td className="text-[11px] font-mono">{r.dayPresence.selasa.j1 || '-'}</td>
+                    <td className="text-[11px] font-mono">{r.dayPresence.selasa.j2 || '-'}</td>
+                    <td className="text-[11px] font-mono">{r.dayPresence.rabu.j1 || '-'}</td>
+                    <td className="text-[11px] font-mono">{r.dayPresence.rabu.j2 || '-'}</td>
+                    <td className="text-[11px] font-mono">{r.dayPresence.kamis.j1 || '-'}</td>
+                    <td className="text-[11px] font-mono">{r.dayPresence.kamis.j2 || '-'}</td>
 
-                    {/* Jam Tingkat */}
-                    <td className="p-2 text-center font-mono border-r border-slate-100 font-semibold bg-blue-50/40">
-                      {d.hoursUla || '-'}
-                    </td>
-                    <td className="p-2 text-center font-mono border-r border-slate-100 font-semibold bg-blue-50/40">
-                      {d.hoursWustho || '-'}
-                    </td>
-                    <td className="p-2 text-center font-mono border-r border-slate-100 font-semibold bg-blue-50/40">
-                      {d.hoursUlya || '-'}
-                    </td>
+                    {/* Tingkat & Kode */}
+                    <td className="text-[11px]">{r.tingkatCounts.ula1 || '-'}</td>
+                    <td className="text-[11px]">{r.tingkatCounts.ula2 || '-'}</td>
+                    <td className="text-[11px]">{r.tingkatCounts.ula3 || '-'}</td>
+                    <td className="text-[11px]">{r.tingkatCounts.ula4 || '-'}</td>
+                    <td className="text-[11px]">{r.tingkatCounts.wst1 || '-'}</td>
+                    <td className="text-[11px]">{r.tingkatCounts.wst2 || '-'}</td>
+                    <td className="text-[11px]">{r.tingkatCounts.ulya1 || '-'}</td>
+                    <td className="text-[11px]">{r.tingkatCounts.ulya2 || '-'}</td>
 
                     {/* Total Jam */}
-                    <td className="p-3 text-center font-mono font-bold text-purple-900 bg-purple-50/50 whitespace-nowrap">
-                      {d.totalHours} Jam
-                    </td>
+                    <td className="font-bold text-madin-700">{r.totalHours}</td>
                   </tr>
                 ))
               )}

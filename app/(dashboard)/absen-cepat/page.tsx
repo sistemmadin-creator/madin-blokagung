@@ -6,14 +6,21 @@ import { useJadwalStore, HariKbm } from '@/stores/useJadwalStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { JamKbm, RecordSesiAbsensi, StatusAbsensi } from '@/types/absensi';
 import { Asatidz } from '@/types/asatidz';
-import { Zap, CheckCheck, Save, Search } from 'lucide-react';
+import { Zap, Bell, CheckCheck, Save, Search } from 'lucide-react';
 
-const STATUS_OPTIONS: StatusAbsensi[] = ['Hadir', 'Izin', 'Sakit', 'Alfa', 'Badal'];
+const STATUS_OPTIONS: { status: StatusAbsensi; label: string; color: string; activeColor: string }[] = [
+  { status: 'Hadir', label: 'Hadir', color: 'border-emerald-300 text-emerald-700 hover:bg-emerald-50', activeColor: 'bg-emerald-600 text-white border-emerald-600 shadow-xs' },
+  { status: 'Izin', label: 'Izin', color: 'border-blue-300 text-blue-700 hover:bg-blue-50', activeColor: 'bg-blue-600 text-white border-blue-600 shadow-xs' },
+  { status: 'Sakit', label: 'Sakit', color: 'border-amber-300 text-amber-700 hover:bg-amber-50', activeColor: 'bg-amber-500 text-white border-amber-500 shadow-xs' },
+  { status: 'Alfa', label: 'Alfa', color: 'border-rose-300 text-rose-700 hover:bg-rose-50', activeColor: 'bg-rose-600 text-white border-rose-600 shadow-xs' },
+  { status: 'Badal', label: 'Badal', color: 'border-purple-300 text-purple-700 hover:bg-purple-50', activeColor: 'bg-purple-600 text-white border-purple-600 shadow-xs' },
+];
 
 export default function AbsenCepatPage() {
   const {
     absensiMapByDate,
     selectedDate,
+    setSelectedDate,
     selectedJam,
     setSelectedJam,
     fetchAbsensi,
@@ -128,10 +135,10 @@ export default function AbsenCepatPage() {
     });
   };
 
-  // Mark all Hadir in a specific blok
-  const handleMarkAllHadirInBlok = (blokName: string) => {
+  // Mark all Hadir in a specific blok or all
+  const handleMarkAllHadir = (blokName?: string) => {
     setLocalRecords((prev) =>
-      prev.map((r) => (r.blok === blokName ? { ...r, status: 'Hadir' } : r))
+      prev.map((r) => (!blokName || r.blok === blokName ? { ...r, status: 'Hadir' } : r))
     );
   };
 
@@ -151,7 +158,7 @@ export default function AbsenCepatPage() {
     setIsSaving(false);
 
     if (success) {
-      alert(`Absen cepat Jam Ke-${selectedJam} berhasil disimpan!`);
+      alert(`Absen Cepat Jam Ke-${selectedJam} berhasil disimpan!`);
     }
   };
 
@@ -165,191 +172,194 @@ export default function AbsenCepatPage() {
         r.nama_asatidz.toLowerCase().includes(q) ||
         r.nia.toLowerCase().includes(q) ||
         r.kelas.toLowerCase().includes(q) ||
-        r.kamar.toLowerCase().includes(q);
+        r.kamar.toLowerCase().includes(q) ||
+        r.fan.toLowerCase().includes(q);
       return matchBlok && matchSearch;
     });
   }, [localRecords, selectedBlokFilter, search]);
 
   return (
-    <div className="space-y-6">
-      {/* Header Halaman */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+    <div className="space-y-4">
+      {/* Header Halaman (Identik dengan absen-cepat.html) */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-3">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shadow-xs">
-            <Zap className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-xs text-emerald-700 flex items-center justify-center shrink-0">
+            <Zap className="w-6 h-6 fill-emerald-600 text-emerald-600" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800">Mode Absen Cepat (Piket Lapangan)</h1>
-            <p className="text-xs text-slate-500">
-              Presensi Kartu Cepat Per Blok Asrama (Jam Ke-{selectedJam}, {dayNameIndo})
+            <h1 className="text-xl font-bold text-slate-800 m-0">Absen Cepat</h1>
+            <p className="text-xs text-slate-500 m-0 mt-0.5">
+              Mode absensi ringkas — 100% sinkron dengan Absensi Asatidz
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Jam Selector Tabs */}
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
-            {([1, 2, 3, 4] as JamKbm[]).map((j) => (
-              <button
-                key={j}
-                onClick={() => setSelectedJam(j)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-md transition ${
-                  selectedJam === j
-                    ? 'bg-madin-700 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Jam {j}
-              </button>
-            ))}
-          </div>
-
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-700 shadow-xs focus:ring-1 focus:ring-[#0f766e] focus:outline-none"
+          />
+          <span className="badge bg-emerald-50 text-emerald-800 border border-emerald-200 py-1.5 px-3 rounded-lg text-xs font-bold shadow-2xs">
+            {dayNameIndo}
+          </span>
           <button
-            onClick={handleSave}
-            disabled={isSaving || localRecords.length === 0}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition disabled:opacity-50"
+            type="button"
+            onClick={() => alert('Fitur notifikasi blok pengguna aktif.')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-emerald-300 text-emerald-800 bg-emerald-50/50 hover:bg-emerald-100 transition shadow-2xs"
+            title="Notifikasi Status Absen Blok Pengguna"
           >
-            <Save className="w-3.5 h-3.5" />
-            <span>{isSaving ? 'Menyimpan...' : 'Simpan Presensi Cepat'}</span>
+            <Bell className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+            <span>Notif</span>
           </button>
         </div>
       </div>
 
-      {/* Filter Blok & Bar Pencarian */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+      {/* Tab Sesi Jam (1, 2, 3, 4) */}
+      <div className="flex items-center gap-2">
+        {([1, 2, 3, 4] as JamKbm[]).map((j) => {
+          const isActive = selectedJam === j;
+          return (
+            <button
+              key={j}
+              type="button"
+              onClick={() => setSelectedJam(j)}
+              className={`px-4 py-1.5 text-xs font-bold rounded-lg transition border ${
+                isActive
+                  ? 'bg-[#0f766e] text-white border-[#0f766e] shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              Jam {j}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Header Kontrol & Aksi Massal */}
+      <div className="card-panel border-0 bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleMarkAllHadir()}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-emerald-300 text-emerald-700 hover:bg-emerald-50 transition"
+          >
+            <CheckCheck className="w-3.5 h-3.5" />
+            <span>Hadirkan Semua (Jam {selectedJam})</span>
+          </button>
+          <span className="text-xs text-slate-500">
+            Total Sesi: <b className="text-slate-800">{localRecords.length}</b>
+          </span>
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={isSaving || localRecords.length === 0}
+          className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#115e59] text-white shadow-xs transition disabled:opacity-50"
+        >
+          <Save className="w-3.5 h-3.5" />
+          <span>{isSaving ? 'Menyimpan...' : 'Simpan Presensi Cepat'}</span>
+        </button>
+      </div>
+
+      {/* Bar Filter & Pencarian */}
+      <div className="card-panel border-0 bg-white p-3 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+        {/* Pills Blok */}
         <div className="flex gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
           <button
             onClick={() => setSelectedBlokFilter('SEMUA')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap ${
+            className={`px-3 py-1 text-xs font-semibold rounded-lg transition whitespace-nowrap ${
               selectedBlokFilter === 'SEMUA'
-                ? 'bg-amber-600 text-white shadow-xs'
-                : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200'
+                ? 'bg-[#0f766e] text-white shadow-2xs'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
             }`}
           >
-            Semua Blok ({localRecords.length})
+            Semua ({localRecords.length})
           </button>
-
-          {distinctBloks.map((blok) => {
-            const count = localRecords.filter((r) => r.blok === blok).length;
+          {distinctBloks.map((b) => {
+            const count = localRecords.filter((r) => r.blok === b).length;
+            const isSelected = selectedBlokFilter === b;
             return (
               <button
-                key={blok}
-                onClick={() => setSelectedBlokFilter(blok)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap ${
-                  selectedBlokFilter === blok
-                    ? 'bg-amber-600 text-white shadow-xs'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200'
+                key={b}
+                onClick={() => setSelectedBlokFilter(b)}
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition whitespace-nowrap ${
+                  isSelected
+                    ? 'bg-[#0f766e] text-white shadow-2xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                 }`}
               >
-                {blok} ({count})
+                {b} ({count})
               </button>
             );
           })}
-
-          {selectedBlokFilter !== 'SEMUA' && (
-            <button
-              onClick={() => handleMarkAllHadirInBlok(selectedBlokFilter)}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 whitespace-nowrap transition"
-            >
-              <CheckCheck className="w-3.5 h-3.5" />
-              <span>Semua Hadir ({selectedBlokFilter})</span>
-            </button>
-          )}
         </div>
 
-        <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        {/* Input Pencarian */}
+        <div className="relative w-full sm:w-64">
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari ustadz, kamar..."
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+            placeholder="Cari Asatidz / Fan / Kelas..."
+            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0f766e]"
           />
         </div>
       </div>
 
-      {/* Grid Kartu Cepat Responsif (3 Kolom Desktop / 1 Kolom Mobile) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Grid Kartu Pengajar Berkelompok per Blok */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {filteredCards.length === 0 ? (
-          <div className="col-span-full py-16 text-center text-slate-400 bg-white rounded-xl border border-slate-200">
-            Tidak ada asatidz yang bertugas pada Jam Ke-{selectedJam} di blok ini.
+          <div className="col-span-full py-12 text-center text-slate-400 bg-white rounded-xl border border-dashed border-slate-300 text-xs">
+            Tidak ada jadwal mengajar pada Jam {selectedJam} untuk filter yang dipilih.
           </div>
         ) : (
-          filteredCards.map((card, idx) => {
-            const originalIndex = localRecords.findIndex(
-              (r) => r.nama_asatidz === card.nama_asatidz && r.kelas === card.kelas
+          filteredCards.map((record, idx) => {
+            const globalIndex = localRecords.findIndex(
+              (r) => r.nama_asatidz === record.nama_asatidz && r.kelas === record.kelas && r.jam === record.jam
             );
 
             return (
               <div
-                key={`${card.nama_asatidz}-${card.kelas}-${idx}`}
-                className={`bg-white rounded-xl border p-4 space-y-3 shadow-2xs transition ${
-                  card.status === 'Hadir'
-                    ? 'border-emerald-200 bg-emerald-50/10'
-                    : card.status === 'Alfa'
-                    ? 'border-rose-300 bg-rose-50/20'
-                    : 'border-slate-200'
-                }`}
+                key={`${record.nama_asatidz}-${record.kelas}-${idx}`}
+                className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs hover:border-emerald-300 transition flex flex-col justify-between gap-3"
               >
-                {/* Header Kartu */}
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-sm leading-tight">
-                      {card.nama_asatidz}
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <h3 className="text-sm font-bold text-slate-900 leading-tight">
+                      {record.nama_asatidz}
                     </h3>
-                    <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                      NIA: {card.nia} | {card.blok} ({card.kamar})
-                    </p>
+                    <span className="badge bg-slate-100 text-slate-600 text-[10px] font-mono px-2 py-0.5 rounded border border-slate-200 shrink-0">
+                      {record.nia}
+                    </span>
                   </div>
 
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      card.status === 'Hadir'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : card.status === 'Izin'
-                        ? 'bg-amber-100 text-amber-800'
-                        : card.status === 'Sakit'
-                        ? 'bg-blue-100 text-blue-800'
-                        : card.status === 'Alfa'
-                        ? 'bg-rose-100 text-rose-800'
-                        : 'bg-purple-100 text-purple-800'
-                    }`}
-                  >
-                    {card.status}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-600 mb-2">
+                    <span className="badge bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold px-2 py-0.5 rounded text-[11px]">
+                      {record.kelas}
+                    </span>
+                    <span className="font-semibold text-slate-700">{record.fan}</span>
+                    <span className="text-slate-400">&bull;</span>
+                    <span className="text-[11px] text-slate-500">{record.blok} ({record.kamar})</span>
+                  </div>
                 </div>
 
-                {/* Info Kelas & Fan */}
-                <div className="p-2 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-700">{card.kelas}</span>
-                  <span className="font-medium text-slate-500">{card.fan}</span>
-                </div>
-
-                {/* Tombol Aksi Status Cepat */}
-                <div className="grid grid-cols-5 gap-1 pt-1">
-                  {STATUS_OPTIONS.map((st) => {
-                    const isSelected = card.status === st;
+                {/* Status Selector Buttons */}
+                <div className="grid grid-cols-5 gap-1 pt-2 border-t border-slate-100">
+                  {STATUS_OPTIONS.map((opt) => {
+                    const isSelected = record.status === opt.status;
                     return (
                       <button
-                        key={st}
+                        key={opt.status}
                         type="button"
-                        onClick={() => handleStatusClick(originalIndex, st)}
-                        className={`py-1 text-[11px] font-semibold rounded transition text-center ${
-                          isSelected
-                            ? st === 'Hadir'
-                              ? 'bg-emerald-600 text-white font-bold shadow-xs'
-                              : st === 'Izin'
-                              ? 'bg-amber-600 text-white font-bold shadow-xs'
-                              : st === 'Sakit'
-                              ? 'bg-blue-600 text-white font-bold shadow-xs'
-                              : st === 'Alfa'
-                              ? 'bg-rose-600 text-white font-bold shadow-xs'
-                              : 'bg-purple-600 text-white font-bold shadow-xs'
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                        onClick={() => handleStatusClick(globalIndex >= 0 ? globalIndex : idx, opt.status)}
+                        className={`py-1 text-[11px] font-bold rounded border transition text-center ${
+                          isSelected ? opt.activeColor : opt.color
                         }`}
                       >
-                        {st}
+                        {opt.label}
                       </button>
                     );
                   })}

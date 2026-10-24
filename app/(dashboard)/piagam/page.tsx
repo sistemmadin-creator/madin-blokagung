@@ -4,14 +4,22 @@ import React, { useState, useEffect } from 'react';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { PiagamColumnElement } from '@/types/piagam';
-import { Award, Printer, ZoomIn, ZoomOut, Settings2 } from 'lucide-react';
+import {
+  Award,
+  Printer,
+  RotateCcw,
+  Sliders,
+  ZoomIn,
+  ZoomOut,
+  Search,
+} from 'lucide-react';
 
 const DEFAULT_COLUMNS: PiagamColumnElement[] = [
   {
     id: 'nama',
     title: 'Nama Santri',
     text: 'AHMAD FAUZI ROFIQ',
-    x: 421,
+    x: 420,
     y: 260,
     size: 26,
     color: '#0f172a',
@@ -28,7 +36,7 @@ const DEFAULT_COLUMNS: PiagamColumnElement[] = [
     id: 'no_induk',
     title: 'Nomor Induk',
     text: 'No. Induk: 198273',
-    x: 421,
+    x: 420,
     y: 295,
     size: 13,
     color: '#475569',
@@ -45,7 +53,7 @@ const DEFAULT_COLUMNS: PiagamColumnElement[] = [
     id: 'kitab',
     title: 'Nama Nadhom / Kitab',
     text: 'ALFIYAH IBNU MALIK (1.002 BAIT)',
-    x: 421,
+    x: 420,
     y: 350,
     size: 20,
     color: '#0f766e',
@@ -61,8 +69,8 @@ const DEFAULT_COLUMNS: PiagamColumnElement[] = [
   {
     id: 'predikat',
     title: 'Predikat Nilai',
-    text: 'Dengan Predikat: MUMTAZ (ISTIMEWA)',
-    x: 421,
+    text: 'Dengan Predikat: JAYYID JIDDAN (A)',
+    x: 420,
     y: 385,
     size: 14,
     color: '#334155',
@@ -117,8 +125,11 @@ export default function PiagamPage() {
 
   const [columns, setColumns] = useState<PiagamColumnElement[]>(DEFAULT_COLUMNS);
   const [selectedColumnId, setSelectedColumnId] = useState<string>('nama');
-  const [zoomScale, setZoomScale] = useState(0.8);
+  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
+  const [bgImageUrl, setBgImageUrl] = useState<string>('');
+  const [zoomScale, setZoomScale] = useState(0.85);
   const [selectedSantriId, setSelectedSantriId] = useState('');
+  const [santriFilterKeyword, setSantriFilterKeyword] = useState('');
 
   useEffect(() => {
     if (santriList.length === 0) fetchSantri();
@@ -138,7 +149,7 @@ export default function PiagamPage() {
     const s = santriList.find((item) => item.no_induk === noInduk);
     if (!s) return;
 
-    // Find their completed setoran if any
+    // Find their latest completed setoran if any
     const setoran = setoranList.find((item) => item.no_induk === noInduk);
 
     setColumns((prev) =>
@@ -152,274 +163,332 @@ export default function PiagamPage() {
     );
   };
 
+  const handleResetCanvas = () => {
+    if (confirm('Kembalikan tata letak teks ke posisi default?')) {
+      setColumns(DEFAULT_COLUMNS);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
 
+  const filteredSantriOptions = santriList.filter((s) => {
+    if (!santriFilterKeyword.trim()) return true;
+    const q = santriFilterKeyword.toLowerCase();
+    return s.nama.toLowerCase().includes(q) || s.no_induk.toLowerCase().includes(q);
+  }).slice(0, 30);
+
   return (
-    <div className="space-y-6">
-      {/* Header Halaman (Hidden on Print) */}
-      <div className="print:hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+    <div className="space-y-4">
+      {/* Header Halaman (Identik dengan piagam.html) */}
+      <div className="print:hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-3">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shadow-xs">
-            <Award className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-xs text-emerald-700 flex items-center justify-center shrink-0">
+            <Award className="w-6 h-6 text-emerald-600" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800">Cetak Piagam / Syahadah Hafalan</h1>
-            <p className="text-xs text-slate-500">
-              Studio Desain Koordinat & Generator Cetak Sertifikat Kelulusan Muhafadzoh
+            <h1 className="text-xl font-bold text-slate-800 m-0 flex items-center gap-2">
+              Cetak Piagam &amp; Syahadah
+            </h1>
+            <p className="text-xs text-slate-500 m-0 mt-0.5">
+              Sistem mailing dinamis untuk mencetak piagam kelulusan hafalan dan syahadah santri secara massal.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Zoom Controls */}
-          <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
-            <button
-              onClick={() => setZoomScale(Math.max(0.5, zoomScale - 0.1))}
-              className="p-1.5 hover:bg-slate-200 rounded text-slate-600"
-              title="Perkecil Kanvas"
-            >
-              <ZoomOut className="w-3.5 h-3.5" />
-            </button>
-            <span className="px-2 py-1 text-xs font-mono font-bold text-slate-700">
-              {Math.round(zoomScale * 100)}%
-            </span>
-            <button
-              onClick={() => setZoomScale(Math.min(1.2, zoomScale + 0.1))}
-              className="p-1.5 hover:bg-slate-200 rounded text-slate-600"
-              title="Perbesar Kanvas"
-            >
-              <ZoomIn className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
           <button
+            type="button"
+            onClick={handleResetCanvas}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 shadow-xs transition"
+            title="Reset ke tata letak awal"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset Kanvas</span>
+          </button>
+          <button
+            type="button"
             onClick={handlePrint}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-madin-700 hover:bg-madin-800 text-white shadow-sm transition"
+            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#115e59] text-white shadow-xs transition"
           >
             <Printer className="w-4 h-4" />
-            <span>Cetak Piagam (Print)</span>
+            <span>Print Piagam</span>
           </button>
         </div>
       </div>
 
-      {/* Main Studio Area (Canvas + Properties Sidebar) */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        {/* Kolom Kiri: Kanvas Sertifikat Visual */}
-        <div className="lg:col-span-3 bg-slate-100 p-6 rounded-2xl border border-slate-200 overflow-auto flex justify-center items-center min-h-[600px]">
-          <div
-            id="piagam-print-area"
-            style={{
-              width: '842px',
-              height: '595px',
-              transform: `scale(${zoomScale})`,
-              transformOrigin: 'top center',
-            }}
-            className="bg-white rounded-lg shadow-2xl relative border-8 border-double border-amber-600 select-none overflow-hidden print:shadow-none print:border-none print:transform-none"
-          >
-            {/* Latar Belakang Elegan Piagam */}
-            <div className="absolute inset-2 border-2 border-amber-500/40 pointer-events-none rounded"></div>
-            <div className="absolute inset-4 border border-slate-200 pointer-events-none rounded"></div>
-
-            {/* Logo / Ornamen Kop */}
-            <div className="absolute top-10 left-0 right-0 text-center pointer-events-none space-y-1">
-              <p className="text-[11px] tracking-[0.3em] font-serif font-bold text-amber-800 uppercase">
-                Pondok Pesantren Darussalam Blokagung
-              </p>
-              <h2 className="text-2xl font-serif font-extrabold text-slate-800 tracking-wide uppercase">
-                Madrasah Diniyyah Al Amiriyyah
+      {/* Main Grid: Panel Pengaturan Kiri & Kanvas Kanan */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* PANEL PENGATURAN KIRI */}
+        <div className="print:hidden lg:col-span-4 space-y-4">
+          <div className="card-panel border-t-4 border-t-[#0f766e] bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+              <h2 className="text-sm font-bold text-slate-800 m-0 flex items-center gap-1.5">
+                <Sliders className="w-4 h-4 text-emerald-700" />
+                <span>Pengaturan Piagam</span>
               </h2>
-              <div className="w-32 h-0.5 bg-amber-600 mx-auto mt-1"></div>
-              <p className="text-xs font-serif italic text-slate-500 pt-1">
-                Menyatakan dengan sebenarnya bahwa santri:
+              <span className="badge bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-semibold px-2 py-0.5 rounded">
+                A4 {orientation === 'landscape' ? 'Landscape' : 'Portrait'}
+              </span>
+            </div>
+
+            {/* 1. Orientasi Kertas Cetak */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Orientasi Kertas Cetak</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOrientation('landscape')}
+                  className={`py-1.5 px-2 text-xs font-semibold rounded-lg border transition ${
+                    orientation === 'landscape'
+                      ? 'bg-emerald-50 border-[#0f766e] text-emerald-800'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Landscape (297 × 210)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrientation('portrait')}
+                  className={`py-1.5 px-2 text-xs font-semibold rounded-lg border transition ${
+                    orientation === 'portrait'
+                      ? 'bg-emerald-50 border-[#0f766e] text-emerald-800'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Portrait (210 × 297)
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Gambar Latar / Bingkai Piagam */}
+            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700">Gambar Bingkai / Background</label>
+                {bgImageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setBgImageUrl('')}
+                    className="text-[11px] text-rose-600 hover:underline"
+                  >
+                    Hapus
+                  </button>
+                )}
+              </div>
+              <input
+                type="text"
+                placeholder="URL Gambar / Link Google Drive..."
+                value={bgImageUrl}
+                onChange={(e) => setBgImageUrl(e.target.value)}
+                className="w-full px-2.5 py-1 text-xs rounded border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#0f766e]"
+              />
+              <p className="text-[10px] text-slate-500">
+                Masukkan tautan gambar template piagam beresolusi tinggi untuk dicetak di belakang teks.
               </p>
             </div>
 
-            {/* Elemen Teks Koordinat Dinamis */}
-            {columns.map((col) => {
-              if (!col.show) return null;
-              const isSelected = col.id === selectedColumnId;
+            {/* 3. Pilih Data Santri */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Pilih Data Santri</label>
+              <div className="relative mb-2">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Cari santri..."
+                  value={santriFilterKeyword}
+                  onChange={(e) => setSantriFilterKeyword(e.target.value)}
+                  className="w-full pl-8 pr-2.5 py-1 text-xs rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0f766e]"
+                />
+              </div>
+              <select
+                value={selectedSantriId}
+                onChange={(e) => handleSelectSantri(e.target.value)}
+                className="w-full px-2.5 py-1.5 text-xs font-semibold rounded border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#0f766e]"
+              >
+                <option value="">-- Pilih Santri --</option>
+                {filteredSantriOptions.map((s) => (
+                  <option key={s.no_induk} value={s.no_induk}>
+                    {s.nama} ({s.no_induk}) - {s.tingkat} {s.din_kls}{s.din_bag}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-              return (
-                <div
-                  key={col.id}
-                  onClick={() => setSelectedColumnId(col.id)}
-                  style={{
-                    position: 'absolute',
-                    top: `${col.y}px`,
-                    left: `${col.x}px`,
-                    transform:
-                      col.align === 'center'
-                        ? 'translate(-50%, -50%)'
-                        : col.align === 'right'
-                        ? 'translate(-100%, -50%)'
-                        : 'translate(0, -50%)',
-                    fontSize: `${col.size}px`,
-                    color: col.color,
-                    fontFamily: col.fontFamily,
-                    fontWeight: col.isBold ? 'bold' : 'normal',
-                    textAlign: col.align,
-                    textTransform: col.textTransform,
-                  }}
-                  className={`cursor-pointer px-2 py-0.5 rounded transition ${
-                    isSelected
-                      ? 'outline-2 outline-dashed outline-madin-600 bg-madin-50/40 print:outline-none print:bg-transparent'
-                      : 'hover:outline-1 hover:outline-dashed hover:outline-slate-400 print:outline-none'
-                  }`}
-                >
-                  {col.text}
+            {/* 4. Edit Atribut Elemen Teks */}
+            <div className="border-t border-slate-200 pt-3 space-y-2">
+              <label className="block text-xs font-bold text-slate-700">Elemen Teks Terpilih</label>
+              <div className="flex gap-1 overflow-x-auto pb-1">
+                {columns.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setSelectedColumnId(c.id)}
+                    className={`px-2 py-1 text-[11px] font-semibold rounded whitespace-nowrap border transition ${
+                      selectedColumnId === c.id
+                        ? 'bg-[#0f766e] text-white border-[#0f766e]'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {c.title}
+                  </button>
+                ))}
+              </div>
+
+              {activeColumn && (
+                <div className="space-y-2 bg-slate-50 p-2.5 rounded border border-slate-200 text-xs">
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-semibold">Teks</label>
+                    <input
+                      type="text"
+                      value={activeColumn.text}
+                      onChange={(e) => handleUpdateActiveColumn({ text: e.target.value })}
+                      className="w-full px-2 py-1 text-xs rounded border border-slate-300 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-semibold">Ukuran Font ({activeColumn.size}px)</label>
+                      <input
+                        type="range"
+                        min="8"
+                        max="48"
+                        value={activeColumn.size}
+                        onChange={(e) => handleUpdateActiveColumn({ size: parseInt(e.target.value, 10) })}
+                        className="w-full accent-emerald-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-semibold">Warna Teks</label>
+                      <input
+                        type="color"
+                        value={activeColumn.color}
+                        onChange={(e) => handleUpdateActiveColumn({ color: e.target.value })}
+                        className="w-full h-7 rounded border border-slate-300 p-0.5 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-semibold">Posisi X (Horizontal)</label>
+                      <input
+                        type="number"
+                        value={activeColumn.x}
+                        onChange={(e) => handleUpdateActiveColumn({ x: parseInt(e.target.value, 10) || 0 })}
+                        className="w-full px-2 py-1 text-xs rounded border border-slate-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-semibold">Posisi Y (Vertikal)</label>
+                      <input
+                        type="number"
+                        value={activeColumn.y}
+                        onChange={(e) => handleUpdateActiveColumn({ y: parseInt(e.target.value, 10) || 0 })}
+                        className="w-full px-2 py-1 text-xs rounded border border-slate-300"
+                      />
+                    </div>
+                  </div>
                 </div>
-              );
-            })}
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Kolom Kanan: Pengaturan Properti Koordinat (Hidden on Print) */}
-        <div className="print:hidden bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5 border-b pb-2">
-            <Settings2 className="w-4 h-4 text-madin-700" />
-            Panel Pengaturan Piagam
-          </h3>
-
-          {/* Pilih Santri Cepat */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Pilih Santri (Isi Otomatis Data)
-            </label>
-            <select
-              value={selectedSantriId}
-              onChange={(e) => handleSelectSantri(e.target.value)}
-              className="w-full text-xs py-2 px-2.5 rounded-lg border border-slate-200 bg-white"
-            >
-              <option value="">Pilih Santri...</option>
-              {santriList.slice(0, 50).map((s) => (
-                <option key={s.no_induk} value={s.no_induk}>
-                  {s.nama} ({s.no_induk})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Pilih Elemen untuk Diedit */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Pilih Elemen Teks:
-            </label>
-            <select
-              value={selectedColumnId}
-              onChange={(e) => setSelectedColumnId(e.target.value)}
-              className="w-full text-xs py-2 px-2.5 rounded-lg border border-slate-200 bg-white font-bold text-madin-800"
-            >
-              {columns.map((col) => (
-                <option key={col.id} value={col.id}>
-                  {col.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Edit Teks Elemen */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Konten Teks</label>
-            <textarea
-              rows={2}
-              value={activeColumn.text}
-              onChange={(e) => handleUpdateActiveColumn({ text: e.target.value })}
-              className="w-full text-xs p-2 rounded-lg border border-slate-200 font-medium"
-            />
-          </div>
-
-          {/* Posisi Koordinat X & Y */}
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <label className="text-slate-500 font-medium">Posisi X (px)</label>
-              <input
-                type="number"
-                value={activeColumn.x}
-                onChange={(e) =>
-                  handleUpdateActiveColumn({ x: parseInt(e.target.value, 10) || 0 })
-                }
-                className="w-full text-xs py-1.5 px-2 border rounded font-mono"
-              />
-            </div>
-            <div>
-              <label className="text-slate-500 font-medium">Posisi Y (px)</label>
-              <input
-                type="number"
-                value={activeColumn.y}
-                onChange={(e) =>
-                  handleUpdateActiveColumn({ y: parseInt(e.target.value, 10) || 0 })
-                }
-                className="w-full text-xs py-1.5 px-2 border rounded font-mono"
-              />
-            </div>
-          </div>
-
-          {/* Ukuran Font & Warna */}
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <label className="text-slate-500 font-medium">Ukuran Font (px)</label>
-              <input
-                type="number"
-                value={activeColumn.size}
-                onChange={(e) =>
-                  handleUpdateActiveColumn({ size: parseInt(e.target.value, 10) || 12 })
-                }
-                className="w-full text-xs py-1.5 px-2 border rounded font-mono"
-              />
-            </div>
-            <div>
-              <label className="text-slate-500 font-medium">Warna Teks</label>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="color"
-                  value={activeColumn.color}
-                  onChange={(e) => handleUpdateActiveColumn({ color: e.target.value })}
-                  className="w-7 h-7 rounded border cursor-pointer p-0.5"
-                />
-                <span className="font-mono text-[11px]">{activeColumn.color}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Perataan Teks & Font Family */}
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <label className="text-slate-500 font-medium">Perataan</label>
-              <select
-                value={activeColumn.align}
-                onChange={(e) => handleUpdateActiveColumn({ align: e.target.value as 'left' | 'center' | 'right' })}
-                className="w-full text-xs py-1.5 px-2 border rounded bg-white"
+        {/* AREA KANVAS CETAK (PREVIEW & PRINT) */}
+        <div className="lg:col-span-8 flex flex-col items-center">
+          {/* Zoom Toolbar */}
+          <div className="print:hidden w-full flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-200 mb-3 shadow-2xs">
+            <span className="text-xs font-semibold text-slate-600">
+              Kanvas Pratinjau Dokumen Cetak
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setZoomScale(Math.max(0.5, zoomScale - 0.1))}
+                className="p-1 hover:bg-slate-100 rounded text-slate-600"
+                title="Perkecil"
               >
-                <option value="center">Rata Tengah</option>
-                <option value="left">Rata Kiri</option>
-                <option value="right">Rata Kanan</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-slate-500 font-medium">Font Family</label>
-              <select
-                value={activeColumn.fontFamily}
-                onChange={(e) => handleUpdateActiveColumn({ fontFamily: e.target.value })}
-                className="w-full text-xs py-1.5 px-2 border rounded bg-white"
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-mono font-bold px-2 text-slate-700">
+                {Math.round(zoomScale * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={() => setZoomScale(Math.min(1.3, zoomScale + 0.1))}
+                className="p-1 hover:bg-slate-100 rounded text-slate-600"
+                title="Perbesar"
               >
-                <option value="serif">Serif (Resmi)</option>
-                <option value="sans-serif">Sans-Serif</option>
-                <option value="monospace">Monospace</option>
-              </select>
+                <ZoomIn className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
-          <label className="flex items-center gap-2 cursor-pointer text-xs pt-1">
-            <input
-              type="checkbox"
-              checked={activeColumn.isBold}
-              onChange={(e) => handleUpdateActiveColumn({ isBold: e.target.checked })}
-              className="rounded text-madin-700"
-            />
-            <span className="font-semibold text-slate-700">Tebal (Bold)</span>
-          </label>
+          {/* Canvas Wrapper */}
+          <div
+            className="overflow-auto max-w-full p-4 bg-slate-200/70 rounded-2xl border border-slate-300 shadow-inner flex items-center justify-center print:p-0 print:bg-white print:border-none print:shadow-none"
+            style={{ minHeight: '620px' }}
+          >
+            <div
+              id="piagamSheet"
+              style={{
+                width: orientation === 'landscape' ? '842px' : '595px',
+                height: orientation === 'landscape' ? '595px' : '842px',
+                transform: `scale(${zoomScale})`,
+                transformOrigin: 'top center',
+                backgroundImage: bgImageUrl ? `url(${bgImageUrl})` : undefined,
+                backgroundSize: '100% 100%',
+                backgroundRepeat: 'no-repeat',
+              }}
+              className="relative bg-white shadow-xl border border-slate-300 rounded-sm print:shadow-none print:border-none overflow-hidden select-none"
+            >
+              {!bgImageUrl && (
+                <div className="absolute inset-4 border-4 border-double border-emerald-900/30 rounded pointer-events-none flex flex-col items-center justify-between p-8 text-center opacity-40">
+                  <span className="text-xs font-serif tracking-widest text-emerald-900">
+                    MADRASAH DINIYYAH AL AMIRIYYAH BLOKAGUNG
+                  </span>
+                  <div className="text-3xl font-serif text-emerald-900/30 font-bold">
+                    SYAHADAH MUHAFADZOH
+                  </div>
+                  <span className="text-[10px] text-slate-400">Bingkai Default Piagam</span>
+                </div>
+              )}
+
+              {/* Render Draggable/Clickable Text Elements */}
+              {columns
+                .filter((col) => col.show)
+                .map((col) => {
+                  const isSelected = col.id === selectedColumnId;
+                  return (
+                    <div
+                      key={col.id}
+                      onClick={() => setSelectedColumnId(col.id)}
+                      style={{
+                        position: 'absolute',
+                        left: `${col.x}px`,
+                        top: `${col.y}px`,
+                        transform: 'translate(-50%, -50%)',
+                        fontSize: `${col.size}px`,
+                        color: col.color,
+                        fontFamily: col.fontFamily === 'serif' ? 'Georgia, serif' : 'system-ui, sans-serif',
+                        fontWeight: col.isBold ? 'bold' : 'normal',
+                        textAlign: col.align,
+                        textTransform: col.textTransform,
+                      }}
+                      className={`cursor-pointer whitespace-nowrap transition-shadow ${
+                        isSelected
+                          ? 'ring-2 ring-emerald-500 ring-offset-1 rounded bg-emerald-50/40 px-1.5'
+                          : 'hover:ring-1 hover:ring-slate-400 px-1'
+                      }`}
+                    >
+                      {col.text}
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
         </div>
       </div>
     </div>
