@@ -98,11 +98,14 @@ test.describe('Modul 07: Pengaturan Hierarki Dropdown Blok > Asrama > Kode > Kam
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
 
-    const addRuleBtn = dialog.getByRole('button', { name: /Tambah Aturan Baru/i });
+    // Ensure data is fully loaded before adding rule
+    await expect(dialog.getByText(/63 aturan/i)).toBeVisible();
+
+    const addRuleBtn = dialog.getByRole('button', { name: 'Tambah Aturan Baru', exact: true });
     await addRuleBtn.click();
 
     // Newly added rule opens edit view
-    await expect(dialog.getByText(/Rute Induk \(Blok > Asrama > Kode\)/i)).toBeVisible();
+    await expect(dialog.getByText(/Rute Induk/i)).toBeVisible();
 
     // Type selection
     const typeSelect = dialog.locator('select').filter({ hasText: /Rentang Angka/i });
@@ -113,7 +116,7 @@ test.describe('Modul 07: Pengaturan Hierarki Dropdown Blok > Asrama > Kode > Kam
     await expect(dialog.getByPlaceholder(/Contoh: A1, A2, A3, Mandi/i)).toBeVisible();
   });
 
-  test('TC-06: tab switching between Tree 1 and Tree 2', async ({ page }) => {
+  test('TC-06: tab switching between Tree 1 and Tree 2 with Visual & JSON modes', async ({ page }) => {
     await page.getByRole('button', { name: /Hierarki Kamar/i }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
@@ -122,9 +125,20 @@ test.describe('Modul 07: Pengaturan Hierarki Dropdown Blok > Asrama > Kode > Kam
     const tabTree2 = dialog.getByRole('button', { name: /Hierarki Kelas Formal/i });
     await tabTree2.click();
 
-    // Formal class configuration textarea visible
-    await expect(dialog.getByText(/Hierarki Pendidikan Formal/i)).toBeVisible();
-    await expect(dialog.getByPlaceholder(/Contoh: SMP > MIPA > 1 > VII > A/i)).toBeVisible();
+    // Visual builder header and unit groups visible
+    await expect(dialog.getByText(/2. Unit > Jurusan > Semester > Kelas > Bagian/i)).toBeVisible();
+    await expect(dialog.getByText('SMP Plus Darussalam').first()).toBeVisible();
+
+    // Test mode switcher to JSON / Cepat
+    const jsonModeBtn = dialog.getByRole('button', { name: /JSON \/ Cepat/i });
+    await expect(jsonModeBtn).toBeVisible();
+    await jsonModeBtn.click();
+    await expect(dialog.getByPlaceholder(/\[ { ... } \]/i)).toBeVisible();
+
+    // Switch back to Visual mode
+    const visualModeBtn = dialog.getByRole('button', { name: 'Visual', exact: true });
+    await visualModeBtn.click();
+    await expect(dialog.getByText('SMP Plus Darussalam').first()).toBeVisible();
 
     // Switch back to Tree 1 inside modal
     const tabTree1 = dialog.getByRole('button', { name: /Hierarki Kamar/i });
@@ -167,5 +181,115 @@ test.describe('Modul 07: Pengaturan Hierarki Dropdown Blok > Asrama > Kode > Kam
     // Cancel modal
     await page.getByRole('button', { name: /^Batal$/i }).first().click();
     await expect(page.getByRole('heading', { name: /Formulir Pendaftaran Santri Baru/i })).toBeHidden();
+  });
+
+  test('TC-09: Tree 2 Buka Semua, Tutup Semua, and Unit accordion expansion', async ({ page }) => {
+    await page.getByRole('button', { name: /Hierarki Kamar/i }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    // Switch to Tree 2
+    await dialog.getByRole('button', { name: /Hierarki Kelas Formal/i }).click();
+
+    const bukaSemuaBtn = dialog.getByRole('button', { name: /Buka Semua/i });
+    const tutupSemuaBtn = dialog.getByRole('button', { name: /Tutup Semua/i });
+
+    // Open all unit accordions
+    await bukaSemuaBtn.click();
+    await expect(dialog.getByText(/Jurusan: Tahfidz/i)).toBeVisible();
+    await expect(dialog.getByText(/Jurusan: Unggulan MIPA\/Sains/i)).toBeVisible();
+
+    // Close all unit accordions
+    await tutupSemuaBtn.click();
+    await expect(dialog.getByText(/Jurusan: Tahfidz/i)).toBeHidden();
+
+    // Expand only SMP Plus Darussalam
+    const smpGroup = dialog.getByRole('button', { name: /SMP Plus Darussalam \d+ Jurusan/i });
+    await smpGroup.click();
+    await expect(dialog.getByText(/Jurusan: Tahfidz/i)).toBeVisible();
+  });
+
+  test('TC-10: Tree 2 search and filter by Unit', async ({ page }) => {
+    await page.getByRole('button', { name: /Hierarki Kamar/i }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    // Switch to Tree 2
+    await dialog.getByRole('button', { name: /Hierarki Kelas Formal/i }).click();
+
+    // Search for Unggulan
+    const searchInput = dialog.getByPlaceholder(/Cari unit, jurusan, kelas.../i);
+    await searchInput.fill('Unggulan');
+    await expect(dialog.getByText(/Jurusan: Unggulan MIPA\/Sains/i)).toBeVisible();
+    await expect(dialog.getByText(/Jurusan: Tahfidz/i)).toBeHidden();
+
+    // Clear search
+    await searchInput.clear();
+
+    // Filter by Unit
+    const filterBtn = dialog.getByRole('button', { name: 'Filter', exact: true });
+    await filterBtn.click();
+
+    const unitSelect = dialog.locator('select').first();
+    await unitSelect.selectOption('SMP Plus Darussalam');
+    await expect(dialog.getByRole('button', { name: /SMP Plus Darussalam \d+ Jurusan/i })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /MTs Al Amiriyyah \d+ Jurusan/i })).toBeHidden();
+
+    // Reset filter
+    await dialog.getByRole('button', { name: /Reset Filter/i }).click();
+    await expect(dialog.getByRole('button', { name: /MTs Al Amiriyyah \d+ Jurusan/i })).toBeVisible();
+  });
+
+  test('TC-11: Tree 2 Presets and Live Preview calculation', async ({ page }) => {
+    await page.getByRole('button', { name: /Hierarki Kamar/i }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    // Switch to Tree 2 and wait for data load
+    await dialog.getByRole('button', { name: /Hierarki Kelas Formal/i }).click();
+    await expect(dialog.getByText(/\d+ aturan/i)).toBeVisible();
+    await dialog.getByRole('button', { name: /Buka Semua/i }).click();
+
+    // Click card Tahfidz to open editor
+    const tahfidzCard = dialog.getByText(/Jurusan: Tahfidz/i);
+    await tahfidzCard.click();
+
+    // Verify live preview is visible
+    await expect(dialog.getByText(/Pratinjau Rombel yang Terbentuk/i)).toBeVisible();
+    await expect(dialog.getByText(/Total: \d+ Rombel/i)).toBeVisible();
+
+    // Click preset SMA (X-XII)
+    const smaPresetBtn = dialog.getByRole('button', { name: /SMA \(X-XII\)/i });
+    await smaPresetBtn.click();
+    await expect(dialog.getByText(/Total: \d+ Rombel/i)).toBeVisible();
+
+    // Click preset SD/MI (1-6)
+    const miPresetBtn = dialog.getByRole('button', { name: /SD\/MI \(1-6\)/i });
+    await miPresetBtn.click();
+    await expect(dialog.getByText(/Total: \d+ Rombel/i)).toBeVisible();
+  });
+
+  test('TC-12: Tree 2 Duplicate rule and Tambah Jurusan inside Unit', async ({ page }) => {
+    await page.getByRole('button', { name: /Hierarki Kamar/i }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    // Switch to Tree 2 and wait for data load
+    await dialog.getByRole('button', { name: /Hierarki Kelas Formal/i }).click();
+    await expect(dialog.getByText(/\d+ aturan/i)).toBeVisible();
+
+    // Click + Jurusan on SMP Plus Darussalam
+    const addJurusanBtn = dialog.getByRole('button', { name: /Tambah Jurusan Baru di SMP Plus Darussalam/i });
+    await addJurusanBtn.click();
+
+    // Verify draft Jurusan Baru was added
+    await expect(dialog.getByText(/Jurusan: Jurusan Baru/i)).toBeVisible();
+
+    // Duplicate that rule
+    const duplicateBtn = dialog.getByRole('button', { name: /Duplikat Aturan/i }).first();
+    await duplicateBtn.click();
+
+    // Verify duplicate with (Salinan) exists
+    await expect(dialog.getByText(/\(Salinan\)/i)).toBeVisible();
   });
 });

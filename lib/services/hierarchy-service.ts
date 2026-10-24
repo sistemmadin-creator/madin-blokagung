@@ -340,6 +340,7 @@ export function formatKamarDisplay(
 }
 
 export interface Tree2Rule {
+  id?: string;
   tree: 'tree2';
   unit: string;
   jurusan: string;
@@ -350,6 +351,8 @@ export interface Tree2Rule {
   kelasType?: string;
   kelasRomanStart?: string;
   kelasRomanEnd?: string;
+  kelasNumStart?: number;
+  kelasNumEnd?: number;
   kelasManual?: string;
   bagType?: string;
   bagNumStart?: number;
@@ -361,6 +364,7 @@ export interface Tree2Rule {
 
 export const DEFAULT_TREE2_RULES: Tree2Rule[] = [
   {
+    id: 'tree2_1',
     tree: 'tree2',
     unit: 'SMP Plus Darussalam',
     jurusan: 'Tahfidz',
@@ -371,9 +375,10 @@ export const DEFAULT_TREE2_RULES: Tree2Rule[] = [
     kelasRomanEnd: 'IX',
     bagType: 'alpha',
     bagAlphaStart: 'A',
-    bagAlphaEnd: 'r',
+    bagAlphaEnd: 'E',
   },
   {
+    id: 'tree2_2',
     tree: 'tree2',
     unit: 'SMP Plus Darussalam',
     jurusan: 'Sains',
@@ -384,9 +389,10 @@ export const DEFAULT_TREE2_RULES: Tree2Rule[] = [
     kelasRomanEnd: 'IX',
     bagType: 'alpha',
     bagAlphaStart: 'A',
-    bagAlphaEnd: 'r',
+    bagAlphaEnd: 'E',
   },
   {
+    id: 'tree2_3',
     tree: 'tree2',
     unit: 'SMP Plus Darussalam',
     jurusan: 'Terpadu',
@@ -397,9 +403,10 @@ export const DEFAULT_TREE2_RULES: Tree2Rule[] = [
     kelasRomanEnd: 'IX',
     bagType: 'alpha',
     bagAlphaStart: 'A',
-    bagAlphaEnd: 'r',
+    bagAlphaEnd: 'E',
   },
   {
+    id: 'tree2_4',
     tree: 'tree2',
     unit: 'MTs Al Amiriyyah',
     jurusan: 'Unggulan MIPA/Sains',
@@ -429,10 +436,14 @@ export async function loadTree2Rules(): Promise<Tree2Rule[]> {
       const rawTree2 = data.value.tree2;
       const parsed = typeof rawTree2 === 'string' ? JSON.parse(rawTree2) : rawTree2;
       if (Array.isArray(parsed) && parsed.length > 0) {
+        const withIds = parsed.map((r, idx) => ({
+          ...r,
+          id: r.id || `tree2_${idx}_${Date.now()}`,
+        }));
         if (typeof window !== 'undefined') {
-          localStorage.setItem(LOCAL_STORAGE_KEY_TREE2, JSON.stringify(parsed));
+          localStorage.setItem(LOCAL_STORAGE_KEY_TREE2, JSON.stringify(withIds));
         }
-        return parsed;
+        return withIds;
       }
     }
   } catch {
@@ -444,7 +455,12 @@ export async function loadTree2Rules(): Promise<Tree2Rule[]> {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY_TREE2);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((r: Tree2Rule, idx: number) => ({
+            ...r,
+            id: r.id || `tree2_${idx}_${Date.now()}`,
+          }));
+        }
       }
     } catch {
       // LocalStorage error
@@ -452,6 +468,45 @@ export async function loadTree2Rules(): Promise<Tree2Rule[]> {
   }
 
   return DEFAULT_TREE2_RULES;
+}
+
+/**
+ * Menyimpan aturan hierarki Kelas Formal (Tree 2) ke Supabase dan LocalStorage
+ */
+export async function saveTree2Rules(rules: Tree2Rule[]): Promise<void> {
+  // Simpan ke LocalStorage segera
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LOCAL_STORAGE_KEY_TREE2, JSON.stringify(rules));
+  }
+
+  // Simpan ke Supabase jika memungkinkan
+  try {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'APP_SETTINGS')
+      .maybeSingle();
+
+    const existingVal = data?.value || {};
+    const updatedVal = {
+      ...existingVal,
+      tree2: rules,
+      updated_at: new Date().toISOString(),
+    };
+
+    await supabase.from('app_settings').upsert(
+      [
+        {
+          key: 'APP_SETTINGS',
+          value: updatedVal,
+        },
+      ],
+      { onConflict: 'key' }
+    );
+  } catch {
+    // Tetap berjalan mulus lewat LocalStorage jika koneksi bermasalah
+  }
 }
 
 /**
@@ -509,6 +564,12 @@ export function parseTree2Options(
       } else {
         ['VII', 'VIII', 'IX', 'X', 'XI', 'XII'].forEach((r) => kelasSet.add(r));
       }
+    } else if (rule.kelasType === 'numeric') {
+      const start = Number(rule.kelasNumStart) || 1;
+      const end = Number(rule.kelasNumEnd) || 6;
+      for (let i = Math.min(start, end); i <= Math.max(start, end); i++) {
+        kelasSet.add(String(i));
+      }
     } else if (rule.kelasManual) {
       rule.kelasManual.split(',').map((s) => s.trim()).filter(Boolean).forEach((s) => kelasSet.add(s));
     } else {
@@ -521,6 +582,12 @@ export function parseTree2Options(
       const endChar = (rule.bagAlphaEnd || 'E').toUpperCase().charCodeAt(0);
       for (let c = Math.min(startChar, endChar); c <= Math.max(startChar, endChar); c++) {
         bagSet.add(String.fromCharCode(c));
+      }
+    } else if (rule.bagType === 'numeric') {
+      const start = Number(rule.bagNumStart) || 1;
+      const end = Number(rule.bagNumEnd) || 10;
+      for (let i = Math.min(start, end); i <= Math.max(start, end); i++) {
+        bagSet.add(String(i));
       }
     } else if (rule.bagManual) {
       rule.bagManual.split(',').map((s) => s.trim()).filter(Boolean).forEach((s) => bagSet.add(s));

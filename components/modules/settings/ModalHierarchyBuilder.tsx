@@ -16,21 +16,31 @@ import {
   Info,
   FolderTree,
   Layers,
+  GraduationCap,
+  Copy,
+  Code,
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
 import {
   HierarchyRule,
   DEFAULT_HIERARCHY_RULES,
   loadHierarchyRules,
   saveHierarchyRules,
+  Tree2Rule,
+  DEFAULT_TREE2_RULES,
+  loadTree2Rules,
+  saveTree2Rules,
 } from '@/lib/services/hierarchy-service';
 import { supabase } from '@/lib/supabase/client';
 import { useAppStore } from '@/stores/useAppStore';
 import { logActivity } from '@/lib/utils/audit';
 
 const NO_BLOK_LABEL = '(Tanpa Blok)';
+const NO_UNIT_LABEL = '(Tanpa Unit)';
 
-/** Input rute yang baru menerapkan perubahan saat selesai diketik (blur / Enter),
- *  agar aturan tidak berpindah kelompok Blok di tengah pengetikan. */
+const ROMAN_CLASSES = ['VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+
 function PathInput({
   value,
   onCommit,
@@ -70,6 +80,98 @@ function splitPath(path: string): string[] {
   return (path || '').split('>').map((s) => s.trim()).filter(Boolean);
 }
 
+interface Tree2PreviewResult {
+  kelLabel: string;
+  bagLabel: string;
+  totalRombel: number;
+  sampleList: string[];
+}
+
+function getTree2Preview(r: Tree2Rule): Tree2PreviewResult {
+  const sampleClasses: string[] = [];
+  let kelCount = 0;
+  let bagCount = 0;
+  let kelLabel = '';
+  let bagLabel = '';
+
+  const kelList: string[] = [];
+  if (r.kelasType === 'roman') {
+    const s = ROMAN_CLASSES.indexOf(r.kelasRomanStart || 'VII');
+    const e = ROMAN_CLASSES.indexOf(r.kelasRomanEnd || 'IX');
+    const sIdx = s !== -1 ? s : 0;
+    const eIdx = e !== -1 ? e : 2;
+    const min = Math.min(sIdx, eIdx);
+    const max = Math.max(sIdx, eIdx);
+    for (let i = min; i <= max; i++) {
+      kelList.push(ROMAN_CLASSES[i]);
+    }
+    kelCount = kelList.length;
+    kelLabel = `${ROMAN_CLASSES[min]} - ${ROMAN_CLASSES[max]}`;
+  } else if (r.kelasType === 'numeric') {
+    const s = Number(r.kelasNumStart) || 1;
+    const e = Number(r.kelasNumEnd) || 6;
+    const min = Math.min(s, e);
+    const max = Math.max(s, e);
+    for (let i = min; i <= max; i++) {
+      kelList.push(String(i));
+    }
+    kelCount = kelList.length;
+    kelLabel = `${min} - ${max}`;
+  } else if (r.kelasManual) {
+    const parts = r.kelasManual.split(',').map((x) => x.trim()).filter(Boolean);
+    kelList.push(...parts);
+    kelCount = parts.length;
+    kelLabel = parts.slice(0, 3).join(', ') + (parts.length > 3 ? '...' : '');
+  } else {
+    kelList.push('VII', 'VIII', 'IX');
+    kelCount = 3;
+    kelLabel = 'VII - IX';
+  }
+
+  const bagList: string[] = [];
+  if (r.bagType === 'alpha') {
+    const s = (r.bagAlphaStart || 'A').toUpperCase().charCodeAt(0);
+    const rawEnd = (r.bagAlphaEnd || 'E').toUpperCase();
+    const endChar = rawEnd.length === 1 && rawEnd >= 'A' && rawEnd <= 'Z' ? rawEnd : 'E';
+    const e = endChar.charCodeAt(0);
+    const min = Math.min(s, e);
+    const max = Math.max(s, e);
+    for (let i = min; i <= max; i++) {
+      bagList.push(String.fromCharCode(i));
+    }
+    bagCount = bagList.length;
+    bagLabel = `${String.fromCharCode(min)} - ${String.fromCharCode(max)}`;
+  } else if (r.bagType === 'numeric') {
+    const s = Number(r.bagNumStart) || 1;
+    const e = Number(r.bagNumEnd) || 10;
+    const min = Math.min(s, e);
+    const max = Math.max(s, e);
+    for (let i = min; i <= max; i++) {
+      bagList.push(String(i));
+    }
+    bagCount = bagList.length;
+    bagLabel = `${min} - ${max}`;
+  } else if (r.bagManual) {
+    const parts = r.bagManual.split(',').map((x) => x.trim()).filter(Boolean);
+    bagList.push(...parts);
+    bagCount = parts.length;
+    bagLabel = parts.slice(0, 3).join(', ') + (parts.length > 3 ? '...' : '');
+  } else {
+    bagList.push('A', 'B', 'C', 'D', 'E');
+    bagCount = 5;
+    bagLabel = 'A - E';
+  }
+
+  for (const k of kelList) {
+    for (const b of bagList) {
+      sampleClasses.push(`${k}-${b}`);
+    }
+  }
+
+  const totalRombel = kelCount * bagCount;
+  return { kelLabel, bagLabel, totalRombel, sampleList: sampleClasses };
+}
+
 export default function ModalHierarchyBuilder({
   isOpen,
   onClose,
@@ -79,14 +181,27 @@ export default function ModalHierarchyBuilder({
 }) {
   const { settings, setSettings } = useAppStore();
   const [activeTab, setActiveTab] = useState<'tree1' | 'tree2'>('tree1');
+  const [loading, setLoading] = useState(false);
+
+  // State Tree 1 (Kamar)
   const [rules, setRules] = useState<HierarchyRule[]>(DEFAULT_HIERARCHY_RULES);
-  const [rulesTree2, setRulesTree2] = useState<string>('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBlok, setFilterBlok] = useState('');
   const [filterAsrama, setFilterAsrama] = useState('');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+
+  // State Tree 2 (Kelas Formal)
+  const [rulesTree2, setRulesTree2] = useState<Tree2Rule[]>(DEFAULT_TREE2_RULES);
+  const [tree2RawJson, setTree2RawJson] = useState<string>('');
+  const [tree2Mode, setTree2Mode] = useState<'visual' | 'json'>('visual');
+  const [expandedTree2Id, setExpandedTree2Id] = useState<string | null>(null);
+  const [openTree2Groups, setOpenTree2Groups] = useState<Set<string>>(new Set());
+  const [searchTree2Term, setSearchTree2Term] = useState('');
+  const [filterTree2Unit, setFilterTree2Unit] = useState('');
+  const [showTree2FilterDropdown, setShowTree2FilterDropdown] = useState(false);
+
   const [saving, setSaving] = useState(false);
 
   // Muat data hierarki saat modal dibuka
@@ -95,32 +210,27 @@ export default function ModalHierarchyBuilder({
 
     let isMounted = true;
     const fetchSettings = async () => {
+      setLoading(true);
       try {
         const loadedRules = await loadHierarchyRules();
         if (isMounted) {
           setRules(loadedRules.length > 0 ? loadedRules : DEFAULT_HIERARCHY_RULES);
         }
 
-        // Muat Tree 2 dari Supabase jika ada
-        const { data } = await supabase
-          .from('app_settings')
-          .select('value')
-          .eq('key', 'APP_SETTINGS')
-          .maybeSingle();
-
-        if (isMounted && data?.value) {
-          const val = data.value;
-          setSettings(val);
-          if (val.tree2) {
-            setRulesTree2(
-              typeof val.tree2 === 'string'
-                ? val.tree2
-                : JSON.stringify(val.tree2, null, 2)
-            );
-          }
+        const loadedTree2 = await loadTree2Rules();
+        if (isMounted) {
+          const list = loadedTree2 && loadedTree2.length > 0 ? loadedTree2 : DEFAULT_TREE2_RULES;
+          const normalized = list.map((r, idx) => ({
+            ...r,
+            id: r.id || `tree2_${idx}_${Date.now()}`,
+          }));
+          setRulesTree2(normalized);
+          setTree2RawJson(JSON.stringify(normalized, null, 2));
         }
       } catch (err) {
         console.error('Gagal memuat aturan hierarki:', err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     };
 
@@ -132,14 +242,22 @@ export default function ModalHierarchyBuilder({
     setFilterAsrama('');
     setShowFilterDropdown(false);
 
+    setOpenTree2Groups(new Set());
+    setExpandedTree2Id(null);
+    setSearchTree2Term('');
+    setFilterTree2Unit('');
+    setShowTree2FilterDropdown(false);
+
     return () => {
       isMounted = false;
     };
-  }, [isOpen, setSettings]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // Ekstrak daftar blok dan asrama unik untuk filter
+  // -------------------------------------------------------------
+  // Tree 1 (Kamar) Filter & Groups
+  // -------------------------------------------------------------
   const blokSet = new Set<string>();
   const asramaSet = new Set<string>();
 
@@ -153,7 +271,6 @@ export default function ModalHierarchyBuilder({
 
   const filtersActive = Boolean(filterBlok || filterAsrama || searchTerm.trim());
 
-  // Filter aturan berdasarkan search & filter blok/asrama
   const filteredRules = rules.filter((r) => {
     const parts = splitPath(r.parentPath);
     const blok = parts[0] || '';
@@ -168,7 +285,6 @@ export default function ModalHierarchyBuilder({
     return matchBlok && matchAsrama && matchSearch;
   });
 
-  // Kelompokkan aturan berdasarkan Blok (urutan kemunculan pertama)
   const groups: { name: string; items: HierarchyRule[] }[] = [];
   const groupIndex = new Map<string, number>();
   filteredRules.forEach((r) => {
@@ -231,26 +347,163 @@ export default function ModalHierarchyBuilder({
     );
   };
 
+  const getRangePreview = (r: HierarchyRule) => {
+    if (r.type === 'numeric') {
+      return `[ ${r.numStart || 1} - ${r.numEnd || 10} ]`;
+    }
+    if (r.type === 'alpha') {
+      return `[ ${(r.alphaStart || 'A').toUpperCase()} - ${(r.alphaEnd || 'E').toUpperCase()} ]`;
+    }
+    return `[ ${r.manualList || 'Manual'} ]`;
+  };
+
+  // -------------------------------------------------------------
+  // Tree 2 (Kelas Formal) Filter & Groups
+  // -------------------------------------------------------------
+  const tree2UnitSet = new Set<string>();
+  rulesTree2.forEach((r) => {
+    if (r.unit) tree2UnitSet.add(r.unit.trim());
+  });
+
+  const tree2FiltersActive = Boolean(filterTree2Unit || searchTree2Term.trim());
+
+  const filteredTree2Rules = rulesTree2.filter((r) => {
+    const unitMatch =
+      !filterTree2Unit ||
+      r.unit.toLowerCase() === filterTree2Unit.toLowerCase();
+    const query = searchTree2Term.toLowerCase().trim();
+    if (!query) return unitMatch;
+
+    const fullText = `${r.unit} ${r.jurusan} ${r.kelasRomanStart || ''} ${
+      r.kelasRomanEnd || ''
+    } ${r.kelasNumStart || ''} ${r.kelasNumEnd || ''} ${r.kelasManual || ''} ${
+      r.bagAlphaStart || ''
+    } ${r.bagAlphaEnd || ''} ${r.bagManual || ''}`.toLowerCase();
+    return unitMatch && fullText.includes(query);
+  });
+
+  const tree2Groups: { name: string; items: Tree2Rule[] }[] = [];
+  const tree2GroupIndex = new Map<string, number>();
+
+  filteredTree2Rules.forEach((r) => {
+    const name = (r.unit || '').trim() || NO_UNIT_LABEL;
+    let idx = tree2GroupIndex.get(name);
+    if (idx === undefined) {
+      idx = tree2Groups.length;
+      tree2GroupIndex.set(name, idx);
+      tree2Groups.push({ name, items: [] });
+    }
+    tree2Groups[idx].items.push(r);
+  });
+
+  const isTree2GroupOpen = (g: { name: string; items: Tree2Rule[] }) =>
+    tree2FiltersActive ||
+    openTree2Groups.has(g.name) ||
+    g.items.some((r) => r.id === expandedTree2Id);
+
+  const toggleTree2Group = (g: { name: string; items: Tree2Rule[] }) => {
+    if (tree2FiltersActive) return;
+    const containsExpanded = g.items.some((r) => r.id === expandedTree2Id);
+    if (containsExpanded) setExpandedTree2Id(null);
+    setOpenTree2Groups((prev) => {
+      const next = new Set(prev);
+      if (next.has(g.name)) next.delete(g.name);
+      else next.add(g.name);
+      return next;
+    });
+  };
+
+  const openAllTree2Groups = () =>
+    setOpenTree2Groups(new Set(tree2Groups.map((g) => g.name)));
+
+  const closeAllTree2Groups = () => {
+    setOpenTree2Groups(new Set());
+    setExpandedTree2Id(null);
+  };
+
+  const handleAddTree2Rule = (defaultUnit?: string) => {
+    const targetUnit =
+      defaultUnit || tree2Groups[0]?.name || 'SMP Plus Darussalam';
+    const newId = `tree2_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const newRule: Tree2Rule = {
+      id: newId,
+      tree: 'tree2',
+      unit: targetUnit,
+      jurusan: 'Jurusan Baru',
+      semesterType: 'manual',
+      semesterManual: '-',
+      kelasType: 'roman',
+      kelasRomanStart: 'VII',
+      kelasRomanEnd: 'IX',
+      bagType: 'alpha',
+      bagAlphaStart: 'A',
+      bagAlphaEnd: 'E',
+    };
+    setRulesTree2((prev) => [newRule, ...prev]);
+    setOpenTree2Groups((prev) => new Set(prev).add(targetUnit));
+    setExpandedTree2Id(newId);
+  };
+
+  const handleDuplicateTree2Rule = (rule: Tree2Rule, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newId = `tree2_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const duplicated: Tree2Rule = {
+      ...rule,
+      id: newId,
+      jurusan: `${rule.jurusan || 'Jurusan'} (Salinan)`,
+    };
+    setRulesTree2((prev) => [duplicated, ...prev]);
+    setOpenTree2Groups((prev) => new Set(prev).add(duplicated.unit));
+    setExpandedTree2Id(newId);
+  };
+
+  const handleRemoveTree2Rule = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRulesTree2((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const handleUpdateTree2Rule = (id: string, updates: Partial<Tree2Rule>) => {
+    setRulesTree2((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
+    );
+  };
+
+  // -------------------------------------------------------------
+  // Simpan Seluruh Pengaturan (Tree 1 & Tree 2)
+  // -------------------------------------------------------------
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Simpan Tree 1 ke hierarchy service
       await saveHierarchyRules(rules);
 
-      // Simpan juga Tree 2 dan update Zustand settings
-      let parsedTree2 = rulesTree2;
-      try {
-        if (rulesTree2.trim().startsWith('{') || rulesTree2.trim().startsWith('[')) {
-          parsedTree2 = JSON.parse(rulesTree2);
+      let finalTree2 = rulesTree2;
+      if (tree2Mode === 'json') {
+        try {
+          const parsed = JSON.parse(tree2RawJson);
+          if (Array.isArray(parsed)) {
+            finalTree2 = parsed.map((r: Tree2Rule, idx: number) => ({
+              ...r,
+              id: r.id || `tree2_${idx}_${Date.now()}`,
+            }));
+            setRulesTree2(finalTree2);
+          } else {
+            alert('Format JSON harus berupa daftar array aturan kelas formal.');
+            setSaving(false);
+            return;
+          }
+        } catch {
+          alert('Format JSON pada Hierarki Kelas Formal tidak valid.');
+          setSaving(false);
+          return;
         }
-      } catch {
-        // jika bukan json murni, simpan sebagai string
       }
+
+      await saveTree2Rules(finalTree2);
 
       const updatedSettings = {
         ...settings,
         tree1: JSON.stringify(rules),
-        tree2: parsedTree2,
+        tree2: finalTree2,
       };
 
       await supabase.from('app_settings').upsert(
@@ -280,18 +533,8 @@ export default function ModalHierarchyBuilder({
     }
   };
 
-  const getRangePreview = (r: HierarchyRule) => {
-    if (r.type === 'numeric') {
-      return `[ ${r.numStart || 1} - ${r.numEnd || 10} ]`;
-    }
-    if (r.type === 'alpha') {
-      return `[ ${(r.alphaStart || 'A').toUpperCase()} - ${(r.alphaEnd || 'E').toUpperCase()} ]`;
-    }
-    return `[ ${r.manualList || 'Manual'} ]`;
-  };
-
   const inputClass =
-    'w-full h-8 rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
+    'w-full h-8 rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
 
   return (
     <div
@@ -354,7 +597,9 @@ export default function ModalHierarchyBuilder({
           </button>
         </div>
 
-        {/* Konten Builder Tab 1: Hierarki Kamar (Sama persis Gambar 1) */}
+        {/* ========================================================= */}
+        {/* Tab 1: Hierarki Kamar (Tree 1)                            */}
+        {/* ========================================================= */}
         {activeTab === 'tree1' && (
           <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900/50">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-800/60">
@@ -367,6 +612,12 @@ export default function ModalHierarchyBuilder({
                   <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                     {groups.length} blok · {filteredRules.length} aturan
                   </span>
+                  {loading && (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 animate-pulse">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Memuat...
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5 ms-auto">
@@ -495,7 +746,7 @@ export default function ModalHierarchyBuilder({
                 </p>
               </div>
 
-              {/* Daftar Kelompok Blok dalam 3 kolom */}
+              {/* Daftar Kelompok Blok */}
               {groups.length === 0 ? (
                 <div className="py-8 text-center text-xs text-slate-400 italic">
                   Tidak ada aturan hierarki yang cocok. Klik tombol (+) untuk menambah.
@@ -587,31 +838,36 @@ export default function ModalHierarchyBuilder({
                                     </div>
                                   </div>
 
-                                  {/* Detail Edit (Saat Terbuka) */}
+                                  {/* Form Pengaturan (Saat kartu diklik buka) */}
                                   {isExpanded && (
-                                    <div className="p-3 bg-slate-50/80 border-t border-slate-100 dark:bg-slate-900/60 dark:border-slate-700 space-y-3">
+                                    <div className="border-t border-slate-100 bg-slate-50/70 p-3 dark:border-slate-700/60 dark:bg-slate-900/50 space-y-3">
                                       <div>
-                                        <label className="block text-[11px] font-bold text-emerald-800 dark:text-emerald-400 mb-1">
+                                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
                                           Rute Induk (Blok &gt; Asrama &gt; Kode)
                                         </label>
                                         <PathInput
                                           value={rule.parentPath}
                                           onCommit={(next) =>
-                                            handleUpdateRule(rule.id, { parentPath: next })
+                                            handleUpdateRule(rule.id, {
+                                              parentPath: next,
+                                            })
                                           }
                                         />
                                       </div>
 
-                                      <div className="grid grid-cols-2 gap-2.5">
+                                      <div className="grid grid-cols-2 gap-2">
                                         <div className="col-span-2">
                                           <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                                            Tipe Hasil Kamar
+                                            Tipe Nomor Kamar
                                           </label>
                                           <select
                                             value={rule.type}
                                             onChange={(e) =>
                                               handleUpdateRule(rule.id, {
-                                                type: e.target.value as HierarchyRule['type'],
+                                                type: e.target.value as
+                                                  | 'numeric'
+                                                  | 'alpha'
+                                                  | 'manual',
                                               })
                                             }
                                             className={inputClass}
@@ -729,32 +985,769 @@ export default function ModalHierarchyBuilder({
           </div>
         )}
 
-        {/* Konten Tab 2: Hierarki Kelas Formal */}
+        {/* ========================================================= */}
+        {/* Tab 2: Hierarki Kelas Formal (Visual Card Builder)         */}
+        {/* ========================================================= */}
         {activeTab === 'tree2' && (
           <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900/50">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-800/60 space-y-4">
-              <div className="flex items-start gap-2.5 rounded-xl bg-blue-50/80 p-3.5 text-xs text-blue-900 border border-blue-200 dark:bg-blue-950/40 dark:border-blue-900 dark:text-blue-300">
-                <Info className="h-4 w-4 shrink-0 text-blue-600 mt-0.5" />
-                <div>
-                  <h4 className="font-bold mb-0.5">Hierarki Pendidikan Formal</h4>
-                  <p className="text-[11px] text-blue-800/80 dark:text-blue-300/80">
-                    Aturan pengelompokan tingkatan sekolah formal (SMP, MTs, SMA, MA, SMK, Institut) beserta pembagian kelas dan jurusannya.
-                  </p>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-800/60">
+              {/* Toolbar Builder Tab 2 */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs font-bold text-blue-800 dark:text-blue-400">
+                    2. Unit &gt; Jurusan &gt; Semester &gt; Kelas &gt; Bagian
+                  </span>
+                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                    {tree2Groups.length} unit · {filteredTree2Rules.length} aturan
+                  </span>
+                  {loading && (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 animate-pulse">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Memuat...
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 ms-auto">
+                  {/* Mode Switcher (Visual vs JSON) */}
+                  <div className="flex items-center rounded-lg border border-slate-300 dark:border-slate-700 p-0.5 bg-slate-100 dark:bg-slate-800 mr-1">
+                    <button
+                      type="button"
+                      onClick={() => setTree2Mode('visual')}
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-md transition ${
+                        tree2Mode === 'visual'
+                          ? 'bg-white dark:bg-slate-700 text-blue-800 dark:text-blue-300 shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      }`}
+                    >
+                      Visual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTree2RawJson(JSON.stringify(rulesTree2, null, 2));
+                        setTree2Mode('json');
+                      }}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition ${
+                        tree2Mode === 'json'
+                          ? 'bg-white dark:bg-slate-700 text-blue-800 dark:text-blue-300 shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      }`}
+                    >
+                      <Code className="h-3 w-3" />
+                      <span>JSON / Cepat</span>
+                    </button>
+                  </div>
+
+                  {tree2Mode === 'visual' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={openAllTree2Groups}
+                        disabled={tree2FiltersActive}
+                        className="h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition"
+                      >
+                        Buka Semua
+                      </button>
+                      <button
+                        type="button"
+                        onClick={closeAllTree2Groups}
+                        disabled={tree2FiltersActive}
+                        className="h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition"
+                      >
+                        Tutup Semua
+                      </button>
+
+                      {/* Tombol Filter Unit */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setShowTree2FilterDropdown((prev) => !prev)}
+                          className={`inline-flex items-center gap-1 h-8 rounded-lg border px-2.5 text-xs font-semibold shadow-sm transition ${
+                            filterTree2Unit
+                              ? 'border-blue-600 bg-blue-50 text-blue-800 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-300'
+                              : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                          }`}
+                        >
+                          <Filter className="h-3.5 w-3.5" />
+                          <span>Filter</span>
+                        </button>
+
+                        {showTree2FilterDropdown && (
+                          <div className="absolute right-0 mt-1 z-30 w-56 rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900 space-y-2.5">
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                Unit Sekolah
+                              </label>
+                              <select
+                                value={filterTree2Unit}
+                                onChange={(e) => setFilterTree2Unit(e.target.value)}
+                                className={inputClass}
+                              >
+                                <option value="">Semua Unit</option>
+                                {Array.from(tree2UnitSet).map((u) => (
+                                  <option key={u} value={u}>
+                                    {u}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFilterTree2Unit('');
+                                setShowTree2FilterDropdown(false);
+                              }}
+                              className="w-full inline-flex items-center justify-center gap-1 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg dark:text-slate-400 dark:hover:bg-slate-800 transition"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              <span>Reset Filter</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Kotak Pencarian Aturan Formal */}
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={searchTree2Term}
+                          onChange={(e) => setSearchTree2Term(e.target.value)}
+                          placeholder="Cari unit, jurusan, kelas..."
+                          className="h-8 w-36 sm:w-48 rounded-lg border border-slate-300 bg-white pl-8 pr-2 text-xs text-slate-800 placeholder-slate-400 shadow-sm focus:border-blue-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        />
+                      </div>
+
+                      {/* Tombol Tambah Aturan Formal (+) */}
+                      <button
+                        type="button"
+                        onClick={() => handleAddTree2Rule()}
+                        title="Tambah Aturan Kelas Formal Baru"
+                        aria-label="Tambah Aturan Kelas Formal Baru"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-700 text-white shadow-sm hover:bg-blue-800 transition"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Konfigurasi JSON / Format Rute Kelas Formal
-                </label>
-                <textarea
-                  rows={12}
-                  value={rulesTree2}
-                  onChange={(e) => setRulesTree2(e.target.value)}
-                  placeholder="Contoh: SMP > MIPA > 1 > VII > A"
-                  className="w-full text-xs p-3 rounded-xl border border-slate-300 font-mono bg-white text-slate-800 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                />
+              {/* Banner Info */}
+              <div className="mb-3 flex items-start gap-2 rounded-lg bg-blue-50/70 px-3 py-2 text-[11px] text-blue-900 border border-blue-100 dark:bg-blue-950/40 dark:border-blue-900/60 dark:text-blue-300">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
+                <p>
+                  Aturan pengelompokan tingkatan sekolah formal (SMP, MTs, SMA, MA, SMK, Institut) beserta jurusan, jenjang kelas, dan pembagian rombel untuk cascading dropdown di form pendaftaran santri.
+                </p>
               </div>
+
+              {/* Mode JSON */}
+              {tree2Mode === 'json' && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Editor Mentah JSON Hierarki Formal
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          const parsed = JSON.parse(tree2RawJson);
+                          if (Array.isArray(parsed)) {
+                            const withIds = parsed.map((r: Tree2Rule, idx: number) => ({
+                              ...r,
+                              id: r.id || `tree2_${idx}_${Date.now()}`,
+                            }));
+                            setRulesTree2(withIds);
+                            setTree2Mode('visual');
+                          } else {
+                            alert('Format JSON harus berupa Array aturan');
+                          }
+                        } catch {
+                          alert('Format JSON tidak valid. Periksa sintaks koma atau tanda kutip.');
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>Terapkan ke Mode Visual</span>
+                    </button>
+                  </div>
+                  <textarea
+                    rows={12}
+                    value={tree2RawJson}
+                    onChange={(e) => setTree2RawJson(e.target.value)}
+                    placeholder="[ { ... } ]"
+                    className="w-full text-xs p-3 rounded-xl border border-slate-300 font-mono bg-white text-slate-800 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  />
+                </div>
+              )}
+
+              {/* Mode Visual Builder */}
+              {tree2Mode === 'visual' && (
+                <>
+                  {tree2Groups.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-slate-400 italic">
+                      Tidak ada aturan sekolah formal yang cocok. Klik tombol (+) untuk menambah.
+                    </div>
+                  ) : (
+                    <div className="columns-1 md:columns-2 xl:columns-3 gap-3">
+                      {tree2Groups.map((group) => {
+                        const open = isTree2GroupOpen(group);
+
+                        return (
+                          <div
+                            key={group.name}
+                            className="mb-3 break-inside-avoid rounded-xl border border-slate-200 bg-slate-50/60 overflow-hidden dark:border-slate-700/80 dark:bg-slate-900/40 shadow-2xs"
+                          >
+                            {/* Header Grup Unit Sekolah */}
+                            <div className="flex items-center justify-between gap-1 px-3 py-2 bg-white dark:bg-slate-800 border-b border-slate-200/80 dark:border-slate-700">
+                              <button
+                                type="button"
+                                onClick={() => toggleTree2Group(group)}
+                                aria-expanded={open}
+                                className="flex flex-1 items-center gap-2 min-w-0 text-left hover:opacity-80 transition py-0.5"
+                              >
+                                <GraduationCap className="h-4 w-4 shrink-0 text-blue-600" />
+                                <span className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                                  {group.name}
+                                </span>
+                                <span className="shrink-0 rounded-md bg-blue-100 px-1.5 py-0.5 text-[11px] font-bold text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
+                                  {group.items.length} Jurusan
+                                </span>
+                              </button>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddTree2Rule(group.name)}
+                                  title={`Tambah Jurusan Baru di ${group.name}`}
+                                  aria-label={`Tambah Jurusan Baru di ${group.name}`}
+                                  className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-900"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                  <span>Jurusan</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleTree2Group(group)}
+                                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                >
+                                  {open ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Daftar Jurusan di Unit ini */}
+                            {open && (
+                              <div className="space-y-2.5 p-2.5">
+                                {group.items.map((rule) => {
+                                  const isExpanded = expandedTree2Id === rule.id;
+                                  const preview = getTree2Preview(rule);
+
+                                  return (
+                                    <div
+                                      key={rule.id}
+                                      className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden dark:border-slate-700/80 dark:bg-slate-800"
+                                    >
+                                      {/* Baris Ringkasan Jurusan (Preview Bar) */}
+                                      <div
+                                        onClick={() =>
+                                          setExpandedTree2Id(isExpanded ? null : (rule.id || null))
+                                        }
+                                        className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer hover:bg-slate-50 transition dark:hover:bg-slate-700/50"
+                                      >
+                                        <div className="flex min-w-0 flex-col gap-1 text-xs">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="font-bold text-slate-900 dark:text-white truncate">
+                                              Jurusan: {rule.jurusan || '(Umum / -)'}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-800 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-900">
+                                              Kelas: {preview.kelLabel}
+                                            </span>
+                                            <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 border border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600">
+                                              Bag: {preview.bagLabel}
+                                            </span>
+                                            <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900">
+                                              [ {preview.totalRombel} Rombel ]
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => handleDuplicateTree2Rule(rule, e)}
+                                            title="Duplikat Konfigurasi Jurusan Ini"
+                                            aria-label="Duplikat Aturan"
+                                            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition dark:hover:bg-slate-700"
+                                          >
+                                            <Copy className="h-3.5 w-3.5" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => handleRemoveTree2Rule(rule.id || '', e)}
+                                            title="Hapus Jurusan Ini"
+                                            aria-label="Hapus Aturan"
+                                            className="flex h-7 w-7 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition dark:hover:bg-rose-950/40"
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </button>
+                                          {isExpanded ? (
+                                            <ChevronUp className="h-4 w-4 text-slate-400" />
+                                          ) : (
+                                            <ChevronDown className="h-4 w-4 text-slate-400" />
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Form Pengaturan Lengkap Saat Dibuka */}
+                                      {isExpanded && (
+                                        <div className="border-t border-slate-100 bg-slate-50/70 p-3.5 dark:border-slate-700/60 dark:bg-slate-900/50 space-y-3.5">
+                                          {/* Baris 1: Unit & Jurusan */}
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                            <div>
+                                              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                                Unit Pendidikan
+                                              </label>
+                                              <input
+                                                type="text"
+                                                list="tree2-unit-datalist"
+                                                value={rule.unit}
+                                                onChange={(e) =>
+                                                  handleUpdateTree2Rule(rule.id || '', {
+                                                    unit: e.target.value,
+                                                  })
+                                                }
+                                                placeholder="Contoh: SMP Plus Darussalam"
+                                                className={inputClass}
+                                              />
+                                              <datalist id="tree2-unit-datalist">
+                                                <option value="SMP Plus Darussalam" />
+                                                <option value="MTs Al Amiriyyah" />
+                                                <option value="SMA Darussalam" />
+                                                <option value="MA Al Amiriyyah" />
+                                                <option value="SMK Darussalam" />
+                                                <option value="IAIDA Blokagung" />
+                                              </datalist>
+                                            </div>
+
+                                            <div>
+                                              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                                Nama Jurusan (atau &apos;-&apos; jika umum)
+                                              </label>
+                                              <input
+                                                type="text"
+                                                value={rule.jurusan}
+                                                onChange={(e) =>
+                                                  handleUpdateTree2Rule(rule.id || '', {
+                                                    jurusan: e.target.value,
+                                                  })
+                                                }
+                                                placeholder="Contoh: Tahfidz, Sains, IPS, -"
+                                                className={inputClass}
+                                              />
+                                            </div>
+                                          </div>
+
+                                          {/* Baris 2: Semester */}
+                                          <div className="rounded-xl border border-slate-200/90 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800">
+                                            <div className="flex items-center justify-between mb-1.5">
+                                              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                                                Pengaturan Semester
+                                              </label>
+                                              <select
+                                                value={rule.semesterType || 'manual'}
+                                                onChange={(e) =>
+                                                  handleUpdateTree2Rule(rule.id || '', {
+                                                    semesterType: e.target.value,
+                                                  })
+                                                }
+                                                className="h-7 rounded-md border border-slate-300 bg-white px-2 text-[11px] text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                              >
+                                                <option value="manual">Manual (Bawaan &apos;-&apos;)</option>
+                                                <option value="numeric">Rentang Angka (1 - 2)</option>
+                                              </select>
+                                            </div>
+
+                                            {rule.semesterType === 'numeric' ? (
+                                              <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                  <span className="text-[10px] text-slate-500">Mulai</span>
+                                                  <input
+                                                    type="number"
+                                                    value={rule.semesterNumStart || 1}
+                                                    onChange={(e) =>
+                                                      handleUpdateTree2Rule(rule.id || '', {
+                                                        semesterNumStart: Number(e.target.value),
+                                                      })
+                                                    }
+                                                    className={inputClass}
+                                                  />
+                                                </div>
+                                                <div>
+                                                  <span className="text-[10px] text-slate-500">Sampai</span>
+                                                  <input
+                                                    type="number"
+                                                    value={rule.semesterNumEnd || 2}
+                                                    onChange={(e) =>
+                                                      handleUpdateTree2Rule(rule.id || '', {
+                                                        semesterNumEnd: Number(e.target.value),
+                                                      })
+                                                    }
+                                                    className={inputClass}
+                                                  />
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <input
+                                                type="text"
+                                                value={rule.semesterManual || '-'}
+                                                onChange={(e) =>
+                                                  handleUpdateTree2Rule(rule.id || '', {
+                                                    semesterManual: e.target.value,
+                                                  })
+                                                }
+                                                placeholder="Contoh: - atau Ganjil, Genap"
+                                                className={inputClass}
+                                              />
+                                            )}
+                                          </div>
+
+                                          {/* Baris 3: Jenjang Tingkat Kelas */}
+                                          <div className="rounded-xl border border-slate-200/90 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 space-y-2">
+                                            <div className="flex flex-wrap items-center justify-between gap-1">
+                                              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                                                Jenjang Tingkat Kelas
+                                              </label>
+
+                                              {/* Preset Pintar 1-Klik */}
+                                              <div className="flex items-center gap-1">
+                                                <span className="text-[10px] text-slate-400 font-medium mr-0.5">
+                                                  Preset:
+                                                </span>
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    handleUpdateTree2Rule(rule.id || '', {
+                                                      kelasType: 'roman',
+                                                      kelasRomanStart: 'VII',
+                                                      kelasRomanEnd: 'IX',
+                                                    })
+                                                  }
+                                                  className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition dark:bg-blue-950 dark:text-blue-300"
+                                                >
+                                                  SMP (VII-IX)
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    handleUpdateTree2Rule(rule.id || '', {
+                                                      kelasType: 'roman',
+                                                      kelasRomanStart: 'X',
+                                                      kelasRomanEnd: 'XII',
+                                                    })
+                                                  }
+                                                  className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition dark:bg-blue-950 dark:text-blue-300"
+                                                >
+                                                  SMA (X-XII)
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    handleUpdateTree2Rule(rule.id || '', {
+                                                      kelasType: 'numeric',
+                                                      kelasNumStart: 1,
+                                                      kelasNumEnd: 6,
+                                                    })
+                                                  }
+                                                  className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition dark:bg-slate-700 dark:text-slate-300"
+                                                >
+                                                  SD/MI (1-6)
+                                                </button>
+                                              </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                              <div>
+                                                <span className="block text-[10px] text-slate-500 mb-0.5">
+                                                  Tipe Kelas
+                                                </span>
+                                                <select
+                                                  value={rule.kelasType || 'roman'}
+                                                  onChange={(e) =>
+                                                    handleUpdateTree2Rule(rule.id || '', {
+                                                      kelasType: e.target.value,
+                                                    })
+                                                  }
+                                                  className={inputClass}
+                                                >
+                                                  <option value="roman">Romawi (VII - XII)</option>
+                                                  <option value="numeric">Angka (1 - 12)</option>
+                                                  <option value="manual">Teks Manual</option>
+                                                </select>
+                                              </div>
+
+                                              {rule.kelasType === 'roman' && (
+                                                <>
+                                                  <div>
+                                                    <span className="block text-[10px] text-slate-500 mb-0.5">
+                                                      Mulai
+                                                    </span>
+                                                    <select
+                                                      value={rule.kelasRomanStart || 'VII'}
+                                                      onChange={(e) =>
+                                                        handleUpdateTree2Rule(rule.id || '', {
+                                                          kelasRomanStart: e.target.value,
+                                                        })
+                                                      }
+                                                      className={inputClass}
+                                                    >
+                                                      {ROMAN_CLASSES.map((r) => (
+                                                        <option key={r} value={r}>
+                                                          {r}
+                                                        </option>
+                                                      ))}
+                                                    </select>
+                                                  </div>
+                                                  <div>
+                                                    <span className="block text-[10px] text-slate-500 mb-0.5">
+                                                      Sampai
+                                                    </span>
+                                                    <select
+                                                      value={rule.kelasRomanEnd || 'IX'}
+                                                      onChange={(e) =>
+                                                        handleUpdateTree2Rule(rule.id || '', {
+                                                          kelasRomanEnd: e.target.value,
+                                                        })
+                                                      }
+                                                      className={inputClass}
+                                                    >
+                                                      {ROMAN_CLASSES.map((r) => (
+                                                        <option key={r} value={r}>
+                                                          {r}
+                                                        </option>
+                                                      ))}
+                                                    </select>
+                                                  </div>
+                                                </>
+                                              )}
+
+                                              {rule.kelasType === 'numeric' && (
+                                                <>
+                                                  <div>
+                                                    <span className="block text-[10px] text-slate-500 mb-0.5">
+                                                      Mulai
+                                                    </span>
+                                                    <input
+                                                      type="number"
+                                                      value={rule.kelasNumStart || 1}
+                                                      onChange={(e) =>
+                                                        handleUpdateTree2Rule(rule.id || '', {
+                                                          kelasNumStart: Number(e.target.value),
+                                                        })
+                                                      }
+                                                      className={inputClass}
+                                                    />
+                                                  </div>
+                                                  <div>
+                                                    <span className="block text-[10px] text-slate-500 mb-0.5">
+                                                      Sampai
+                                                    </span>
+                                                    <input
+                                                      type="number"
+                                                      value={rule.kelasNumEnd || 6}
+                                                      onChange={(e) =>
+                                                        handleUpdateTree2Rule(rule.id || '', {
+                                                          kelasNumEnd: Number(e.target.value),
+                                                        })
+                                                      }
+                                                      className={inputClass}
+                                                    />
+                                                  </div>
+                                                </>
+                                              )}
+
+                                              {rule.kelasType === 'manual' && (
+                                                <div className="sm:col-span-2">
+                                                  <span className="block text-[10px] text-slate-500 mb-0.5">
+                                                    Daftar Kelas (Pisah Koma)
+                                                  </span>
+                                                  <input
+                                                    type="text"
+                                                    value={rule.kelasManual || ''}
+                                                    onChange={(e) =>
+                                                      handleUpdateTree2Rule(rule.id || '', {
+                                                        kelasManual: e.target.value,
+                                                      })
+                                                    }
+                                                    placeholder="Contoh: VII, VIII, IX"
+                                                    className={inputClass}
+                                                  />
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+
+                                          {/* Baris 4: Bagian / Rombel */}
+                                          <div className="rounded-xl border border-slate-200/90 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 space-y-2">
+                                            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                                              Bagian / Rombel
+                                            </label>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                              <div>
+                                                <span className="block text-[10px] text-slate-500 mb-0.5">
+                                                  Tipe Bagian
+                                                </span>
+                                                <select
+                                                  value={rule.bagType || 'alpha'}
+                                                  onChange={(e) =>
+                                                    handleUpdateTree2Rule(rule.id || '', {
+                                                      bagType: e.target.value,
+                                                    })
+                                                  }
+                                                  className={inputClass}
+                                                >
+                                                  <option value="alpha">Rentang Abjad (A - Z)</option>
+                                                  <option value="numeric">Rentang Angka (1 - 10)</option>
+                                                  <option value="manual">Teks Manual</option>
+                                                </select>
+                                              </div>
+
+                                              {rule.bagType === 'alpha' && (
+                                                <>
+                                                  <div>
+                                                    <span className="block text-[10px] text-slate-500 mb-0.5">
+                                                      Abjad Awal
+                                                    </span>
+                                                    <input
+                                                      type="text"
+                                                      maxLength={1}
+                                                      value={rule.bagAlphaStart || 'A'}
+                                                      onChange={(e) =>
+                                                        handleUpdateTree2Rule(rule.id || '', {
+                                                          bagAlphaStart: e.target.value.toUpperCase(),
+                                                        })
+                                                      }
+                                                      className={`${inputClass} text-center font-bold uppercase`}
+                                                    />
+                                                  </div>
+                                                  <div>
+                                                    <span className="block text-[10px] text-slate-500 mb-0.5">
+                                                      Abjad Akhir
+                                                    </span>
+                                                    <input
+                                                      type="text"
+                                                      maxLength={1}
+                                                      value={rule.bagAlphaEnd || 'E'}
+                                                      onChange={(e) =>
+                                                        handleUpdateTree2Rule(rule.id || '', {
+                                                          bagAlphaEnd: e.target.value.toUpperCase(),
+                                                        })
+                                                      }
+                                                      className={`${inputClass} text-center font-bold uppercase`}
+                                                    />
+                                                  </div>
+                                                </>
+                                              )}
+
+                                              {rule.bagType === 'numeric' && (
+                                                <>
+                                                  <div>
+                                                    <span className="block text-[10px] text-slate-500 mb-0.5">
+                                                      Angka Awal
+                                                    </span>
+                                                    <input
+                                                      type="number"
+                                                      value={rule.bagNumStart || 1}
+                                                      onChange={(e) =>
+                                                        handleUpdateTree2Rule(rule.id || '', {
+                                                          bagNumStart: Number(e.target.value),
+                                                        })
+                                                      }
+                                                      className={inputClass}
+                                                    />
+                                                  </div>
+                                                  <div>
+                                                    <span className="block text-[10px] text-slate-500 mb-0.5">
+                                                      Angka Akhir
+                                                    </span>
+                                                    <input
+                                                      type="number"
+                                                      value={rule.bagNumEnd || 10}
+                                                      onChange={(e) =>
+                                                        handleUpdateTree2Rule(rule.id || '', {
+                                                          bagNumEnd: Number(e.target.value),
+                                                        })
+                                                      }
+                                                      className={inputClass}
+                                                    />
+                                                  </div>
+                                                </>
+                                              )}
+
+                                              {rule.bagType === 'manual' && (
+                                                <div className="sm:col-span-2">
+                                                  <span className="block text-[10px] text-slate-500 mb-0.5">
+                                                    Daftar Bagian (Pisah Koma)
+                                                  </span>
+                                                  <input
+                                                    type="text"
+                                                    value={rule.bagManual || ''}
+                                                    onChange={(e) =>
+                                                      handleUpdateTree2Rule(rule.id || '', {
+                                                        bagManual: e.target.value,
+                                                      })
+                                                    }
+                                                    placeholder="Contoh: A, B, C, D"
+                                                    className={inputClass}
+                                                  />
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+
+                                          {/* Baris 5: Live Pratinjau Rombel */}
+                                          <div className="rounded-xl bg-blue-50/80 p-2.5 text-[11px] text-blue-900 border border-blue-200 dark:bg-blue-950/40 dark:border-blue-900/60 dark:text-blue-300">
+                                            <div className="flex items-center justify-between mb-1">
+                                              <span className="font-bold flex items-center gap-1">
+                                                <Sparkles className="h-3.5 w-3.5 text-blue-600" />
+                                                Pratinjau Rombel yang Terbentuk
+                                              </span>
+                                              <span className="font-bold rounded-md bg-blue-200/80 px-2 py-0.5 text-[10px] text-blue-900 dark:bg-blue-900 dark:text-blue-200">
+                                                Total: {preview.totalRombel} Rombel
+                                              </span>
+                                            </div>
+                                            <p className="font-mono text-[10px] text-blue-800 dark:text-blue-300/90 break-words leading-relaxed">
+                                              {preview.sampleList.slice(0, 18).join(', ')}
+                                              {preview.sampleList.length > 18 && (
+                                                <span> ... (+{preview.sampleList.length - 18} lainnya)</span>
+                                              )}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         )}
@@ -770,7 +1763,7 @@ export default function ModalHierarchyBuilder({
           </button>
           <button
             type="button"
-            disabled={saving}
+            disabled={saving || loading}
             onClick={handleSave}
             className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-5 py-2 text-xs font-bold text-white shadow hover:bg-black transition disabled:opacity-50 dark:bg-emerald-700 dark:hover:bg-emerald-800"
           >
