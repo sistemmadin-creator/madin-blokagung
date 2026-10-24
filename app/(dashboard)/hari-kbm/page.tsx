@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useJadwalStore, LIST_HARI, HariKbm } from '@/stores/useJadwalStore';
+import { useJadwalStore, LIST_HARI } from '@/stores/useJadwalStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
-import { Asatidz } from '@/types/asatidz';
+import { useFormasiStore } from '@/stores/useFormasiStore';
+import { useFanStore } from '@/stores/useFanStore';
 import {
   CalendarDays,
   Table as TableIcon,
@@ -12,34 +13,44 @@ import {
   FileSpreadsheet,
   Printer,
   Search,
-  X
+  X,
+  MapPin,
+  Building2,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-
-interface TeacherDaySlot {
-  jam: 1 | 2;
-  fan: string;
-  kelas: string;
-}
-
-interface TeacherDayRow {
-  nama_asatidz: string;
-  nia: string;
-  jah: string;
-  blok: string;
-  kamar: string;
-  tingkat: string;
-  jam1: TeacherDaySlot[];
-  jam2: TeacherDaySlot[];
-  totalJam: number;
-}
+import {
+  parseSlotHariKBM,
+  dapatkanBlokDariSesiMengajar,
+  cariMustahiqKelasHariKBM,
+  formatLabelBlokHariKBM,
+  bandingkanBlokHariKBM,
+  normalisasiNamaKelas,
+  URUTAN_TINGKAT_KBM,
+  ambilNamaFanSingkat,
+} from '@/lib/utils/jadwalHelper';
+import { compareNIANatural } from '@/lib/utils/fanHelper';
+import { GuruAktifHariKBM, KelompokBlokHariKBM } from '@/types/hari-kbm';
+import { KelasKbmItem } from '@/types/jadwal';
+import ModalDetailKelasKBM from '@/components/modules/jadwal-kbm/ModalDetailKelasKBM';
+import ModalDetailAsatidz from '@/components/modules/asatidz/ModalDetailAsatidz';
 
 export default function HariKbmPage() {
-  const { jadwalMap, fetchJadwal, isLoading } = useJadwalStore();
-  const { asatidzList, fetchAsatidz } = useAsatidzStore();
+  const {
+    jadwalMap,
+    fetchJadwal,
+    isLoading,
+    activeHari,
+    setActiveHari,
+    viewModeHariKbm,
+    setViewModeHariKbm,
+    openModalDetailKelas,
+  } = useJadwalStore();
 
-  const [selectedHari, setSelectedHari] = useState<HariKbm>('Sabtu');
-  const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
+  const { asatidzList, fetchAsatidz, openDetailModal } = useAsatidzStore();
+  const { formasiList, fetchFormasi } = useFormasiStore();
+  const { fanItems, fetchFanData } = useFanStore();
+
+  // Filters
   const [search, setSearch] = useState('');
   const [fltTingkat, setFltTingkat] = useState('');
   const [fltJam, setFltJam] = useState<'semua' | '1' | '2'>('semua');
@@ -47,179 +58,428 @@ export default function HariKbmPage() {
   useEffect(() => {
     fetchJadwal();
     if (asatidzList.length === 0) fetchAsatidz();
-  }, [fetchJadwal, fetchAsatidz, asatidzList.length]);
+    if (formasiList.length === 0) fetchFormasi();
+    if (fanItems.length === 0) fetchFanData();
+  }, [fetchJadwal, fetchAsatidz, fetchFormasi, fetchFanData, asatidzList.length, formasiList.length, fanItems.length]);
 
-  // Transform schedule by selected day
-  const teacherDayList: TeacherDayRow[] = useMemo(() => {
-    const hariKey = selectedHari.toLowerCase() as 'sabtu' | 'ahad' | 'senin' | 'selasa' | 'rabu' | 'kamis';
-
-    const asatidzMap = new Map<string, Asatidz>();
+  // Build Master Struktur Kelas for ModalDetailKelasKBM
+  const masterStrukturKelasKBM = useMemo(() => {
+    const asatidzMap = new Map<string, (typeof asatidzList)[0]>();
     asatidzList.forEach((a) => {
       if (a.nama_asatidz) {
         asatidzMap.set(a.nama_asatidz.trim().toUpperCase(), a);
       }
     });
 
-    const rows: TeacherDayRow[] = [];
+    const buatObjekKelasKosong = (
+      key: string,
+      tingkat: string,
+      kls: string,
+      bag: string,
+      papi: string,
+      lokal = '-'
+    ): KelasKbmItem => ({
+      key,
+      tingkat,
+      kls,
+      bag,
+      papi,
+      mustahiqNama: '-',
+      mustahiqKG: '-',
+      mustahiqJah: '-',
+      lokal: lokal || '-',
+      jadwal: {
+        Sabtu: { 1: [], 2: [] },
+        Ahad: { 1: [], 2: [] },
+        Senin: { 1: [], 2: [] },
+        Selasa: { 1: [], 2: [] },
+        Rabu: { 1: [], 2: [] },
+        Kamis: { 1: [], 2: [] },
+      },
+    });
+
+    const mapKelas: Record<string, KelasKbmItem> = {};
+
+    formasiList.forEach((f) => {
+      const tingkat = String(f.tingkat || '').trim().toUpperCase();
+      const bag = String(f.din_bag || '').trim().toUpperCase();
+      const kls = String(f.din_kls || '').trim();
+      const papi = String(f.pa_pi || '').trim().toUpperCase();
+      const lokal = String(f.lokasi_diniyyah || '').trim();
+
+      if (tingkat && kls && bag) {
+        const key = `${kls} ${bag} ${tingkat} ${papi}`.trim();
+        if (!mapKelas[key]) {
+          mapKelas[key] = buatObjekKelasKosong(key, tingkat, kls, bag, papi, lokal || '-');
+        } else if (lokal) {
+          mapKelas[key].lokal = lokal;
+        }
+
+        if (f.id_mustahiq) {
+          const namaM = String(f.id_mustahiq).trim();
+          const profilM = asatidzMap.get(namaM.toUpperCase());
+          mapKelas[key].mustahiqNama = namaM;
+          if (profilM) {
+            mapKelas[key].mustahiqKG = String(profilM.nia || '-').trim() || '-';
+            mapKelas[key].mustahiqJah = String(profilM.jah_asatidz || '-').trim() || '-';
+            if ((!mapKelas[key].lokal || mapKelas[key].lokal === '-') && profilM.lokasi_diniyyah) {
+              mapKelas[key].lokal = String(profilM.lokasi_diniyyah).trim();
+            }
+          }
+        }
+      }
+    });
+
+    asatidzList.forEach((a) => {
+      const tingkat = String(a.tingkat_asatidz || '').trim().toUpperCase();
+      const bag = String(a.din_bag_asatidz || '').trim().toUpperCase();
+      const kls = String(a.din_kls_asatidz || '').trim();
+      const papi = String(a.pa_pi || '').trim().toUpperCase();
+      const namaGuru = String(a.nama_asatidz || '').trim();
+      const niaGuru = String(a.nia || '').trim();
+      const jahRaw = String(a.jah_asatidz || '').trim();
+      const jahLower = jahRaw.toLowerCase();
+      const lokal = String(a.lokasi_diniyyah || '').trim();
+
+      if (tingkat && kls && bag) {
+        const key = `${kls} ${bag} ${tingkat} ${papi}`.trim();
+        if (!mapKelas[key]) {
+          mapKelas[key] = buatObjekKelasKosong(key, tingkat, kls, bag, papi, lokal || '-');
+        }
+
+        const isMustahiq =
+          jahLower.includes('mustahiq') ||
+          jahLower.includes('ms & koor') ||
+          jahLower.includes("isti'dad") ||
+          jahLower === 'ist';
+
+        if (isMustahiq && namaGuru) {
+          mapKelas[key].mustahiqNama = namaGuru;
+          mapKelas[key].mustahiqKG = niaGuru || '-';
+          mapKelas[key].mustahiqJah = jahRaw || '-';
+          if (lokal && (!mapKelas[key].lokal || mapKelas[key].lokal === '-')) {
+            mapKelas[key].lokal = lokal;
+          }
+        }
+      }
+    });
 
     Object.values(jadwalMap).forEach((teacherRow) => {
-      const nama = String(teacherRow.nama_asatidz || '').trim();
+      const namaGuru = String(teacherRow.nama_asatidz || '').trim();
+      if (!namaGuru) return;
+      const profil = asatidzMap.get(namaGuru.toUpperCase());
+      const niaGuru = profil ? String(profil.nia || '').trim() : '-';
+      const jahGuru = profil ? String(profil.jah_asatidz || '').trim() : '-';
+
+      LIST_HARI.forEach((hari) => {
+        const hariKey = hari.toLowerCase() as 'sabtu' | 'ahad' | 'senin' | 'selasa' | 'rabu' | 'kamis';
+        const valJadwal = teacherRow[hariKey] || '';
+        if (!String(valJadwal).trim()) return;
+
+        const lines = String(valJadwal)
+          .split(/\r?\n|;;/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        lines.forEach((line) => {
+          const p = line.split('|').map((s) => s.trim());
+          const jamStr = p[0] || '';
+          const fan = p[1] && p[1] !== '-' ? p[1].trim() : '';
+          const rawLok = p[2] && p[2] !== '-' ? p[2].trim() : '';
+
+          const matchJam = jamStr.match(/\d+/);
+          const jamNum = matchJam ? (parseInt(matchJam[0], 10) as 1 | 2) : 0;
+          if (jamNum !== 1 && jamNum !== 2) return;
+
+          let klsMurni = rawLok;
+          const matchKurung = rawLok.match(/^(.*?)\s*\(([^()]*)\)$/);
+          if (matchKurung) {
+            const isiKurung = matchKurung[2].trim().toUpperCase();
+            if (isiKurung !== 'PA' && isiKurung !== 'PI' && isiKurung !== 'UG') {
+              klsMurni = matchKurung[1].trim();
+            }
+          }
+          const klsMurniNorm = normalisasiNamaKelas(klsMurni);
+
+          Object.keys(mapKelas).forEach((kKey) => {
+            const itemKls = mapKelas[kKey];
+            const genderTag = itemKls.papi ? ` (${itemKls.papi})` : '';
+            const formatFull = `${itemKls.kls} ${itemKls.bag} ${itemKls.tingkat}${genderTag}`.trim();
+            const formatFullNorm = normalisasiNamaKelas(formatFull);
+
+            if (klsMurniNorm === formatFullNorm) {
+              if (mapKelas[kKey].jadwal[hari][jamNum].length === 0) {
+                const fanTampil = ambilNamaFanSingkat(fan, itemKls.tingkat, itemKls.kls);
+                mapKelas[kKey].jadwal[hari][jamNum].push({
+                  kg: niaGuru || '-',
+                  fan: fanTampil || fan || '-',
+                  fanAsli: fan,
+                  guru: namaGuru,
+                  jah: jahGuru,
+                  lokasiGabungan: rawLok,
+                });
+              }
+            }
+          });
+        });
+      });
+    });
+
+    return Object.values(mapKelas).sort((a, b) => {
+      const ordA = URUTAN_TINGKAT_KBM[a.tingkat] ?? 99;
+      const ordB = URUTAN_TINGKAT_KBM[b.tingkat] ?? 99;
+      if (ordA !== ordB) return ordA - ordB;
+      if (a.papi !== b.papi) return a.papi.localeCompare(b.papi);
+      if (a.kls !== b.kls) return a.kls.localeCompare(b.kls, undefined, { numeric: true });
+      return a.bag.localeCompare(b.bag);
+    });
+  }, [formasiList, asatidzList, jadwalMap]);
+
+  // Helper to open class detail modal by string name
+  const handleOpenKelasDetail = (namaKelas: string) => {
+    const norm = normalisasiNamaKelas(namaKelas);
+    const found = masterStrukturKelasKBM.find((k) => {
+      const kNorm1 = normalisasiNamaKelas(`${k.kls} ${k.bag} ${k.tingkat}`);
+      const kNorm2 = normalisasiNamaKelas(`${k.kls} ${k.bag} ${k.tingkat} (${k.papi})`);
+      return kNorm1 === norm || kNorm2 === norm || k.key === namaKelas;
+    });
+    if (found) {
+      openModalDetailKelas(found.key);
+    } else {
+      openModalDetailKelas(namaKelas);
+    }
+  };
+
+  // 1. Ekstraksi daftar Guru Aktif pada hari yang dipilih
+  const listGuruAktif: GuruAktifHariKBM[] = useMemo(() => {
+    const hariKey = activeHari.toLowerCase() as 'sabtu' | 'ahad' | 'senin' | 'selasa' | 'rabu' | 'kamis';
+    const asatidzMap = new Map<string, (typeof asatidzList)[0]>();
+    asatidzList.forEach((a) => {
+      if (a.nama_asatidz) {
+        asatidzMap.set(a.nama_asatidz.trim().toUpperCase(), a);
+      }
+    });
+
+    const result: GuruAktifHariKBM[] = [];
+
+    asatidzList.forEach((a) => {
+      const nama = String(a.nama_asatidz || '').trim();
       if (!nama) return;
 
-      const dayStr = teacherRow[hariKey] || '';
-      if (!dayStr.trim()) return;
+      const jdwObj = jadwalMap[nama.toUpperCase()];
+      const rawJadwalHari = jdwObj ? jdwObj[hariKey] || '' : '';
+      if (!rawJadwalHari.trim()) return;
 
-      const lines = dayStr
-        .split(/\r?\n|;;/)
-        .map((s) => s.trim())
-        .filter(Boolean);
+      const defaultLokasi = String(a.lokasi_diniyyah || '').trim();
+      const defaultTingkat = String(a.tingkat_asatidz || '').trim().toUpperCase();
+      const defaultKls = String(a.din_kls_asatidz || '').trim();
 
-      const j1: TeacherDaySlot[] = [];
-      const j2: TeacherDaySlot[] = [];
+      const slots = parseSlotHariKBM(
+        rawJadwalHari,
+        defaultLokasi,
+        defaultTingkat,
+        defaultKls,
+        masterStrukturKelasKBM,
+        formasiList
+      );
 
-      lines.forEach((line) => {
-        const parts = line.split('|').map((s) => s.trim());
-        const jamStr = parts[0] || '';
-        const fan = parts[1] || '';
-        const kelas = parts[2] || '';
+      if (slots.length > 0) {
+        const blokTerdeteksi = dapatkanBlokDariSesiMengajar(slots, a, formasiList, asatidzList);
 
-        const m = jamStr.match(/\d+/);
-        const jamNum = m ? parseInt(m[0], 10) : 0;
-        if (jamNum === 1) j1.push({ jam: 1, fan, kelas });
-        if (jamNum === 2) j2.push({ jam: 2, fan, kelas });
-      });
-
-      if (j1.length === 0 && j2.length === 0) return;
-
-      const a = asatidzMap.get(nama.toUpperCase());
-
-      rows.push({
-        nama_asatidz: nama,
-        nia: a?.nia || '-',
-        jah: a?.jah_asatidz || '-',
-        blok: a?.blok ? `Blok ${a.blok}` : '-',
-        kamar: a?.kamar || '-',
-        tingkat: a?.tingkat_asatidz || '',
-        jam1: j1,
-        jam2: j2,
-        totalJam: j1.length + j2.length,
-      });
+        result.push({
+          rawRow: a,
+          nia: String(a.nia || '-').trim() || '-',
+          nama,
+          jah: String(a.jah_asatidz || '-').trim() || '-',
+          tingkat: defaultTingkat,
+          blok: blokTerdeteksi,
+          lokasiDiniyyahMaster: defaultLokasi,
+          slots,
+        });
+      }
     });
 
-    return rows.sort((a, b) => a.nama_asatidz.localeCompare(b.nama_asatidz));
-  }, [selectedHari, jadwalMap, asatidzList]);
+    return result;
+  }, [activeHari, asatidzList, jadwalMap, masterStrukturKelasKBM, formasiList]);
 
-  // Filtered List
-  const filteredList = useMemo(() => {
-    return teacherDayList.filter((row) => {
-      if (fltTingkat && !row.tingkat.toUpperCase().includes(fltTingkat.toUpperCase())) {
-        return false;
-      }
-      if (fltJam === '1' && row.jam1.length === 0) return false;
-      if (fltJam === '2' && row.jam2.length === 0) return false;
+  // 2. Filter data berdasarkan pencarian, tingkat, dan jam
+  const filteredGuruAktif = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const fTkt = fltTingkat.trim().toUpperCase();
+    const fJamNum = fltJam === '1' ? 1 : fltJam === '2' ? 2 : 0;
 
-      if (search.trim()) {
-        const q = search.toLowerCase().trim();
-        const text = `${row.nama_asatidz} ${row.nia} ${row.jah} ${row.blok} ${row.jam1.map(s => `${s.fan} ${s.kelas}`).join(' ')} ${row.jam2.map(s => `${s.fan} ${s.kelas}`).join(' ')}`.toLowerCase();
-        if (!text.includes(q)) return false;
+    return listGuruAktif.filter((item) => {
+      let validSlots = item.slots;
+
+      if (fJamNum > 0) {
+        validSlots = validSlots.filter((s) => s.jam === fJamNum);
+        if (validSlots.length === 0) return false;
       }
+
+      if (fTkt) {
+        const matchTkt =
+          validSlots.some((s) => String(s.kelas || '').toUpperCase().includes(fTkt)) ||
+          item.tingkat.includes(fTkt);
+        if (!matchTkt) return false;
+      }
+
+      if (q) {
+        const slotsText = validSlots
+          .map(
+            (s) =>
+              `${s.fan} ${s.fanAsli || ''} ${s.kelas} ${s.lokasi} ${cariMustahiqKelasHariKBM(
+                s.kelas,
+                masterStrukturKelasKBM,
+                asatidzList,
+                formasiList
+              )}`
+          )
+          .join(' ')
+          .toLowerCase();
+
+        const fullText = `${item.nama} ${item.nia} ${item.jah} ${item.blok} ${slotsText}`.toLowerCase();
+        if (!fullText.includes(q)) return false;
+      }
+
       return true;
     });
-  }, [teacherDayList, fltTingkat, fltJam, search]);
+  }, [listGuruAktif, search, fltTingkat, fltJam, masterStrukturKelasKBM, asatidzList, formasiList]);
 
-  const totalJamKeseluruhan = useMemo(() => {
-    return filteredList.reduce((acc, cur) => acc + cur.totalJam, 0);
-  }, [filteredList]);
+  // 3. Kelompokkan per Blok Kelas
+  const daftarKelompokBlok: KelompokBlokHariKBM[] = useMemo(() => {
+    const mapBlok: Record<string, KelompokBlokHariKBM> = {};
 
+    filteredGuruAktif.forEach((item) => {
+      let blokAsli = String(item.blok || '').trim();
+      if (!blokAsli || blokAsli === '-') blokAsli = 'Belum Diatur';
+      const kunciBlok = blokAsli.replace(/^blok\s*/i, '').trim().toUpperCase();
+
+      if (!mapBlok[kunciBlok]) {
+        mapBlok[kunciBlok] = {
+          namaBlok: blokAsli,
+          daftarAsatidz: [],
+        };
+      }
+      mapBlok[kunciBlok].daftarAsatidz.push(item);
+    });
+
+    const kelompokList = Object.values(mapBlok).sort((a, b) =>
+      bandingkanBlokHariKBM(a.namaBlok, b.namaBlok)
+    );
+
+    // Natural sort by NIA inside each block
+    kelompokList.forEach((k) => {
+      k.daftarAsatidz.sort((a, b) => compareNIANatural(a.nia, b.nia));
+    });
+
+    return kelompokList;
+  }, [filteredGuruAktif]);
+
+  // Total jam statistics
+  const totalJamTampil = useMemo(() => {
+    let count = 0;
+    const fJamNum = fltJam === '1' ? 1 : fltJam === '2' ? 2 : 0;
+    filteredGuruAktif.forEach((item) => {
+      if (fJamNum > 0) {
+        count += item.slots.filter((s) => s.jam === fJamNum).length;
+      } else {
+        count += item.slots.length;
+      }
+    });
+    return count;
+  }, [filteredGuruAktif, fltJam]);
+
+  // Export Excel
   const handleExportExcel = () => {
-    const data = filteredList.map((r, idx) => ({
-      NO: idx + 1,
-      NIA: r.nia,
-      'NAMA ASATIDZ': r.nama_asatidz,
-      JAH: r.jah,
-      'JAM 1': r.jam1.map((s) => `${s.kelas} (${s.fan})`).join(' / ') || '-',
-      'JAM 2': r.jam2.map((s) => `${s.kelas} (${s.fan})`).join(' / ') || '-',
-      'TOTAL JAM': r.totalJam,
-      LOKASI: `${r.blok} / Kamar ${r.kamar}`,
-    }));
+    if (filteredGuruAktif.length === 0) {
+      alert('Tidak ada data yang dapat diexport.');
+      return;
+    }
 
-    const ws = XLSX.utils.json_to_sheet(data);
+    const rows: (string | number)[][] = [
+      ['NO', 'KODE', 'ASATIDZ', 'JAH', 'BLOK', 'JAM', 'FAN', 'KELAS', 'MUSTAHIQ', 'LOKASI DINIYYAH'],
+    ];
+
+    let no = 1;
+    daftarKelompokBlok.forEach((kelompok) => {
+      kelompok.daftarAsatidz.forEach((item) => {
+        let slots = item.slots;
+        if (fltJam === '1') slots = slots.filter((s) => s.jam === 1);
+        if (fltJam === '2') slots = slots.filter((s) => s.jam === 2);
+
+        slots.forEach((s) => {
+          const mustahiq = cariMustahiqKelasHariKBM(s.kelas, masterStrukturKelasKBM, asatidzList, formasiList);
+          rows.push([
+            no++,
+            item.nia,
+            item.nama,
+            item.jah,
+            formatLabelBlokHariKBM(kelompok.namaBlok),
+            `Jam ${s.jam}`,
+            s.fan,
+            s.kelas,
+            mustahiq,
+            s.lokasi,
+          ]);
+        });
+      });
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, `Hari_${selectedHari}`);
-    XLSX.writeFile(wb, `Jadwal_Harian_Asatidz_${selectedHari}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, `Hari_${activeHari}`);
+    XLSX.writeFile(wb, `Jadwal_Hari_${activeHari}_Madin.xlsx`);
   };
 
   const handlePrint = () => {
     window.print();
   };
 
+  let globalNoUrut = 1;
+
   return (
     <div className="space-y-6">
-      {/* 1. Header Card Sesuai hari-kbm.html */}
+      {/* 1. Header & Day Tabs */}
       <div className="card-panel border-0 no-print-kbm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
           <div className="flex items-center gap-3.5">
-            <div className="w-[50px] h-[50px] rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center flex-shrink-0">
-              <CalendarDays className="w-6 h-6 text-madin-700" />
+            <div className="w-[50px] h-[50px] rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center shrink-0">
+              <CalendarDays className="w-6 h-6 text-emerald-700" />
             </div>
             <div>
               <h2 className="text-xl md:text-2xl font-bold text-slate-800 m-0 leading-tight">
-                Hari KBM (Jadwal Harian Asatidz)
+                Hari KBM
               </h2>
               <p className="text-slate-500 text-xs m-0 mt-0.5">
-                Daftar asatidz yang aktif mengajar beserta penugasan kelas dan jam pada hari yang dipilih
+                Monitoring penugasan mengajar &amp; lokasi asatidz per hari aktif
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {/* View Toggle */}
-            <div className="inline-flex rounded-lg border border-slate-300 p-0.5 bg-white shadow-xs">
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition ${
-                  viewMode === 'table' ? 'bg-madin-700 text-white' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <TableIcon className="w-3.5 h-3.5" />
-                <span>Tabel</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('card')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition ${
-                  viewMode === 'card' ? 'bg-madin-700 text-white' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Kartu</span>
-              </button>
-            </div>
-
             <button
               type="button"
-              onClick={fetchJadwal}
+              onClick={() => fetchJadwal(true)}
               disabled={isLoading}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-madin-700 text-madin-700 hover:bg-madin-50 transition shadow-xs flex items-center gap-1.5"
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-emerald-700 text-emerald-700 hover:bg-emerald-50 transition shadow-xs flex items-center gap-1.5"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-              <span>Segarkan Data</span>
+              <span>Segarkan</span>
             </button>
 
             <button
               type="button"
               onClick={handleExportExcel}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-madin-700 text-madin-700 hover:bg-madin-50 transition shadow-xs flex items-center gap-1.5"
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-emerald-700 text-emerald-700 hover:bg-emerald-50 transition shadow-xs flex items-center gap-1.5"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-madin-700" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
               <span>Export Excel</span>
             </button>
 
             <button
               type="button"
               onClick={handlePrint}
-              className="px-4 py-2 text-xs font-bold rounded-lg bg-madin-700 hover:bg-madin-800 text-white transition shadow-xs flex items-center gap-1.5"
+              className="px-4 py-2 text-xs font-bold rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white transition shadow-xs flex items-center gap-1.5"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Cetak / Print</span>
@@ -227,57 +487,87 @@ export default function HariKbmPage() {
           </div>
         </div>
 
-        {/* Toolbar Switch Hari (Sabtu s/d Kamis) */}
-        <div className="flex items-center flex-wrap gap-2.5 mt-4 pb-3 border-b border-slate-100">
-          <span className="text-xs font-bold text-slate-500 mr-1 flex items-center gap-1">
-            <CalendarDays className="w-4 h-4 text-madin-700" />
-            Pilih Hari KBM:
-          </span>
-
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 shadow-xs flex-wrap">
-            {LIST_HARI.map((hari) => (
-              <button
-                key={hari}
-                type="button"
-                onClick={() => setSelectedHari(hari)}
-                className={`px-3.5 py-1.5 text-xs font-bold rounded-md transition ${
-                  selectedHari === hari
-                    ? 'bg-madin-700 text-white shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {hari}
-              </button>
-            ))}
+        {/* Tab Switcher Hari (Sabtu - Kamis) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            {LIST_HARI.map((hari) => {
+              const isActive = activeHari === hari;
+              return (
+                <button
+                  key={hari}
+                  type="button"
+                  onClick={() => setActiveHari(hari)}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition shrink-0 ${
+                    isActive
+                      ? 'bg-emerald-700 text-white shadow-sm'
+                      : 'border border-emerald-700/60 text-emerald-700 hover:bg-emerald-50'
+                  }`}
+                >
+                  {hari}
+                </button>
+              );
+            })}
           </div>
 
-          <span className="ml-auto px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-semibold">
-            Hari Aktif: <b>{selectedHari}</b>
-          </span>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
+              Hari Aktif: <b className="font-bold">{activeHari}</b>
+            </span>
+
+            {/* Toggle Mode Tampilan (Tabel / Card) */}
+            <div className="inline-flex rounded-lg border border-emerald-700 p-0.5 bg-white">
+              <button
+                type="button"
+                onClick={() => setViewModeHariKbm('table')}
+                title="Tampilan Tabel"
+                className={`p-1.5 rounded-md transition ${
+                  viewModeHariKbm === 'table'
+                    ? 'bg-emerald-700 text-white shadow-xs'
+                    : 'text-emerald-700 hover:bg-emerald-50'
+                }`}
+              >
+                <TableIcon className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewModeHariKbm('card')}
+                title="Tampilan Kartu"
+                className={`p-1.5 rounded-md transition ${
+                  viewModeHariKbm === 'card'
+                    ? 'bg-emerald-700 text-white shadow-xs'
+                    : 'text-emerald-700 hover:bg-emerald-50'
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Filter Bar & Counters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end mt-4">
-          <div className="relative">
+        {/* Filters Bar */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 items-end mt-4 pt-3 border-t border-slate-100">
+          <div>
             <label className="block text-[11px] font-bold text-slate-500 mb-1">
               Pencarian Cepat:
             </label>
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari Nama / NIA / Fan / Kelas..."
-                className="w-full text-xs pl-8 pr-7 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-madin-700/20"
+                placeholder="Cari Asatidz / NIA / Kelas / Lokasi..."
+                className="w-full text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
               />
-              {search && (
+              {search ? (
                 <button
+                  type="button"
                   onClick={() => setSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
+              ) : (
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               )}
             </div>
           </div>
@@ -289,7 +579,7 @@ export default function HariKbmPage() {
             <select
               value={fltTingkat}
               onChange={(e) => setFltTingkat(e.target.value)}
-              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white focus:outline-none"
+              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
             >
               <option value="">Semua Tingkat</option>
               <option value="ULA">ULA</option>
@@ -301,147 +591,356 @@ export default function HariKbmPage() {
 
           <div>
             <label className="block text-[11px] font-bold text-slate-500 mb-1">
-              Pilihan Jam:
+              Sesi Jam:
             </label>
             <select
               value={fltJam}
               onChange={(e) => setFltJam(e.target.value as 'semua' | '1' | '2')}
-              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white focus:outline-none"
+              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
             >
-              <option value="semua">Semua Jam</option>
-              <option value="1">Hanya Jam 1</option>
-              <option value="2">Hanya Jam 2</option>
+              <option value="semua">Semua Jam (Jam 1 &amp; Jam 2)</option>
+              <option value="1">Jam 1 Saja</option>
+              <option value="2">Jam 2 Saja</option>
             </select>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2 justify-end pb-1">
-            <span className="px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700">
-              {filteredList.length} Asatidz
-            </span>
-            <span className="px-3 py-1.5 rounded-lg bg-madin-50 border border-madin-200 text-xs font-bold text-madin-800">
-              {totalJamKeseluruhan} Total Jam
-            </span>
-          </div>
+        {/* Status Badges */}
+        <div className="flex items-center gap-2 flex-wrap text-xs mt-3 pt-3 border-t border-slate-100">
+          <span className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 font-semibold text-emerald-800">
+            {filteredGuruAktif.length} Asatidz Mengajar
+          </span>
+          <span className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 font-medium text-slate-700">
+            {totalJamTampil} Total Jam (Jam 1 &amp; 2)
+          </span>
+          <span className="text-slate-400 italic text-[11px] ml-auto">
+            *Klik nama Asatidz untuk lihat profil; klik nama Kelas untuk rincian jadwal kelas.
+          </span>
         </div>
       </div>
 
-      {/* 2. Tampilan Dokumen Cetak / Tabel / Kartu */}
-      <div className="card-panel border-0 p-4 md:p-6 shadow-sm" id="areaPrintHariKBM">
-        <div className="text-center mb-4">
-          <h5 className="font-bold text-sm md:text-base text-slate-800 uppercase tracking-wide m-0">
-            JADWAL HARIAN MENGAJAR ASATIDZ - HARI {selectedHari.toUpperCase()}
-          </h5>
-          <h6 className="font-bold text-slate-500 text-xs md:text-sm m-0 mt-1">
-            Madrasah Diniyyah Al Amiriyyah
-          </h6>
-        </div>
+      {/* 2. AREA TAMPILAN RESMI */}
+      {viewModeHariKbm === 'table' ? (
+        <div className="card-panel border-0 p-4 md:p-6 shadow-sm overflow-hidden" id="areaPrintHariKBM">
+          <div className="text-center mb-4">
+            <h5 className="font-bold text-sm md:text-base text-slate-800 uppercase tracking-wide m-0">
+              DAFTAR TUGAS MENGAJAR ASATIDZ HARI {activeHari.toUpperCase()}
+            </h5>
+            <h6 className="font-bold text-slate-500 text-xs md:text-sm m-0 mt-1">
+              MADRASAH DINIYYAH AL AMIRIYYAH
+            </h6>
+          </div>
 
-        {viewMode === 'table' ? (
           <div className="table-responsive overflow-x-auto">
-            <table className="tabel-kbm-resmi w-full">
+            <table className="tabel-kbm-resmi w-full" id="tableHariKBM">
               <thead>
                 <tr>
-                  <th style={{ width: 40 }}>NO</th>
-                  <th style={{ width: 65 }}>NIA</th>
-                  <th style={{ minWidth: 180 }}>NAMA ASATIDZ</th>
-                  <th style={{ width: 120 }}>JAH</th>
-                  <th style={{ minWidth: 200 }}>JAM 1</th>
-                  <th style={{ minWidth: 200 }}>JAM 2</th>
-                  <th style={{ width: 60 }}>TOTAL</th>
-                  <th style={{ minWidth: 140 }}>LOKASI / BLOK</th>
+                  <th style={{ width: 40 }} className="text-center">NO</th>
+                  <th style={{ width: 65 }} className="text-center">KODE</th>
+                  <th style={{ minWidth: 200 }}>ASATIDZ</th>
+                  <th style={{ width: 100 }} className="text-center">JAH</th>
+                  <th style={{ minWidth: 170 }}>MENGAJAR (JAM &amp; FAN)</th>
+                  <th style={{ minWidth: 180 }}>KELAS &amp; MUSTAHIQ</th>
+                  <th style={{ minWidth: 170 }}>LOKASI DINIYYAH</th>
                 </tr>
               </thead>
-              <tbody>
-                {filteredList.length === 0 ? (
+              <tbody id="tbodyHariKBM">
+                {daftarKelompokBlok.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-6 text-slate-400">
-                      Tidak ada asatidz yang mengajar pada hari {selectedHari} dengan filter saat ini.
+                    <td colSpan={7} className="text-center py-8 text-slate-400">
+                      Tidak ada data Asatidz mengajar pada hari <b>{activeHari}</b> yang cocok dengan filter pencarian.
                     </td>
                   </tr>
                 ) : (
-                  filteredList.map((row, idx) => (
-                    <tr key={row.nama_asatidz} className="hover:bg-slate-50 transition">
-                      <td className="text-center font-semibold text-slate-600">{idx + 1}</td>
-                      <td className="cell-kg font-mono font-bold">{row.nia}</td>
-                      <td className="font-semibold text-slate-800 px-2">{row.nama_asatidz}</td>
-                      <td className="text-xs text-slate-600 px-2">{row.jah}</td>
-                      <td className="px-2">
-                        {row.jam1.length > 0 ? (
-                          row.jam1.map((s, i) => (
-                            <span key={i} className="inline-block mr-1.5 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-medium">
-                              <strong>{s.kelas}</strong>: {s.fan}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-2">
-                        {row.jam2.length > 0 ? (
-                          row.jam2.map((s, i) => (
-                            <span key={i} className="inline-block mr-1.5 px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 text-xs font-medium">
-                              <strong>{s.kelas}</strong>: {s.fan}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
-                      </td>
-                      <td className="text-center font-bold text-madin-700">{row.totalJam} Jam</td>
-                      <td className="text-xs text-slate-600 px-2">{row.blok}</td>
-                    </tr>
-                  ))
+                  daftarKelompokBlok.map((kelompok) => {
+                    const labelBlok = formatLabelBlokHariKBM(kelompok.namaBlok);
+
+                    return (
+                      <React.Fragment key={kelompok.namaBlok}>
+                        {/* 7 Kolom Baris Header Pemisah Blok */}
+                        <tr
+                          className="table-group-divider"
+                          style={{
+                            background: 'rgba(15, 118, 110, 0.08)',
+                            borderTop: '2px solid #0f766e',
+                            borderBottom: '1.5px solid #0f766e',
+                          }}
+                        >
+                          <td colSpan={7} className="py-2.5 px-3">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2">
+                                <Building2 className="w-4 h-4 text-emerald-800" />
+                                <span
+                                  className="font-bold text-emerald-900 uppercase tracking-wide"
+                                  style={{ fontSize: '0.85rem' }}
+                                >
+                                  {labelBlok}
+                                </span>
+                              </div>
+                              <span className="badge bg-emerald-700 text-white rounded-full px-3 py-1 font-mono text-[11px] shadow-xs">
+                                {kelompok.daftarAsatidz.length} Asatidz
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* Baris Asatidz di dalam Blok */}
+                        {kelompok.daftarAsatidz.map((item) => {
+                          const noUrut = globalNoUrut++;
+                          const jahLower = item.jah.toLowerCase();
+                          const isMustahiq =
+                            jahLower.includes('mustahiq') || jahLower.includes('ms & koor');
+
+                          let slotsToShow = item.slots;
+                          if (fltJam === '1') slotsToShow = slotsToShow.filter((s) => s.jam === 1);
+                          if (fltJam === '2') slotsToShow = slotsToShow.filter((s) => s.jam === 2);
+
+                          return (
+                            <tr key={`${kelompok.namaBlok}-${item.nama}`} className="hover:bg-slate-50/70 transition-colors">
+                              <td className="text-center font-bold text-slate-400 text-xs">
+                                {noUrut}
+                              </td>
+                              <td className="text-center font-mono font-bold text-slate-800 text-xs">
+                                {item.nia}
+                              </td>
+                              <td>
+                                <span
+                                  onClick={() => openDetailModal(item.rawRow)}
+                                  className="font-bold text-slate-800 hover:text-emerald-700 cursor-pointer transition-colors"
+                                  title={`Klik untuk lihat profil & jadwal ${item.nama}`}
+                                >
+                                  {item.nama}
+                                </span>
+                              </td>
+                              <td className="text-center">
+                                <span
+                                  className={`inline-block px-2 py-0.5 rounded text-[10.5px] font-semibold border ${
+                                    isMustahiq
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                      : 'bg-slate-100 text-slate-600 border-slate-200'
+                                  }`}
+                                >
+                                  {item.jah}
+                                </span>
+                              </td>
+
+                              {/* Kolom Mengajar (Jam & Fan) */}
+                              <td className="py-2">
+                                {slotsToShow.map((slot, sIdx) => (
+                                  <div
+                                    key={slot.jam}
+                                    className={`flex items-center gap-1.5 ${
+                                      sIdx > 0 ? 'border-t border-slate-100 pt-1.5 mt-1.5' : ''
+                                    }`}
+                                  >
+                                    <span
+                                      className={`inline-block font-mono text-[10px] font-bold text-white px-1.5 py-0.5 rounded shadow-xs ${
+                                        slot.jam === 1 ? 'bg-emerald-600' : 'bg-blue-600'
+                                      }`}
+                                    >
+                                      Jam {slot.jam}
+                                    </span>
+                                    <span className="font-semibold text-slate-800 text-xs">
+                                      {slot.fan}
+                                    </span>
+                                  </div>
+                                ))}
+                              </td>
+
+                              {/* Kolom Kelas & Mustahiq */}
+                              <td className="py-2">
+                                {slotsToShow.map((slot, sIdx) => {
+                                  const namaMustahiq = cariMustahiqKelasHariKBM(
+                                    slot.kelas,
+                                    masterStrukturKelasKBM,
+                                    asatidzList,
+                                    formasiList
+                                  );
+
+                                  return (
+                                    <div
+                                      key={slot.jam}
+                                      onClick={() => handleOpenKelasDetail(slot.kelas)}
+                                      className={`rounded px-1.5 py-0.5 hover:bg-emerald-50 cursor-pointer transition-colors ${
+                                        sIdx > 0 ? 'border-t border-slate-100 pt-1.5 mt-1.5' : ''
+                                      }`}
+                                      title={`Klik untuk melihat Detail Kelas ${slot.kelas}`}
+                                    >
+                                      <div className="font-bold text-slate-800 text-xs hover:text-emerald-700">
+                                        {slot.kelas}
+                                      </div>
+                                      <div className="text-[11px] text-slate-400 leading-tight">
+                                        Mustahiq:{' '}
+                                        <span className="text-emerald-700 font-semibold">
+                                          {namaMustahiq}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </td>
+
+                              {/* Kolom Lokasi Diniyyah */}
+                              <td className="py-2">
+                                {slotsToShow.map((slot, sIdx) => (
+                                  <div
+                                    key={slot.jam}
+                                    className={`flex items-center gap-1.5 ${
+                                      sIdx > 0 ? 'border-t border-slate-100 pt-1.5 mt-1.5' : ''
+                                    }`}
+                                  >
+                                    <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                                    <span className="text-slate-600 font-medium text-xs truncate">
+                                      {slot.lokasi || '-'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
-        ) : (
-          /* Card View */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredList.map((row) => (
-              <div key={row.nama_asatidz} className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs space-y-3">
-                <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-sm">{row.nama_asatidz}</h4>
-                    <span className="font-mono text-xs text-slate-500">NIA: {row.nia}</span>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full bg-madin-50 text-madin-800 border border-madin-200 text-[10px] font-bold">
-                    {row.totalJam} Jam
-                  </span>
-                </div>
+        </div>
+      ) : (
+        /* 3. MODE KARTU HARI KBM */
+        <div className="space-y-6" id="cardHariKBMWrapper">
+          {daftarKelompokBlok.length === 0 ? (
+            <div className="card-panel border-0 p-8 text-center text-slate-400">
+              Tidak ada data Asatidz mengajar pada hari <b>{activeHari}</b> yang cocok dengan filter pencarian.
+            </div>
+          ) : (
+            daftarKelompokBlok.map((kelompok) => {
+              const labelBlok = formatLabelBlokHariKBM(kelompok.namaBlok);
 
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-14 font-semibold text-slate-500">Jam 1:</span>
-                    {row.jam1.length > 0 ? (
-                      <span className="font-medium text-slate-800">
-                        {row.jam1.map((s) => `${s.kelas} (${s.fan})`).join(', ')}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">-</span>
-                    )}
+              return (
+                <div key={kelompok.namaBlok} className="space-y-3">
+                  {/* Banner Blok */}
+                  <div className="bg-emerald-700/10 border-l-4 border-emerald-700 px-4 py-2.5 rounded-r-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-emerald-800" />
+                      <h4 className="font-bold text-emerald-950 uppercase tracking-wide text-sm m-0">
+                        {labelBlok}
+                      </h4>
+                    </div>
+                    <span className="badge bg-emerald-700 text-white rounded-full px-3 py-1 font-mono text-xs">
+                      {kelompok.daftarAsatidz.length} Asatidz
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-14 font-semibold text-slate-500">Jam 2:</span>
-                    {row.jam2.length > 0 ? (
-                      <span className="font-medium text-slate-800">
-                        {row.jam2.map((s) => `${s.kelas} (${s.fan})`).join(', ')}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">-</span>
-                    )}
-                  </div>
-                </div>
 
-                <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex justify-between">
-                  <span>Jah: {row.jah}</span>
-                  <span>{row.blok}</span>
+                  {/* Grid Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                    {kelompok.daftarAsatidz.map((item) => {
+                      const jahLower = item.jah.toLowerCase();
+                      const isMustahiq =
+                        jahLower.includes('mustahiq') || jahLower.includes('ms & koor');
+
+                      let slotsToShow = item.slots;
+                      if (fltJam === '1') slotsToShow = slotsToShow.filter((s) => s.jam === 1);
+                      if (fltJam === '2') slotsToShow = slotsToShow.filter((s) => s.jam === 2);
+
+                      return (
+                        <div
+                          key={item.nama}
+                          className="bg-white rounded-xl border border-slate-200/90 shadow-xs hover:shadow-md transition p-3.5 flex flex-col justify-between"
+                        >
+                          <div>
+                            {/* Card Top: Code & Jah */}
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded border border-slate-200">
+                                {item.nia}
+                              </span>
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                                  isMustahiq
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                    : 'bg-slate-50 text-slate-600 border-slate-200'
+                                }`}
+                              >
+                                {item.jah}
+                              </span>
+                            </div>
+
+                            {/* Teacher Name */}
+                            <h4
+                              onClick={() => openDetailModal(item.rawRow)}
+                              className="font-bold text-slate-800 hover:text-emerald-700 cursor-pointer text-sm m-0 line-clamp-1 mb-2.5 transition-colors"
+                              title={`Klik untuk lihat profil ${item.nama}`}
+                            >
+                              {item.nama}
+                            </h4>
+
+                            {/* Sessions */}
+                            <div className="space-y-2 border-t border-slate-100 pt-2.5">
+                              {slotsToShow.map((slot) => {
+                                const namaMustahiq = cariMustahiqKelasHariKBM(
+                                  slot.kelas,
+                                  masterStrukturKelasKBM,
+                                  asatidzList,
+                                  formasiList
+                                );
+
+                                return (
+                                  <div
+                                    key={slot.jam}
+                                    className="bg-slate-50/80 rounded-lg p-2 border border-slate-100 text-xs space-y-1"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span
+                                        className={`font-mono text-[9.5px] font-bold text-white px-1.5 py-0.2 rounded shadow-xs ${
+                                          slot.jam === 1 ? 'bg-emerald-600' : 'bg-blue-600'
+                                        }`}
+                                      >
+                                        Jam {slot.jam}
+                                      </span>
+                                      <span className="font-bold text-slate-800 text-[11px]">
+                                        {slot.fan}
+                                      </span>
+                                    </div>
+
+                                    <div
+                                      onClick={() => handleOpenKelasDetail(slot.kelas)}
+                                      className="cursor-pointer hover:text-emerald-700 transition"
+                                      title="Klik untuk detail kelas"
+                                    >
+                                      <div className="font-semibold text-slate-700">
+                                        Kelas: <span className="text-emerald-700">{slot.kelas}</span>
+                                      </div>
+                                      <div className="text-[10.5px] text-slate-400">
+                                        Mustahiq: <span className="text-slate-600">{namaMustahiq}</span>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1 text-[11px] text-slate-500 pt-0.5 border-t border-slate-200/60">
+                                      <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
+                                      <span className="truncate">{slot.lokasi || '-'}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Modal Detail Kelas KBM */}
+      <ModalDetailKelasKBM masterStrukturKelas={masterStrukturKelasKBM} />
+
+      {/* Modal Detail Profil Asatidz */}
+      <ModalDetailAsatidz />
     </div>
   );
 }

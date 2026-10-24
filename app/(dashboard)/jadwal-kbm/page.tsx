@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useJadwalStore, LIST_HARI } from '@/stores/useJadwalStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
@@ -14,42 +14,34 @@ import {
   BookOpen,
   Star,
   Pencil,
+  Search,
   X,
-  UserCheck
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-
-// Urutan Tingkat Diniyyah
-const URUTAN_TINGKAT: Record<string, number> = {
-  "ISTI'DAD": 0,
-  ULA: 1,
-  WUSTHO: 2,
-  ULYA: 3,
-};
-
-interface SesiSlot {
-  kg: string;
-  fan: string;
-  guru: string;
-  jah?: string;
-  lokasiGabungan?: string;
-}
-
-interface KelasKbmItem {
-  key: string;
-  tingkat: string;
-  kls: string;
-  bag: string;
-  papi: string;
-  mustahiqNama: string;
-  mustahiqKG: string;
-  mustahiqJah: string;
-  lokal: string;
-  jadwal: Record<string, Record<1 | 2, SesiSlot[]>>;
-}
+import {
+  URUTAN_TINGKAT_KBM,
+  normalisasiNamaKelas,
+  ambilNamaFanSingkat,
+  dapatkanTahunAjaranKBM,
+} from '@/lib/utils/jadwalHelper';
+import { KelasKbmItem, SesiSlot } from '@/types/jadwal';
+import ModalDetailKelasKBM from '@/components/modules/jadwal-kbm/ModalDetailKelasKBM';
+import ModalInputJadwalKelas from '@/components/modules/jadwal-kbm/ModalInputJadwalKelas';
+import ContextMenuKG from '@/components/modules/jadwal-kbm/ContextMenuKG';
+import FloatingBarClipboardKG from '@/components/modules/jadwal-kbm/FloatingBarClipboardKG';
+import ModalDetailAsatidz from '@/components/modules/asatidz/ModalDetailAsatidz';
 
 export default function JadwalKbmPage() {
-  const { jadwalMap, fetchJadwal, isLoading } = useJadwalStore();
+  const {
+    jadwalMap,
+    fetchJadwal,
+    isLoading,
+    openModalDetailKelas,
+    openModalInputJadwal,
+    openContextMenuKG,
+    stateClipboardKG,
+  } = useJadwalStore();
+
   const { formasiList, fetchFormasi } = useFormasiStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
   const { fanItems, fetchFanData } = useFanStore();
@@ -60,8 +52,7 @@ export default function JadwalKbmPage() {
   const [fltSearch, setFltSearch] = useState<string>('');
   const [switchMode, setSwitchMode] = useState<'semua' | 'reguler' | 'unggulan'>('semua');
 
-  // Modal State
-  const [selectedKelas, setSelectedKelas] = useState<KelasKbmItem | null>(null);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchJadwal();
@@ -70,26 +61,7 @@ export default function JadwalKbmPage() {
     if (fanItems.length === 0) fetchFanData();
   }, [fetchJadwal, fetchFormasi, fetchAsatidz, fetchFanData, formasiList.length, asatidzList.length, fanItems.length]);
 
-  // Dynamic Academic Year calculation
-  const tahunAjaran = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const masehiStart = month >= 6 ? year : year - 1;
-    const masehiEnd = masehiStart + 1;
-    const hijriStart = masehiStart - 579;
-    const hijriEnd = hijriStart + 1;
-    return `TAHUN AJARAN ${masehiStart}-${masehiEnd} M / ${hijriStart}-${hijriEnd} H`;
-  }, []);
-
-  // Normalisasi string untuk pencocokan kelas
-  const normalisasiNamaKelas = (str: string) => {
-    return String(str || '')
-      .toUpperCase()
-      .replace(/[\(\)\-\_]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  };
+  const tahunAjaran = useMemo(() => dapatkanTahunAjaranKBM(), []);
 
   const isKelasUnggulan = (str: string) => {
     return /\(ug\)|\bunggulan\b/i.test(str);
@@ -97,7 +69,7 @@ export default function JadwalKbmPage() {
 
   // Build Full Class Schedule Matrix
   const masterStrukturKelasKBM = useMemo(() => {
-    // 1. Kamus profil Asatidz by upper name
+    // 1. Kamus Asatidz profil
     const asatidzMap = new Map<string, (typeof asatidzList)[0]>();
     asatidzList.forEach((a) => {
       if (a.nama_asatidz) {
@@ -165,7 +137,7 @@ export default function JadwalKbmPage() {
       }
     });
 
-    // 2B. Sinkronisasi Mustahiq dari data Asatidz
+    // 2B. Sinkronisasi Mustahiq dari Asatidz
     asatidzList.forEach((a) => {
       const tingkat = String(a.tingkat_asatidz || '').trim().toUpperCase();
       const bag = String(a.din_bag_asatidz || '').trim().toUpperCase();
@@ -200,7 +172,7 @@ export default function JadwalKbmPage() {
       }
     });
 
-    // 3. Petakan jadwal seluruh asatidz ke slot kelas (Jam 1 & 2, Sabtu s/d Kamis)
+    // 3. Petakan jadwal seluruh asatidz ke slot kelas
     Object.values(jadwalMap).forEach((teacherRow) => {
       const namaGuru = String(teacherRow.nama_asatidz || '').trim();
       if (!namaGuru) return;
@@ -228,7 +200,6 @@ export default function JadwalKbmPage() {
           const jamNum = matchJam ? (parseInt(matchJam[0], 10) as 1 | 2) : 0;
           if (jamNum !== 1 && jamNum !== 2) return;
 
-          // Bersihkan kurung gedung/ruang paling akhir
           let klsMurni = rawLok;
           const matchKurung = rawLok.match(/^(.*?)\s*\(([^()]*)\)$/);
           if (matchKurung) {
@@ -247,9 +218,11 @@ export default function JadwalKbmPage() {
 
             if (klsMurniNorm === formatFullNorm) {
               if (mapKelas[kKey].jadwal[hari][jamNum].length === 0) {
+                const fanTampil = ambilNamaFanSingkat(fan, itemKls.tingkat, itemKls.kls);
                 mapKelas[kKey].jadwal[hari][jamNum].push({
                   kg: niaGuru || '-',
-                  fan: fan || '-',
+                  fan: fanTampil || fan || '-',
+                  fanAsli: fan,
                   guru: namaGuru,
                   jah: jahGuru,
                   lokasiGabungan: rawLok,
@@ -261,10 +234,10 @@ export default function JadwalKbmPage() {
       });
     });
 
-    // 4. Urutkan kelas
+    // 4. Urutkan kelas resmi (ULA di atas -> WUSTHO -> ULYA -> ISTI'DAD)
     return Object.values(mapKelas).sort((a, b) => {
-      const ordA = URUTAN_TINGKAT[a.tingkat] ?? 99;
-      const ordB = URUTAN_TINGKAT[b.tingkat] ?? 99;
+      const ordA = URUTAN_TINGKAT_KBM[a.tingkat] ?? 99;
+      const ordB = URUTAN_TINGKAT_KBM[b.tingkat] ?? 99;
       if (ordA !== ordB) return ordA - ordB;
       if (a.papi !== b.papi) return a.papi.localeCompare(b.papi);
       if (a.kls !== b.kls) return a.kls.localeCompare(b.kls, undefined, { numeric: true });
@@ -290,7 +263,7 @@ export default function JadwalKbmPage() {
           [1, 2].forEach((jam) => {
             const sesi = k.jadwal[hari]?.[jam as 1 | 2] || [];
             sesi.forEach((s) => {
-              textToSearch += ` ${s.guru} ${s.kg} ${s.fan}`.toLowerCase();
+              textToSearch += ` ${s.guru} ${s.kg} ${s.fan} ${s.fanAsli || ''}`.toLowerCase();
             });
           });
         });
@@ -300,6 +273,59 @@ export default function JadwalKbmPage() {
       return true;
     });
   }, [masterStrukturKelasKBM, fltTingkat, fltGender, fltSearch, switchMode]);
+
+  // Total terisi statistics
+  const statSlot = useMemo(() => {
+    let totalSlot = 0;
+    let terisi = 0;
+    listTampil.forEach((k) => {
+      LIST_HARI.forEach((h) => {
+        [1, 2].forEach((j) => {
+          totalSlot++;
+          if ((k.jadwal[h]?.[j as 1 | 2] || []).length > 0) terisi++;
+        });
+      });
+    });
+    return { totalSlot, terisi };
+  }, [listTampil]);
+
+  // Click on Class code (Single Click -> Detail, Double Click / Pencil -> Input)
+  const handleKlsClick = (k: KelasKbmItem) => {
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+      openModalInputJadwal(k.key);
+    } else {
+      clickTimeoutRef.current = setTimeout(() => {
+        openModalDetailKelas(k.key);
+        clickTimeoutRef.current = null;
+      }, 250);
+    }
+  };
+
+  // Right-click or double-tap on KG cell
+  const handleCellContextMenu = (
+    e: React.MouseEvent,
+    k: KelasKbmItem,
+    hari: string,
+    jam: number,
+    sesi: SesiSlot | undefined
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openContextMenuKG(
+      {
+        kelasKey: k.key,
+        classObj: k,
+        hari,
+        jam,
+        guru: sesi?.guru || '',
+        kg: sesi?.kg || '',
+        fan: sesi?.fan || '',
+      },
+      { x: e.clientX, y: e.clientY }
+    );
+  };
 
   // Export Excel
   const handleExportExcel = () => {
@@ -327,7 +353,7 @@ export default function JadwalKbmPage() {
       const klsDisplay = `${k.kls} ${k.bag}`;
 
       // Row Jam 1
-      const row1 = [noStr, klsDisplay, k.papi, k.tingkat, '1'];
+      const row1: (string | number)[] = [noStr, klsDisplay, k.papi, k.tingkat, '1'];
       LIST_HARI.forEach((h) => {
         const sesi = k.jadwal[h]?.[1] || [];
         if (sesi.length > 0) {
@@ -340,7 +366,7 @@ export default function JadwalKbmPage() {
       aoaData.push(row1);
 
       // Row Jam 2
-      const row2 = ['', '', '', '', '2'];
+      const row2: (string | number)[] = ['', '', '', '', '2'];
       LIST_HARI.forEach((h) => {
         const sesi = k.jadwal[h]?.[2] || [];
         if (sesi.length > 0) {
@@ -365,12 +391,12 @@ export default function JadwalKbmPage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Header Menu, Filter & Tombol Aksi Sesuai Gambar 1 */}
+      {/* 1. Header Toolbar, Filter & Switcher */}
       <div className="card-panel border-0 no-print-kbm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
           <div className="flex items-center gap-3.5">
-            <div className="w-[50px] h-[50px] rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center flex-shrink-0">
-              <Calendar className="w-6 h-6 text-madin-700" />
+            <div className="w-[50px] h-[50px] rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center shrink-0">
+              <Calendar className="w-6 h-6 text-emerald-700" />
             </div>
             <div>
               <h2 className="text-xl md:text-2xl font-bold text-slate-800 m-0 leading-tight">
@@ -385,9 +411,9 @@ export default function JadwalKbmPage() {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
-              onClick={fetchJadwal}
+              onClick={() => fetchJadwal(true)}
               disabled={isLoading}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-madin-700 text-madin-700 hover:bg-madin-50 transition shadow-xs flex items-center gap-1.5"
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-emerald-700 text-emerald-700 hover:bg-emerald-50 transition shadow-xs flex items-center gap-1.5"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
               <span>Segarkan Data</span>
@@ -396,16 +422,16 @@ export default function JadwalKbmPage() {
             <button
               type="button"
               onClick={handleExportExcel}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-madin-700 text-madin-700 hover:bg-madin-50 transition shadow-xs flex items-center gap-1.5"
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-emerald-700 text-emerald-700 hover:bg-emerald-50 transition shadow-xs flex items-center gap-1.5"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-madin-700" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
               <span>Export Excel</span>
             </button>
 
             <button
               type="button"
               onClick={handlePrint}
-              className="px-4 py-2 text-xs font-bold rounded-lg bg-madin-700 hover:bg-madin-800 text-white transition shadow-xs flex items-center gap-1.5"
+              className="px-4 py-2 text-xs font-bold rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white transition shadow-xs flex items-center gap-1.5"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Cetak / Print Jadwal</span>
@@ -413,7 +439,7 @@ export default function JadwalKbmPage() {
           </div>
         </div>
 
-        {/* Filter Pencarian Cepat */}
+        {/* Filter Bar */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end mt-4">
           <div>
             <label className="block text-[11px] font-bold text-slate-500 mb-1">
@@ -422,7 +448,7 @@ export default function JadwalKbmPage() {
             <select
               value={fltTingkat}
               onChange={(e) => setFltTingkat(e.target.value)}
-              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-madin-700/20"
+              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
             >
               <option value="">Semua Tingkat</option>
               <option value="ULA">ULA</option>
@@ -439,7 +465,7 @@ export default function JadwalKbmPage() {
             <select
               value={fltGender}
               onChange={(e) => setFltGender(e.target.value)}
-              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-madin-700/20"
+              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
             >
               <option value="">Semua (PA &amp; PI)</option>
               <option value="PA">Putra (PA)</option>
@@ -451,32 +477,45 @@ export default function JadwalKbmPage() {
             <label className="block text-[11px] font-bold text-slate-500 mb-1">
               Pencarian:
             </label>
-            <input
-              type="text"
-              value={fltSearch}
-              onChange={(e) => setFltSearch(e.target.value)}
-              placeholder="Cari Kelas / Nama / Jah..."
-              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-madin-700/20"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={fltSearch}
+                onChange={(e) => setFltSearch(e.target.value)}
+                placeholder="Cari Kelas / Nama / Fan..."
+                className="w-full text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
+              />
+              {fltSearch ? (
+                <button
+                  type="button"
+                  onClick={() => setFltSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              )}
+            </div>
           </div>
 
           <div className="text-left md:text-right pb-1">
             <span className="text-[11px] italic text-slate-400">
-              *Arahkan kursor ke kode <b>KG</b> untuk lihat nama.
+              *Klik kanan / tahan pada kode <b>KG</b> untuk aksi cepat &amp; mode cut.
             </span>
           </div>
         </div>
 
-        {/* Switch Kategori Jadwal KBM Sesuai Gambar 1 */}
+        {/* Switch Mode & Info Badges */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-3 border-t border-slate-100">
-          <div className="inline-flex rounded-lg border border-madin-700 p-0.5 bg-white shadow-xs">
+          <div className="inline-flex rounded-lg border border-emerald-700 p-0.5 bg-white shadow-xs">
             <button
               type="button"
               onClick={() => setSwitchMode('semua')}
               className={`px-3.5 py-1.5 text-xs font-bold rounded-md flex items-center gap-1.5 transition ${
                 switchMode === 'semua'
-                  ? 'bg-madin-700 text-white shadow-xs'
-                  : 'text-madin-700 hover:bg-madin-50'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'text-emerald-700 hover:bg-emerald-50'
               }`}
             >
               <Grid className="w-3.5 h-3.5" />
@@ -488,8 +527,8 @@ export default function JadwalKbmPage() {
               onClick={() => setSwitchMode('reguler')}
               className={`px-3.5 py-1.5 text-xs font-bold rounded-md flex items-center gap-1.5 transition ${
                 switchMode === 'reguler'
-                  ? 'bg-madin-700 text-white shadow-xs'
-                  : 'text-madin-700 hover:bg-madin-50'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'text-emerald-700 hover:bg-emerald-50'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -501,8 +540,8 @@ export default function JadwalKbmPage() {
               onClick={() => setSwitchMode('unggulan')}
               className={`px-3.5 py-1.5 text-xs font-bold rounded-md flex items-center gap-1.5 transition ${
                 switchMode === 'unggulan'
-                  ? 'bg-madin-700 text-white shadow-xs'
-                  : 'text-madin-700 hover:bg-madin-50'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'text-emerald-700 hover:bg-emerald-50'
               }`}
             >
               <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
@@ -510,20 +549,28 @@ export default function JadwalKbmPage() {
             </button>
           </div>
 
-          <span className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700 self-start sm:self-auto">
-            Kategori:{' '}
-            <b>
-              {switchMode === 'semua'
-                ? 'Semua Kelas'
-                : switchMode === 'reguler'
-                ? 'Kelas Reguler Saja'
-                : 'Kelas Unggulan (Ug) Saja'}
-            </b>
-          </span>
+          <div className="flex items-center gap-2 flex-wrap text-xs">
+            <span className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700">
+              Kategori:{' '}
+              <b>
+                {switchMode === 'semua'
+                  ? 'Semua Kelas'
+                  : switchMode === 'reguler'
+                  ? 'Kelas Reguler Saja'
+                  : 'Kelas Unggulan (Ug) Saja'}
+              </b>
+            </span>
+            <span className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 font-semibold text-emerald-800">
+              {listTampil.length} Kelas
+            </span>
+            <span className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 font-medium text-slate-700">
+              {statSlot.terisi} / {statSlot.totalSlot} Slot Terisi
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* 2. Area Tabel Dokumen Resmi yang Dicetak / Ditampilkan Sesuai Gambar 1 */}
+      {/* 2. Area Tabel Dokumen Resmi Jadwal KBM */}
       <div className="card-panel border-0 p-4 md:p-6 shadow-sm" id="areaPrintKBM">
         <div className="text-center mb-4">
           <h5 className="font-bold text-sm md:text-base text-slate-800 uppercase tracking-wide m-0">
@@ -540,7 +587,7 @@ export default function JadwalKbmPage() {
               {/* Baris Header 1 */}
               <tr>
                 <th rowSpan={2} style={{ width: 38 }}>NO</th>
-                <th rowSpan={2} style={{ width: 65 }}>KLS</th>
+                <th rowSpan={2} style={{ width: 70 }}>KLS</th>
                 <th rowSpan={2} style={{ width: 45 }}>PI/PA</th>
                 <th rowSpan={2} style={{ width: 75 }}>TINGKAT</th>
                 <th rowSpan={2} style={{ width: 35 }}>JAM</th>
@@ -580,7 +627,7 @@ export default function JadwalKbmPage() {
                   let badgeClass = 'badge-tingkat-ula';
                   if (k.tingkat === 'WUSTHO') badgeClass = 'badge-tingkat-wustho';
                   else if (k.tingkat === 'ULYA') badgeClass = 'badge-tingkat-ulya';
-                  else if (k.tingkat === "ISTI'DAD") badgeClass = 'badge-tingkat-istidad';
+                  else if (k.tingkat === "ISTI'DAD" || k.tingkat === 'IST') badgeClass = 'badge-tingkat-istidad';
 
                   return (
                     <React.Fragment key={k.key}>
@@ -588,17 +635,17 @@ export default function JadwalKbmPage() {
                       <tr>
                         <td
                           rowSpan={2}
-                          className="text-center font-bold cell-klik-kelas"
-                          onClick={() => setSelectedKelas(k)}
-                          title="Klik untuk lihat detail kelas"
+                          className="text-center font-bold cell-klik-kelas cursor-pointer hover:bg-emerald-50/50"
+                          onClick={() => handleKlsClick(k)}
+                          title="Klik untuk detail kelas, Dobel-klik untuk input jadwal"
                         >
                           {noStr}
                         </td>
                         <td
                           rowSpan={2}
-                          className="text-center font-bold text-madin-700 cell-klik-kelas"
-                          onClick={() => setSelectedKelas(k)}
-                          title="Klik untuk detail kelas"
+                          className="text-center font-bold text-emerald-700 cell-klik-kelas cursor-pointer hover:bg-emerald-50/60 transition-colors"
+                          onClick={() => handleKlsClick(k)}
+                          title="Klik: Detail Kelas | Dobel-klik / Pensil: Edit Jadwal"
                         >
                           <div className="flex items-center justify-center gap-1">
                             <span>{k.kls} {k.bag}</span>
@@ -607,7 +654,17 @@ export default function JadwalKbmPage() {
                                 Ug
                               </span>
                             )}
-                            <Pencil className="w-2.5 h-2.5 text-slate-400 inline" />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openModalInputJadwal(k.key);
+                              }}
+                              title="Edit Jadwal Kelas Ini"
+                              className="p-0.5 rounded hover:bg-emerald-100 text-slate-400 hover:text-emerald-700 transition"
+                            >
+                              <Pencil className="w-3 h-3 inline" />
+                            </button>
                           </div>
                         </td>
                         <td rowSpan={2} className="text-center font-medium">
@@ -620,29 +677,39 @@ export default function JadwalKbmPage() {
 
                         {/* 6 Hari Sesi Jam 1 */}
                         {LIST_HARI.map((hari) => {
-                          const sesi = k.jadwal[hari]?.[1] || [];
-                          if (sesi.length === 0) {
-                            return (
-                              <React.Fragment key={`${hari}-1`}>
-                                <td className="cell-kg text-slate-400 text-center">-</td>
-                                <td className="text-center text-slate-400">-</td>
-                              </React.Fragment>
-                            );
-                          }
-                          const s = sesi[0];
+                          const sesi = k.jadwal[hari]?.[1]?.[0];
+                          const isCutCell = !!(
+                            stateClipboardKG &&
+                            stateClipboardKG.kelasKey === k.key &&
+                            stateClipboardKG.hari === hari &&
+                            stateClipboardKG.jam === 1
+                          );
+
+                          const cutClass = isCutCell
+                            ? 'bg-amber-100 border-2 border-dashed border-amber-500 animate-pulse text-amber-900 font-bold'
+                            : '';
+
                           return (
                             <React.Fragment key={`${hari}-1`}>
                               <td
-                                className="cell-kg cell-kg-clickable"
-                                title={`Asatidz: ${s.guru} (${s.kg})\nMapel: ${s.fan}`}
+                                className={`cell-kg cell-kg-clickable cursor-context-menu select-none transition-colors ${cutClass}`}
+                                onContextMenu={(e) => handleCellContextMenu(e, k, hari, 1, sesi)}
+                                onDoubleClick={(e) => handleCellContextMenu(e, k, hari, 1, sesi)}
+                                title={
+                                  sesi
+                                    ? `Asatidz: ${sesi.guru} (${sesi.kg})\nMapel: ${sesi.fan}\n(Klik kanan / dobel klik untuk opsi)`
+                                    : 'Slot Kosong (-)\n(Klik kanan / dobel klik untuk isi/paste)'
+                                }
                               >
-                                {s.kg}
+                                {sesi ? sesi.kg : '-'}
                               </td>
                               <td
-                                className="text-center font-semibold uppercase text-[11px]"
-                                title={`Kitab/Fan: ${s.fan}`}
+                                className={`text-center font-semibold uppercase text-[11px] ${
+                                  sesi ? 'text-slate-800' : 'text-slate-300'
+                                }`}
+                                title={sesi ? `Kitab/Fan: ${sesi.fan}` : '-'}
                               >
-                                {s.fan}
+                                {sesi ? sesi.fan : '-'}
                               </td>
                             </React.Fragment>
                           );
@@ -669,29 +736,39 @@ export default function JadwalKbmPage() {
 
                         {/* 6 Hari Sesi Jam 2 */}
                         {LIST_HARI.map((hari) => {
-                          const sesi = k.jadwal[hari]?.[2] || [];
-                          if (sesi.length === 0) {
-                            return (
-                              <React.Fragment key={`${hari}-2`}>
-                                <td className="cell-kg text-slate-400 text-center">-</td>
-                                <td className="text-center text-slate-400">-</td>
-                              </React.Fragment>
-                            );
-                          }
-                          const s = sesi[0];
+                          const sesi = k.jadwal[hari]?.[2]?.[0];
+                          const isCutCell = !!(
+                            stateClipboardKG &&
+                            stateClipboardKG.kelasKey === k.key &&
+                            stateClipboardKG.hari === hari &&
+                            stateClipboardKG.jam === 2
+                          );
+
+                          const cutClass = isCutCell
+                            ? 'bg-amber-100 border-2 border-dashed border-amber-500 animate-pulse text-amber-900 font-bold'
+                            : '';
+
                           return (
                             <React.Fragment key={`${hari}-2`}>
                               <td
-                                className="cell-kg cell-kg-clickable"
-                                title={`Asatidz: ${s.guru} (${s.kg})\nMapel: ${s.fan}`}
+                                className={`cell-kg cell-kg-clickable cursor-context-menu select-none transition-colors ${cutClass}`}
+                                onContextMenu={(e) => handleCellContextMenu(e, k, hari, 2, sesi)}
+                                onDoubleClick={(e) => handleCellContextMenu(e, k, hari, 2, sesi)}
+                                title={
+                                  sesi
+                                    ? `Asatidz: ${sesi.guru} (${sesi.kg})\nMapel: ${sesi.fan}\n(Klik kanan / dobel klik untuk opsi)`
+                                    : 'Slot Kosong (-)\n(Klik kanan / dobel klik untuk isi/paste)'
+                                }
                               >
-                                {s.kg}
+                                {sesi ? sesi.kg : '-'}
                               </td>
                               <td
-                                className="text-center font-semibold uppercase text-[11px]"
-                                title={`Kitab/Fan: ${s.fan}`}
+                                className={`text-center font-semibold uppercase text-[11px] ${
+                                  sesi ? 'text-slate-800' : 'text-slate-300'
+                                }`}
+                                title={sesi ? `Kitab/Fan: ${sesi.fan}` : '-'}
                               >
-                                {s.fan}
+                                {sesi ? sesi.fan : '-'}
                               </td>
                             </React.Fragment>
                           );
@@ -706,108 +783,20 @@ export default function JadwalKbmPage() {
         </div>
       </div>
 
+      {/* Floating Clipboard Mode Pindah (Cut & Paste) */}
+      <FloatingBarClipboardKG />
+
+      {/* Context Menu Sel KG */}
+      <ContextMenuKG />
+
       {/* Modal Detail Kelas KBM */}
-      {selectedKelas && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden">
-            <div className="bg-madin-700 text-white px-5 py-3.5 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                <h3 className="font-bold text-sm md:text-base">
-                  Detail Kelas: {selectedKelas.kls} {selectedKelas.bag} {selectedKelas.tingkat} ({selectedKelas.papi})
-                </h3>
-              </div>
-              <button
-                onClick={() => setSelectedKelas(null)}
-                className="p-1 rounded-lg hover:bg-white/10 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <ModalDetailKelasKBM masterStrukturKelas={masterStrukturKelasKBM} />
 
-            <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto bg-slate-50">
-              {/* Card Mustahiq */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-                <h4 className="text-xs font-bold text-madin-700 uppercase tracking-wide border-b border-slate-100 pb-2 mb-3 flex items-center gap-1.5">
-                  <UserCheck className="w-4 h-4" /> Data Mustahiq / Wali Kelas
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Nama Mustahiq:</span>
-                    <strong className="text-slate-800 text-sm">{selectedKelas.mustahiqNama}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Kode KG / NIA:</span>
-                    <span className="font-mono font-bold bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                      {selectedKelas.mustahiqKG}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Lokal / Ruang:</span>
-                    <strong className="text-slate-700">{selectedKelas.lokal}</strong>
-                  </div>
-                </div>
-              </div>
+      {/* Modal Input & Edit Jadwal Kelas KBM */}
+      <ModalInputJadwalKelas masterStrukturKelas={masterStrukturKelasKBM} />
 
-              {/* Rincian Jadwal 6 Hari */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-                <h4 className="text-xs font-bold text-madin-700 uppercase tracking-wide border-b border-slate-100 pb-2 mb-3">
-                  Jadwal Pelajaran Mingguan
-                </h4>
-                <div className="table-responsive overflow-x-auto">
-                  <table className="w-full text-xs text-center border-collapse border border-slate-300">
-                    <thead className="bg-slate-100 font-bold text-slate-700">
-                      <tr>
-                        <th className="border border-slate-300 py-1.5 px-2">JAM</th>
-                        {LIST_HARI.map((h) => (
-                          <th key={h} className="border border-slate-300 py-1.5 px-2">
-                            {h.toUpperCase()}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[1, 2].map((jam) => (
-                        <tr key={jam}>
-                          <td className="border border-slate-300 font-bold bg-slate-50 py-2">
-                            Jam {jam}
-                          </td>
-                          {LIST_HARI.map((h) => {
-                            const sesi = selectedKelas.jadwal[h]?.[jam as 1 | 2] || [];
-                            if (sesi.length === 0) {
-                              return (
-                                <td key={h} className="border border-slate-300 text-slate-400 py-2">
-                                  -
-                                </td>
-                              );
-                            }
-                            const s = sesi[0];
-                            return (
-                              <td key={h} className="border border-slate-300 py-2 px-1">
-                                <div className="font-bold text-madin-700">{s.fan}</div>
-                                <div className="text-[10px] text-slate-500 font-mono">({s.kg})</div>
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 bg-white border-t border-slate-100 text-right">
-              <button
-                onClick={() => setSelectedKelas(null)}
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal Detail Profil Asatidz */}
+      <ModalDetailAsatidz />
     </div>
   );
 }
