@@ -338,3 +338,202 @@ export function formatKamarDisplay(
 
   return `${cleanKode}${cleanKamar}`;
 }
+
+export interface Tree2Rule {
+  tree: 'tree2';
+  unit: string;
+  jurusan: string;
+  semesterType?: string;
+  semesterNumStart?: number;
+  semesterNumEnd?: number;
+  semesterManual?: string;
+  kelasType?: string;
+  kelasRomanStart?: string;
+  kelasRomanEnd?: string;
+  kelasManual?: string;
+  bagType?: string;
+  bagNumStart?: number;
+  bagNumEnd?: number;
+  bagAlphaStart?: string;
+  bagAlphaEnd?: string;
+  bagManual?: string;
+}
+
+export const DEFAULT_TREE2_RULES: Tree2Rule[] = [
+  {
+    tree: 'tree2',
+    unit: 'SMP Plus Darussalam',
+    jurusan: 'Tahfidz',
+    semesterType: 'manual',
+    semesterManual: '-',
+    kelasType: 'roman',
+    kelasRomanStart: 'VII',
+    kelasRomanEnd: 'IX',
+    bagType: 'alpha',
+    bagAlphaStart: 'A',
+    bagAlphaEnd: 'r',
+  },
+  {
+    tree: 'tree2',
+    unit: 'SMP Plus Darussalam',
+    jurusan: 'Sains',
+    semesterType: 'manual',
+    semesterManual: '-',
+    kelasType: 'roman',
+    kelasRomanStart: 'VII',
+    kelasRomanEnd: 'IX',
+    bagType: 'alpha',
+    bagAlphaStart: 'A',
+    bagAlphaEnd: 'r',
+  },
+  {
+    tree: 'tree2',
+    unit: 'SMP Plus Darussalam',
+    jurusan: 'Terpadu',
+    semesterType: 'manual',
+    semesterManual: '-',
+    kelasType: 'roman',
+    kelasRomanStart: 'VII',
+    kelasRomanEnd: 'IX',
+    bagType: 'alpha',
+    bagAlphaStart: 'A',
+    bagAlphaEnd: 'r',
+  },
+  {
+    tree: 'tree2',
+    unit: 'MTs Al Amiriyyah',
+    jurusan: 'Unggulan MIPA/Sains',
+    semesterType: 'manual',
+    semesterManual: '-',
+    kelasType: 'roman',
+    kelasRomanStart: 'VII',
+    kelasRomanEnd: 'IX',
+    bagType: 'alpha',
+    bagAlphaStart: 'A',
+    bagAlphaEnd: 'E',
+  },
+];
+
+const LOCAL_STORAGE_KEY_TREE2 = 'madin_tree2_rules';
+
+export async function loadTree2Rules(): Promise<Tree2Rule[]> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'APP_SETTINGS')
+      .maybeSingle();
+
+    if (!error && data?.value?.tree2) {
+      const rawTree2 = data.value.tree2;
+      const parsed = typeof rawTree2 === 'string' ? JSON.parse(rawTree2) : rawTree2;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(LOCAL_STORAGE_KEY_TREE2, JSON.stringify(parsed));
+        }
+        return parsed;
+      }
+    }
+  } catch {
+    // Abaikan jika Supabase offline
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY_TREE2);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // LocalStorage error
+    }
+  }
+
+  return DEFAULT_TREE2_RULES;
+}
+
+/**
+ * Menghasilkan pilihan dropdown / datalist berjenjang untuk Sekolah Formal:
+ * Unit -> Jurusan -> Semester -> Kelas -> Bagian
+ */
+export function parseTree2Options(
+  rules: Tree2Rule[],
+  currentUnit?: string,
+  currentJurusan?: string
+) {
+  const units = Array.from(new Set(rules.map((r) => r.unit).filter(Boolean))).sort();
+
+  const matchingUnitRules = currentUnit
+    ? rules.filter((r) => r.unit.toLowerCase() === currentUnit.toLowerCase())
+    : [];
+
+  const jurusans = Array.from(
+    new Set(matchingUnitRules.map((r) => r.jurusan).filter(Boolean))
+  ).sort();
+
+  const matchingJurusanRules = currentJurusan
+    ? matchingUnitRules.filter(
+        (r) => r.jurusan.toLowerCase() === currentJurusan.toLowerCase()
+      )
+    : matchingUnitRules;
+
+  // Himpun opsi semester, kelas, dan bag dari matching rules
+  const semestersSet = new Set<string>();
+  const kelasSet = new Set<string>();
+  const bagSet = new Set<string>();
+
+  const targetRules = matchingJurusanRules.length > 0 ? matchingJurusanRules : matchingUnitRules;
+
+  targetRules.forEach((rule) => {
+    // Semester
+    if (rule.semesterType === 'numeric') {
+      const start = Number(rule.semesterNumStart) || 1;
+      const end = Number(rule.semesterNumEnd) || 2;
+      for (let i = start; i <= end; i++) semestersSet.add(String(i));
+    } else if (rule.semesterManual) {
+      rule.semesterManual.split(',').map((s) => s.trim()).filter(Boolean).forEach((s) => semestersSet.add(s));
+    } else {
+      semestersSet.add('1');
+      semestersSet.add('2');
+    }
+
+    // Kelas
+    if (rule.kelasType === 'roman') {
+      const romanOrder = ['VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+      const sIdx = romanOrder.indexOf(rule.kelasRomanStart || 'VII');
+      const eIdx = romanOrder.indexOf(rule.kelasRomanEnd || 'IX');
+      if (sIdx !== -1 && eIdx !== -1) {
+        romanOrder.slice(Math.min(sIdx, eIdx), Math.max(sIdx, eIdx) + 1).forEach((r) => kelasSet.add(r));
+      } else {
+        ['VII', 'VIII', 'IX', 'X', 'XI', 'XII'].forEach((r) => kelasSet.add(r));
+      }
+    } else if (rule.kelasManual) {
+      rule.kelasManual.split(',').map((s) => s.trim()).filter(Boolean).forEach((s) => kelasSet.add(s));
+    } else {
+      ['VII', 'VIII', 'IX', 'X', 'XI', 'XII'].forEach((r) => kelasSet.add(r));
+    }
+
+    // Bagian
+    if (rule.bagType === 'alpha') {
+      const startChar = (rule.bagAlphaStart || 'A').toUpperCase().charCodeAt(0);
+      const endChar = (rule.bagAlphaEnd || 'E').toUpperCase().charCodeAt(0);
+      for (let c = Math.min(startChar, endChar); c <= Math.max(startChar, endChar); c++) {
+        bagSet.add(String.fromCharCode(c));
+      }
+    } else if (rule.bagManual) {
+      rule.bagManual.split(',').map((s) => s.trim()).filter(Boolean).forEach((s) => bagSet.add(s));
+    } else {
+      ['A', 'B', 'C', 'D', 'E'].forEach((s) => bagSet.add(s));
+    }
+  });
+
+  return {
+    units,
+    jurusans,
+    semesters: Array.from(semestersSet),
+    kelases: Array.from(kelasSet),
+    bags: Array.from(bagSet),
+  };
+}

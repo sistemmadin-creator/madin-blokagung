@@ -11,6 +11,7 @@ interface SantriState {
   hiddenColumns: string[];
   selectedSantri: Santri | null;
   editSantriData: Santri | null;
+  selectedNoInduk: string[];
   
   // Modals state
   isInputModalOpen: boolean;
@@ -18,9 +19,11 @@ interface SantriState {
   isHideModalOpen: boolean;
   isDetailModalOpen: boolean;
 
-  // Pagination
+  // Pagination & Sorting
   page: number;
   pageSize: number;
+  sortKey: string | null;
+  sortDirection: 'asc' | 'desc';
 
   // Actions
   fetchSantri: () => Promise<void>;
@@ -31,6 +34,11 @@ interface SantriState {
   hideAllColumns: (keys: string[]) => void;
   showAllColumns: () => void;
   setPage: (page: number) => void;
+  setPageSize: (size: number) => void;
+  setSort: (key: string) => void;
+  toggleSelectRow: (noInduk: string) => void;
+  toggleSelectAll: (keys: string[]) => void;
+  clearSelection: () => void;
   
   // Modal toggles
   openInputModal: (santriToEdit?: Santri | null) => void;
@@ -45,6 +53,8 @@ interface SantriState {
   // CRUD
   saveSantri: (data: Santri, isEdit: boolean, oldNoInduk?: string) => Promise<boolean>;
   deleteSantri: (no_induk: string) => Promise<boolean>;
+  deleteSelectedSantri: () => Promise<boolean>;
+  deleteAllSantri: () => Promise<boolean>;
 }
 
 export const useSantriStore = create<SantriState>((set, get) => ({
@@ -55,6 +65,7 @@ export const useSantriStore = create<SantriState>((set, get) => ({
   hiddenColumns: [],
   selectedSantri: null,
   editSantriData: null,
+  selectedNoInduk: [],
   
   isInputModalOpen: false,
   isFilterModalOpen: false,
@@ -62,7 +73,9 @@ export const useSantriStore = create<SantriState>((set, get) => ({
   isDetailModalOpen: false,
 
   page: 1,
-  pageSize: 50,
+  pageSize: 25,
+  sortKey: 'no_induk',
+  sortDirection: 'asc',
 
   fetchSantri: async () => {
     set({ isLoading: true });
@@ -106,6 +119,42 @@ export const useSantriStore = create<SantriState>((set, get) => ({
   showAllColumns: () => set({ hiddenColumns: [] }),
 
   setPage: (page) => set({ page }),
+  setPageSize: (pageSize) => set({ pageSize, page: 1 }),
+
+  setSort: (key) =>
+    set((state) => {
+      if (state.sortKey === key) {
+        return {
+          sortDirection: state.sortDirection === 'asc' ? 'desc' : 'asc',
+        };
+      }
+      return {
+        sortKey: key,
+        sortDirection: 'asc',
+      };
+    }),
+
+  toggleSelectRow: (noInduk) =>
+    set((state) => ({
+      selectedNoInduk: state.selectedNoInduk.includes(noInduk)
+        ? state.selectedNoInduk.filter((id) => id !== noInduk)
+        : [...state.selectedNoInduk, noInduk],
+    })),
+
+  toggleSelectAll: (keys) =>
+    set((state) => {
+      const allSelected = keys.every((k) => state.selectedNoInduk.includes(k));
+      if (allSelected) {
+        return {
+          selectedNoInduk: state.selectedNoInduk.filter((id) => !keys.includes(id)),
+        };
+      }
+      return {
+        selectedNoInduk: Array.from(new Set([...state.selectedNoInduk, ...keys])),
+      };
+    }),
+
+  clearSelection: () => set({ selectedNoInduk: [] }),
 
   openInputModal: (santriToEdit = null) =>
     set({ isInputModalOpen: true, editSantriData: santriToEdit }),
@@ -160,6 +209,44 @@ export const useSantriStore = create<SantriState>((set, get) => ({
     } catch (err: any) {
       console.error('Delete santri error:', err.message);
       alert('Gagal menghapus santri: ' + err.message);
+      return false;
+    }
+  },
+
+  deleteSelectedSantri: async () => {
+    const selected = get().selectedNoInduk;
+    if (selected.length === 0) return false;
+    try {
+      const { error } = await supabase
+        .from('santri')
+        .delete()
+        .in('no_induk', selected);
+      if (error) throw error;
+      await logActivity('HAPUS BANYAK SANTRI', `Menghapus ${selected.length} santri terpilih`);
+      set({ selectedNoInduk: [] });
+      await get().fetchSantri();
+      return true;
+    } catch (err: any) {
+      console.error('Delete selected error:', err.message);
+      alert('Gagal menghapus santri terpilih: ' + err.message);
+      return false;
+    }
+  },
+
+  deleteAllSantri: async () => {
+    try {
+      const { error } = await supabase
+        .from('santri')
+        .delete()
+        .neq('no_induk', '');
+      if (error) throw error;
+      await logActivity('KOSONGKAN DATABASE SANTRI', 'Menghapus SELURUH data santri di Database');
+      set({ selectedNoInduk: [], page: 1 });
+      await get().fetchSantri();
+      return true;
+    } catch (err: any) {
+      console.error('Delete all error:', err.message);
+      alert('Gagal mengosongkan database santri: ' + err.message);
       return false;
     }
   },

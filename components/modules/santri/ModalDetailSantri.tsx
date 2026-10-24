@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { useSantriStore } from '@/stores/useSantriStore';
-import { User, MapPin, Home, GraduationCap, Users, Phone, Edit, Trash2 } from 'lucide-react';
+import { User, MapPin, Home, GraduationCap, Users, Phone, Edit, Trash2, ZoomIn } from 'lucide-react';
+import ModalFotoZoom from './ModalFotoZoom';
 
 export default function ModalDetailSantri() {
   const {
@@ -13,6 +14,8 @@ export default function ModalDetailSantri() {
     openInputModal,
     deleteSantri,
   } = useSantriStore();
+
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
 
   if (!selectedSantri) return null;
 
@@ -29,29 +32,41 @@ export default function ModalDetailSantri() {
   };
 
   return (
-    <Dialog
-      isOpen={isDetailModalOpen}
-      onClose={closeDetailModal}
-      title="Kartu Biodata Lengkap Santri"
-      maxWidth="3xl"
-    >
-      <div className="space-y-6">
-        {/* Header Profil Santri */}
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
-          <div className="w-24 h-32 rounded-xl border-2 border-slate-200 bg-white shadow-sm overflow-hidden flex-shrink-0 flex items-center justify-center">
-            {selectedSantri.foto ? (
-              <img
-                src={selectedSantri.foto}
-                alt={selectedSantri.nama}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="text-center text-slate-400 p-2">
-                <User className="w-10 h-10 mx-auto mb-1 opacity-50" />
-                <span className="text-[10px] font-medium">Foto 3x4</span>
-              </div>
-            )}
-          </div>
+    <>
+      <Dialog
+        isOpen={isDetailModalOpen}
+        onClose={closeDetailModal}
+        title="Kartu Biodata Lengkap Santri"
+        maxWidth="3xl"
+      >
+        <div className="space-y-6">
+          {/* Header Profil Santri */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+            <div
+              onClick={() => selectedSantri.foto && setIsZoomOpen(true)}
+              className={`w-24 h-32 rounded-xl border-2 border-slate-200 bg-white shadow-sm overflow-hidden flex-shrink-0 flex items-center justify-center relative group ${
+                selectedSantri.foto ? 'cursor-pointer hover:border-madin-600 transition' : ''
+              }`}
+              title={selectedSantri.foto ? 'Klik untuk memperbesar foto (Lightbox)' : undefined}
+            >
+              {selectedSantri.foto ? (
+                <>
+                  <img
+                    src={selectedSantri.foto}
+                    alt={selectedSantri.nama}
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                  />
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition duration-200">
+                    <ZoomIn className="w-5 h-5 drop-shadow-md" />
+                  </div>
+                </>
+              ) : (
+                <div className="text-center text-slate-400 p-2">
+                  <User className="w-10 h-10 mx-auto mb-1 opacity-50" />
+                  <span className="text-[10px] font-medium">Foto 3x4</span>
+                </div>
+              )}
+            </div>
 
           <div className="flex-1 text-center sm:text-left space-y-1.5">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
@@ -254,5 +269,14 @@ export default function ModalDetailSantri() {
         </div>
       </div>
     </Dialog>
+
+      <ModalFotoZoom
+        isOpen={isZoomOpen}
+        onClose={() => setIsZoomOpen(false)}
+        fotoUrl={selectedSantri.foto}
+        nama={selectedSantri.nama}
+        noInduk={selectedSantri.no_induk}
+      />
+    </>
   );
 }

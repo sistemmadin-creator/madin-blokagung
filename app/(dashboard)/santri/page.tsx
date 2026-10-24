@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { SANTRI_COLUMNS, Santri } from '@/types/santri';
 import {
@@ -14,6 +14,13 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  Trash2,
+  ChevronDown,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  AlertTriangle,
+  Settings,
 } from 'lucide-react';
 import { exportToExcel, parseExcelFile } from '@/lib/utils/excel';
 import ModalInputSantri from '@/components/modules/santri/ModalInputSantri';
@@ -21,7 +28,23 @@ import ModalDetailSantri from '@/components/modules/santri/ModalDetailSantri';
 import ModalFilterSantri from '@/components/modules/santri/ModalFilterSantri';
 import ModalHideColumns from '@/components/modules/santri/ModalHideColumns';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
-import { Settings } from 'lucide-react';
+import Dialog from '@/components/ui/Dialog';
+
+function getPaginationNumbers(currentPage: number, totalPages: number): (number | '...')[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, '...', totalPages];
+  }
+
+  if (currentPage >= totalPages - 3) {
+    return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+  }
+
+  return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+}
 
 export default function SantriPage() {
   const {
@@ -35,6 +58,15 @@ export default function SantriPage() {
     page,
     pageSize,
     setPage,
+    setPageSize,
+    sortKey,
+    sortDirection,
+    setSort,
+    selectedNoInduk,
+    toggleSelectRow,
+    toggleSelectAll,
+    deleteSelectedSantri,
+    deleteAllSantri,
     openInputModal,
     openFilterModal,
     openHideModal,
@@ -43,17 +75,40 @@ export default function SantriPage() {
   } = useSantriStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isHierarchyOpen, setIsHierarchyOpen] = React.useState(false);
+  const deleteDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [isHierarchyOpen, setIsHierarchyOpen] = useState(false);
+  const [isDeleteDropdownOpen, setIsDeleteDropdownOpen] = useState(false);
+
+  // 2-Step Modal State untuk Hapus Semua Data
+  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
+  const [deleteAllStep, setDeleteAllStep] = useState<1 | 2>(1);
+  const [confirmInputText, setConfirmInputText] = useState('');
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   useEffect(() => {
     fetchSantri();
   }, [fetchSantri]);
 
-  // Client-side filtering across search keyword and multi-token filters
+  // Tutup dropdown Hapus saat klik di luar
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        deleteDropdownRef.current &&
+        !deleteDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDeleteDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Client-side filtering & sorting
   const filteredData = useMemo(() => {
     let result = santriList;
 
-    // 1. Keyword search (name, no_induk, nisn, kamar, etc)
+    // 1. Keyword search (nama, no_induk, nisn, kamar, blok, desa)
     if (searchKeyword.trim()) {
       const q = searchKeyword.toLowerCase();
       result = result.filter(
@@ -79,8 +134,18 @@ export default function SantriPage() {
       });
     }
 
+    // 3. Client-side Column Sorting
+    if (sortKey) {
+      result = [...result].sort((a, b) => {
+        const aVal = (a as unknown as Record<string, unknown>)[sortKey] ?? '';
+        const bVal = (b as unknown as Record<string, unknown>)[sortKey] ?? '';
+        const cmp = String(aVal).localeCompare(String(bVal), undefined, { numeric: true });
+        return sortDirection === 'asc' ? cmp : -cmp;
+      });
+    }
+
     return result;
-  }, [santriList, searchKeyword, filterValues]);
+  }, [santriList, searchKeyword, filterValues, sortKey, sortDirection]);
 
   // Pagination calculation
   const totalItems = filteredData.length;
@@ -93,6 +158,18 @@ export default function SantriPage() {
   const visibleColumns = SANTRI_COLUMNS.filter(
     (col) => !hiddenColumns.includes(col.key as string)
   );
+
+  // Select all checkbox state
+  const isAllSelected =
+    paginatedData.length > 0 &&
+    paginatedData.every((s) => selectedNoInduk.includes(s.no_induk));
+  const isSomeSelected =
+    !isAllSelected &&
+    paginatedData.some((s) => selectedNoInduk.includes(s.no_induk));
+
+  const handleToggleSelectAll = () => {
+    toggleSelectAll(paginatedData.map((s) => s.no_induk));
+  };
 
   const handleExport = () => {
     exportToExcel(filteredData, 'Data_Santri_Madin_Blokagung');
@@ -153,7 +230,33 @@ export default function SantriPage() {
     }
   };
 
+  const handleDeleteSelected = async () => {
+    setIsDeleteDropdownOpen(false);
+    if (selectedNoInduk.length === 0) return;
+    if (confirm(`Yakin ingin menghapus ${selectedNoInduk.length} data santri terpilih?`)) {
+      await deleteSelectedSantri();
+    }
+  };
+
+  const handleOpenDeleteAllModal = () => {
+    setIsDeleteDropdownOpen(false);
+    setDeleteAllStep(1);
+    setConfirmInputText('');
+    setIsDeleteAllModalOpen(true);
+  };
+
+  const handleConfirmDeleteAll = async () => {
+    if (confirmInputText !== 'HAPUS SEMUA') return;
+    setIsDeletingAll(true);
+    const ok = await deleteAllSantri();
+    setIsDeletingAll(false);
+    if (ok) {
+      setIsDeleteAllModalOpen(false);
+    }
+  };
+
   const activeFilterCount = Object.keys(filterValues).length;
+  const paginationNumbers = getPaginationNumbers(currentPage, totalPages);
 
   return (
     <div className="space-y-6">
@@ -225,28 +328,93 @@ export default function SantriPage() {
         </div>
       </div>
 
-      {/* Bar Pencarian & Tombol Filter Token */}
+      {/* Bar Kontrol Tabel: Page Size, Bulk Delete, Search, Filter */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
-        <div className="relative w-full md:w-96">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
-            placeholder="Cari nama, nomor induk, kamar, alamat..."
-            className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-madin-600 focus:border-transparent"
-          />
-          {searchKeyword && (
-            <button
-              onClick={() => setSearchKeyword('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+        {/* Kontrol Sisi Kiri: Tampilkan Data & Dropdown Hapus Bulk */}
+        <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+            <span>Tampilkan</span>
+            <select
+              data-testid="page-size-select"
+              value={String(pageSize)}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="py-1.5 px-2.5 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-madin-600"
             >
-              ×
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+            <span>data</span>
+          </div>
+
+          {/* Dropdown Hapus Bulk (Terpilih & Semua) */}
+          <div className="relative" ref={deleteDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsDeleteDropdownOpen(!isDeleteDropdownOpen)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                selectedNoInduk.length > 0
+                  ? 'bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100'
+                  : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>
+                Hapus
+                {selectedNoInduk.length > 0 && ` (${selectedNoInduk.length})`}
+              </span>
+              <ChevronDown className="w-3 h-3 ml-0.5" />
             </button>
-          )}
+
+            {isDeleteDropdownOpen && (
+              <div className="absolute left-0 mt-1.5 w-56 rounded-xl bg-white border border-slate-200 shadow-lg py-1.5 z-30 animate-in fade-in duration-150">
+                <button
+                  type="button"
+                  onClick={handleDeleteSelected}
+                  disabled={selectedNoInduk.length === 0}
+                  className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Hapus Terpilih ({selectedNoInduk.length})</span>
+                </button>
+
+                <div className="my-1 border-t border-slate-100" />
+
+                <button
+                  type="button"
+                  onClick={handleOpenDeleteAllModal}
+                  className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2 text-rose-600 hover:bg-rose-50 font-semibold transition"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Hapus Semua Data</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* Kontrol Sisi Kanan: Search & Filter Lanjutan */}
         <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              placeholder="Cari nama, nomor induk, kamar..."
+              className="w-full pl-9 pr-7 py-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-madin-600 focus:border-transparent"
+            />
+            {searchKeyword && (
+              <button
+                onClick={() => setSearchKeyword('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
           <button
             onClick={openFilterModal}
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition ${
@@ -257,7 +425,7 @@ export default function SantriPage() {
           >
             <Filter className="w-3.5 h-3.5 text-madin-600" />
             <span>
-              Filter Lanjutan (16 Kategori)
+              Filter Lanjutan
               {activeFilterCount > 0 && ` [${activeFilterCount}]`}
             </span>
           </button>
@@ -278,39 +446,94 @@ export default function SantriPage() {
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-600 font-semibold z-10 select-none">
               <tr>
+                {/* Checkbox Select All */}
+                <th className="p-3 w-10 text-center whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = isSomeSelected;
+                    }}
+                    onChange={handleToggleSelectAll}
+                    title="Pilih Semua di Halaman Ini"
+                    className="w-4 h-4 rounded text-madin-700 focus:ring-madin-600 cursor-pointer"
+                  />
+                </th>
+
                 <th className="p-3 w-10 text-center whitespace-nowrap">No</th>
-                {visibleColumns.map((col) => (
-                  <th key={col.key} className="p-3 whitespace-nowrap">
-                    {col.label}
-                  </th>
-                ))}
+
+                {/* Kolom-kolom dengan Fitur Click to Sort */}
+                {visibleColumns.map((col) => {
+                  const isCurrentSort = sortKey === col.key;
+                  return (
+                    <th
+                      key={col.key}
+                      onClick={() => setSort(col.key)}
+                      title={`Klik untuk mengurutkan berdasarkan ${col.label}`}
+                      className="p-3 whitespace-nowrap cursor-pointer hover:bg-slate-100 transition"
+                    >
+                      <div className="flex items-center gap-1.5 group">
+                        <span>{col.label}</span>
+                        {isCurrentSort ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="w-3.5 h-3.5 text-madin-700" />
+                          ) : (
+                            <ArrowDown className="w-3.5 h-3.5 text-madin-700" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition" />
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {isLoading ? (
                 <tr>
-                  <td colSpan={visibleColumns.length + 1} className="p-12 text-center text-slate-400">
+                  <td colSpan={visibleColumns.length + 2} className="p-12 text-center text-slate-400">
                     <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-madin-600" />
                     Sedang memuat data santri dari Supabase...
                   </td>
                 </tr>
               ) : paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={visibleColumns.length + 1} className="p-12 text-center text-slate-400">
+                  <td colSpan={visibleColumns.length + 2} className="p-12 text-center text-slate-400">
                     Tidak ditemukan data santri yang sesuai kriteria filter/pencarian.
                   </td>
                 </tr>
               ) : (
                 paginatedData.map((s, idx) => {
                   const rowNumber = startIndex + idx + 1;
+                  const isSelected = selectedNoInduk.includes(s.no_induk);
+
                   return (
                     <tr
                       key={s.no_induk || idx}
                       onClick={() => openDetailModal(s)}
-                      className="hover:bg-slate-50/80 transition cursor-pointer"
+                      className={`transition cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50/60 hover:bg-emerald-100/70'
+                          : 'hover:bg-slate-50/80'
+                      }`}
                       title="Klik baris untuk melihat kartu detail lengkap"
                     >
+                      {/* Checkbox Baris */}
+                      <td
+                        className="p-3 text-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectRow(s.no_induk)}
+                          className="w-4 h-4 rounded text-madin-700 focus:ring-madin-600 cursor-pointer"
+                        />
+                      </td>
+
                       <td className="p-3 text-center text-slate-400">{rowNumber}</td>
+
                       {visibleColumns.map((col) => {
                         const val = s[col.key];
 
@@ -360,7 +583,7 @@ export default function SantriPage() {
           </table>
         </div>
 
-        {/* Footer Paginasi */}
+        {/* Footer Paginasi Numerik */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div>
             Menampilkan{' '}
@@ -368,27 +591,55 @@ export default function SantriPage() {
               {totalItems > 0 ? startIndex + 1 : 0} - {Math.min(startIndex + pageSize, totalItems)}
             </span>{' '}
             dari <span className="font-semibold text-slate-800">{totalItems}</span> santri
-            {searchKeyword && ` (disaring dari total ${santriList.length})`}
+            {selectedNoInduk.length > 0 && (
+              <span className="ml-2 font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                {selectedNoInduk.length} terpilih
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap justify-center">
+            {/* Tombol Sebelumnya */}
             <button
               onClick={() => setPage(Math.max(1, currentPage - 1))}
               disabled={currentPage <= 1 || isLoading}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium text-xs"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
               <span>Sebelumnya</span>
             </button>
 
-            <span className="px-3 py-1 text-slate-500 font-medium">
-              Hal {currentPage} / {totalPages}
-            </span>
+            {/* Nomor-nomor Halaman */}
+            {paginationNumbers.map((pNum, index) => {
+              if (pNum === '...') {
+                return (
+                  <span key={`dots-${index}`} className="px-2 py-1 text-slate-400 select-none">
+                    ...
+                  </span>
+                );
+              }
 
+              const isCurrent = pNum === currentPage;
+              return (
+                <button
+                  key={`page-${pNum}`}
+                  onClick={() => setPage(pNum as number)}
+                  className={`w-8 h-8 rounded-lg text-xs font-semibold transition ${
+                    isCurrent
+                      ? 'bg-madin-700 text-white shadow-xs'
+                      : 'border border-slate-200 bg-white hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  {pNum}
+                </button>
+              );
+            })}
+
+            {/* Tombol Berikutnya */}
             <button
               onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage >= totalPages || isLoading}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium text-xs"
             >
               <span>Berikutnya</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -396,6 +647,90 @@ export default function SantriPage() {
           </div>
         </div>
       </div>
+
+      {/* 2-Step Verification Modal untuk Hapus Semua Data */}
+      <Dialog
+        isOpen={isDeleteAllModalOpen}
+        onClose={() => setIsDeleteAllModalOpen(false)}
+        title="Pengosongan Database Santri"
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          {deleteAllStep === 1 ? (
+            <div className="space-y-4 text-center sm:text-left">
+              <div className="flex flex-col sm:flex-row items-center gap-3 p-4 rounded-xl bg-rose-50 border border-rose-200">
+                <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-rose-900">
+                    AWAS! Hapus SELURUH Data Santri?
+                  </h4>
+                  <p className="text-xs text-rose-700 mt-1 leading-relaxed">
+                    Tindakan ini akan menghapus <strong>seluruh {santriList.length} santri</strong> dari database Supabase secara permanen. Data yang telah dihapus tidak dapat dipulihkan kembali!
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteAllModalOpen(false)}
+                  className="px-4 py-2 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
+                >
+                  Batalkan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteAllStep(2)}
+                  className="px-4 py-2 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition"
+                >
+                  Lanjut ke Verifikasi (Langkah 2)
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+                Ketik teks <span className="font-mono font-bold text-rose-600 select-all">HAPUS SEMUA</span> di bawah ini untuk mengonfirmasi pengosongan seluruh database:
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Ketik Konfirmasi
+                </label>
+                <input
+                  type="text"
+                  value={confirmInputText}
+                  onChange={(e) => setConfirmInputText(e.target.value)}
+                  placeholder="HAPUS SEMUA"
+                  className="w-full text-xs font-mono font-bold py-2.5 px-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-rose-500 uppercase"
+                />
+              </div>
+
+              <div className="flex justify-between items-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteAllStep(1)}
+                  className="px-3 py-2 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
+                >
+                  Kembali
+                </button>
+
+                <button
+                  type="button"
+                  disabled={confirmInputText !== 'HAPUS SEMUA' || isDeletingAll}
+                  onClick={handleConfirmDeleteAll}
+                  className="flex items-center gap-1.5 px-5 py-2 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isDeletingAll ? 'Mengosongkan Database...' : 'Konfirmasi Kosongkan'}</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Dialog>
 
       {/* Komponen Modal-Modal Santri */}
       <ModalInputSantri />
