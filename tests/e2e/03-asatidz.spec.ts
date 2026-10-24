@@ -14,7 +14,7 @@ test.describe('Modul 02: Master Data Dewan Asatidz', () => {
   });
 
   test('search input for asatidz works', async ({ page }) => {
-    const searchInput = page.getByPlaceholder(/Cari nama asatidz, NIA/i);
+    const searchInput = page.getByPlaceholder(/Pencarian: Nama, NIA, NIS/i);
     await expect(searchInput).toBeVisible();
     await searchInput.fill('Ahmad');
     await expect(searchInput).toHaveValue('Ahmad');
@@ -23,15 +23,15 @@ test.describe('Modul 02: Master Data Dewan Asatidz', () => {
   test('opens Tambah Asatidz modal and displays proper form inputs', async ({ page }) => {
     await page.getByRole('button', { name: /Tambah Asatidz/i }).click();
 
-    await expect(page.getByRole('heading', { name: /Pendaftaran Dewan Asatidz Baru/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Form Pendaftaran Data Asatidz/i })).toBeVisible();
 
     // Verify fields
-    await expect(page.getByPlaceholder(/Nama Lengkap dengan Gelar bila ada/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/Nama lengkap asatidz/i)).toBeVisible();
 
     // Close modal
     const cancelBtn = page.getByRole('button', { name: /Batal/i });
     await cancelBtn.click();
-    await expect(page.getByRole('heading', { name: /Pendaftaran Dewan Asatidz Baru/i })).toBeHidden();
+    await expect(page.getByRole('heading', { name: /Form Pendaftaran Data Asatidz/i })).toBeHidden();
   });
 
   test('opens and interacts with Filter Asatidz modal', async ({ page }) => {

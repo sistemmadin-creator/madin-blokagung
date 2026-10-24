@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { create } from 'zustand';
 import { Asatidz } from '@/types/asatidz';
 import { supabase } from '@/lib/supabase/client';
@@ -11,14 +12,24 @@ interface AsatidzState {
   selectedAsatidz: Asatidz | null;
   editAsatidzData: Asatidz | null;
 
+  // Multi-row selection & Column visibility
+  selectedNiaList: string[];
+  hiddenColumns: string[];
+
   // Modals state
   isInputModalOpen: boolean;
   isFilterModalOpen: boolean;
   isDetailModalOpen: boolean;
+  isImportModalOpen: boolean;
+  isHideModalOpen: boolean;
+  isFotoZoomOpen: boolean;
+  zoomFotoData: { url: string; nama: string; nia?: string } | null;
 
-  // Pagination
+  // Pagination & Sorting
   page: number;
   pageSize: number;
+  sortKey: string;
+  sortDirection: 'asc' | 'desc';
 
   // Actions
   fetchAsatidz: () => Promise<void>;
@@ -26,6 +37,18 @@ interface AsatidzState {
   setFilterValue: (key: string, value: string) => void;
   resetFilters: () => void;
   setPage: (page: number) => void;
+  setPageSize: (size: number) => void;
+  setSort: (key: string) => void;
+
+  // Selection Actions
+  toggleSelectRow: (nia: string) => void;
+  toggleSelectAll: (keys: string[]) => void;
+  clearSelection: () => void;
+
+  // Column Visibility Actions
+  toggleColumn: (key: string) => void;
+  hideAllColumns: (keys: string[]) => void;
+  showAllColumns: () => void;
 
   // Modal toggles
   openInputModal: (asatidzToEdit?: Asatidz | null) => void;
@@ -34,6 +57,12 @@ interface AsatidzState {
   closeFilterModal: () => void;
   openDetailModal: (asatidz: Asatidz) => void;
   closeDetailModal: () => void;
+  openImportModal: () => void;
+  closeImportModal: () => void;
+  openHideModal: () => void;
+  closeHideModal: () => void;
+  openFotoZoom: (url: string, nama: string, nia?: string) => void;
+  closeFotoZoom: () => void;
 
   // Helper NIA generator
   generateNextNIA: (prefix: string) => string;
@@ -41,6 +70,7 @@ interface AsatidzState {
   // CRUD
   saveAsatidz: (data: Asatidz, isEdit: boolean, oldNia?: string) => Promise<boolean>;
   deleteAsatidz: (nia: string) => Promise<boolean>;
+  deleteSelectedAsatidz: () => Promise<boolean>;
 }
 
 export const useAsatidzStore = create<AsatidzState>((set, get) => ({
@@ -51,12 +81,21 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
   selectedAsatidz: null,
   editAsatidzData: null,
 
+  selectedNiaList: [],
+  hiddenColumns: ['alamat_asal'],
+
   isInputModalOpen: false,
   isFilterModalOpen: false,
   isDetailModalOpen: false,
+  isImportModalOpen: false,
+  isHideModalOpen: false,
+  isFotoZoomOpen: false,
+  zoomFotoData: null,
 
   page: 1,
-  pageSize: 50,
+  pageSize: 25,
+  sortKey: 'nama_asatidz',
+  sortDirection: 'asc',
 
   fetchAsatidz: async () => {
     set({ isLoading: true });
@@ -91,6 +130,58 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
 
   setPage: (page) => set({ page }),
 
+  setPageSize: (size) => set({ pageSize: size, page: 1 }),
+
+  setSort: (key) =>
+    set((state) => {
+      if (state.sortKey === key) {
+        return {
+          sortDirection: state.sortDirection === 'asc' ? 'desc' : 'asc',
+          page: 1,
+        };
+      }
+      return { sortKey: key, sortDirection: 'asc', page: 1 };
+    }),
+
+  toggleSelectRow: (nia) =>
+    set((state) => {
+      const exists = state.selectedNiaList.includes(nia);
+      return {
+        selectedNiaList: exists
+          ? state.selectedNiaList.filter((item) => item !== nia)
+          : [...state.selectedNiaList, nia],
+      };
+    }),
+
+  toggleSelectAll: (keys) =>
+    set((state) => {
+      const allSelected = keys.every((k) => state.selectedNiaList.includes(k));
+      if (allSelected) {
+        return {
+          selectedNiaList: state.selectedNiaList.filter((k) => !keys.includes(k)),
+        };
+      } else {
+        const setUnion = new Set([...state.selectedNiaList, ...keys]);
+        return { selectedNiaList: Array.from(setUnion) };
+      }
+    }),
+
+  clearSelection: () => set({ selectedNiaList: [] }),
+
+  toggleColumn: (key) =>
+    set((state) => {
+      const isHidden = state.hiddenColumns.includes(key);
+      return {
+        hiddenColumns: isHidden
+          ? state.hiddenColumns.filter((k) => k !== key)
+          : [...state.hiddenColumns, key],
+      };
+    }),
+
+  hideAllColumns: (keys) => set({ hiddenColumns: keys }),
+
+  showAllColumns: () => set({ hiddenColumns: [] }),
+
   openInputModal: (asatidzToEdit = null) =>
     set({ isInputModalOpen: true, editAsatidzData: asatidzToEdit }),
   closeInputModal: () => set({ isInputModalOpen: false, editAsatidzData: null }),
@@ -101,6 +192,16 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
   openDetailModal: (asatidz) =>
     set({ isDetailModalOpen: true, selectedAsatidz: asatidz }),
   closeDetailModal: () => set({ isDetailModalOpen: false, selectedAsatidz: null }),
+
+  openImportModal: () => set({ isImportModalOpen: true }),
+  closeImportModal: () => set({ isImportModalOpen: false }),
+
+  openHideModal: () => set({ isHideModalOpen: true }),
+  closeHideModal: () => set({ isHideModalOpen: false }),
+
+  openFotoZoom: (url, nama, nia) =>
+    set({ isFotoZoomOpen: true, zoomFotoData: { url, nama, nia } }),
+  closeFotoZoom: () => set({ isFotoZoomOpen: false, zoomFotoData: null }),
 
   generateNextNIA: (prefix: string) => {
     const list = get().asatidzList;
@@ -117,22 +218,28 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
     });
 
     const nextNum = maxNum + 1;
-    return `${cleanPrefix}${String(nextNum).padStart(3, '0')}`;
+    return `${cleanPrefix}${nextNum}`;
   },
 
   saveAsatidz: async (data, isEdit, oldNia) => {
     try {
+      const payload: Record<string, any> = { ...data };
+      delete payload.id; // Let supabase handle primary key or update
+      if (payload.nama_asatidz) {
+        payload.nama_asatidz = String(payload.nama_asatidz).toUpperCase();
+      }
+
       if (isEdit && oldNia) {
         const { error } = await supabase
           .from('asatidz')
-          .update(data)
+          .update(payload)
           .eq('nia', oldNia);
         if (error) throw error;
         await logActivity('EDIT DEWAN ASATIDZ', `Memperbarui asatidz: ${data.nama_asatidz} (NIA: ${data.nia})`);
       } else {
         const { error } = await supabase
           .from('asatidz')
-          .insert([data]);
+          .insert([payload]);
         if (error) throw error;
         await logActivity('TAMBAH ASATIDZ', `Menambahkan asatidz baru: ${data.nama_asatidz} (NIA: ${data.nia})`);
       }
@@ -146,7 +253,6 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
   },
 
   deleteAsatidz: async (nia) => {
-    if (!confirm(`Yakin ingin menghapus asatidz dengan NIA: ${nia}?`)) return false;
     try {
       const { error } = await supabase
         .from('asatidz')
@@ -154,11 +260,35 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
         .eq('nia', nia);
       if (error) throw error;
       await logActivity('HAPUS DEWAN ASATIDZ', `Menghapus asatidz NIA: ${nia}`);
+      set((state) => ({
+        selectedNiaList: state.selectedNiaList.filter((n) => n !== nia),
+      }));
       await get().fetchAsatidz();
       return true;
     } catch (err: any) {
       console.error('Delete asatidz error:', err.message);
       alert('Gagal menghapus asatidz: ' + err.message);
+      return false;
+    }
+  },
+
+  deleteSelectedAsatidz: async () => {
+    const selected = get().selectedNiaList;
+    if (selected.length === 0) return false;
+
+    try {
+      const { error } = await supabase
+        .from('asatidz')
+        .delete()
+        .in('nia', selected);
+      if (error) throw error;
+      await logActivity('HAPUS BANYAK ASATIDZ', `Menghapus ${selected.length} asatidz terpilih`);
+      set({ selectedNiaList: [] });
+      await get().fetchAsatidz();
+      return true;
+    } catch (err: any) {
+      console.error('Delete bulk asatidz error:', err.message);
+      alert('Gagal menghapus asatidz terpilih: ' + err.message);
       return false;
     }
   },
