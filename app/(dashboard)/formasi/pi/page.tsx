@@ -1,33 +1,48 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { FormasiWithStats } from '@/types/formasi';
+import { getWaliKelasSyncInfo, getSantriInFormasi } from '@/lib/utils/formasiSync';
+import { compressImageFile } from '@/lib/utils/image';
 import {
-  Sparkles,
-  Plus,
   Search,
   Printer,
   FileSpreadsheet,
-  Table as TableIcon,
-  LayoutGrid,
-  X
+  Building,
+  Camera,
+  Star,
+  RefreshCw,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ModalInputFormasi from '@/components/modules/formasi/ModalInputFormasi';
 import ModalDetailFormasi from '@/components/modules/formasi/ModalDetailFormasi';
 import ModalGeneratorFormasi from '@/components/modules/formasi/ModalGeneratorFormasi';
+import ModalFotoFormasi from '@/components/modules/formasi/ModalFotoFormasi';
 
 export default function FormasiPiPage() {
-  const { formasiList, fetchFormasi, openInputModal, openGeneratorModal, openDetailModal } = useFormasiStore();
+  const {
+    formasiList,
+    fetchFormasi,
+    openDetailModal,
+    openFotoModal,
+    quickUploadFoto,
+  } = useFormasiStore();
+
   const { santriList, fetchSantri } = useSantriStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
 
   const [selectedTingkat, setSelectedTingkat] = useState<string>('');
   const [search, setSearch] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'card' | 'table'>('table');
+  const [uploadTarget, setUploadTarget] = useState<{
+    id: string;
+    jenis: 'takror' | 'diniyyah';
+  } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const quickFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchFormasi();
@@ -35,80 +50,147 @@ export default function FormasiPiPage() {
     if (asatidzList.length === 0) fetchAsatidz();
   }, [fetchFormasi, fetchSantri, fetchAsatidz, santriList.length, asatidzList.length]);
 
-  // Enrich formasi PI with santri counts and wali kelas matching
-  const enrichedFormasiList: FormasiWithStats[] = useMemo(() => {
+  // Enrich formasi PI with stats & Asatidz sync
+  const enrichedList: FormasiWithStats[] = useMemo(() => {
     const listPI = formasiList.filter((f) => f.pa_pi === 'PI');
 
     return listPI.map((f) => {
-      const matchingSantri = santriList.filter(
-        (s) =>
-          s.pa_pi === 'PI' &&
-          String(s.tingkat || '').toUpperCase() === String(f.tingkat).toUpperCase() &&
-          String(s.din_kls || '').toUpperCase() === String(f.din_kls).toUpperCase() &&
-          String(s.din_bag || '').toUpperCase() === String(f.din_bag).toUpperCase()
-      );
+      const syncInfo = getWaliKelasSyncInfo(f, asatidzList);
+      const matchingSantri = getSantriInFormasi(f, santriList);
       const count = matchingSantri.length;
-      const kapasitas = f.kapasitas_maksimal || 45;
+      const kapasitas = f.kapasitas_maksimal || 80;
       const persentase = Math.round((count / kapasitas) * 100);
-
-      const matchedAsatidz = asatidzList.filter((a) => {
-        const jah = String(a.jah_asatidz || '').toUpperCase();
-        const validJah = ['MUSTAHIQ', 'MS & KOOR', 'MUSTAHIQOH'];
-        if (!validJah.includes(jah)) return false;
-
-        return (
-          a.pa_pi === 'PI' &&
-          String(a.tingkat_asatidz || '').toUpperCase() === String(f.tingkat).toUpperCase() &&
-          String(a.din_kls_asatidz || '').toUpperCase() === String(f.din_kls).toUpperCase() &&
-          String(a.din_bag_asatidz || '').toUpperCase() === String(f.din_bag).toUpperCase()
-        );
-      });
-
-      const waliKelasText =
-        matchedAsatidz.length > 0
-          ? matchedAsatidz.map((a) => a.nama_asatidz).join(', ')
-          : f.id_mustahiq || '-';
-
-      const mustahiqKG = matchedAsatidz.length > 0 ? matchedAsatidz[0].nia || '-' : '-';
 
       return {
         ...f,
         jumlah_santri: count,
         persentase,
-        wali_kelas_text: waliKelasText,
-        mustahiq_kg: mustahiqKG,
-      } as FormasiWithStats & { mustahiq_kg?: string };
+        wali_kelas_text: syncInfo.waliKelasText,
+        matched_asatidz: syncInfo.matchedAsatidz,
+        domisili_sync: syncInfo.domisili,
+        takror_sync: syncInfo.lokasiTakror,
+        diniyyah_sync: syncInfo.lokasiDiniyyah,
+        foto_takror_sync: syncInfo.fotoTakror,
+        foto_diniyyah_sync: syncInfo.fotoDiniyyah,
+      };
     });
-  }, [formasiList, santriList, asatidzList]);
+  }, [formasiList, asatidzList, santriList]);
 
-  // Filtered by Tingkat and Search
+  // Filtered by Tingkat & Search
   const filteredList = useMemo(() => {
-    return enrichedFormasiList.filter((f) => {
+    return enrichedList.filter((f) => {
       if (selectedTingkat && f.tingkat.toUpperCase() !== selectedTingkat.toUpperCase()) {
         return false;
       }
       if (search.trim()) {
         const q = search.toLowerCase().trim();
-        const text = `${f.din_kls} ${f.din_bag} ${f.tingkat} ${f.wali_kelas_text} ${f.domisili || ''} ${f.lokasi_diniyyah || ''} ${f.lokasi_takror || ''}`.toLowerCase();
+        const text = `${f.din_kls} ${f.din_bag} ${f.tingkat} ${f.wali_kelas_text} ${f.domisili_sync || ''} ${f.takror_sync || ''} ${f.diniyyah_sync || ''} ${f.blok || ''}`.toLowerCase();
         if (!text.includes(q)) return false;
       }
       return true;
     });
-  }, [enrichedFormasiList, selectedTingkat, search]);
+  }, [enrichedList, selectedTingkat, search]);
+
+  // Sorted list: Tingkat -> Din. Kelas -> Din. Bagian
+  const sortedList = useMemo(() => {
+    const tingkatRank: Record<string, number> = {
+      "ISTI'DAD": 1,
+      ULA: 2,
+      WUSTHO: 3,
+      ULYA: 4,
+    };
+
+    return [...filteredList].sort((a, b) => {
+      const rA = tingkatRank[(a.tingkat || '').toUpperCase()] || 99;
+      const rB = tingkatRank[(b.tingkat || '').toUpperCase()] || 99;
+      if (rA !== rB) return rA - rB;
+
+      const kA = parseInt(a.din_kls, 10) || 0;
+      const kB = parseInt(b.din_kls, 10) || 0;
+      if (kA !== kB) return kA - kB;
+
+      return String(a.din_bag || '').localeCompare(String(b.din_bag || ''));
+    });
+  }, [filteredList]);
+
+  // Quick photo upload trigger
+  const handleTriggerQuickFoto = (
+    e: React.MouseEvent,
+    id: string,
+    jenis: 'takror' | 'diniyyah'
+  ) => {
+    e.stopPropagation();
+    setUploadTarget({ id, jenis });
+    if (quickFileInputRef.current) {
+      quickFileInputRef.current.value = '';
+      quickFileInputRef.current.click();
+    }
+  };
+
+  const handleQuickFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadTarget) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Pilih file berupa gambar (JPG/PNG/WEBP).');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const base64 = await compressImageFile(file, 800, 0.75);
+      const success = await quickUploadFoto(uploadTarget.id, uploadTarget.jenis, base64);
+      if (success) {
+        // Refreshed
+      }
+    } catch (err) {
+      alert('Gagal memproses foto: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsUploading(false);
+      setUploadTarget(null);
+      e.target.value = '';
+    }
+  };
+
+  const handleLihatFoto = (
+    e: React.MouseEvent,
+    f: FormasiWithStats,
+    jenis: 'takror' | 'diniyyah'
+  ) => {
+    e.stopPropagation();
+    const isTakror = jenis === 'takror';
+    const url = isTakror
+      ? f.foto_takror_sync || f.foto_takror || ''
+      : f.foto_diniyyah_sync || f.foto_diniyyah || '';
+    const label = isTakror
+      ? `Lokal Takror: ${f.takror_sync || f.lokasi_takror || '-'}`
+      : `Lokasi Diniyyah: ${f.diniyyah_sync || f.lokasi_diniyyah || '-'}`;
+    const namaKelas = `${f.din_kls || ''} ${f.din_bag || ''} ${f.tingkat || ''}`.trim();
+
+    openFotoModal({
+      id: f.id || '',
+      jenis,
+      url,
+      label,
+      namaKelas,
+    });
+  };
 
   const handleExportExcel = () => {
-    const data = filteredList.map((f, idx) => ({
+    if (sortedList.length === 0) {
+      alert('Tidak ada data formasi putri untuk diekspor.');
+      return;
+    }
+
+    const data = sortedList.map((f, idx) => ({
       NO: idx + 1,
-      TINGKAT: f.tingkat,
-      KELAS: f.din_kls,
-      BAGIAN: f.din_bag,
-      'DOMISILI ASRAMA': f.domisili || '-',
-      'RUANG TAKROR': f.lokasi_takror || '-',
-      'RUANG DINIYYAH': f.lokasi_diniyyah || '-',
-      'WALI KELAS / MUSTAHIQ': f.wali_kelas_text || '-',
-      KAPASITAS: f.kapasitas_maksimal,
-      'JUMLAH SANTRI': f.jumlah_santri,
-      STATUS: f.jumlah_santri >= f.kapasitas_maksimal ? 'PENUH' : 'TERSEDIA',
+      KELAS: `${f.din_kls || ''} ${f.din_bag || ''} ${f.tingkat || ''}`.trim(),
+      TINGKAT: f.tingkat || '-',
+      DOMISILI: (f.domisili_sync || f.domisili || '-').replace(/^Blok\s+/i, ''),
+      MUSTAHIQ: f.wali_kelas_text || '-',
+      'LOKAL TAKROR': f.takror_sync || f.lokasi_takror || '-',
+      'LOKAL DINIYYAH': f.diniyyah_sync || f.lokasi_diniyyah || '-',
+      BLOK: f.blok || '-',
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -122,102 +204,55 @@ export default function FormasiPiPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* 1. Header Card Sesuai madinblokagung-main formasi.html */}
-      <div className="card-panel border-0 no-print-kbm">
+    <div className="space-y-4">
+      {/* 1. Header Card Sesuai Gambar 5 */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 md:p-5 space-y-4 print:hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
           <div className="flex items-center gap-3.5">
-            <div className="w-[52px] h-[52px] rounded-xl bg-pink-100 text-pink-700 flex items-center justify-center font-bold text-2xl flex-shrink-0 shadow-xs">
+            <div className="w-[52px] h-[52px] rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center font-bold text-2xl flex-shrink-0 shadow-2xs">
               ♀
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl md:text-2xl font-bold text-slate-800 m-0 leading-tight">
-                  Formasi Kelas Putri
-                </h2>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-pink-100 text-pink-800 border border-pink-200">
-                  PI (Putri)
-                </span>
-              </div>
+              <h1 className="text-xl md:text-2xl font-bold text-slate-800 m-0 leading-tight">
+                Formasi Kelas Putri
+              </h1>
               <p className="text-slate-500 text-xs m-0 mt-0.5">
                 Formasi Ruang Diniyyah dan Takror Khusus Santri Putri (PI)
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* View Mode Toggle */}
-            <div className="inline-flex rounded-lg border border-slate-300 p-0.5 bg-white shadow-xs">
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition ${
-                  viewMode === 'table' ? 'bg-madin-700 text-white' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <TableIcon className="w-3.5 h-3.5" />
-                <span>Tabel</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('card')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md flex items-center gap-1.5 transition ${
-                  viewMode === 'card' ? 'bg-madin-700 text-white' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Kartu</span>
-              </button>
-            </div>
-
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleExportExcel}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-madin-700 text-madin-700 hover:bg-madin-50 transition shadow-xs flex items-center gap-1.5"
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 transition shadow-2xs flex items-center gap-2"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-madin-700" />
+              <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
               <span>Export Excel</span>
             </button>
 
             <button
               type="button"
               onClick={handlePrint}
-              className="px-4 py-2 text-xs font-bold rounded-lg bg-madin-700 hover:bg-madin-800 text-white transition shadow-xs flex items-center gap-1.5"
+              className="px-4 py-2 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#0d655e] text-white transition shadow-2xs flex items-center gap-2"
             >
-              <Printer className="w-3.5 h-3.5" />
+              <Printer className="w-4 h-4" />
               <span>Cetak / Print</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={openGeneratorModal}
-              className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs flex items-center gap-1"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Generator Rombel</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => openInputModal(null)}
-              className="px-3 py-2 text-xs font-bold rounded-lg bg-pink-700 hover:bg-pink-800 text-white transition shadow-xs flex items-center gap-1"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Tambah</span>
             </button>
           </div>
         </div>
 
         {/* Filter Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end mt-4">
-          <div>
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+          <div className="sm:col-span-3">
             <label className="block text-[11px] font-bold text-slate-500 mb-1">
               Tingkat Diniyyah:
             </label>
             <select
               value={selectedTingkat}
               onChange={(e) => setSelectedTingkat(e.target.value)}
-              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white focus:outline-none"
+              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-madin-600 font-medium"
             >
               <option value="">Semua Tingkat</option>
               <option value="ISTI'DAD">ISTI&apos;DAD</option>
@@ -227,161 +262,245 @@ export default function FormasiPiPage() {
             </select>
           </div>
 
-          <div className="relative">
+          <div className="sm:col-span-6 relative">
             <label className="block text-[11px] font-bold text-slate-500 mb-1">
               Pencarian Cepat:
             </label>
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari Kelas / Mustahiq / Domisili / Ruang..."
-                className="w-full text-xs pl-8 pr-7 py-2 rounded-lg border border-slate-300 focus:outline-none"
+                placeholder="Cari Kelas / Nama Mustahiq / Domisili / Lokal..."
+                className="w-full text-xs pl-8 pr-8 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-madin-600"
               />
               {search && (
                 <button
+                  type="button"
                   onClick={() => setSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  ×
                 </button>
               )}
             </div>
           </div>
 
-          <div className="text-right pb-1">
-            <span className="inline-block px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700">
-              Total: {filteredList.length} Kelas
+          <div className="sm:col-span-3 text-right">
+            <span className="inline-block px-3 py-2 rounded-lg bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700">
+              Total: {sortedList.length} Kelas
             </span>
           </div>
         </div>
       </div>
 
-      {/* 2. Dokumen Resmi / Tabel / Kartu */}
-      <div className="card-panel border-0 p-4 md:p-6 shadow-sm" id="fg-print-area">
-        <div className="text-center mb-4">
-          <h5 className="font-bold text-sm md:text-base text-slate-800 uppercase tracking-wide m-0">
-            FORMASI KELAS PUTRI (PI) RUANG DINIYYAH DAN TAKROR
-          </h5>
-          <h6 className="font-bold text-slate-500 text-xs md:text-sm m-0 mt-1">
-            Madrasah Diniyyah Al Amiriyyah
-          </h6>
+      {/* 2. Kartu Dokumen Resmi & Tabel Header 2-Level Sesuai Gambar 5 */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 md:p-6 space-y-4 print:border-none print:shadow-none print:p-0">
+        {/* Kop Dokumen Resmi */}
+        <div className="text-center space-y-0.5 mb-5">
+          <h2 className="text-base md:text-lg font-bold text-slate-900 tracking-wide uppercase m-0">
+            FORMASI RUANG DINIYYAH DAN TAKROR PUTRI
+          </h2>
+          <h3 className="text-xs md:text-sm font-semibold text-slate-700 uppercase m-0">
+            MADRASAH DINIYYAH AL AMIRIYYAH
+          </h3>
+          <h4 className="text-xs font-bold text-[#0f766e] uppercase tracking-wider m-0 pt-0.5">
+            TAHUN AJARAN 2026-2027 M / 1447-1448 H
+          </h4>
         </div>
 
-        {viewMode === 'table' ? (
-          <div className="table-responsive overflow-x-auto">
-            <table className="tabel-kbm-resmi w-full">
-              <thead>
+        {/* Tabel 2-Level Header Resmi */}
+        <div className="table-responsive overflow-x-auto border border-slate-300 rounded-lg print:border-slate-400">
+          <table className="w-full text-xs text-left align-middle border-collapse">
+            <thead>
+              <tr className="bg-slate-100/80 text-slate-700 font-bold border-b border-slate-300 text-center">
+                <th rowSpan={2} className="py-2.5 px-3 border-r border-slate-300 w-12 align-middle">
+                  NO.
+                </th>
+                <th rowSpan={2} className="py-2.5 px-3 border-r border-slate-300 w-32 align-middle">
+                  KELAS
+                </th>
+                <th rowSpan={2} className="py-2.5 px-3 border-r border-slate-300 w-32 align-middle">
+                  DOMISILI
+                </th>
+                <th rowSpan={2} className="py-2.5 px-3 border-r border-slate-300 min-w-[200px] align-middle">
+                  MUSTAHIQ
+                </th>
+                <th colSpan={2} className="py-1.5 px-3 text-center border-b border-slate-300 font-bold">
+                  LOKAL
+                </th>
+              </tr>
+              <tr className="bg-slate-100/80 text-slate-700 font-bold border-b border-slate-300 text-center">
+                <th className="py-2 px-3 border-r border-slate-300 min-w-[190px]">
+                  TAKROR
+                </th>
+                <th className="py-2 px-3 min-w-[190px]">
+                  DINIYYAH
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {sortedList.length === 0 ? (
                 <tr>
-                  <th style={{ width: 40 }}>NO</th>
-                  <th style={{ width: 75 }}>TINGKAT</th>
-                  <th style={{ width: 60 }}>KELAS</th>
-                  <th style={{ width: 45 }}>BAG</th>
-                  <th style={{ minWidth: 150 }}>DOMISILI ASRAMA</th>
-                  <th style={{ minWidth: 150 }}>RUANG TAKROR</th>
-                  <th style={{ minWidth: 150 }}>RUANG DINIYYAH</th>
-                  <th style={{ minWidth: 180 }}>WALI KELAS / MUSTAHIQ</th>
-                  <th style={{ width: 70 }}>KAPASITAS</th>
-                  <th style={{ width: 70 }}>SANTRI</th>
-                  <th style={{ width: 75 }}>STATUS</th>
+                  <td colSpan={6} className="py-8 text-center text-slate-400">
+                    Tidak ada rombel kelas putri yang sesuai dengan filter/pencarian.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredList.length === 0 ? (
-                  <tr>
-                    <td colSpan={11} className="text-center py-6 text-slate-400">
-                      Tidak ada rombel kelas putri yang cocok dengan filter.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredList.map((f, idx) => {
-                    const isFull = f.jumlah_santri >= f.kapasitas_maksimal;
-                    let badgeClass = 'badge-tingkat-ula';
-                    if (f.tingkat === 'WUSTHO') badgeClass = 'badge-tingkat-wustho';
-                    else if (f.tingkat === 'ULYA') badgeClass = 'badge-tingkat-ulya';
-                    else if (f.tingkat === "ISTI'DAD") badgeClass = 'badge-tingkat-istidad';
+              ) : (
+                sortedList.map((f, idx) => {
+                  const namaKelas = `${f.din_kls || ''} ${f.din_bag || ''} ${f.tingkat || ''}`.trim();
+                  const domisiliTeks = (f.domisili_sync || f.domisili || '-').replace(/^Blok\s+/i, '');
+                  const blokLabel = f.blok ? `Blok ${f.blok.replace(/^blok\s*/i, '').trim()}` : '';
 
-                    return (
-                      <tr
-                        key={f.id || `${f.tingkat}-${f.din_kls}-${f.din_bag}`}
-                        onClick={() => openDetailModal(f)}
-                        className="hover:bg-slate-50 transition cursor-pointer"
-                        title="Klik untuk lihat detail rombel"
-                      >
-                        <td className="text-center font-bold text-slate-600">{idx + 1}</td>
-                        <td className="text-center">
-                          <span className={badgeClass}>{f.tingkat}</span>
-                        </td>
-                        <td className="text-center font-bold text-slate-800">{f.din_kls}</td>
-                        <td className="text-center font-bold text-slate-800">{f.din_bag}</td>
-                        <td className="px-2 text-xs">{f.domisili || '-'}</td>
-                        <td className="px-2 text-xs font-semibold text-slate-700">{f.lokasi_takror || '-'}</td>
-                        <td className="px-2 text-xs font-semibold text-madin-700">{f.lokasi_diniyyah || '-'}</td>
-                        <td className="px-2 font-medium">{f.wali_kelas_text || '-'}</td>
-                        <td className="text-center text-xs font-bold text-slate-600">{f.kapasitas_maksimal}</td>
-                        <td className="text-center text-xs font-bold text-pink-700">{f.jumlah_santri}</td>
-                        <td className="text-center">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              isFull
-                                ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                                : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                            }`}
-                          >
-                            {isFull ? 'Penuh' : 'Tersedia'}
+                  const hasFotoTakror = Boolean(f.foto_takror_sync || f.foto_takror);
+                  const hasFotoDiniyyah = Boolean(f.foto_diniyyah_sync || f.foto_diniyyah);
+
+                  return (
+                    <tr
+                      key={f.id || idx}
+                      onClick={() => openDetailModal(f)}
+                      className="hover:bg-slate-50 transition cursor-pointer"
+                      title="Klik untuk melihat detail kelas & daftar santri"
+                    >
+                      {/* NO */}
+                      <td className="py-2.5 px-3 text-center font-semibold text-slate-600 border-r border-slate-200">
+                        {idx + 1}
+                      </td>
+
+                      {/* KELAS */}
+                      <td className="py-2.5 px-3 text-center border-r border-slate-200">
+                        <span className="font-bold text-[#0f766e] text-xs">
+                          {namaKelas}
+                        </span>
+                        {f.is_unggulan && (
+                          <div className="mt-0.5">
+                            <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-amber-100 text-amber-800 text-[9px] font-bold">
+                              <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-600" />
+                              Unggulan
+                            </span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* DOMISILI */}
+                      <td className="py-2.5 px-3 text-center text-slate-700 border-r border-slate-200">
+                        {domisiliTeks}
+                      </td>
+
+                      {/* MUSTAHIQ */}
+                      <td className="py-2.5 px-3 font-bold text-slate-800 border-r border-slate-200">
+                        {f.wali_kelas_text || (
+                          <span className="text-slate-400 italic font-normal">
+                            Belum ditentukan
                           </span>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          /* Card View */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredList.map((f) => (
-              <div
-                key={f.id || `${f.tingkat}-${f.din_kls}-${f.din_bag}`}
-                onClick={() => openDetailModal(f)}
-                className="bg-white rounded-xl border border-slate-200 hover:border-pink-400 hover:shadow-md transition cursor-pointer p-4 space-y-3"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-pink-700 uppercase">{f.tingkat}</span>
-                    <h3 className="text-lg font-bold text-slate-800 mt-0.5">
-                      Kelas {f.din_kls} - {f.din_bag}
-                    </h3>
-                  </div>
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      f.jumlah_santri >= f.kapasitas_maksimal
-                        ? 'bg-rose-100 text-rose-700'
-                        : 'bg-emerald-100 text-emerald-700'
-                    }`}
-                  >
-                    {f.jumlah_santri} / {f.kapasitas_maksimal}
-                  </span>
-                </div>
+                        )}
+                      </td>
 
-                <div className="text-xs space-y-1 text-slate-600">
-                  <div><strong>Wali Kelas:</strong> {f.wali_kelas_text}</div>
-                  <div><strong>Diniyyah:</strong> {f.lokasi_diniyyah || '-'}</div>
-                  <div><strong>Takror:</strong> {f.lokasi_takror || '-'}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                      {/* LOKAL TAKROR */}
+                      <td className="py-2.5 px-3 border-r border-slate-200">
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="font-semibold text-slate-800 leading-tight">
+                            {f.takror_sync || f.lokasi_takror || '-'}
+                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap print:hidden">
+                            {blokLabel && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-medium">
+                                <Building className="w-2.5 h-2.5" />
+                                <span>{blokLabel}</span>
+                              </span>
+                            )}
+                            {hasFotoTakror ? (
+                              <button
+                                type="button"
+                                onClick={(e) => handleLihatFoto(e, f, 'takror')}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-[10px] font-medium transition shadow-2xs"
+                              >
+                                <Camera className="w-2.5 h-2.5 text-madin-700" />
+                                <span>Lihat</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => f.id && handleTriggerQuickFoto(e, f.id, 'takror')}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-[10px] font-medium transition shadow-2xs"
+                              >
+                                <Camera className="w-2.5 h-2.5 text-slate-400" />
+                                <span>+Foto</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* LOKASI DINIYYAH */}
+                      <td className="py-2.5 px-3">
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="font-semibold text-slate-800 leading-tight">
+                            {f.diniyyah_sync || f.lokasi_diniyyah || '-'}
+                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap print:hidden">
+                            {blokLabel && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-medium">
+                                <Building className="w-2.5 h-2.5" />
+                                <span>{blokLabel}</span>
+                              </span>
+                            )}
+                            {hasFotoDiniyyah ? (
+                              <button
+                                type="button"
+                                onClick={(e) => handleLihatFoto(e, f, 'diniyyah')}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-[10px] font-medium transition shadow-2xs"
+                              >
+                                <Camera className="w-2.5 h-2.5 text-madin-700" />
+                                <span>Lihat</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => f.id && handleTriggerQuickFoto(e, f.id, 'diniyyah')}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-[10px] font-medium transition shadow-2xs"
+                              >
+                                <Camera className="w-2.5 h-2.5 text-slate-400" />
+                                <span>+Foto</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* Hidden file input for quick photo uploads */}
+      <input
+        type="file"
+        ref={quickFileInputRef}
+        accept="image/*"
+        className="hidden"
+        onChange={handleQuickFileSelected}
+      />
+
+      {/* Loading overlay for quick upload */}
+      {isUploading && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded-xl shadow-xl flex items-center gap-3 text-xs font-bold text-slate-700">
+            <RefreshCw className="w-4 h-4 text-madin-700 animate-spin" />
+            <span>Mengompres &amp; Menyimpan Foto...</span>
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       <ModalInputFormasi gender="PI" />
       <ModalDetailFormasi />
       <ModalGeneratorFormasi gender="PI" />
+      <ModalFotoFormasi />
     </div>
   );
 }

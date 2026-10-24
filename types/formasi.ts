@@ -1,3 +1,5 @@
+import { Asatidz } from './asatidz';
+
 export interface FormasiKelas {
   id?: string;
   tingkat: string;
@@ -20,4 +22,11 @@ export interface FormasiWithStats extends FormasiKelas {
   jumlah_santri: number;
   persentase: number;
   wali_kelas_text: string;
+  mustahiq_kg?: string;
+  matched_asatidz?: Asatidz[];
+  domisili_sync?: string;
+  takror_sync?: string;
+  diniyyah_sync?: string;
+  foto_takror_sync?: string;
+  foto_diniyyah_sync?: string;
 }

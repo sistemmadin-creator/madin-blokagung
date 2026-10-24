@@ -61,9 +61,10 @@ const menuGroups: MenuGroup[] = [
       },
       {
         title: 'Formasi Kelas',
-        href: '/formasi/pa',
+        href: '/formasi',
         icon: <Building2 className="w-5 h-5 flex-shrink-0" />,
         children: [
+          { title: 'Semua Kelas (Master)', href: '/formasi' },
           { title: 'Kelas Putra', href: '/formasi/pa' },
           { title: 'Kelas Putri', href: '/formasi/pi' },
         ],
@@ -170,9 +171,9 @@ export default function SidebarDesktop() {
             {grp.items.map((item) => {
               const hasChildren = item.children && item.children.length > 0;
               const isSubOpen = openSubmenus[item.title];
-              const isParentActive = hasChildren
-                ? item.children?.some((sub) => sub.href === pathname)
-                : pathname === item.href;
+              const isParentActive =
+                pathname === item.href ||
+                (hasChildren && item.children?.some((sub) => sub.href === pathname));
 
               if (hasChildren) {
                 return (

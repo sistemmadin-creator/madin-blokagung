@@ -95,6 +95,14 @@ export default function BottomNavMobile() {
           </Link>
           <hr className="my-1 border-slate-100" />
           <Link
+            href="/formasi"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-800 hover:bg-slate-50"
+          >
+            <Building2 className="w-4 h-4 text-emerald-600" />
+            <span>Formasi Kelas Madin (Master)</span>
+          </Link>
+          <Link
             href="/formasi/pa"
             onClick={() => setActiveMenu(null)}
             className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-800 hover:bg-slate-50"

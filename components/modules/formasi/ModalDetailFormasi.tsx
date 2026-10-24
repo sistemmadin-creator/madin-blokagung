@@ -1,9 +1,19 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { useFormasiStore } from '@/stores/useFormasiStore';
-import { Users, MapPin, UserCheck, Edit, Trash2 } from 'lucide-react';
+import { useSantriStore } from '@/stores/useSantriStore';
+import { getSantriInFormasi } from '@/lib/utils/formasiSync';
+import {
+  Users,
+  Edit,
+  Trash2,
+  Search,
+  Star,
+  Camera,
+  Inbox,
+} from 'lucide-react';
 
 export default function ModalDetailFormasi() {
   const {
@@ -12,147 +22,301 @@ export default function ModalDetailFormasi() {
     selectedFormasi,
     openInputModal,
     deleteFormasi,
+    openFotoModal,
   } = useFormasiStore();
+
+  const { santriList } = useSantriStore();
+  const [santriSearch, setSantriSearch] = useState('');
+
+  // Find real-time list of enrolled students in this formation
+  const daftarSantri = useMemo(() => {
+    if (!selectedFormasi) return [];
+    return getSantriInFormasi(selectedFormasi, santriList);
+  }, [selectedFormasi, santriList]);
+
+  // Filter students based on search input
+  const filteredSantri = useMemo(() => {
+    if (!santriSearch.trim()) return daftarSantri;
+    const q = santriSearch.toLowerCase().trim();
+    return daftarSantri.filter((s) => {
+      const matchNama = (s.nama || '').toLowerCase().includes(q);
+      const matchInduk = (s.no_induk || '').toLowerCase().includes(q);
+      const matchKamar = `${s.blok || ''} ${s.asrama || ''} ${s.kamar || ''}`
+        .toLowerCase()
+        .includes(q);
+      const matchFormal = `${s.unit || ''} ${s.kelas || ''}`
+        .toLowerCase()
+        .includes(q);
+      return matchNama || matchInduk || matchKamar || matchFormal;
+    });
+  }, [daftarSantri, santriSearch]);
 
   if (!selectedFormasi) return null;
 
+  const f = selectedFormasi;
+  const namaKelasLengkap = `${f.din_kls || ''} ${f.din_bag || ''} ${f.tingkat || ''}`.trim();
+  const kapasitasMaks = f.kapasitas_maksimal || 80;
+  const isFull = daftarSantri.length >= kapasitasMaks;
+
   const handleEdit = () => {
-    const f = selectedFormasi;
     closeDetailModal();
     openInputModal(f);
   };
 
   const handleDelete = async () => {
-    if (selectedFormasi.id && (await deleteFormasi(selectedFormasi.id))) {
+    if (f.id && (await deleteFormasi(f.id))) {
       closeDetailModal();
     }
   };
 
-  const isOverCapacity = selectedFormasi.jumlah_santri > selectedFormasi.kapasitas_maksimal;
+  const handleOpenFoto = (jenis: 'takror' | 'diniyyah') => {
+    const isTakror = jenis === 'takror';
+    const url = isTakror
+      ? f.foto_takror_sync || f.foto_takror || ''
+      : f.foto_diniyyah_sync || f.foto_diniyyah || '';
+    const label = isTakror
+      ? `Lokal Takror: ${f.takror_sync || f.lokasi_takror || '-'}`
+      : `Lokasi Diniyyah: ${f.diniyyah_sync || f.lokasi_diniyyah || '-'}`;
+
+    openFotoModal({
+      id: f.id || '',
+      jenis,
+      url,
+      label,
+      namaKelas: namaKelasLengkap,
+    });
+  };
 
   return (
     <Dialog
       isOpen={isDetailModalOpen}
       onClose={closeDetailModal}
-      title="Detail Rombel & Formasi Kelas Diniyyah"
-      maxWidth="md"
+      title={`Detail Formasi Kelas - ${namaKelasLengkap}`}
+      maxWidth="xl"
     >
       <div className="space-y-4">
-        {/* Header Kelas */}
-        <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200">
-          <div>
+        {/* 1. Kartu Informasi Kelas & Wali Kelas */}
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h6 className="text-xs font-bold text-madin-800 uppercase tracking-wide flex items-center gap-1.5">
+              <span>Informasi Kelas &amp; Wali Kelas</span>
+            </h6>
             <span
-              className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase mb-1 ${
-                selectedFormasi.pa_pi === 'PA'
-                  ? 'bg-blue-100 text-blue-800'
-                  : 'bg-pink-100 text-pink-800'
+              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                f.pa_pi === 'PA'
+                  ? 'bg-sky-100 text-sky-800 border border-sky-200'
+                  : 'bg-rose-100 text-rose-800 border border-rose-200'
               }`}
             >
-              Santri {selectedFormasi.pa_pi === 'PA' ? 'Putra (PA)' : 'Putri (PI)'}
+              {f.pa_pi === 'PA' ? 'Santri Putra (PA)' : 'Santri Putri (PI)'}
             </span>
-            <h2 className="text-xl font-bold text-slate-800">
-              Kelas {selectedFormasi.tingkat} {selectedFormasi.din_kls} - Bagian {selectedFormasi.din_bag}
-              {selectedFormasi.is_unggulan && (
-                <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800">
-                  Unggulan
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            {/* Sisi Kiri */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Tingkat Diniyyah:</span>
+                <span className="font-bold text-slate-800">{f.tingkat}</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Kelas / Bagian:</span>
+                <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                  {f.din_kls} - {f.din_bag}
+                  {f.is_unggulan && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">
+                      <Star className="w-3 h-3 fill-amber-500 text-amber-600" />
+                      Unggulan
+                    </span>
+                  )}
                 </span>
-              )}
-            </h2>
-          </div>
+              </div>
 
-          <div className="text-right">
-            <span className="text-[11px] text-slate-400 block">Kapasitas</span>
-            <span className="text-lg font-bold font-mono text-slate-700">
-              {selectedFormasi.kapasitas_maksimal} Kursi
-            </span>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Kapasitas Maksimal:</span>
+                <span
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                    isFull
+                      ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                      : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                  }`}
+                >
+                  {daftarSantri.length} / {kapasitasMaks} Santri
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Domisili:</span>
+                <span className="font-semibold text-slate-700">
+                  {f.domisili_sync || f.domisili || '-'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Blok Gedung:</span>
+                <span className="font-semibold text-slate-700">{f.blok || '-'}</span>
+              </div>
+            </div>
+
+            {/* Sisi Kanan */}
+            <div className="space-y-2">
+              <div>
+                <span className="text-slate-500 block mb-0.5">Wali Kelas (Mustahiq):</span>
+                <div className="font-bold text-madin-700 flex items-center gap-1.5 flex-wrap">
+                  <span>{f.wali_kelas_text || f.id_mustahiq || '-'}</span>
+                  {f.mustahiq_kg && f.mustahiq_kg !== '-' && (
+                    <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-mono">
+                      {f.mustahiq_kg}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Lokal Takror */}
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-slate-500">Lokal Takror:</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-slate-800">
+                    {f.takror_sync || f.lokasi_takror || '-'}
+                  </span>
+                  {(f.foto_takror_sync || f.foto_takror) && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenFoto('takror')}
+                      className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition"
+                      title="Lihat Foto Lokal Takror"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-madin-700" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Lokasi Diniyyah */}
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Lokasi Diniyyah:</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-slate-800">
+                    {f.diniyyah_sync || f.lokasi_diniyyah || '-'}
+                  </span>
+                  {(f.foto_diniyyah_sync || f.foto_diniyyah) && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenFoto('diniyyah')}
+                      className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition"
+                      title="Lihat Foto Lokasi Diniyyah"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-madin-700" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Rasio Santri */}
-        <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-2">
-          <div className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+        {/* 2. Kartu Daftar Santri di Kelas Ini */}
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
+            <h6 className="text-xs font-bold text-madin-800 uppercase tracking-wide flex items-center gap-2">
               <Users className="w-4 h-4 text-madin-700" />
-              Jumlah Santri Terdaftar
-            </span>
-            <span className="font-bold font-mono text-slate-800">
-              {selectedFormasi.jumlah_santri} / {selectedFormasi.kapasitas_maksimal} santri ({selectedFormasi.persentase}%)
-            </span>
+              <span>Daftar Santri Terdaftar</span>
+              <span className="px-2 py-0.5 rounded-full bg-madin-100 text-madin-800 text-[11px] font-bold">
+                {daftarSantri.length} Santri
+              </span>
+            </h6>
+
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={santriSearch}
+                onChange={(e) => setSantriSearch(e.target.value)}
+                placeholder="Cari nama / NIS / kamar..."
+                className="w-full sm:w-56 text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-madin-600"
+              />
+            </div>
           </div>
 
-          <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
-            <div
-              className={`h-full transition-all rounded-full ${
-                isOverCapacity
-                  ? 'bg-rose-500'
-                  : selectedFormasi.persentase > 90
-                  ? 'bg-amber-500'
-                  : 'bg-emerald-500'
-              }`}
-              style={{ width: `${Math.min(selectedFormasi.persentase, 100)}%` }}
-            ></div>
+          <div className="overflow-x-auto max-h-[320px] overflow-y-auto border border-slate-100 rounded-lg">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50 text-slate-600 font-bold sticky top-0 border-b border-slate-200">
+                <tr>
+                  <th className="py-2 px-3 text-center w-10">No</th>
+                  <th className="py-2 px-3 w-28">No. Induk</th>
+                  <th className="py-2 px-3 min-w-[180px]">Nama Lengkap Santri</th>
+                  <th className="py-2 px-3 min-w-[140px]">Domisili Kamar</th>
+                  <th className="py-2 px-3 min-w-[140px]">Sekolah Formal</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredSantri.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-8 text-slate-400">
+                      <Inbox className="w-8 h-8 mx-auto mb-1.5 opacity-40" />
+                      <p className="text-xs">
+                        {daftarSantri.length === 0
+                          ? `Belum ada santri yang terdaftar di kelas ${namaKelasLengkap}.`
+                          : 'Tidak ada santri yang sesuai dengan pencarian.'}
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredSantri.map((s, idx) => {
+                    const domisiliKamar =
+                      [s.blok, s.asrama, s.kode, s.kamar].filter(Boolean).join(' - ') || '-';
+                    const sekolahFormal =
+                      [s.unit, s.kelas].filter(Boolean).join(' - ') || '-';
+
+                    return (
+                      <tr key={s.no_induk || idx} className="hover:bg-slate-50">
+                        <td className="py-2 px-3 text-center text-slate-500 font-medium">
+                          {idx + 1}
+                        </td>
+                        <td className="py-2 px-3 font-mono font-semibold text-slate-700">
+                          {s.no_induk || '-'}
+                        </td>
+                        <td className="py-2 px-3 font-bold text-slate-800">
+                          {s.nama || '-'}
+                        </td>
+                        <td className="py-2 px-3 text-slate-600">{domisiliKamar}</td>
+                        <td className="py-2 px-3 text-slate-600">{sekolahFormal}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-          {isOverCapacity && (
-            <p className="text-[11px] text-rose-600 font-medium">
-              Peringatan: Jumlah santri melebihi kapasitas ruangan maksimal!
-            </p>
-          )}
         </div>
 
-        {/* Wali Kelas & Lokasi */}
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div className="p-3 rounded-xl border border-slate-200 bg-white space-y-1">
-            <span className="text-slate-400 font-medium flex items-center gap-1">
-              <UserCheck className="w-3.5 h-3.5 text-blue-600" />
-              Wali Kelas (Mustahiq)
-            </span>
-            <p className="font-bold text-slate-800">
-              {selectedFormasi.wali_kelas_text || selectedFormasi.id_mustahiq || 'Belum Diatur'}
-            </p>
-          </div>
-
-          <div className="p-3 rounded-xl border border-slate-200 bg-white space-y-1">
-            <span className="text-slate-400 font-medium flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-rose-500" />
-              Domisili Blok Kelas
-            </span>
-            <p className="font-bold text-slate-800">{selectedFormasi.domisili || '-'}</p>
-          </div>
-
-          <div className="p-3 rounded-xl border border-slate-200 bg-white space-y-1">
-            <span className="text-slate-400 font-medium">Ruang KBM Diniyyah</span>
-            <p className="font-semibold text-slate-700">{selectedFormasi.lokasi_diniyyah || '-'}</p>
-          </div>
-
-          <div className="p-3 rounded-xl border border-slate-200 bg-white space-y-1">
-            <span className="text-slate-400 font-medium">Ruang Takror Malam</span>
-            <p className="font-semibold text-slate-700">{selectedFormasi.lokasi_takror || '-'}</p>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
           <button
+            type="button"
             onClick={handleDelete}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Hapus Kelas
+            <span>Hapus Kelas</span>
           </button>
 
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={closeDetailModal}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600"
+              className="px-3.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition"
             >
               Tutup
             </button>
             <button
+              type="button"
               onClick={handleEdit}
-              className="flex items-center gap-1 px-4 py-1.5 text-xs font-semibold rounded-lg bg-madin-700 hover:bg-madin-800 text-white shadow-sm"
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-lg bg-madin-700 hover:bg-madin-800 text-white shadow-xs transition"
             >
               <Edit className="w-3.5 h-3.5" />
-              Edit Formasi
+              <span>Edit Formasi</span>
             </button>
           </div>
         </div>

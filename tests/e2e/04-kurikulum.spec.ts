@@ -1,40 +1,56 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Modul 03: Kurikulum & Akademik', () => {
-  test('Formasi Kelas PA page and generator modal', async ({ page }) => {
-    await page.goto('/formasi/pa');
+  test('Formasi Kelas Master page, table and generator modal', async ({ page }) => {
+    await page.goto('/formasi');
 
-    await expect(page.getByRole('heading', { name: /Formasi Kelas Putra/i }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Formasi Kelas Madin/i }).first()).toBeVisible();
 
-    // Verify generator button
-    const genBtn = page.getByRole('button', { name: /Generator Rombel/i });
+    // Verify Master Toolbar buttons
+    await expect(page.locator('main').getByRole('link', { name: /Kelas Putra/i })).toBeVisible();
+    await expect(page.locator('main').getByRole('link', { name: /Kelas Putri/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Sembunyikan/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Filter/i })).toBeVisible();
+
+    const genBtn = page.getByRole('button', { name: /Generator/i });
     await expect(genBtn).toBeVisible();
     await genBtn.click();
 
     // Modal should show
-    await expect(page.getByRole('heading', { name: /Generator Formasi Rombel Massal/i })).toBeVisible();
-    await expect(page.getByRole('dialog').getByText(/Santri Putra/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Generator Formasi Rombel Otomatis/i })).toBeVisible();
 
     // Close generator
     const closeBtn = page.getByRole('button', { name: /Batal/i });
     await closeBtn.click();
-    await expect(page.getByRole('heading', { name: /Generator Formasi Rombel Massal/i })).toBeHidden();
+    await expect(page.getByRole('heading', { name: /Generator Formasi Rombel Otomatis/i })).toBeHidden();
+  });
+
+  test('Formasi Kelas PA page with official document view', async ({ page }) => {
+    await page.goto('/formasi/pa');
+
+    await expect(page.getByRole('heading', { name: /Formasi Kelas Putra/i }).first()).toBeVisible();
+    await expect(page.getByText('FORMASI RUANG DINIYYAH DAN TAKROR PUTRA').first()).toBeVisible();
+    await expect(page.getByText('TAHUN AJARAN 2026-2027 M / 1447-1448 H').first()).toBeVisible();
+
+    // Check action buttons: Export Excel & Print
+    await expect(page.getByRole('button', { name: /Export Excel/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Cetak \/ Print/i })).toBeVisible();
+
+    // Check 2-level header
+    await expect(page.locator('th', { hasText: 'LOKAL' }).first()).toBeVisible();
+    await expect(page.locator('th', { hasText: 'TAKROR' }).first()).toBeVisible();
+    await expect(page.locator('th', { hasText: 'DINIYYAH' }).first()).toBeVisible();
   });
 
   test('Formasi Kelas PI page and gender isolation', async ({ page }) => {
     await page.goto('/formasi/pi');
 
     await expect(page.getByRole('heading', { name: /Formasi Kelas Putri/i }).first()).toBeVisible();
+    await expect(page.getByText('FORMASI RUANG DINIYYAH DAN TAKROR PUTRI').first()).toBeVisible();
+    await expect(page.getByText('TAHUN AJARAN 2026-2027 M / 1447-1448 H').first()).toBeVisible();
 
-    const genBtn = page.getByRole('button', { name: /Generator Rombel/i });
-    await expect(genBtn).toBeVisible();
-    await genBtn.click();
-
-    await expect(page.getByRole('heading', { name: /Generator Formasi Rombel Massal/i })).toBeVisible();
-    await expect(page.getByRole('dialog').getByText(/Santri Putri/i)).toBeVisible();
-
-    const closeBtn = page.getByRole('button', { name: /Batal/i });
-    await closeBtn.click();
+    await expect(page.getByRole('button', { name: /Export Excel/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Cetak \/ Print/i })).toBeVisible();
   });
 
   test('Fan Pelajaran page and modals', async ({ page }) => {
