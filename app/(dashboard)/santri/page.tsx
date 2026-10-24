@@ -79,6 +79,7 @@ export default function SantriPage() {
 
   const [isHierarchyOpen, setIsHierarchyOpen] = useState(false);
   const [isDeleteDropdownOpen, setIsDeleteDropdownOpen] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   // 2-Step Modal State untuk Hapus Semua Data
   const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
@@ -87,6 +88,7 @@ export default function SantriPage() {
   const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   useEffect(() => {
+    setIsHydrated(true);
     fetchSantri();
   }, [fetchSantri]);
 
@@ -216,6 +218,12 @@ export default function SantriPage() {
             kabupaten: row.kabupaten,
             provinsi: row.provinsi,
             telepon: row.telepon ? String(row.telepon) : undefined,
+            nik: row.nik ? String(row.nik) : undefined,
+            no_kk: row.no_kk ? String(row.no_kk) : undefined,
+            nama_ayah: row.nama_ayah ? String(row.nama_ayah) : undefined,
+            nik_ayah: row.nik_ayah ? String(row.nik_ayah) : undefined,
+            nama_ibu: row.nama_ibu ? String(row.nama_ibu) : undefined,
+            nik_ibu: row.nik_ibu ? String(row.nik_ibu) : undefined,
           };
           await saveSantri(santriObj, false);
           successCount++;
@@ -259,7 +267,7 @@ export default function SantriPage() {
   const paginationNumbers = getPaginationNumbers(currentPage, totalPages);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-hydrated={isHydrated}>
       {/* Header Halaman Sesuai madinblokagung-main */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
         <div className="flex items-center gap-3">
@@ -435,7 +443,7 @@ export default function SantriPage() {
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700"
           >
             <EyeOff className="w-3.5 h-3.5 text-slate-500" />
-            <span>Kolom ({visibleColumns.length}/34)</span>
+            <span>Kolom ({visibleColumns.length}/{SANTRI_COLUMNS.length})</span>
           </button>
         </div>
       </div>

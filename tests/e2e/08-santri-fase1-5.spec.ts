@@ -4,6 +4,7 @@ test.describe('Modul Santri: Pengujian Komprehensif Fase 1 - 5', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/santri');
     // Pastikan halaman dan tabel santri telah termuat serta client component terhidrasi penuh
+    await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
     await expect(page.getByRole('heading', { name: /Database Santri/i })).toBeVisible();
     await expect(page.locator('table')).toBeVisible();
     await expect(page.getByText(/Menampilkan/i)).toBeVisible();

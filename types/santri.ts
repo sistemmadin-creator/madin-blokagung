@@ -40,7 +40,7 @@ export const SANTRI_COLUMNS: { key: keyof Santri; label: string; locked?: boolea
   { key: 'no_induk', label: 'No. Induk' },
   { key: 'no_biro', label: 'No. Biro' },
   { key: 'nisn', label: 'NISN' },
-  { key: 'pa_pi', label: 'PA/PI' },
+  { key: 'pa_pi', label: 'Gender' },
   { key: 'nama', label: 'Nama Lengkap', locked: true },
   { key: 'tempat_lahir', label: 'Tempat Lahir' },
   { key: 'tgl_lahir', label: 'Tgl' },
@@ -64,14 +64,13 @@ export const SANTRI_COLUMNS: { key: keyof Santri; label: string; locked?: boolea
   { key: 'din_bag', label: 'Din.Bag' },
   { key: 'tingkat', label: 'Tingkat' },
   { key: 'orda', label: 'ORDA' },
-  { key: 'nik', label: 'NIK' },
+  { key: 'nik', label: 'NIK Santri' },
   { key: 'no_kk', label: 'No. KK' },
   { key: 'nama_ayah', label: 'Nama Ayah' },
   { key: 'nik_ayah', label: 'NIK Ayah' },
   { key: 'nama_ibu', label: 'Nama Ibu' },
   { key: 'nik_ibu', label: 'NIK Ibu' },
   { key: 'telepon', label: 'Telepon' },
-  { key: 'foto', label: 'Foto' },
 ];
 
 export const SANTRI_FILTER_CATEGORIES = [

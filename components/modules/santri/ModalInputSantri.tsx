@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { Santri } from '@/types/santri';
-import { User, Upload, Trash2, Save, Camera, MapPin, GraduationCap, Users } from 'lucide-react';
+import { User, Upload, Trash2, Save, Camera, MapPin, GraduationCap, Users, Settings } from 'lucide-react';
 import {
   HierarchyRule,
   loadHierarchyRules,
@@ -20,7 +20,10 @@ import {
   getVillages,
 } from '@/lib/utils/wilayah';
 import { compressImageFile } from '@/lib/utils/image';
+import { parseExcelFile } from '@/lib/utils/excel';
+import { supabase } from '@/lib/supabase/client';
 import CameraCaptureModal from './CameraCaptureModal';
+import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 
 interface WilayahItem {
   id: string;
@@ -28,7 +31,7 @@ interface WilayahItem {
 }
 
 export default function ModalInputSantri() {
-  const { isInputModalOpen, closeInputModal, editSantriData, saveSantri } = useSantriStore();
+  const { isInputModalOpen, closeInputModal, editSantriData, saveSantri, fetchSantri } = useSantriStore();
 
   const isEdit = !!editSantriData;
 
@@ -42,13 +45,18 @@ export default function ModalInputSantri() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isCompressingFoto, setIsCompressingFoto] = useState(false);
+  const [isHierarchyOpen, setIsHierarchyOpen] = useState(false);
+  const [isImportingModal, setIsImportingModal] = useState(false);
+  const modalExcelInputRef = useRef<HTMLInputElement>(null);
 
   // 1. Hierarki Kamar (Tree 1)
   const [hierarchyRules, setHierarchyRules] = useState<HierarchyRule[]>([]);
   // 2. Hierarki Sekolah Formal (Tree 2)
   const [tree2Rules, setTree2Rules] = useState<Tree2Rule[]>([]);
+  // 3. Formasi Kelas Madrasah Diniyyah
+  const [formasiList, setFormasiList] = useState<{ tingkat: string; din_kls: string; din_bag: string; pa_pi: string }[]>([]);
 
-  // 3. Wilayah Indonesia Cascading State
+  // 4. Wilayah Indonesia Cascading State
   const [provinces, setProvinces] = useState<WilayahItem[]>([]);
   const [regencies, setRegencies] = useState<WilayahItem[]>([]);
   const [districts, setDistricts] = useState<WilayahItem[]>([]);
@@ -99,7 +107,7 @@ export default function ModalInputSantri() {
     }
   }, [editSantriData, isInputModalOpen]);
 
-  // Muat aturan Tree 1, Tree 2, dan Daftar Provinsi awal
+  // Muat aturan Tree 1, Tree 2, Formasi Kelas, dan Daftar Provinsi awal
   useEffect(() => {
     if (isInputModalOpen) {
       loadHierarchyRules().then(setHierarchyRules);
@@ -107,6 +115,14 @@ export default function ModalInputSantri() {
       getProvinces().then((data) => {
         if (Array.isArray(data)) setProvinces(data);
       });
+      supabase
+        .from('formasi_kelas')
+        .select('tingkat, din_kls, din_bag, pa_pi')
+        .then(({ data }) => {
+          if (data && Array.isArray(data)) {
+            setFormasiList(data);
+          }
+        });
     }
   }, [isInputModalOpen]);
 
@@ -186,11 +202,50 @@ export default function ModalInputSantri() {
     return parseTree2Options(tree2Rules, formData.unit, formData.jurusan);
   }, [tree2Rules, formData.unit, formData.jurusan]);
 
+  // Opsi Madrasah Diniyyah Dinamis terhubung ke Formasi Kelas
+  const diniyyahOptions = useMemo(() => {
+    const gender = formData.pa_pi || 'PA';
+    const filteredByGender = formasiList.filter((f) => !gender || f.pa_pi === gender);
+
+    const tingkats = Array.from(new Set(filteredByGender.map((f) => f.tingkat).filter(Boolean))).sort();
+    const finalTingkats = tingkats.length > 0 ? tingkats : ['Ula', 'Wustho', 'Ulya'];
+
+    const currentTingkat = formData.tingkat || finalTingkats[0];
+    const filteredByTingkat = filteredByGender.filter(
+      (f) => !currentTingkat || String(f.tingkat).toLowerCase() === String(currentTingkat).toLowerCase()
+    );
+
+    const dinKlses = Array.from(new Set(filteredByTingkat.map((f) => String(f.din_kls)).filter(Boolean))).sort();
+    const finalDinKlses = dinKlses.length > 0 ? dinKlses : ['1', '2', '3'];
+
+    const currentDinKls = formData.din_kls || finalDinKlses[0];
+    const filteredByKls = filteredByTingkat.filter(
+      (f) => !currentDinKls || String(f.din_kls) === String(currentDinKls)
+    );
+
+    const dinBags = Array.from(new Set(filteredByKls.map((f) => f.din_bag).filter(Boolean))).sort();
+    const finalDinBags = dinBags.length > 0 ? dinBags : ['A', 'B', 'C'];
+
+    return {
+      tingkats: finalTingkats,
+      dinKlses: finalDinKlses,
+      dinBags: finalDinBags,
+    };
+  }, [formasiList, formData.pa_pi, formData.tingkat, formData.din_kls]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    let finalVal = value;
+    if (name === 'nama') {
+      finalVal = value.toUpperCase();
+    } else if (name === 'no_induk') {
+      finalVal = value.replace(/\D/g, '').slice(0, 6);
+    } else if (name === 'nisn') {
+      finalVal = value.replace(/\D/g, '').slice(0, 10);
+    }
     setFormData((prev) => ({
       ...prev,
-      [name]: name === 'nama' ? value.toUpperCase() : value,
+      [name]: finalVal,
     }));
   };
 
@@ -204,7 +259,6 @@ export default function ModalInputSantri() {
       setFormData((prev) => ({ ...prev, foto: base64 }));
     } catch (err) {
       console.error('Gagal mengompresi foto:', err);
-      // Fallback pembacaan standar jika canvas bermasalah
       const reader = new FileReader();
       reader.onload = (uploadEvent) => {
         setFormData((prev) => ({
@@ -221,6 +275,70 @@ export default function ModalInputSantri() {
 
   const handleHapusFoto = () => {
     setFormData((prev) => ({ ...prev, foto: '' }));
+  };
+
+  const handleModalImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImportingModal(true);
+    try {
+      const rows = await parseExcelFile(file);
+      if (!Array.isArray(rows) || rows.length === 0) {
+        alert('File Excel kosong atau format tidak sesuai.');
+        return;
+      }
+
+      let successCount = 0;
+      for (const row of rows) {
+        if (row.no_induk && row.nama) {
+          const santriObj: Santri = {
+            no_induk: String(row.no_induk),
+            nama: String(row.nama).toUpperCase(),
+            pa_pi: row.pa_pi === 'PI' ? 'PI' : 'PA',
+            no_biro: row.no_biro ? String(row.no_biro) : undefined,
+            nisn: row.nisn ? String(row.nisn) : undefined,
+            tempat_lahir: row.tempat_lahir,
+            tgl_lahir: row.tgl_lahir ? String(row.tgl_lahir) : undefined,
+            bln_lahir: row.bln_lahir ? String(row.bln_lahir) : undefined,
+            thn_lahir: row.thn_lahir ? String(row.thn_lahir) : undefined,
+            blok: row.blok,
+            asrama: row.asrama,
+            kode: row.kode,
+            kamar: row.kamar,
+            tingkat: row.tingkat,
+            din_kls: row.din_kls ? String(row.din_kls) : undefined,
+            din_bag: row.din_bag,
+            unit: row.unit,
+            jurusan: row.jurusan,
+            semester: row.semester ? String(row.semester) : undefined,
+            kelas: row.kelas ? String(row.kelas) : undefined,
+            bag: row.bag,
+            desa: row.desa,
+            kecamatan: row.kecamatan,
+            kabupaten: row.kabupaten,
+            provinsi: row.provinsi,
+            telepon: row.telepon ? String(row.telepon) : undefined,
+            nik: row.nik ? String(row.nik) : undefined,
+            no_kk: row.no_kk ? String(row.no_kk) : undefined,
+            nama_ayah: row.nama_ayah ? String(row.nama_ayah) : undefined,
+            nik_ayah: row.nik_ayah ? String(row.nik_ayah) : undefined,
+            nama_ibu: row.nama_ibu ? String(row.nama_ibu) : undefined,
+            nik_ibu: row.nik_ibu ? String(row.nik_ibu) : undefined,
+          };
+          await saveSantri(santriObj, false);
+          successCount++;
+        }
+      }
+      alert(`Berhasil mengimpor ${successCount} data santri dari file Excel!`);
+      await fetchSantri();
+      closeInputModal();
+    } catch (err: unknown) {
+      alert('Gagal mengimpor file: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsImportingModal(false);
+      if (modalExcelInputRef.current) modalExcelInputRef.current.value = '';
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -254,6 +372,36 @@ export default function ModalInputSantri() {
         onClose={closeInputModal}
         title={isEdit ? 'Edit Biodata Santri' : 'Formulir Pendaftaran Santri Baru'}
         maxWidth="4xl"
+        headerActions={
+          <div className="flex items-center gap-1.5">
+            <input
+              type="file"
+              ref={modalExcelInputRef}
+              accept=".xlsx, .xls"
+              onChange={handleModalImportExcel}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => modalExcelInputRef.current?.click()}
+              disabled={isImportingModal}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold shadow-2xs transition disabled:opacity-50"
+              title="Impor Data Santri dari File Excel"
+            >
+              <Upload className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden sm:inline">{isImportingModal ? 'Mengimpor...' : 'Impor Excel'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsHierarchyOpen(true)}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 shadow-2xs transition"
+              title="Pengaturan Hierarki Kamar & Pendidikan"
+            >
+              <Settings className="w-4 h-4 text-madin-700" />
+              <span className="hidden sm:inline text-xs font-semibold">Hierarki</span>
+            </button>
+          </div>
+        }
       >
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Bagian 1: Identitas Utama & Foto */}
@@ -550,26 +698,26 @@ export default function ModalInputSantri() {
                   <label className="block text-[11px] font-semibold text-slate-600 mb-1">Tingkat</label>
                   <select
                     name="tingkat"
-                    value={formData.tingkat || 'Ula'}
+                    value={formData.tingkat || diniyyahOptions.tingkats[0] || 'Ula'}
                     onChange={handleChange}
                     className="w-full text-xs py-1.5 px-2 rounded-lg border border-slate-200 bg-white"
                   >
-                    <option value="Ula">Ula</option>
-                    <option value="Wustho">Wustho</option>
-                    <option value="Ulya">Ulya</option>
+                    {diniyyahOptions.tingkats.map((tk) => (
+                      <option key={tk} value={tk}>{tk}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-600 mb-1">Kelas Diniyyah</label>
                   <select
                     name="din_kls"
-                    value={formData.din_kls || '1'}
+                    value={formData.din_kls || diniyyahOptions.dinKlses[0] || '1'}
                     onChange={handleChange}
                     className="w-full text-xs py-1.5 px-2 rounded-lg border border-slate-200 bg-white"
                   >
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
+                    {diniyyahOptions.dinKlses.map((dk) => (
+                      <option key={dk} value={dk}>{dk}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -577,11 +725,17 @@ export default function ModalInputSantri() {
                   <input
                     type="text"
                     name="din_bag"
+                    list="santri_din_bag_options"
                     value={formData.din_bag || ''}
                     onChange={handleChange}
                     placeholder="A, B, C..."
                     className="w-full text-xs py-1.5 px-2 rounded-lg border border-slate-200 bg-white uppercase text-center"
                   />
+                  <datalist id="santri_din_bag_options">
+                    {diniyyahOptions.dinBags.map((db) => (
+                      <option key={db} value={db} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
               <div>
@@ -829,6 +983,9 @@ export default function ModalInputSantri() {
                   className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white font-mono"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-200/60">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">Nama Ayah (BIN)</label>
                 <input
@@ -862,6 +1019,17 @@ export default function ModalInputSantri() {
                   className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white uppercase"
                 />
               </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">NIK Ibu</label>
+                <input
+                  type="text"
+                  name="nik_ibu"
+                  value={formData.nik_ibu || ''}
+                  onChange={handleChange}
+                  placeholder="NIK Ibu"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white font-mono"
+                />
+              </div>
             </div>
           </div>
 
@@ -891,6 +1059,16 @@ export default function ModalInputSantri() {
         isOpen={isCameraOpen}
         onClose={() => setIsCameraOpen(false)}
         onCapture={(b64) => setFormData((prev) => ({ ...prev, foto: b64 }))}
+      />
+
+      {/* Modal Pengaturan Hierarki Dropdown */}
+      <ModalHierarchyBuilder
+        isOpen={isHierarchyOpen}
+        onClose={() => {
+          setIsHierarchyOpen(false);
+          loadHierarchyRules().then(setHierarchyRules);
+          loadTree2Rules().then(setTree2Rules);
+        }}
       />
     </>
   );
