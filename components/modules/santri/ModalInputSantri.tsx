@@ -1,10 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { Santri } from '@/types/santri';
 import { User, Upload, Trash2, Save } from 'lucide-react';
+import {
+  HierarchyRule,
+  loadHierarchyRules,
+  parseHierarchyTree,
+} from '@/lib/services/hierarchy-service';
 
 export default function ModalInputSantri() {
   const { isInputModalOpen, closeInputModal, editSantriData, saveSantri } = useSantriStore();
@@ -63,6 +68,45 @@ export default function ModalInputSantri() {
       });
     }
   }, [editSantriData, isInputModalOpen]);
+
+  // Hierarki Dropdown Rules & Cascading Options
+  const [hierarchyRules, setHierarchyRules] = useState<HierarchyRule[]>([]);
+  useEffect(() => {
+    if (isInputModalOpen) {
+      loadHierarchyRules().then(setHierarchyRules);
+    }
+  }, [isInputModalOpen]);
+
+  const hierarchyTree = useMemo(
+    () => parseHierarchyTree(hierarchyRules),
+    [hierarchyRules]
+  );
+
+  const formOptions = useMemo(() => {
+    const blokOptions = Object.keys(hierarchyTree).sort();
+    const asramaOptions =
+      formData.blok && hierarchyTree[formData.blok]
+        ? Object.keys(hierarchyTree[formData.blok]).sort()
+        : [];
+    const kodeOptions =
+      formData.blok && formData.asrama && hierarchyTree[formData.blok]?.[formData.asrama]
+        ? Object.keys(hierarchyTree[formData.blok][formData.asrama]).sort()
+        : [];
+    const kamarOptions =
+      formData.blok &&
+      formData.asrama &&
+      formData.kode &&
+      hierarchyTree[formData.blok]?.[formData.asrama]?.[formData.kode]
+        ? hierarchyTree[formData.blok][formData.asrama][formData.kode]
+        : [];
+
+    return {
+      bloks: blokOptions,
+      asramas: asramaOptions,
+      kodes: kodeOptions,
+      kamars: kamarOptions,
+    };
+  }, [hierarchyTree, formData.blok, formData.asrama, formData.kode]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -319,44 +363,68 @@ export default function ModalInputSantri() {
                 <input
                   type="text"
                   name="blok"
+                  list="santri_blok_options"
                   value={formData.blok || ''}
                   onChange={handleChange}
-                  placeholder="Contoh: A, B, Induk"
+                  placeholder="Pilih/Ketik Blok"
                   className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white"
                 />
+                <datalist id="santri_blok_options">
+                  {formOptions.bloks.map((b) => (
+                    <option key={b} value={b} />
+                  ))}
+                </datalist>
               </div>
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">Nama Asrama</label>
                 <input
                   type="text"
                   name="asrama"
+                  list="santri_asrama_options"
                   value={formData.asrama || ''}
                   onChange={handleChange}
-                  placeholder="Contoh: Darussalam"
+                  placeholder="Pilih/Ketik Asrama"
                   className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white"
                 />
+                <datalist id="santri_asrama_options">
+                  {formOptions.asramas.map((a) => (
+                    <option key={a} value={a} />
+                  ))}
+                </datalist>
               </div>
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">Kode Kamar</label>
                 <input
                   type="text"
                   name="kode"
+                  list="santri_kode_options"
                   value={formData.kode || ''}
                   onChange={handleChange}
-                  placeholder="Contoh: 01, A"
+                  placeholder="Kode (misal: E)"
                   className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white"
                 />
+                <datalist id="santri_kode_options">
+                  {formOptions.kodes.map((k) => (
+                    <option key={k} value={k} />
+                  ))}
+                </datalist>
               </div>
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">Nomor Kamar</label>
                 <input
                   type="text"
                   name="kamar"
+                  list="santri_kamar_options"
                   value={formData.kamar || ''}
                   onChange={handleChange}
-                  placeholder="Contoh: 12"
+                  placeholder="Kamar (misal: 10)"
                   className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white"
                 />
+                <datalist id="santri_kamar_options">
+                  {formOptions.kamars.map((km) => (
+                    <option key={km} value={km} />
+                  ))}
+                </datalist>
               </div>
             </div>
           </div>

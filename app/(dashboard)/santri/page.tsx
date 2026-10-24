@@ -20,6 +20,8 @@ import ModalInputSantri from '@/components/modules/santri/ModalInputSantri';
 import ModalDetailSantri from '@/components/modules/santri/ModalDetailSantri';
 import ModalFilterSantri from '@/components/modules/santri/ModalFilterSantri';
 import ModalHideColumns from '@/components/modules/santri/ModalHideColumns';
+import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
+import { Settings } from 'lucide-react';
 
 export default function SantriPage() {
   const {
@@ -41,6 +43,7 @@ export default function SantriPage() {
   } = useSantriStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isHierarchyOpen, setIsHierarchyOpen] = React.useState(false);
 
   useEffect(() => {
     fetchSantri();
@@ -200,6 +203,16 @@ export default function SantriPage() {
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export Excel</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsHierarchyOpen(true)}
+            title="Pengaturan Hierarki Dropdown (Blok > Asrama > Kode > Kamar)"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
+          >
+            <Settings className="w-3.5 h-3.5 text-madin-700" />
+            <span className="hidden sm:inline">Hierarki Kamar</span>
           </button>
 
           <button
@@ -389,6 +402,10 @@ export default function SantriPage() {
       <ModalDetailSantri />
       <ModalFilterSantri />
       <ModalHideColumns />
+      <ModalHierarchyBuilder
+        isOpen={isHierarchyOpen}
+        onClose={() => setIsHierarchyOpen(false)}
+      />
     </div>
   );
 }

@@ -1,19 +1,73 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Dialog from '@/components/ui/Dialog';
+import {
+  X,
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  Filter,
+  RotateCcw,
+  FolderOpen,
+  Folder,
+  Save,
+  Info,
+  FolderTree,
+  Layers,
+} from 'lucide-react';
+import {
+  HierarchyRule,
+  DEFAULT_HIERARCHY_RULES,
+  loadHierarchyRules,
+  saveHierarchyRules,
+} from '@/lib/services/hierarchy-service';
 import { supabase } from '@/lib/supabase/client';
 import { useAppStore } from '@/stores/useAppStore';
 import { logActivity } from '@/lib/utils/audit';
-import { FolderTree, Plus, Trash2, Save, Layers } from 'lucide-react';
 
-interface RuleItem {
-  id: string;
-  parentPath: string; // e.g. "Putra > Darussalam > A"
-  type: 'numeric' | 'alpha' | 'manual';
-  start?: string;
-  end?: string;
-  manualText?: string;
+const NO_BLOK_LABEL = '(Tanpa Blok)';
+
+/** Input rute yang baru menerapkan perubahan saat selesai diketik (blur / Enter),
+ *  agar aturan tidak berpindah kelompok Blok di tengah pengetikan. */
+function PathInput({
+  value,
+  onCommit,
+}: {
+  value: string;
+  onCommit: (next: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  const commit = () => {
+    if (draft !== value) onCommit(draft);
+  };
+
+  return (
+    <input
+      type="text"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      placeholder="Contoh: Blok 1 > Al Hikmah > E"
+      className="w-full h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-mono text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+    />
+  );
+}
+
+function splitPath(path: string): string[] {
+  return (path || '').split('>').map((s) => s.trim()).filter(Boolean);
 }
 
 export default function ModalHierarchyBuilder({
@@ -25,205 +79,706 @@ export default function ModalHierarchyBuilder({
 }) {
   const { settings, setSettings } = useAppStore();
   const [activeTab, setActiveTab] = useState<'tree1' | 'tree2'>('tree1');
-  const [rulesTree1, setRulesTree1] = useState<RuleItem[]>([]);
+  const [rules, setRules] = useState<HierarchyRule[]>(DEFAULT_HIERARCHY_RULES);
   const [rulesTree2, setRulesTree2] = useState<string>('');
-  const [isSaving, setIsSaving] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterBlok, setFilterBlok] = useState('');
+  const [filterAsrama, setFilterAsrama] = useState('');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [saving, setSaving] = useState(false);
 
+  // Muat data hierarki saat modal dibuka
   useEffect(() => {
     if (!isOpen) return;
 
-    const loadSettings = async () => {
+    let isMounted = true;
+    const fetchSettings = async () => {
       try {
-        const { data, error } = await supabase
+        const loadedRules = await loadHierarchyRules();
+        if (isMounted) {
+          setRules(loadedRules.length > 0 ? loadedRules : DEFAULT_HIERARCHY_RULES);
+        }
+
+        // Muat Tree 2 dari Supabase jika ada
+        const { data } = await supabase
           .from('app_settings')
           .select('value')
           .eq('key', 'APP_SETTINGS')
           .maybeSingle();
 
-        if (error) throw error;
-        if (data && data.value) {
+        if (isMounted && data?.value) {
           const val = data.value;
           setSettings(val);
-          if (typeof val.tree1 === 'string') {
-            setRulesTree2(typeof val.tree2 === 'string' ? val.tree2 : JSON.stringify(val.tree2, null, 2));
+          if (val.tree2) {
+            setRulesTree2(
+              typeof val.tree2 === 'string'
+                ? val.tree2
+                : JSON.stringify(val.tree2, null, 2)
+            );
           }
         }
       } catch (err) {
-        console.error('Load settings error:', err);
+        console.error('Gagal memuat aturan hierarki:', err);
       }
     };
 
-    loadSettings();
+    fetchSettings();
+    setOpenGroups(new Set());
+    setExpandedId(null);
+    setSearchTerm('');
+    setFilterBlok('');
+    setFilterAsrama('');
+    setShowFilterDropdown(false);
+
+    return () => {
+      isMounted = false;
+    };
   }, [isOpen, setSettings]);
 
-  const handleAddRuleTree1 = () => {
-    setRulesTree1((prev) => [
-      ...prev,
-      {
-        id: String(Date.now()),
-        parentPath: 'Putra > Darussalam > A',
-        type: 'numeric',
-        start: '1',
-        end: '10',
-      },
-    ]);
+  if (!isOpen) return null;
+
+  // Ekstrak daftar blok dan asrama unik untuk filter
+  const blokSet = new Set<string>();
+  const asramaSet = new Set<string>();
+
+  rules.forEach((r) => {
+    const parts = splitPath(r.parentPath);
+    if (parts[0]) blokSet.add(parts[0]);
+    if (parts[1] && (!filterBlok || parts[0] === filterBlok)) {
+      asramaSet.add(parts[1]);
+    }
+  });
+
+  const filtersActive = Boolean(filterBlok || filterAsrama || searchTerm.trim());
+
+  // Filter aturan berdasarkan search & filter blok/asrama
+  const filteredRules = rules.filter((r) => {
+    const parts = splitPath(r.parentPath);
+    const blok = parts[0] || '';
+    const asrama = parts[1] || '';
+    const fullText = `${r.parentPath} ${r.type} ${r.numStart || ''} ${r.numEnd || ''} ${r.alphaStart || ''} ${r.alphaEnd || ''} ${r.manualList || ''}`.toLowerCase();
+
+    const matchBlok = !filterBlok || blok === filterBlok;
+    const matchAsrama = !filterAsrama || asrama === filterAsrama;
+    const matchSearch =
+      !searchTerm || fullText.includes(searchTerm.toLowerCase().trim());
+
+    return matchBlok && matchAsrama && matchSearch;
+  });
+
+  // Kelompokkan aturan berdasarkan Blok (urutan kemunculan pertama)
+  const groups: { name: string; items: HierarchyRule[] }[] = [];
+  const groupIndex = new Map<string, number>();
+  filteredRules.forEach((r) => {
+    const name = splitPath(r.parentPath)[0] || NO_BLOK_LABEL;
+    let idx = groupIndex.get(name);
+    if (idx === undefined) {
+      idx = groups.length;
+      groupIndex.set(name, idx);
+      groups.push({ name, items: [] });
+    }
+    groups[idx].items.push(r);
+  });
+
+  const isGroupOpen = (g: { name: string; items: HierarchyRule[] }) =>
+    filtersActive ||
+    openGroups.has(g.name) ||
+    g.items.some((r) => r.id === expandedId);
+
+  const toggleGroup = (g: { name: string; items: HierarchyRule[] }) => {
+    if (filtersActive) return;
+    const containsExpanded = g.items.some((r) => r.id === expandedId);
+    if (containsExpanded) setExpandedId(null);
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(g.name)) next.delete(g.name);
+      else next.add(g.name);
+      return next;
+    });
+  };
+
+  const openAllGroups = () => setOpenGroups(new Set(groups.map((g) => g.name)));
+  const closeAllGroups = () => {
+    setOpenGroups(new Set());
+    setExpandedId(null);
+  };
+
+  const handleAddRule = () => {
+    const newId = `rule_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const newRule: HierarchyRule = {
+      id: newId,
+      tree: 'tree1',
+      parentPath: 'Blok 1 > Al Hikmah > E',
+      type: 'numeric',
+      numStart: 1,
+      numEnd: 10,
+    };
+    setRules((prev) => [newRule, ...prev]);
+    setOpenGroups((prev) => new Set(prev).add('Blok 1'));
+    setExpandedId(newId);
+  };
+
+  const handleRemoveRule = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRules((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const handleUpdateRule = (id: string, updates: Partial<HierarchyRule>) => {
+    setRules((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
+    );
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
+    setSaving(true);
     try {
+      // Simpan Tree 1 ke hierarchy service
+      await saveHierarchyRules(rules);
+
+      // Simpan juga Tree 2 dan update Zustand settings
+      let parsedTree2 = rulesTree2;
+      try {
+        if (rulesTree2.trim().startsWith('{') || rulesTree2.trim().startsWith('[')) {
+          parsedTree2 = JSON.parse(rulesTree2);
+        }
+      } catch {
+        // jika bukan json murni, simpan sebagai string
+      }
+
       const updatedSettings = {
         ...settings,
-        tree1: typeof settings.tree1 === 'string' ? settings.tree1 : 'Blok > Asrama > Kode > Kamar',
-        tree2: rulesTree2,
+        tree1: JSON.stringify(rules),
+        tree2: parsedTree2,
       };
 
-      const { error } = await supabase
-        .from('app_settings')
-        .upsert([{ key: 'APP_SETTINGS', value: updatedSettings }], { onConflict: 'key' });
+      await supabase.from('app_settings').upsert(
+        [
+          {
+            key: 'APP_SETTINGS',
+            value: updatedSettings,
+          },
+        ],
+        { onConflict: 'key' }
+      );
 
-      if (error) throw error;
-
-      await logActivity('SIMPAN PENGATURAN', 'Memperbarui konfigurasi hierarki sistem');
+      await logActivity(
+        'SIMPAN PENGATURAN',
+        'Memperbarui konfigurasi hierarki kamar & kelas formal'
+      );
       setSettings(updatedSettings);
-      alert('Pengaturan hierarki berhasil disimpan!');
+      alert('Pengaturan Hierarki Dropdown berhasil disimpan!');
       onClose();
     } catch (err: unknown) {
-      alert('Gagal menyimpan pengaturan: ' + (err instanceof Error ? err.message : String(err)));
+      alert(
+        'Gagal menyimpan pengaturan: ' +
+          (err instanceof Error ? err.message : String(err))
+      );
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
+  const getRangePreview = (r: HierarchyRule) => {
+    if (r.type === 'numeric') {
+      return `[ ${r.numStart || 1} - ${r.numEnd || 10} ]`;
+    }
+    if (r.type === 'alpha') {
+      return `[ ${(r.alphaStart || 'A').toUpperCase()} - ${(r.alphaEnd || 'E').toUpperCase()} ]`;
+    }
+    return `[ ${r.manualList || 'Manual'} ]`;
+  };
+
+  const inputClass =
+    'w-full h-8 rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
+
   return (
-    <Dialog
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Pengaturan Hierarki Kamar & Kelas Formal"
-      maxWidth="3xl"
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-settings-title"
     >
-      <div className="space-y-4">
-        {/* Tab Selector */}
-        <div className="flex border-b border-slate-200">
-          <button
-            onClick={() => setActiveTab('tree1')}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold border-b-2 transition ${
-              activeTab === 'tree1'
-                ? 'border-madin-700 text-madin-700 bg-madin-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <FolderTree className="w-4 h-4" />
-            Hierarki Kamar (Tree 1: Blok &gt; Asrama &gt; Kode &gt; Kamar)
-          </button>
-          <button
-            onClick={() => setActiveTab('tree2')}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold border-b-2 transition ${
-              activeTab === 'tree2'
-                ? 'border-madin-700 text-madin-700 bg-madin-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            Hierarki Kelas Formal (Tree 2: Unit &gt; Jurusan &gt; Kelas)
-          </button>
-        </div>
-
-        {/* Tab 1: Tree 1 */}
-        {activeTab === 'tree1' && (
-          <div className="space-y-3">
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
-              Aturan hierarki kamar menentukan dropdown berjenjang pada formulir pendaftaran santri dan dewan asatidz.
-            </div>
-
-            <div className="space-y-2 max-h-[50vh] overflow-y-auto p-1">
-              <div className="p-3 border border-slate-200 rounded-xl bg-white shadow-2xs space-y-2">
-                <label className="text-xs font-semibold text-slate-700">Rute Induk Pengelompokan Kamar</label>
-                <input
-                  type="text"
-                  defaultValue="Putra > Darussalam > A"
-                  className="w-full text-xs py-1.5 px-3 rounded-lg border border-slate-200 font-mono"
-                />
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <label className="text-slate-500">Rentang Awal</label>
-                    <input type="text" defaultValue="01" className="w-full text-xs py-1 px-2 border rounded" />
-                  </div>
-                  <div>
-                    <label className="text-slate-500">Rentang Akhir</label>
-                    <input type="text" defaultValue="20" className="w-full text-xs py-1 px-2 border rounded" />
-                  </div>
-                </div>
-              </div>
-
-              {rulesTree1.map((rule) => (
-                <div key={rule.id} className="p-3 border border-slate-200 rounded-xl bg-white shadow-2xs space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-mono font-medium text-slate-600">{rule.parentPath}</span>
-                    <button
-                      type="button"
-                      onClick={() => setRulesTree1((prev) => prev.filter((r) => r.id !== rule.id))}
-                      className="text-rose-500 hover:text-rose-700 p-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={handleAddRuleTree1}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-dashed border-madin-600 text-madin-700 hover:bg-madin-50 w-full justify-center"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Aturan Kamar Baru</span>
-            </button>
-          </div>
-        )}
-
-        {/* Tab 2: Tree 2 */}
-        {activeTab === 'tree2' && (
-          <div className="space-y-3">
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800">
-              Aturan hierarki pendidikan formal (SMP, MTs, SMA, MA, SMK, Institut).
+      <div className="w-full max-w-6xl rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 overflow-hidden flex flex-col max-h-[92vh]">
+        {/* Header Modal */}
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white dark:bg-slate-950 border-b border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm">
+              <FolderOpen className="h-4 w-4" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Konfigurasi JSON / Format Rute Kelas Formal
-              </label>
-              <textarea
-                rows={10}
-                value={rulesTree2}
-                onChange={(e) => setRulesTree2(e.target.value)}
-                placeholder="Contoh: SMP > MIPA > 1 > VII > A"
-                className="w-full text-xs p-3 rounded-lg border border-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-madin-600"
-              />
+              <h2 id="modal-settings-title" className="text-base font-bold text-white">
+                Pengaturan Hierarki Dropdown
+              </h2>
+              <p className="text-xs text-slate-400">
+                Atur relasi Blok &gt; Asrama &gt; Kode &gt; Kamar untuk form santri
+              </p>
             </div>
           </div>
-        )}
-
-        {/* Footer */}
-        <div className="flex justify-between items-center pt-3 border-t border-slate-100">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600"
+            aria-label="Tutup pengaturan hierarki"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Tab Selector Navigasi */}
+        <div className="flex border-b border-slate-200 bg-white px-6 pt-1 dark:border-slate-800 dark:bg-slate-900">
+          <button
+            type="button"
+            onClick={() => setActiveTab('tree1')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition ${
+              activeTab === 'tree1'
+                ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <FolderTree className="w-4 h-4 text-emerald-600" />
+            <span>Hierarki Kamar (Tree 1: Blok &gt; Asrama &gt; Kode &gt; Kamar)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('tree2')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition ${
+              activeTab === 'tree2'
+                ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-blue-600" />
+            <span>Hierarki Kelas Formal (Tree 2: Unit &gt; Jurusan &gt; Kelas)</span>
+          </button>
+        </div>
+
+        {/* Konten Builder Tab 1: Hierarki Kamar (Sama persis Gambar 1) */}
+        {activeTab === 'tree1' && (
+          <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900/50">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-800/60">
+              {/* Toolbar Builder */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-400">
+                    1. Blok &gt; Asrama &gt; Kode &gt; Kamar
+                  </span>
+                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                    {groups.length} blok · {filteredRules.length} aturan
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 ms-auto">
+                  <button
+                    type="button"
+                    onClick={openAllGroups}
+                    disabled={filtersActive}
+                    className="h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition"
+                  >
+                    Buka Semua
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeAllGroups}
+                    disabled={filtersActive}
+                    className="h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition"
+                  >
+                    Tutup Semua
+                  </button>
+
+                  {/* Tombol Filter Blok/Asrama */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowFilterDropdown((prev) => !prev)}
+                      className={`inline-flex items-center gap-1 h-8 rounded-lg border px-2.5 text-xs font-semibold shadow-sm transition ${
+                        filterBlok || filterAsrama
+                          ? 'border-emerald-600 bg-emerald-50 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-300'
+                          : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                      }`}
+                    >
+                      <Filter className="h-3.5 w-3.5" />
+                      <span>Filter</span>
+                    </button>
+
+                    {showFilterDropdown && (
+                      <div className="absolute right-0 mt-1 z-30 w-56 rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900 space-y-2.5">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                            Blok
+                          </label>
+                          <select
+                            value={filterBlok}
+                            onChange={(e) => {
+                              setFilterBlok(e.target.value);
+                              setFilterAsrama('');
+                            }}
+                            className={inputClass}
+                          >
+                            <option value="">Semua Blok</option>
+                            {Array.from(blokSet).map((b) => (
+                              <option key={b} value={b}>
+                                {b}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                            Asrama
+                          </label>
+                          <select
+                            value={filterAsrama}
+                            onChange={(e) => setFilterAsrama(e.target.value)}
+                            className={inputClass}
+                          >
+                            <option value="">Semua Asrama</option>
+                            {Array.from(asramaSet).map((a) => (
+                              <option key={a} value={a}>
+                                {a}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFilterBlok('');
+                            setFilterAsrama('');
+                            setShowFilterDropdown(false);
+                          }}
+                          className="w-full inline-flex items-center justify-center gap-1 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg dark:text-slate-400 dark:hover:bg-slate-800 transition"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          <span>Reset Filter</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Kotak Pencarian Aturan */}
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Cari aturan..."
+                      className="h-8 w-36 sm:w-48 rounded-lg border border-slate-300 bg-white pl-8 pr-2 text-xs text-slate-800 placeholder-slate-400 shadow-sm focus:border-emerald-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+
+                  {/* Tombol Tambah Aturan (+) */}
+                  <button
+                    type="button"
+                    onClick={handleAddRule}
+                    title="Tambah Aturan Baru"
+                    aria-label="Tambah Aturan Baru"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-sm hover:bg-emerald-800 transition"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Banner Info */}
+              <div className="mb-3 flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-600 dark:bg-slate-900/60 dark:text-slate-400">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-700 dark:text-emerald-400" />
+                <p>
+                  Pilihan kosong <span className="font-mono font-bold">-</span> otomatis tersedia
+                  di dropdown Kode dan Kamar. Nomor kamar angka ditulis tanpa nol di depan
+                  (2, bukan 02). Untuk asrama tanpa kode, tulis rute{' '}
+                  <span className="font-mono">Blok &gt; Asrama &gt; -</span>.
+                </p>
+              </div>
+
+              {/* Daftar Kelompok Blok dalam 3 kolom */}
+              {groups.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400 italic">
+                  Tidak ada aturan hierarki yang cocok. Klik tombol (+) untuk menambah.
+                </div>
+              ) : (
+                <div className="columns-1 md:columns-2 xl:columns-3 gap-3">
+                  {groups.map((group) => {
+                    const open = isGroupOpen(group);
+
+                    return (
+                      <div
+                        key={group.name}
+                        className="mb-3 break-inside-avoid rounded-xl border border-slate-200 bg-slate-50/60 overflow-hidden dark:border-slate-700/80 dark:bg-slate-900/40 shadow-2xs"
+                      >
+                        {/* Kepala Kelompok Blok */}
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(group)}
+                          aria-expanded={open}
+                          className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left hover:bg-slate-100/80 transition dark:hover:bg-slate-800/60"
+                        >
+                          <span className="flex items-center gap-2 min-w-0">
+                            {open ? (
+                              <FolderOpen className="h-4 w-4 shrink-0 text-emerald-600" />
+                            ) : (
+                              <Folder className="h-4 w-4 shrink-0 text-emerald-600" />
+                            )}
+                            <span className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                              {group.name}
+                            </span>
+                            <span className="shrink-0 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                              {group.items.length}
+                            </span>
+                          </span>
+                          {open ? (
+                            <ChevronUp className="h-4 w-4 shrink-0 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+                          )}
+                        </button>
+
+                        {/* Isi Kelompok */}
+                        {open && (
+                          <div className="space-y-2 border-t border-slate-200 p-2.5 dark:border-slate-700/80">
+                            {group.items.map((rule) => {
+                              const isExpanded = expandedId === rule.id;
+                              const parts = splitPath(rule.parentPath);
+                              const label =
+                                parts.length > 1
+                                  ? parts.slice(1).join(' > ')
+                                  : rule.parentPath || 'Rute Kosong';
+
+                              return (
+                                <div
+                                  key={rule.id}
+                                  className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden dark:border-slate-700/80 dark:bg-slate-800"
+                                >
+                                  {/* Baris Ringkasan (Preview) */}
+                                  <div
+                                    onClick={() =>
+                                      setExpandedId(isExpanded ? null : rule.id)
+                                    }
+                                    className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer hover:bg-slate-50 transition dark:hover:bg-slate-700/50"
+                                  >
+                                    <div className="flex min-w-0 flex-col gap-0.5 text-xs">
+                                      <span className="truncate font-semibold text-slate-900 dark:text-white">
+                                        {label}
+                                      </span>
+                                      <span className="w-fit rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-mono text-slate-600 border border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600">
+                                        {getRangePreview(rule)}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleRemoveRule(rule.id, e)}
+                                        title="Hapus Aturan"
+                                        aria-label="Hapus Aturan"
+                                        className="flex h-7 w-7 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition dark:hover:bg-rose-950/40"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                      {isExpanded ? (
+                                        <ChevronUp className="h-4 w-4 text-slate-400" />
+                                      ) : (
+                                        <ChevronDown className="h-4 w-4 text-slate-400" />
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Detail Edit (Saat Terbuka) */}
+                                  {isExpanded && (
+                                    <div className="p-3 bg-slate-50/80 border-t border-slate-100 dark:bg-slate-900/60 dark:border-slate-700 space-y-3">
+                                      <div>
+                                        <label className="block text-[11px] font-bold text-emerald-800 dark:text-emerald-400 mb-1">
+                                          Rute Induk (Blok &gt; Asrama &gt; Kode)
+                                        </label>
+                                        <PathInput
+                                          value={rule.parentPath}
+                                          onCommit={(next) =>
+                                            handleUpdateRule(rule.id, { parentPath: next })
+                                          }
+                                        />
+                                      </div>
+
+                                      <div className="grid grid-cols-2 gap-2.5">
+                                        <div className="col-span-2">
+                                          <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                            Tipe Hasil Kamar
+                                          </label>
+                                          <select
+                                            value={rule.type}
+                                            onChange={(e) =>
+                                              handleUpdateRule(rule.id, {
+                                                type: e.target.value as HierarchyRule['type'],
+                                              })
+                                            }
+                                            className={inputClass}
+                                          >
+                                            <option value="numeric">Rentang Angka</option>
+                                            <option value="alpha">Rentang Abjad</option>
+                                            <option value="manual">Teks Manual</option>
+                                          </select>
+                                        </div>
+
+                                        {rule.type === 'numeric' && (
+                                          <>
+                                            <div>
+                                              <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                                Angka Awal
+                                              </label>
+                                              <input
+                                                type="number"
+                                                value={rule.numStart || 1}
+                                                onChange={(e) =>
+                                                  handleUpdateRule(rule.id, {
+                                                    numStart: Number(e.target.value),
+                                                  })
+                                                }
+                                                className={inputClass}
+                                              />
+                                            </div>
+                                            <div>
+                                              <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                                Angka Akhir
+                                              </label>
+                                              <input
+                                                type="number"
+                                                value={rule.numEnd || 10}
+                                                onChange={(e) =>
+                                                  handleUpdateRule(rule.id, {
+                                                    numEnd: Number(e.target.value),
+                                                  })
+                                                }
+                                                className={inputClass}
+                                              />
+                                            </div>
+                                          </>
+                                        )}
+
+                                        {rule.type === 'alpha' && (
+                                          <>
+                                            <div>
+                                              <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                                Abjad Awal
+                                              </label>
+                                              <input
+                                                type="text"
+                                                maxLength={1}
+                                                value={rule.alphaStart || 'A'}
+                                                onChange={(e) =>
+                                                  handleUpdateRule(rule.id, {
+                                                    alphaStart: e.target.value.toUpperCase(),
+                                                  })
+                                                }
+                                                className={`${inputClass} text-center font-bold uppercase`}
+                                              />
+                                            </div>
+                                            <div>
+                                              <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                                Abjad Akhir
+                                              </label>
+                                              <input
+                                                type="text"
+                                                maxLength={1}
+                                                value={rule.alphaEnd || 'E'}
+                                                onChange={(e) =>
+                                                  handleUpdateRule(rule.id, {
+                                                    alphaEnd: e.target.value.toUpperCase(),
+                                                  })
+                                                }
+                                                className={`${inputClass} text-center font-bold uppercase`}
+                                              />
+                                            </div>
+                                          </>
+                                        )}
+
+                                        {rule.type === 'manual' && (
+                                          <div className="col-span-2">
+                                            <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                              Daftar Kamar (Pisahkan dengan koma)
+                                            </label>
+                                            <input
+                                              type="text"
+                                              value={rule.manualList || ''}
+                                              onChange={(e) =>
+                                                handleUpdateRule(rule.id, {
+                                                  manualList: e.target.value,
+                                                })
+                                              }
+                                              placeholder="Contoh: A1, A2, A3, Mandi"
+                                              className={`${inputClass} font-mono`}
+                                            />
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Konten Tab 2: Hierarki Kelas Formal */}
+        {activeTab === 'tree2' && (
+          <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900/50">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-800/60 space-y-4">
+              <div className="flex items-start gap-2.5 rounded-xl bg-blue-50/80 p-3.5 text-xs text-blue-900 border border-blue-200 dark:bg-blue-950/40 dark:border-blue-900 dark:text-blue-300">
+                <Info className="h-4 w-4 shrink-0 text-blue-600 mt-0.5" />
+                <div>
+                  <h4 className="font-bold mb-0.5">Hierarki Pendidikan Formal</h4>
+                  <p className="text-[11px] text-blue-800/80 dark:text-blue-300/80">
+                    Aturan pengelompokan tingkatan sekolah formal (SMP, MTs, SMA, MA, SMK, Institut) beserta pembagian kelas dan jurusannya.
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Konfigurasi JSON / Format Rute Kelas Formal
+                </label>
+                <textarea
+                  rows={12}
+                  value={rulesTree2}
+                  onChange={(e) => setRulesTree2(e.target.value)}
+                  placeholder="Contoh: SMP > MIPA > 1 > VII > A"
+                  className="w-full text-xs p-3 rounded-xl border border-slate-300 font-mono bg-white text-slate-800 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Footer Simpan */}
+        <div className="flex items-center justify-between px-6 py-4 bg-white border-t border-slate-200 dark:bg-slate-900 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
           >
             Batal
           </button>
           <button
             type="button"
+            disabled={saving}
             onClick={handleSave}
-            disabled={isSaving}
-            className="flex items-center gap-1.5 px-5 py-2 text-xs font-semibold rounded-lg bg-madin-700 hover:bg-madin-800 text-white shadow-sm transition disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-5 py-2 text-xs font-bold text-white shadow hover:bg-black transition disabled:opacity-50 dark:bg-emerald-700 dark:hover:bg-emerald-800"
           >
-            <Save className="w-3.5 h-3.5" />
-            <span>{isSaving ? 'Menyimpan...' : 'Simpan Konfigurasi'}</span>
+            <Save className="h-3.5 w-3.5" />
+            <span>{saving ? 'Menyimpan...' : 'Simpan Pengaturan'}</span>
           </button>
         </div>
       </div>
-    </Dialog>
+    </div>
   );
 }

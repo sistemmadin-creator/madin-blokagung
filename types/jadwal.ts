@@ -11,3 +11,14 @@ export interface JadwalSlot {
 }
 
 export type JadwalKbmMap = Record<string, JadwalSlot>;
+
+export interface JadwalAsatidzRow {
+  nama_asatidz: string;
+  sabtu?: string;
+  ahad?: string;
+  senin?: string;
+  selasa?: string;
+  rabu?: string;
+  kamis?: string;
+  [key: string]: any;
+}

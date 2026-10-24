@@ -7,7 +7,7 @@ describe('Jadwal Conflict Detection Logic', () => {
     const classSlots = new Map<string, string[]>();   // key: `${kelas}_${day}_${jam}`, val: [teacher]
 
     const conflicts: string[] = [];
-    const days: (keyof JadwalAsatidzRow)[] = ['sabtu', 'ahad', 'senin', 'selasa', 'rabu', 'kamis'];
+    const days: string[] = ['sabtu', 'ahad', 'senin', 'selasa', 'rabu', 'kamis'];
 
     jadwalList.forEach((row) => {
       const teacher = row.nama_asatidz;
