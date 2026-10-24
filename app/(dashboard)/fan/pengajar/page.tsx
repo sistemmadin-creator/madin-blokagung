@@ -3,239 +3,393 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useFanStore } from '@/stores/useFanStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
-import { useJadwalStore } from '@/stores/useJadwalStore';
-import { exportToExcel } from '@/lib/utils/excel';
+import { useFormasiStore } from '@/stores/useFormasiStore';
+import {
+  sortAsatidzByKodeNatural,
+  parseFanItemString,
+  URUTAN_TINGKAT,
+  getItemsKonfigFanKelas,
+} from '@/lib/utils/fanHelper';
+import * as XLSX from 'xlsx';
+import ModalGrupAsal from '@/components/modules/fan/ModalGrupAsal';
+import ModalDetailAsatidz from '@/components/modules/asatidz/ModalDetailAsatidz';
 import {
   Users,
   Search,
   RefreshCw,
   Printer,
-  Download,
+  FileSpreadsheet,
   RotateCcw,
+  X,
+  Star,
 } from 'lucide-react';
-import Dialog from '@/components/ui/Dialog';
+import { Asatidz } from '@/types/asatidz';
 
 export default function PengajarFanPage() {
-  const { fanItems, pengajarMap, fetchFanData, setPengajarFan, isLoading: loadingFan } = useFanStore();
-  const { asatidzList, fetchAsatidz, isLoading: loadingAsatidz } = useAsatidzStore();
-  const { jadwalMap, fetchJadwal } = useJadwalStore();
+  const {
+    fanConfig,
+    fanDetail,
+    masterGrupAsal,
+    fetchFanData,
+    openModalGrupAsal,
+    isLoading: loadingFan,
+  } = useFanStore();
+
+  const {
+    asatidzList,
+    fetchAsatidz,
+    openDetailModal,
+    isLoading: loadingAsatidz,
+  } = useAsatidzStore();
+
+  const { fetchFormasi } = useFormasiStore();
 
   const [search, setSearch] = useState('');
   const [filterTingkat, setFilterTingkat] = useState('');
   const [filterJah, setFilterJah] = useState('');
 
-  // Modal Atur Fan Asatidz
-  const [editingAsatidz, setEditingAsatidz] = useState<string | null>(null);
-  const [selectedFansForAsatidz, setSelectedFansForAsatidz] = useState<string[]>([]);
-
   useEffect(() => {
     fetchFanData();
-    fetchJadwal();
+    fetchFormasi();
     if (asatidzList.length === 0) fetchAsatidz();
-  }, [fetchFanData, fetchJadwal, fetchAsatidz, asatidzList.length]);
+  }, [fetchFanData, fetchFormasi, fetchAsatidz, asatidzList.length]);
 
-  // Distinct Jah list
+  // Distinct Jah options
   const jahOptions = useMemo(() => {
     const s = new Set<string>();
-    asatidzList.forEach((a) => {
-      if (a.jah_asatidz) s.add(a.jah_asatidz);
+    (asatidzList || []).forEach((a) => {
+      const j = String(a.jah_asatidz || '').trim();
+      if (j && j !== '-') s.add(j);
     });
     return Array.from(s).sort();
   }, [asatidzList]);
 
-  // Aggregate fans taught by each asatidz from both manual pengajarMap and schedule records
-  const asatidzFanData = useMemo(() => {
-    return asatidzList.map((a) => {
-      const namaUpper = a.nama_asatidz.toUpperCase();
+  // Ekstraksi data pengajar fan dan metrik keterisian
+  const { teacherMap, totalItemFan, itemFanTerisi } = useMemo(() => {
+    const tempPeta: Record<
+      string,
+      Record<
+        string,
+        {
+          fan: string;
+          kelas: string;
+          tingkat: string;
+          klsNum: number;
+          isUg: boolean;
+          kitab: string[];
+        }
+      >
+    > = {};
 
-      // Find from jadwal
-      const scheduledFans = new Set<string>();
-      const teacherSchedule = Object.values(jadwalMap).find(
-        (j) => j.nama_asatidz.toUpperCase() === namaUpper
-      );
+    (asatidzList || []).forEach((a) => {
+      const n = String(a.nama_asatidz || '').trim().toUpperCase();
+      if (n) tempPeta[n] = {};
+    });
 
-      if (teacherSchedule) {
-        (['sabtu', 'ahad', 'senin', 'selasa', 'rabu', 'kamis'] as const).forEach((d) => {
-          const val = teacherSchedule[d];
-          if (val) {
-            val.split(';;').forEach((entry) => {
-              const parts = entry.split('|').map((s) => s.trim());
-              const fanName = parts[2] || '';
-              const klsName = parts[1] || '';
-              if (fanName) scheduledFans.add(`${fanName}${klsName ? ` (${klsName})` : ''}`);
-            });
-          }
-        });
-      }
+    const items = fanDetail.item || {};
+    Object.keys(items).forEach((itemKey) => {
+      const idx = itemKey.indexOf('||');
+      if (idx < 0) return;
+      const kelasKey = itemKey.substring(0, idx);
+      const rawItem = itemKey.substring(idx + 2);
 
-      // Also merge any assigned from pengajarMap
-      Object.entries(pengajarMap).forEach(([fanName, teachers]) => {
-        if (teachers.some((t) => t.toUpperCase() === namaUpper)) {
-          scheduledFans.add(fanName);
+      const daftarCfg = getItemsKonfigFanKelas(kelasKey, fanConfig);
+      if (daftarCfg && !daftarCfg.includes(rawItem)) return;
+
+      const det = items[itemKey] || {};
+      const guru = Array.isArray(det.asatidz) ? det.asatidz : [];
+      if (!guru.length) return;
+
+      const parsed = parseFanItemString(rawItem);
+      const namaFan = parsed.fan && parsed.fan !== '-' ? parsed.fan : parsed.mapel;
+      const isUg = /\(Ug\)\s*$/i.test(kelasKey);
+      const kelasBersih = kelasKey.replace(/\s*\(Ug\)\s*$/i, '').trim();
+      const kelasLabel = isUg ? `${kelasBersih} Ug` : kelasBersih;
+      const parts = kelasBersih.split(/\s+/);
+      const tingkat = String(parts[parts.length - 1] || '').toUpperCase();
+      const klsNum = parseInt(parts[0], 10) || 0;
+
+      guru.forEach((g) => {
+        const key = String(g || '').trim().toUpperCase();
+        if (!key || !tempPeta[key]) return;
+        const ek = `${namaFan.toLowerCase()}|${kelasLabel.toLowerCase()}`;
+        if (!tempPeta[key][ek]) {
+          tempPeta[key][ek] = {
+            fan: namaFan,
+            kelas: kelasLabel,
+            tingkat,
+            klsNum,
+            isUg,
+            kitab: [],
+          };
+        }
+        if (
+          parsed.mapel &&
+          parsed.mapel !== '-' &&
+          !tempPeta[key][ek].kitab.includes(parsed.mapel)
+        ) {
+          tempPeta[key][ek].kitab.push(parsed.mapel);
         }
       });
-
-      const fanList = Array.from(scheduledFans);
-
-      return {
-        nia: a.nia || '-',
-        nama: a.nama_asatidz,
-        asal: a.kabupaten || a.blok || '-',
-        jah: a.jah_asatidz || '-',
-        tingkat: a.tingkat_asatidz || '',
-        fans: fanList,
-        totalFan: fanList.length,
-      };
     });
-  }, [asatidzList, jadwalMap, pengajarMap]);
 
-  // Filtered rows
-  const filteredRows = useMemo(() => {
-    return asatidzFanData.filter((row) => {
-      if (filterTingkat && row.tingkat.toUpperCase() !== filterTingkat.toUpperCase()) {
-        return false;
-      }
-      if (filterJah && row.jah !== filterJah) {
-        return false;
-      }
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        const text = `${row.nia} ${row.nama} ${row.asal} ${row.jah} ${row.fans.join(' ')}`.toLowerCase();
-        if (!text.includes(q)) return false;
-      }
-      return true;
+    const finalPeta: Record<
+      string,
+      Array<{
+        fan: string;
+        kelas: string;
+        tingkat: string;
+        klsNum: number;
+        isUg: boolean;
+        kitab: string[];
+      }>
+    > = {};
+
+    Object.keys(tempPeta).forEach((k) => {
+      finalPeta[k] = Object.values(tempPeta[k]).sort(
+        (a, b) =>
+          (URUTAN_TINGKAT[a.tingkat] || 99) - (URUTAN_TINGKAT[b.tingkat] || 99) ||
+          a.klsNum - b.klsNum ||
+          a.kelas.localeCompare(b.kelas, undefined, { numeric: true }) ||
+          a.fan.localeCompare(b.fan)
+      );
     });
-  }, [asatidzFanData, filterTingkat, filterJah, search]);
 
-  const handleExport = () => {
-    const data = filteredRows.map((r, idx) => ({
-      No: idx + 1,
-      KODE: r.nia,
-      NAMA: r.nama,
-      ASAL: r.asal,
-      JAH: r.jah,
-      'MENGAJAR FAN': r.fans.join(', '),
-      'JUMLAH FAN': r.totalFan,
-    }));
-    exportToExcel(data, 'Daftar_Pengajar_Fan_Pelajaran');
+    let total = 0;
+    let terisi = 0;
+    Object.keys(fanConfig || {}).forEach((kelasKey) => {
+      (fanConfig[kelasKey] || []).forEach((raw) => {
+        total++;
+        const d = items[`${kelasKey}||${raw}`];
+        if (d && Array.isArray(d.asatidz) && d.asatidz.length > 0) terisi++;
+      });
+    });
+
+    return {
+      teacherMap: finalPeta,
+      totalItemFan: total,
+      itemFanTerisi: terisi,
+    };
+  }, [asatidzList, fanDetail, fanConfig]);
+
+  // Kelompokkan Asatidz berdasarkan Master Grup Asal & terapkan filtering
+  const groupedAsatidzList = useMemo(() => {
+    const asatidzAssigned = new Set<string>();
+    const kelompok: Array<{
+      namaGrup: string;
+      asatidzList: Asatidz[];
+    }> = [];
+
+    // 1. Grup dari Master Grup Asal
+    (masterGrupAsal || []).forEach((g) => {
+      let list: Asatidz[] = [];
+      (g.anggota || []).forEach((nama) => {
+        const found = asatidzList.find(
+          (a) => a.nama_asatidz.trim().toUpperCase() === String(nama || '').trim().toUpperCase()
+        );
+        if (found) {
+          list.push(found);
+          asatidzAssigned.add(found.nama_asatidz.trim().toUpperCase());
+        }
+      });
+      list = sortAsatidzByKodeNatural(list);
+      if (list.length > 0) {
+        kelompok.push({ namaGrup: g.namaGrup, asatidzList: list });
+      }
+    });
+
+    // 2. Non-Grup (Asatidz yang belum masuk grup apapun)
+    let nonGrup = asatidzList.filter(
+      (a) => !asatidzAssigned.has(a.nama_asatidz.trim().toUpperCase())
+    );
+    nonGrup = sortAsatidzByKodeNatural(nonGrup);
+    if (nonGrup.length > 0) {
+      kelompok.push({ namaGrup: '', asatidzList: nonGrup });
+    }
+
+    // 3. Mapping data baris dan filter
+    const kw = search.trim().toLowerCase();
+    const fTkt = filterTingkat.toUpperCase().trim();
+    const fJah = filterJah.trim();
+
+    return kelompok
+      .map((grp) => {
+        const grupCocok = !!kw && grp.namaGrup.toLowerCase().includes(kw);
+        const rows = grp.asatidzList
+          .map((a) => {
+            const kode = a.nia || '-';
+            const nama = a.nama_asatidz;
+            const jah = a.jah_asatidz || '-';
+            let entries = teacherMap[nama.toUpperCase()] || [];
+            if (fTkt) entries = entries.filter((e) => e.tingkat === fTkt);
+            return { asatidz: a, kode, nama, jah, entries };
+          })
+          .filter((o) => {
+            if (fJah && o.jah !== fJah) return false;
+            if (fTkt && o.entries.length === 0) return false;
+            if (!kw || grupCocok) return true;
+            const teks = `${o.kode} ${o.nama} ${o.jah} ${o.entries
+              .map((e) => `${e.fan}${e.kelas}`)
+              .join(' ')}`.toLowerCase();
+            return teks.includes(kw);
+          });
+
+        return {
+          namaGrup: grp.namaGrup,
+          rows,
+        };
+      })
+      .filter((grp) => grp.rows.length > 0);
+  }, [masterGrupAsal, asatidzList, teacherMap, search, filterTingkat, filterJah]);
+
+  const totalAsatidzTampil = useMemo(() => {
+    return groupedAsatidzList.reduce((s, g) => s + g.rows.length, 0);
+  }, [groupedAsatidzList]);
+
+  const persentaseKeterisian = totalItemFan > 0 ? Math.round((itemFanTerisi / totalItemFan) * 100) : 0;
+
+  // Export Excel
+  const handleExportExcel = () => {
+    if (groupedAsatidzList.length === 0) {
+      alert('Tidak ada data untuk diexport!');
+      return;
+    }
+
+    const rows: (string | number)[][] = [
+      ['No', 'Kode', 'Nama', 'Asal', 'Jah', 'Mengajar Fan', 'Jumlah Fan'],
+    ];
+
+    let no = 1;
+    groupedAsatidzList.forEach((grp) => {
+      const asal = grp.namaGrup || '-';
+      grp.rows.forEach((o) => {
+        const fanText = o.entries.map((e) => `${e.fan} (${e.kelas})`).join('; ');
+        rows.push([no++, o.kode, o.nama, asal, o.jah, fanText, o.entries.length]);
+      });
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 5 },
+      { wch: 8 },
+      { wch: 34 },
+      { wch: 18 },
+      { wch: 16 },
+      { wch: 70 },
+      { wch: 12 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Pengajar Fan');
+    XLSX.writeFile(wb, 'Daftar_Pengajar_Fan_Madin.xlsx');
   };
 
   const handlePrint = () => {
     window.print();
   };
 
-  const handleOpenEditFan = (nama: string) => {
-    setEditingAsatidz(nama);
-    const assigned: string[] = [];
-    Object.entries(pengajarMap).forEach(([fanName, teachers]) => {
-      if (teachers.some((t) => t.toUpperCase() === nama.toUpperCase())) {
-        assigned.push(fanName);
-      }
-    });
-    setSelectedFansForAsatidz(assigned);
+  const handleResetFilter = () => {
+    setSearch('');
+    setFilterTingkat('');
+    setFilterJah('');
   };
-
-  const handleToggleFan = (fanName: string) => {
-    if (selectedFansForAsatidz.includes(fanName)) {
-      setSelectedFansForAsatidz(selectedFansForAsatidz.filter((f) => f !== fanName));
-    } else {
-      setSelectedFansForAsatidz([...selectedFansForAsatidz, fanName]);
-    }
-  };
-
-  const handleSaveFanAssignment = async () => {
-    if (!editingAsatidz) return;
-
-    // Update each fanItem
-    for (const item of fanItems) {
-      const isSelected = selectedFansForAsatidz.includes(item.nama);
-      const currentTeachers = pengajarMap[item.nama] || [];
-      const hasTeacher = currentTeachers.some((t) => t.toUpperCase() === editingAsatidz.toUpperCase());
-
-      if (isSelected && !hasTeacher) {
-        await setPengajarFan(item.nama, [...currentTeachers, editingAsatidz]);
-      } else if (!isSelected && hasTeacher) {
-        await setPengajarFan(
-          item.nama,
-          currentTeachers.filter((t) => t.toUpperCase() !== editingAsatidz.toUpperCase())
-        );
-      }
-    }
-
-    setEditingAsatidz(null);
-  };
-
-  const totalFilled = asatidzFanData.filter((r) => r.totalFan > 0).length;
-  const persentase = asatidzFanData.length > 0 ? Math.round((totalFilled / asatidzFanData.length) * 100) : 0;
 
   return (
-    <div className="space-y-4">
-      {/* Header Halaman (Identik dengan #page-pengajar-fan pada fan.html) */}
-      <div className="card-panel border-0 bg-white p-4 rounded-xl border border-slate-200 shadow-xs print:hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-200 pb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-xs text-emerald-700 flex items-center justify-center shrink-0">
-              <Users className="w-6 h-6 text-emerald-600" />
+    <div className="space-y-6">
+      {/* 1. Header & Toolbar Card */}
+      <div className="card-panel border-0 no-print-kbm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+          <div className="flex items-center gap-3.5">
+            <div className="w-[50px] h-[50px] rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center flex-shrink-0">
+              <Users className="w-6 h-6 text-emerald-700" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-800 m-0">Pengajar Fan</h1>
-              <p className="text-xs text-slate-500 m-0 mt-0.5">
+              <h2 className="text-xl md:text-2xl font-bold text-slate-800 m-0 leading-tight">
+                Pengajar Fan
+              </h2>
+              <p className="text-slate-500 text-xs m-0 mt-0.5">
                 Rekapitulasi Fan Mata Pelajaran yang Diajarkan oleh Masing-Masing Asatidz
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {/* 1. Grup Asal Modal */}
+            <button
+              type="button"
+              onClick={openModalGrupAsal}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-emerald-300 text-emerald-700 hover:bg-emerald-50 shadow-xs transition-colors"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Grup Asal</span>
+            </button>
+
+            {/* 2. Segarkan Data */}
             <button
               type="button"
               onClick={() => {
                 fetchFanData();
-                fetchJadwal();
+                fetchAsatidz();
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 shadow-xs transition"
+              disabled={loadingFan || loadingAsatidz}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-emerald-300 text-emerald-700 hover:bg-emerald-50 shadow-xs transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loadingFan || loadingAsatidz ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${loadingFan || loadingAsatidz ? 'animate-spin' : ''}`}
+              />
               <span>Segarkan Data</span>
             </button>
 
+            {/* 3. Export Excel */}
             <button
               type="button"
-              onClick={handleExport}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 shadow-xs transition"
+              onClick={handleExportExcel}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 shadow-xs transition-colors"
             >
-              <Download className="w-3.5 h-3.5 text-emerald-600" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
               <span>Export Excel</span>
             </button>
 
+            {/* 4. Cetak Dokumen */}
             <button
               type="button"
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#115e59] text-white shadow-xs transition"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="w-3.5 h-3.5" />
               <span>Print / Cetak Dokumen</span>
             </button>
           </div>
         </div>
 
-        {/* Filter Bar */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-2 pt-3 items-center">
-          <div className="md:col-span-5 relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        {/* 2. Filter Bar & Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-3 mt-1 items-center">
+          {/* Search Input */}
+          <div className="md:col-span-4 relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari Kode / Nama / Fan / Jah..."
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#0f766e]"
+              className="w-full text-xs pl-9 pr-8 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-madin-600 shadow-xs"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
+          {/* Tingkat Dropdown */}
           <div className="md:col-span-2">
             <select
               value={filterTingkat}
               onChange={(e) => setFilterTingkat(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-[#0f766e]"
+              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-madin-600 shadow-xs"
             >
               <option value="">Semua Tingkat</option>
               <option value="ISTI'DAD">ISTI&apos;DAD</option>
@@ -245,11 +399,12 @@ export default function PengajarFanPage() {
             </select>
           </div>
 
+          {/* Jah Dropdown */}
           <div className="md:col-span-2">
             <select
               value={filterJah}
               onChange={(e) => setFilterJah(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-[#0f766e]"
+              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-madin-600 shadow-xs"
             >
               <option value="">Semua Jah</option>
               {jahOptions.map((j) => (
@@ -260,158 +415,148 @@ export default function PengajarFanPage() {
             </select>
           </div>
 
-          <div className="md:col-span-3 flex items-center justify-end gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => {
-                setSearch('');
-                setFilterTingkat('');
-                setFilterJah('');
-              }}
-              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 flex items-center gap-1"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>Reset</span>
-            </button>
-            <span className="badge bg-slate-100 text-slate-700 border border-slate-200 text-xs px-2.5 py-1 rounded-lg font-semibold">
-              {filteredRows.length} Asatidz
+          {/* Reset & Metrics Badges */}
+          <div className="md:col-span-4 flex items-center gap-2 flex-wrap justify-end">
+            {(search || filterTingkat || filterJah) && (
+              <button
+                type="button"
+                onClick={handleResetFilter}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
+            <span className="text-xs font-semibold px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-slate-700">
+              {totalAsatidzTampil} Asatidz
             </span>
-            <span className="badge bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs px-2.5 py-1 rounded-lg font-semibold">
-              Terisi: {persentase}%
+            <span className="text-xs font-bold px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800">
+              Keterisian Fan: {itemFanTerisi}/{totalItemFan} ({persentaseKeterisian}%)
             </span>
           </div>
         </div>
       </div>
 
-      {/* Area Tabel Resmi Dokumen Cetak */}
-      <div className="card-panel border-0 bg-white p-4 rounded-xl border border-slate-200 shadow-xs print:p-0 print:border-none print:shadow-none">
-        <div className="text-center mb-3">
-          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide m-0">
+      {/* 3. Area Tabel Pengajar Fan */}
+      <div className="card-panel border-0 p-4 md:p-6 shadow-sm bg-white rounded-xl">
+        <div className="text-center mb-4">
+          <h3 className="text-base font-extrabold uppercase tracking-wide text-slate-800 m-0">
             DAFTAR PENGAJAR FAN MATA PELAJARAN
-          </h2>
-          <h3 className="text-xs font-semibold text-slate-500 m-0 mt-0.5">
-            MADRASAH DINIYYAH AL AMIRIYYAH
           </h3>
+          <h4 className="text-xs font-bold text-slate-500 m-0 mt-0.5">
+            MADRASAH DINIYYAH AL AMIRIYYAH
+          </h4>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="tabel-kbm-resmi w-full text-xs">
+        <div className="overflow-x-auto border border-slate-300 rounded-lg">
+          <table className="w-full text-xs border-collapse text-left border border-slate-300">
             <thead>
-              <tr>
-                <th style={{ width: '60px' }} className="text-center">KODE</th>
-                <th style={{ minWidth: '180px' }}>NAMA ASATIDZ</th>
-                <th style={{ width: '80px' }} className="text-center">ASAL</th>
-                <th style={{ width: '70px' }} className="text-center">JAH</th>
-                <th>MENGAJAR FAN</th>
-                <th style={{ width: '60px' }} className="text-center">JML</th>
-                <th style={{ width: '70px' }} className="text-center print:hidden">AKSI</th>
+              <tr className="bg-slate-100 text-slate-800 border-b border-slate-300 font-bold text-center">
+                <th className="py-2.5 px-2 border-r border-slate-300 w-[60px]">KODE</th>
+                <th className="py-2.5 px-3 border-r border-slate-300 min-w-[200px] text-left">NAMA</th>
+                <th className="py-2.5 px-2 border-r border-slate-300 w-[110px]">ASAL</th>
+                <th className="py-2.5 px-2 border-r border-slate-300 w-[90px]">JAH</th>
+                <th className="py-2.5 px-3 border-r border-slate-300 text-left">MENGAJAR FAN</th>
+                <th className="py-2.5 px-2 border-slate-300 w-[55px]">JML</th>
               </tr>
             </thead>
             <tbody>
-              {filteredRows.length === 0 ? (
+              {groupedAsatidzList.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-slate-400">
-                    Tidak ada data pengajar fan yang sesuai filter.
+                  <td colSpan={6} className="text-center py-10 text-slate-400">
+                    Tidak ada asatidz yang cocok dengan filter atau pencarian.
                   </td>
                 </tr>
               ) : (
-                filteredRows.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50">
-                    <td className="text-center font-mono font-semibold text-slate-700">{row.nia}</td>
-                    <td className="font-bold text-slate-900">{row.nama}</td>
-                    <td className="text-center text-slate-600">{row.asal}</td>
-                    <td className="text-center font-semibold text-slate-700">{row.jah}</td>
-                    <td>
-                      {row.fans.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {row.fans.map((f, fIdx) => (
-                            <span
-                              key={fIdx}
-                              className="badge bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded text-[11px] font-semibold"
-                            >
-                              {f}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-slate-400 italic text-[11px]">- Belum Diatur -</span>
-                      )}
-                    </td>
-                    <td className="text-center font-bold text-emerald-700">{row.totalFan}</td>
-                    <td className="text-center print:hidden">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditFan(row.nama)}
-                        className="px-2 py-1 text-[11px] font-bold rounded bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-600 transition"
+                groupedAsatidzList.map((grp) => {
+                  const isGrouped = !!grp.namaGrup;
+                  const rowCount = grp.rows.length;
+
+                  return grp.rows.map((o, idxInGroup) => (
+                    <tr
+                      key={`${grp.namaGrup}-${o.nama}`}
+                      className="border-b border-slate-200 hover:bg-slate-50/70 transition-colors"
+                    >
+                      {/* KODE (NIA) */}
+                      <td className="font-mono text-center font-bold py-2 px-2 border-r border-slate-200 text-slate-700">
+                        {o.kode}
+                      </td>
+
+                      {/* NAMA (Clickable opens Asatidz Profile Modal) */}
+                      <td
+                        onClick={() => openDetailModal(o.asatidz)}
+                        className="py-2 px-3 border-r border-slate-200 font-bold text-slate-800 hover:text-emerald-700 hover:underline cursor-pointer"
+                        title={`Klik untuk lihat profil ${o.nama}`}
                       >
-                        Atur
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                        {o.nama}
+                      </td>
+
+                      {/* ASAL (Rowspan merged vertically per group) */}
+                      {isGrouped ? (
+                        idxInGroup === 0 && (
+                          <td
+                            rowSpan={rowCount}
+                            className="text-center font-bold py-2 px-2 border-r border-slate-200 bg-slate-50 text-emerald-900 align-middle tracking-wider"
+                          >
+                            {grp.namaGrup}
+                          </td>
+                        )
+                      ) : (
+                        <td className="text-center text-slate-400 py-2 px-2 border-r border-slate-200">
+                          -
+                        </td>
+                      )}
+
+                      {/* JAH */}
+                      <td className="text-center py-2 px-2 border-r border-slate-200 text-slate-600 font-medium">
+                        {o.jah}
+                      </td>
+
+                      {/* MENGAJAR FAN BADGES */}
+                      <td className="py-2 px-3 border-r border-slate-200">
+                        {o.entries.length === 0 ? (
+                          <span className="text-slate-400 italic text-[11px]">
+                            Belum ada fan yang diampu
+                          </span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {o.entries.map((e, eIdx) => (
+                              <span
+                                key={eIdx}
+                                title={e.kitab.length ? e.kitab.join(', ') : e.fan}
+                                className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-semibold ${
+                                  e.isUg
+                                    ? 'bg-amber-50 text-amber-900 border border-amber-300'
+                                    : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                }`}
+                              >
+                                {e.isUg && <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />}
+                                <span>{e.fan}</span>
+                                <span className="text-[10px] opacity-75 font-normal">
+                                  ({e.kelas})
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* JML */}
+                      <td className="text-center font-bold py-2 px-2 border-slate-200 text-slate-800">
+                        {o.entries.length}
+                      </td>
+                    </tr>
+                  ));
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modal Dialog Atur Fan Asatidz */}
-      <Dialog
-        isOpen={!!editingAsatidz}
-        onClose={() => setEditingAsatidz(null)}
-        title={`Atur Fan: ${editingAsatidz || ''}`}
-        maxWidth="md"
-      >
-        <div className="space-y-4">
-          <p className="text-xs text-slate-500">
-            Pilih mata pelajaran fan yang diampu oleh <b>{editingAsatidz}</b>:
-          </p>
-          <div className="max-h-72 overflow-y-auto space-y-1.5 p-2 bg-slate-50 rounded-lg border border-slate-200">
-            {fanItems.map((f) => {
-              const isChecked = selectedFansForAsatidz.includes(f.nama);
-              return (
-                <label
-                  key={f.id}
-                  onClick={() => handleToggleFan(f.nama)}
-                  className={`flex items-center justify-between p-2 rounded cursor-pointer text-xs font-semibold border transition ${
-                    isChecked
-                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
-                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <div>
-                    <span className="font-bold">{f.nama}</span>
-                    {f.kitab && <span className="text-[11px] text-slate-500 ml-1.5">({f.kitab})</span>}
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    readOnly
-                    className="rounded text-emerald-600 focus:ring-emerald-500"
-                  />
-                </label>
-              );
-            })}
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={() => setEditingAsatidz(null)}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700"
-            >
-              Batal
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveFanAssignment}
-              className="px-4 py-1.5 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#115e59] text-white"
-            >
-              Simpan Penugasan
-            </button>
-          </div>
-        </div>
-      </Dialog>
+      {/* Modals */}
+      <ModalGrupAsal />
+      <ModalDetailAsatidz />
     </div>
   );
 }

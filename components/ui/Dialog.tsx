@@ -45,6 +45,7 @@ export default function Dialog({
             {headerActions}
             <button
               onClick={onClose}
+              aria-label="Tutup dialog"
               className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition"
             >
               <X className="w-5 h-5" />

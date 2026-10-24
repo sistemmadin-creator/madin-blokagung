@@ -18,6 +18,8 @@ export interface FormasiKelas {
   created_at?: string;
 }
 
+export type Formasi = FormasiKelas;
+
 export interface FormasiWithStats extends FormasiKelas {
   jumlah_santri: number;
   persentase: number;

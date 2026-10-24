@@ -1,56 +1,219 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { create } from 'zustand';
-import { FanItem } from '@/types/fan';
+import {
+  FanConfigMap,
+  FanPelajaranDetail,
+  GrupAsalItem,
+  FanItem,
+} from '@/types/fan';
 import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
+import { Asatidz } from '@/types/asatidz';
+import { Formasi } from '@/types/formasi';
+import { isKelasUnggulan } from '@/lib/utils/fanHelper';
 
-const KEY_DB_FAN_CONFIG = 'KEY_DB_FAN_CONFIG';
-const KEY_DB_FAN_DETAIL = 'KEY_DB_FAN_DETAIL';
-const KEY_DB_GRUP_ASAL = 'KEY_DB_GRUP_ASAL';
+const KEY_DB_FAN_CONFIG = 'FAN_CONFIG';
+const KEY_DB_FAN_DETAIL = 'FAN_PELAJARAN_DETAIL';
+const KEY_DB_GRUP_ASAL = 'GRUP_ASAL_ASATIDZ';
 
-const DEFAULT_FAN_ITEMS: FanItem[] = [
-  { id: '1', nama: 'FIQIH', kitab: 'Fathul Qorib / Mabadi Fiqhiyyah', tingkat: 'Ula', jamMS: 2, jamMB: 2, grupAsal: 'Al-Anwar' },
-  { id: '2', nama: 'NAHWU', kitab: 'Jurumiyyah / Imrithi / Alfiyah', tingkat: 'Ula', jamMS: 2, jamMB: 2, grupAsal: 'Lirboyo' },
-  { id: '3', nama: 'SHOROF', kitab: 'Amtsilah Tashrifiyyah / Qowaidush Shorfi', tingkat: 'Ula', jamMS: 2, jamMB: 1, grupAsal: 'Ploso' },
-  { id: '4', nama: 'TAJWID', kitab: 'Hidayatush Shibyan / Tuhfatul Athfal', tingkat: 'Ula', jamMS: 1, jamMB: 1, grupAsal: 'Blokagung' },
-  { id: '5', nama: 'TAUHID', kitab: 'Aqidatul Awwam / Tijanud Darori', tingkat: 'Ula', jamMS: 1, jamMB: 1, grupAsal: 'Sidogiri' },
-  { id: '6', nama: 'AKHLAQ', kitab: 'Taisirul Khollaq / Akhlaqul Banin', tingkat: 'Ula', jamMS: 1, jamMB: 1, grupAsal: 'Sarangan' },
-  { id: '7', nama: 'TARIKH', kitab: 'Khulashoh Nurul Yaqin', tingkat: 'Ula', jamMS: 1, jamMB: 1, grupAsal: 'Blokagung' },
-  { id: '8', nama: 'FAROIDH', kitab: 'Idhohul Ghawamid / Rahbiyyah', tingkat: 'Wustho', jamMS: 2, jamMB: 1, grupAsal: 'Lirboyo' },
-  { id: '9', nama: 'USHUL FIQIH', kitab: 'Al-Waraqat / Lathoiful Isyarat', tingkat: 'Wustho', jamMS: 2, jamMB: 1, grupAsal: 'Ploso' },
-  { id: '10', nama: 'BALAGHOH', kitab: 'Jauharul Maknun', tingkat: 'Ulya', jamMS: 2, jamMB: 2, grupAsal: 'Lirboyo' },
-];
+const LS_FAN_CONFIG = 'MADIN_FAN_CONFIG';
+const LS_FAN_DETAIL = 'MADIN_FAN_PELAJARAN_DETAIL';
+const LS_GRUP_ASAL = 'MADIN_GRUP_ASAL_ASATIDZ';
+
+const DEFAULT_FAN_CONFIG: FanConfigMap = {
+  '1 ULA': [
+    '(Fiqih) Mabadi Fiqih Juz I',
+    '(Tajwid) Hidayatush Shibyan',
+    '(Nahwu) Jurumiyyah Dasar',
+    '(Akhlaq) Akhlaqul Banin',
+    '(Tauhid) Aqidatul Awwam',
+    '(Tarikh) Khulashoh Nurul Yaqin I',
+  ],
+  '2 ULA': [
+    '(Fiqih) Mabadi Fiqih Juz II',
+    '(Tajwid) Tuhfatul Athfal',
+    '(Nahwu) Al-Jurumiyyah',
+    '(Shorof) Amtsilah Tashrifiyyah I',
+    '(Tauhid) Tijanud Darori',
+    '(Akhlaq) Taisirul Khollaq',
+  ],
+  '3 ULA': [
+    '(Fiqih) Mabadi Fiqih Juz III',
+    '(Nahwu) Al-Imrithi',
+    '(Shorof) Amtsilah Tashrifiyyah II',
+    '(Hadits) Arba\'in Nawawiyyah',
+    '(Tarikh) Khulashoh Nurul Yaqin II',
+  ],
+  '4 ULA': [
+    '(Fiqih) Safinatun Najah',
+    '(Nahwu) Imrithi Lanjutan',
+    '(Shorof) Qowaidush Shorfi',
+    '(Faroidh) Al-Mawarits',
+  ],
+  '1 WUSTHO': [
+    '(Fiqih) Fathul Qorib Al-Mujib I',
+    '(Nahwu) Alfiyyah Ibnu Malik I',
+    '(Ushul Fiqih) Al-Waraqat',
+    '(Hadits) Bulughul Maram I',
+  ],
+  '2 WUSTHO': [
+    '(Fiqih) Fathul Qorib Al-Mujib II',
+    '(Nahwu) Alfiyyah Ibnu Malik II',
+    '(Balaghoh) Durusul Balaghah',
+  ],
+  '3 WUSTHO': [
+    '(Fiqih) Fathul Mu\'in I',
+    '(Balaghoh) Jauharul Maknun',
+    '(Ushul Fiqih) Ghayatul Wushul',
+  ],
+};
+
+let autoSaveTimer: NodeJS.Timeout | null = null;
 
 interface FanState {
-  fanItems: FanItem[];
-  grupAsalList: string[];
-  pengajarMap: Record<string, string[]>; // fanId -> [asatidzNames]
+  fanConfig: FanConfigMap;
+  fanDetail: FanPelajaranDetail;
+  masterGrupAsal: GrupAsalItem[];
+  grupAsalList: string[]; // List of group names for backward compat
   isLoading: boolean;
+  autoSaveStatus: 'idle' | 'saving' | 'saved' | 'error';
+  switchMode: 'semua' | 'reguler' | 'unggulan';
+  keywordCariFan: string;
+
+  // Modal controls
+  isModalConfigOpen: boolean;
+  isModalAturFanMSOpen: boolean;
+  isModalPilihAsatidzOpen: boolean;
+  selectedItemKeyForAsatidz: string | null;
+  isModalGrupAsalOpen: boolean;
+
+  // Legacy for backward compat
+  fanItems: FanItem[];
+  pengajarMap: Record<string, string[]>;
   isModalFanOpen: boolean;
   isModalGrupOpen: boolean;
   selectedFan: FanItem | null;
 
+  // Actions
   fetchFanData: () => Promise<void>;
+  setSwitchMode: (mode: 'semua' | 'reguler' | 'unggulan') => void;
+  setKeywordCariFan: (keyword: string) => void;
+
+  // Modal Toggles
+  openModalConfig: () => void;
+  closeModalConfig: () => void;
+  openModalAturFanMS: () => void;
+  closeModalAturFanMS: () => void;
+  openModalPilihAsatidz: (itemKey: string) => void;
+  closeModalPilihAsatidz: () => void;
+  openModalGrupAsal: () => void;
+  closeModalGrupAsal: () => void;
+
+  // Legacy modal methods
+  openModalFan: (fan?: FanItem | null) => void;
+  closeModalFan: () => void;
+  openModalGrup: () => void;
+  closeModalGrup: () => void;
   saveFanItem: (item: FanItem, isEdit: boolean) => Promise<boolean>;
   deleteFanItem: (id: string) => Promise<boolean>;
   setPengajarFan: (fanNama: string, asatidzNames: string[]) => Promise<boolean>;
   saveGrupAsalList: (grups: string[]) => Promise<boolean>;
 
-  openModalFan: (fan?: FanItem | null) => void;
-  closeModalFan: () => void;
-  openModalGrup: () => void;
-  closeModalGrup: () => void;
+  // Data persistence & Debounced Autosave
+  saveFanConfig: (newConfig: FanConfigMap) => Promise<boolean>;
+  triggerAutoSaveFanDetail: () => void;
+  updateJamItem: (itemKey: string, jam: string) => void;
+  updatePengajarItem: (itemKey: string, pengajar: string) => void;
+  updateAsatidzItem: (itemKey: string, asatidzNames: string[], pengajarVal?: string) => Promise<boolean>;
+  updateKeteranganKelas: (kelasKey: string, keterangan: string) => void;
+
+  // Bulk actions
+  bulkClearJam: () => Promise<boolean>;
+  bulkClearPengajar: () => Promise<boolean>;
+
+  // Grup Asal actions
+  saveMasterGrupAsal: (newList: GrupAsalItem[]) => Promise<boolean>;
+  deleteGrupAsal: (idx: number) => Promise<boolean>;
+  reorderGrupAsal: (srcIdx: number, targetIdx: number) => Promise<boolean>;
+
+  // Batch setup MS
+  applyBatchFanMS: (
+    tingkat: string,
+    kls: string,
+    selectedItems: string[],
+    asatidzList: Asatidz[],
+    formasiList: Formasi[]
+  ) => Promise<boolean>;
 }
 
 export const useFanStore = create<FanState>((set, get) => ({
-  fanItems: DEFAULT_FAN_ITEMS,
-  grupAsalList: ['Blokagung', 'Lirboyo', 'Ploso', 'Sidogiri', 'Al-Anwar', 'Sarangan'],
-  pengajarMap: {},
+  fanConfig: DEFAULT_FAN_CONFIG,
+  fanDetail: { kelas: {}, item: {} },
+  masterGrupAsal: [
+    { namaGrup: 'PONDOK INDUK', anggota: [] },
+    { namaGrup: 'BLOK A', anggota: [] },
+    { namaGrup: 'BLOK B', anggota: [] },
+    { namaGrup: 'BLOK C', anggota: [] },
+    { namaGrup: 'BLOK D', anggota: [] },
+    { namaGrup: 'BLOK E', anggota: [] },
+  ],
+  grupAsalList: ['PONDOK INDUK', 'BLOK A', 'BLOK B', 'BLOK C', 'BLOK D', 'BLOK E'],
   isLoading: false,
+  autoSaveStatus: 'idle',
+  switchMode: 'semua',
+  keywordCariFan: '',
+
+  isModalConfigOpen: false,
+  isModalAturFanMSOpen: false,
+  isModalPilihAsatidzOpen: false,
+  selectedItemKeyForAsatidz: null,
+  isModalGrupAsalOpen: false,
+
+  // Legacy fields
+  fanItems: [],
+  pengajarMap: {},
   isModalFanOpen: false,
   isModalGrupOpen: false,
   selectedFan: null,
 
   fetchFanData: async () => {
+    // 1. Muat instan dari localStorage sebagai fallback instan
+    try {
+      const lsCfg = typeof window !== 'undefined' ? localStorage.getItem(LS_FAN_CONFIG) : null;
+      if (lsCfg) {
+        const parsedCfg = JSON.parse(lsCfg);
+        if (parsedCfg && typeof parsedCfg === 'object') set({ fanConfig: parsedCfg });
+      }
+    } catch {}
+
+    try {
+      const lsDet = typeof window !== 'undefined' ? localStorage.getItem(LS_FAN_DETAIL) : null;
+      if (lsDet) {
+        const parsedDet = JSON.parse(lsDet);
+        if (parsedDet && typeof parsedDet === 'object') {
+          set({
+            fanDetail: {
+              kelas: parsedDet.kelas || {},
+              item: parsedDet.item || {},
+            },
+          });
+        }
+      }
+    } catch {}
+
+    try {
+      const lsGrup = typeof window !== 'undefined' ? localStorage.getItem(LS_GRUP_ASAL) : null;
+      if (lsGrup) {
+        const parsedGrup = JSON.parse(lsGrup);
+        if (Array.isArray(parsedGrup)) {
+          const list = parsedGrup.map((g: any) =>
+            typeof g === 'string' ? { namaGrup: g, anggota: [] } : g
+          );
+          set({ masterGrupAsal: list, grupAsalList: list.map((g) => g.namaGrup) });
+        }
+      }
+    } catch {}
+
     set({ isLoading: true });
     try {
       const { data, error } = await supabase
@@ -64,100 +227,413 @@ export const useFanStore = create<FanState>((set, get) => ({
         data.forEach((row) => {
           let val = row.value;
           if (typeof val === 'string') {
-            try { val = JSON.parse(val); } catch (e) {}
+            try {
+              val = JSON.parse(val);
+            } catch {}
           }
 
-          if (row.key === KEY_DB_FAN_CONFIG && Array.isArray(val) && val.length > 0) {
-            set({ fanItems: val });
+          if (row.key === KEY_DB_FAN_CONFIG && val && typeof val === 'object') {
+            set({ fanConfig: val });
+            try {
+              localStorage.setItem(LS_FAN_CONFIG, JSON.stringify(val));
+            } catch {}
           } else if (row.key === KEY_DB_FAN_DETAIL && val && typeof val === 'object') {
-            set({ pengajarMap: val.item || val || {} });
+            const detailObj: FanPelajaranDetail = {
+              kelas: val.kelas || {},
+              item: val.item || {},
+            };
+            set({ fanDetail: detailObj });
+            try {
+              localStorage.setItem(LS_FAN_DETAIL, JSON.stringify(detailObj));
+            } catch {}
           } else if (row.key === KEY_DB_GRUP_ASAL && Array.isArray(val)) {
-            set({ grupAsalList: val });
+            const list: GrupAsalItem[] = val.map((g: any) =>
+              typeof g === 'string' ? { namaGrup: g, anggota: [] } : g
+            );
+            set({ masterGrupAsal: list, grupAsalList: list.map((g) => g.namaGrup) });
+            try {
+              localStorage.setItem(LS_GRUP_ASAL, JSON.stringify(list));
+            } catch {}
           }
         });
       }
     } catch (err: any) {
-      console.error('Fetch fan data error:', err.message);
+      console.warn('Gagal memuat Fan Data dari Supabase:', err.message);
     } finally {
       set({ isLoading: false });
     }
   },
 
+  setSwitchMode: (mode) => set({ switchMode: mode }),
+  setKeywordCariFan: (keyword) => set({ keywordCariFan: keyword }),
+
+  openModalConfig: () => set({ isModalConfigOpen: true }),
+  closeModalConfig: () => set({ isModalConfigOpen: false }),
+  openModalAturFanMS: () => set({ isModalAturFanMSOpen: true }),
+  closeModalAturFanMS: () => set({ isModalAturFanMSOpen: false }),
+  openModalPilihAsatidz: (itemKey) =>
+    set({ isModalPilihAsatidzOpen: true, selectedItemKeyForAsatidz: itemKey }),
+  closeModalPilihAsatidz: () =>
+    set({ isModalPilihAsatidzOpen: false, selectedItemKeyForAsatidz: null }),
+  openModalGrupAsal: () => set({ isModalGrupAsalOpen: true }),
+  closeModalGrupAsal: () => set({ isModalGrupAsalOpen: false }),
+
+  // Legacy methods
   openModalFan: (fan = null) => set({ isModalFanOpen: true, selectedFan: fan }),
   closeModalFan: () => set({ isModalFanOpen: false, selectedFan: null }),
   openModalGrup: () => set({ isModalGrupOpen: true }),
   closeModalGrup: () => set({ isModalGrupOpen: false }),
+  saveFanItem: async () => true,
+  deleteFanItem: async () => true,
+  setPengajarFan: async () => true,
+  saveGrupAsalList: async () => true,
 
-  saveFanItem: async (item, isEdit) => {
-    try {
-      const current = get().fanItems;
-      let updated: FanItem[];
-      if (isEdit) {
-        updated = current.map((f) => (f.id === item.id ? item : f));
-      } else {
-        const newItem = { ...item, id: String(Date.now()) };
-        updated = [...current, newItem];
+  saveFanConfig: async (newConfig: FanConfigMap) => {
+    const prevConfig = get().fanConfig;
+    const currentDetail = JSON.parse(JSON.stringify(get().fanDetail)) as FanPelajaranDetail;
+    if (!currentDetail.item) currentDetail.item = {};
+
+    // Migrasi detail item jika ada item yang diubah namanya
+    const norm = (arr: string[]) => (arr || []).map((s) => String(s).trim()).filter(Boolean);
+    let adaMigrasi = false;
+
+    Object.keys(newConfig).forEach((key) => {
+      const lama = norm(prevConfig[key]);
+      const baru = norm(newConfig[key]);
+      const dihapus = lama.filter((x) => !baru.includes(x));
+      if (dihapus.length === 0) return;
+
+      const ditambah = baru.filter((x) => !lama.includes(x));
+      const pasangan = new Map<string, string>();
+      const dipakai = new Set<string>();
+
+      if (lama.length === baru.length) {
+        lama.forEach((x, i) => {
+          if (dihapus.includes(x) && ditambah.includes(baru[i]) && !dipakai.has(baru[i])) {
+            pasangan.set(x, baru[i]);
+            dipakai.add(baru[i]);
+          }
+        });
       }
 
-      set({ fanItems: updated });
+      dihapus.forEach((itemLama) => {
+        const oldKey = `${key}||${itemLama}`;
+        const itemBaru = pasangan.get(itemLama);
+        if (itemBaru) {
+          const newKey = `${key}||${itemBaru}`;
+          if (currentDetail.item![oldKey] && !currentDetail.item![newKey]) {
+            currentDetail.item![newKey] = currentDetail.item![oldKey];
+          }
+        }
+        if (currentDetail.item![oldKey]) {
+          delete currentDetail.item![oldKey];
+          adaMigrasi = true;
+        }
+      });
+    });
 
+    set({ fanConfig: newConfig });
+    try {
+      localStorage.setItem(LS_FAN_CONFIG, JSON.stringify(newConfig));
+    } catch {}
+
+    try {
       await supabase
         .from('app_settings')
-        .upsert([{ key: KEY_DB_FAN_CONFIG, value: updated }], { onConflict: 'key' });
+        .upsert([{ key: KEY_DB_FAN_CONFIG, value: newConfig }], { onConflict: 'key' });
+      await logActivity('UPDATE FAN CONFIG', 'Memperbarui konfigurasi item mata pelajaran');
 
-      await logActivity('UPDATE FAN PELAJARAN', `${isEdit ? 'Mengubah' : 'Menambah'} Fan: ${item.nama}`);
+      if (adaMigrasi) {
+        set({ fanDetail: currentDetail });
+        try {
+          localStorage.setItem(LS_FAN_DETAIL, JSON.stringify(currentDetail));
+        } catch {}
+        await supabase
+          .from('app_settings')
+          .upsert([{ key: KEY_DB_FAN_DETAIL, value: currentDetail }], { onConflict: 'key' });
+      }
+
       return true;
     } catch (err: any) {
-      alert('Gagal menyimpan fan: ' + err.message);
+      console.error('Error saving fan config:', err.message);
       return false;
     }
   },
 
-  deleteFanItem: async (id) => {
-    if (!confirm('Yakin ingin menghapus Fan Pelajaran ini?')) return false;
+  triggerAutoSaveFanDetail: () => {
+    const detail = get().fanDetail;
     try {
-      const updated = get().fanItems.filter((f) => f.id !== id);
-      set({ fanItems: updated });
+      localStorage.setItem(LS_FAN_DETAIL, JSON.stringify(detail));
+    } catch {}
 
+    set({ autoSaveStatus: 'saving' });
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+
+    autoSaveTimer = setTimeout(async () => {
+      try {
+        const { error } = await supabase
+          .from('app_settings')
+          .upsert([{ key: KEY_DB_FAN_DETAIL, value: detail }], { onConflict: 'key' });
+        if (error) throw error;
+        set({ autoSaveStatus: 'saved' });
+        setTimeout(() => {
+          if (get().autoSaveStatus === 'saved') set({ autoSaveStatus: 'idle' });
+        }, 2500);
+      } catch (err) {
+        console.error('AutoSave Fan Detail error:', err);
+        set({ autoSaveStatus: 'error' });
+      }
+    }, 500);
+  },
+
+  updateJamItem: (itemKey: string, jam: string) => {
+    let cleanVal = parseInt(jam, 10);
+    let strVal = '';
+    if (!isNaN(cleanVal) && cleanVal >= 0) {
+      if (cleanVal > 6) cleanVal = 6;
+      strVal = String(cleanVal);
+    }
+
+    const detail = { ...get().fanDetail };
+    if (!detail.item) detail.item = {};
+    if (!detail.item[itemKey]) detail.item[itemKey] = {};
+    detail.item[itemKey].jam = strVal;
+
+    set({ fanDetail: detail });
+    get().triggerAutoSaveFanDetail();
+  },
+
+  updatePengajarItem: (itemKey: string, pengajar: string) => {
+    const detail = { ...get().fanDetail };
+    if (!detail.item) detail.item = {};
+    if (!detail.item[itemKey]) detail.item[itemKey] = {};
+    detail.item[itemKey].pengajar = pengajar;
+
+    set({ fanDetail: detail });
+    get().triggerAutoSaveFanDetail();
+  },
+
+  updateAsatidzItem: async (itemKey: string, asatidzNames: string[], pengajarVal?: string) => {
+    const detail = { ...get().fanDetail };
+    if (!detail.item) detail.item = {};
+    if (!detail.item[itemKey]) detail.item[itemKey] = {};
+
+    detail.item[itemKey].asatidz = asatidzNames;
+    if (pengajarVal !== undefined) {
+      detail.item[itemKey].pengajar = pengajarVal;
+    }
+
+    set({ fanDetail: detail });
+    get().triggerAutoSaveFanDetail();
+    await logActivity('UPDATE PENGAJAR FAN ITEM', `Menetapkan pengajar untuk ${itemKey}`);
+    return true;
+  },
+
+  updateKeteranganKelas: (kelasKey: string, keterangan: string) => {
+    const detail = { ...get().fanDetail };
+    if (!detail.kelas) detail.kelas = {};
+    if (!detail.kelas[kelasKey]) detail.kelas[kelasKey] = {};
+    detail.kelas[kelasKey].keterangan = keterangan;
+
+    set({ fanDetail: detail });
+    get().triggerAutoSaveFanDetail();
+  },
+
+  bulkClearJam: async () => {
+    const detail = { ...get().fanDetail };
+    if (!detail.item) detail.item = {};
+    Object.keys(detail.item).forEach((key) => {
+      if (detail.item![key].jam !== undefined) {
+        delete detail.item![key].jam;
+      }
+    });
+
+    set({ fanDetail: detail });
+    try {
+      localStorage.setItem(LS_FAN_DETAIL, JSON.stringify(detail));
       await supabase
         .from('app_settings')
-        .upsert([{ key: KEY_DB_FAN_CONFIG, value: updated }], { onConflict: 'key' });
-
-      await logActivity('HAPUS FAN PELAJARAN', `Menghapus fan ID: ${id}`);
+        .upsert([{ key: KEY_DB_FAN_DETAIL, value: detail }], { onConflict: 'key' });
+      await logActivity('HAPUS MASSAL JAM FAN', 'Mengosongkan seluruh jam pada Fan Pelajaran');
       return true;
     } catch (err: any) {
-      alert('Gagal menghapus fan: ' + err.message);
+      console.error('Bulk clear jam error:', err.message);
       return false;
     }
   },
 
-  setPengajarFan: async (fanNama, asatidzNames) => {
-    try {
-      const newMap = { ...get().pengajarMap, [fanNama]: asatidzNames };
-      set({ pengajarMap: newMap });
+  bulkClearPengajar: async () => {
+    const detail = { ...get().fanDetail };
+    if (!detail.item) detail.item = {};
+    Object.keys(detail.item).forEach((key) => {
+      detail.item![key].pengajar = '';
+      detail.item![key].asatidz = [];
+    });
 
+    set({ fanDetail: detail });
+    try {
+      localStorage.setItem(LS_FAN_DETAIL, JSON.stringify(detail));
       await supabase
         .from('app_settings')
-        .upsert([{ key: KEY_DB_FAN_DETAIL, value: { item: newMap } }], { onConflict: 'key' });
-
-      await logActivity('UPDATE PENGAJAR FAN', `Memperbarui dewan pengajar Fan: ${fanNama}`);
+        .upsert([{ key: KEY_DB_FAN_DETAIL, value: detail }], { onConflict: 'key' });
+      await logActivity('HAPUS MASSAL PENGAJAR FAN', 'Mengosongkan seluruh pengajar pada Fan Pelajaran');
       return true;
     } catch (err: any) {
-      alert('Gagal menyimpan pengajar fan: ' + err.message);
+      console.error('Bulk clear pengajar error:', err.message);
       return false;
     }
   },
 
-  saveGrupAsalList: async (grups) => {
+  saveMasterGrupAsal: async (newList: GrupAsalItem[]) => {
+    const cleanList = JSON.parse(JSON.stringify(newList || []));
+    set({
+      masterGrupAsal: cleanList,
+      grupAsalList: cleanList.map((g: any) => g.namaGrup),
+    });
     try {
-      set({ grupAsalList: grups });
+      localStorage.setItem(LS_GRUP_ASAL, JSON.stringify(cleanList));
       await supabase
         .from('app_settings')
-        .upsert([{ key: KEY_DB_GRUP_ASAL, value: grups }], { onConflict: 'key' });
-      await logActivity('UPDATE GRUP ASAL', 'Memperbarui master grup asal dewan asatidz');
+        .upsert([{ key: KEY_DB_GRUP_ASAL, value: cleanList }], { onConflict: 'key' });
+      await logActivity('UPDATE MASTER GRUP ASAL', 'Menyimpan konfigurasi master grup asal');
       return true;
     } catch (err: any) {
-      alert('Gagal menyimpan grup asal: ' + err.message);
+      console.error('Save master grup asal error:', err.message);
+      return false;
+    }
+  },
+
+  deleteGrupAsal: async (idx: number) => {
+    const list = [...get().masterGrupAsal];
+    list.splice(idx, 1);
+    return get().saveMasterGrupAsal(list);
+  },
+
+  reorderGrupAsal: async (srcIdx: number, targetIdx: number) => {
+    const list = [...get().masterGrupAsal];
+    const [moved] = list.splice(srcIdx, 1);
+    list.splice(targetIdx, 0, moved);
+    return get().saveMasterGrupAsal(list);
+  },
+
+  applyBatchFanMS: async (
+    tingkat: string,
+    kls: string,
+    selectedItems: string[],
+    asatidzList: Asatidz[],
+    formasiList: Formasi[]
+  ) => {
+    const tktUpper = String(tingkat || '').trim().toUpperCase();
+    const klsStr = String(kls || '').trim();
+    const keyReguler = `${klsStr} ${tktUpper}`;
+
+    // Temukan seluruh Mustahiq untuk Tingkat + Din.Kls ini
+    const mustahiqReguler: string[] = [];
+    (asatidzList || []).forEach((a) => {
+      const rTkt = String(a.tingkat_asatidz || '').trim().toUpperCase();
+      const rKls = String(a.din_kls_asatidz || '').trim();
+      const rJah = String(a.jah_asatidz || '').toLowerCase();
+      const rNama = String(a.nama_asatidz || '').trim();
+
+      const isMustahiq =
+        rJah.includes('mustahiq') ||
+        rJah.includes('ms & koor') ||
+        rJah === 'ist' ||
+        rJah.includes("isti'dad");
+
+      if (isMustahiq && rTkt === tktUpper && rKls === klsStr && rNama) {
+        if (!mustahiqReguler.includes(rNama)) mustahiqReguler.push(rNama);
+      }
+    });
+
+    // Cari daftar din_bag untuk tingkat & kelas ini
+    const daftarBag = new Set<string>();
+    (formasiList || []).forEach((f) => {
+      if (
+        String(f.tingkat || '').trim().toUpperCase() === tktUpper &&
+        String(f.din_kls || '').trim() === klsStr
+      ) {
+        const bag = String(f.din_bag || '').trim().toUpperCase();
+        if (bag) daftarBag.add(bag);
+      }
+    });
+
+    const detail = { ...get().fanDetail };
+    if (!detail.item) detail.item = {};
+
+    const cfg = get().fanConfig;
+    const itemsReguler = cfg[keyReguler] || [];
+
+    // 1. Terapkan pada kelas reguler
+    itemsReguler.forEach((rawItem) => {
+      const itemKeyReg = `${keyReguler}||${rawItem}`;
+      if (!detail.item![itemKeyReg]) detail.item![itemKeyReg] = {};
+
+      if (selectedItems.includes(rawItem)) {
+        detail.item![itemKeyReg].pengajar = 'MS';
+        detail.item![itemKeyReg].asatidz = [...mustahiqReguler];
+      } else if (detail.item![itemKeyReg].pengajar === 'MS') {
+        detail.item![itemKeyReg].pengajar = '';
+        detail.item![itemKeyReg].asatidz = [];
+      }
+    });
+
+    // 2. Terapkan pada sub-kelas unggulan jika ada
+    daftarBag.forEach((bag) => {
+      const namaKelas = `${klsStr} ${bag} ${tktUpper}`;
+      if (isKelasUnggulan(namaKelas, formasiList)) {
+        const keyUg = `${namaKelas} (Ug)`;
+        const itemsUg = cfg[keyUg] || itemsReguler;
+
+        // Ambil mustahiq khusus bagian ini
+        const mustahiqBag: string[] = [];
+        (asatidzList || []).forEach((a) => {
+          const rTkt = String(a.tingkat_asatidz || '').trim().toUpperCase();
+          const rKls = String(a.din_kls_asatidz || '').trim();
+          const rBag = String(a.din_bag_asatidz || '').trim().toUpperCase();
+          const rJah = String(a.jah_asatidz || '').toLowerCase();
+          const rNama = String(a.nama_asatidz || '').trim();
+
+          const isMustahiq =
+            rJah.includes('mustahiq') ||
+            rJah.includes('ms & koor') ||
+            rJah === 'ist' ||
+            rJah.includes("isti'dad");
+
+          if (isMustahiq && rTkt === tktUpper && rKls === klsStr && rBag === bag && rNama) {
+            if (!mustahiqBag.includes(rNama)) mustahiqBag.push(rNama);
+          }
+        });
+
+        itemsUg.forEach((rawItem) => {
+          const itemKeyUg = `${keyUg}||${rawItem}`;
+          if (!detail.item![itemKeyUg]) detail.item![itemKeyUg] = {};
+
+          if (selectedItems.includes(rawItem)) {
+            detail.item![itemKeyUg].pengajar = 'MS';
+            detail.item![itemKeyUg].asatidz =
+              mustahiqBag.length > 0 ? [...mustahiqBag] : [...mustahiqReguler];
+          } else if (detail.item![itemKeyUg].pengajar === 'MS') {
+            detail.item![itemKeyUg].pengajar = '';
+            detail.item![itemKeyUg].asatidz = [];
+          }
+        });
+      }
+    });
+
+    set({ fanDetail: detail });
+    try {
+      localStorage.setItem(LS_FAN_DETAIL, JSON.stringify(detail));
+      await supabase
+        .from('app_settings')
+        .upsert([{ key: KEY_DB_FAN_DETAIL, value: detail }], { onConflict: 'key' });
+      await logActivity(
+        'BATCH SETUP FAN MS',
+        `Menetapkan ${selectedItems.length} Fan MS untuk kelas ${klsStr} ${tktUpper}`
+      );
+      return true;
+    } catch (err: any) {
+      console.error('Batch setup fan MS error:', err.message);
       return false;
     }
   },
