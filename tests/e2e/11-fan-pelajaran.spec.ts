@@ -59,17 +59,60 @@ test.describe('Fan Pelajaran & Pengajar Fan Migration Full Verification', () => 
     await expect(page.getByText('*MS (Mustahiq) • MB (Munawib)')).toBeVisible();
   });
 
-  test('3.0 Fan Pelajaran: Modal Pengaturan Item Fan', async ({ page }) => {
+  test('3.0 Fan Pelajaran: Modal Pengaturan Item Fan (Modern Chips Builder & Dual Mode)', async ({ page }) => {
     await page.goto('/fan/pelajaran');
 
     await page.getByRole('button', { name: /Atur Item Fan/i }).click();
-    await expect(page.getByRole('heading', { name: /Pengaturan Item Fan \(Mata Pelajaran\)/i })).toBeVisible();
-    await expect(page.getByText('1. Fan Kelas Reguler (Tingkat Umum)')).toBeVisible();
-    await expect(page.getByText('2. Sub Pengaturan Fan Khusus Kelas Unggulan (Ug)')).toBeVisible();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading', { name: /Pengaturan Item Fan \(Mata Pelajaran\)/i })).toBeVisible();
+
+    // Verifikasi Mode Switcher: Mode Visual (Chips) & Mode Teks Cepat
+    const btnVisual = dialog.getByRole('button', { name: /Mode Visual \(Chips\)/i });
+    const btnBulk = dialog.getByRole('button', { name: /Mode Teks Cepat/i });
+    await expect(btnVisual).toBeVisible();
+    await expect(btnBulk).toBeVisible();
+
+    // Verifikasi Tab Jenjang Tingkat
+    await expect(dialog.getByRole('button', { name: /Semua Kelas/i })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /Tingkat ULA/i })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /Tingkat WUSTHO/i })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /Tingkat ULYA/i })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /Unggulan/i })).toBeVisible();
+
+    // Klik Tab Tingkat ULA
+    await dialog.getByRole('button', { name: /Tingkat ULA/i }).click();
+    await expect(dialog.getByRole('heading', { name: /1 ULA/i })).toBeVisible();
+
+    // Uji penambahan Fan baru di kelas 1 ULA
+    const inputMapel = dialog.getByPlaceholder(/Nama Kitab \/ Mata Pelajaran/i).first();
+    await expect(inputMapel).toBeVisible();
+    await inputMapel.fill('Mabadi Fiqih Test E2E');
+
+    const btnTambah = dialog.getByRole('button', { name: /Tambah/i }).first();
+    await expect(btnTambah).toBeVisible();
+    await btnTambah.click();
+
+    // Verifikasi chip baru muncul
+    await expect(dialog.getByText('Mabadi Fiqih Test E2E')).toBeVisible();
+
+    // Uji hapus chip baru tersebut
+    const targetChip = dialog.locator('.inline-flex', { hasText: 'Mabadi Fiqih Test E2E' });
+    await expect(targetChip).toBeVisible();
+    await targetChip.getByTitle('Hapus mata pelajaran ini').click();
+    await expect(dialog.getByText('Mabadi Fiqih Test E2E')).not.toBeVisible();
+
+    // Uji beralih ke Mode Teks Cepat
+    await btnBulk.click();
+    await expect(dialog.getByPlaceholder(/Contoh: \(Fiqih\) Mabadi Fiqih/i).first()).toBeVisible();
+
+    // Kembalikan ke Mode Visual
+    await btnVisual.click();
+    await expect(btnVisual).toBeVisible();
 
     // Tutup dialog
-    await page.getByRole('button', { name: /Batal/i }).click();
-    await expect(page.getByRole('heading', { name: /Pengaturan Item Fan \(Mata Pelajaran\)/i })).not.toBeVisible();
+    await dialog.getByRole('button', { name: /Batal/i }).click();
+    await expect(dialog).not.toBeVisible();
   });
 
   test('4.0 Fan Pelajaran: Modal Atur Fan MS (Batch Setup)', async ({ page }) => {
