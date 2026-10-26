@@ -92,7 +92,28 @@ test.describe('Modul 03: Kurikulum & Akademik', () => {
     await page.goto('/daftar-pendidik');
 
     await expect(page.getByRole('heading', { name: /Daftar Tenaga Pendidik/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Grup Asal/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Export Excel/i })).toBeVisible();
-    await expect(page.getByPlaceholder(/Cari (nama pendidik|Kode \/ Nama)/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Print \/ Cetak Dokumen/i })).toBeVisible();
+    await expect(page.getByPlaceholder(/Cari Kode \/ Nama/i)).toBeVisible();
+
+    // Verify 25-column table headers
+    const table = page.locator('table.tabel-daftar-pendidik');
+    await expect(table).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'KODE', exact: true })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'NAMA', exact: true })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'ASAL', exact: true })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'JAH', exact: true })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'HARI & JAM', exact: true })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'TINGKAT DAN KODE', exact: true })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'JML', exact: true })).toBeVisible();
+
+    // Test open and close Grup Asal modal
+    await page.getByRole('button', { name: /Grup Asal/i }).click();
+    const modalGrup = page.getByRole('dialog');
+    await expect(modalGrup).toBeVisible();
+    await expect(modalGrup.getByText(/Pengaturan Grup Asal/i)).toBeVisible();
+    await modalGrup.getByRole('button', { name: 'Tutup', exact: true }).or(modalGrup.locator('button[aria-label="Tutup dialog"]')).first().click();
+    await expect(modalGrup).toBeHidden();
   });
 });

@@ -45,7 +45,10 @@ export interface TeacherJadwalRow {
   rabu?: string;
   kamis?: string;
   totalJam?: string | number;
+  [key: string]: any;
 }
+
+export type JadwalAsatidzRow = TeacherJadwalRow;
 
 /**
  * Hasil pemecahan string slot: "Jam 1 | Fiqih | 1 A ULA (PA) (Asrama Al-Barokah)"

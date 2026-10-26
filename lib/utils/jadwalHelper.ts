@@ -545,3 +545,95 @@ export function syncGuruMengajarAndTotalObj(jdwObj: TeacherJadwalRow, asatidzLis
 
   jdwObj.mengajar = existing.join(', ');
 }
+
+/**
+ * Memeriksa string sel jadwal harian Asatidz dan mengembalikan tanda 'X'
+ * apabila terdapat jadwal mengajar pada Jam 1 (I) dan/atau Jam 2 (II)
+ */
+export function getStatusJam1Dan2Hari(cellStr: string | null | undefined): { j1: string; j2: string } {
+  const res = { j1: '', j2: '' };
+  if (!cellStr || !String(cellStr).trim()) return res;
+
+  const lines = String(cellStr)
+    .split(/\r?\n|;;/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  lines.forEach((l) => {
+    const p = l.split(' | ');
+    const jamStr = p[0] || '';
+    const m = jamStr.match(/\d+/);
+    if (m) {
+      const j = parseInt(m[0], 10);
+      if (j === 1) res.j1 = 'X';
+      if (j === 2) res.j2 = 'X';
+    }
+  });
+
+  return res;
+}
+
+export interface DistribusiJamTingkat {
+  ula: { [kls: number]: number };
+  wst: { [kls: number]: number };
+  ulya: { [kls: number]: number };
+  totalJml: number;
+}
+
+/**
+ * Menghitung distribusi total jam mengajar Jam 1 & Jam 2 seorang Asatidz
+ * pada masing-masing jenjang dan kelas: ULA (I-IV), WST (I-II), ULYA (I-II), serta JML
+ */
+export function hitungDistribusiJam12Tingkat(
+  asatidzObj: { tingkat_asatidz?: string; din_kls_asatidz?: string | number } | null | undefined,
+  jadwal: TeacherJadwalRow | Record<string, string> | null | undefined
+): DistribusiJamTingkat {
+  const counts: DistribusiJamTingkat = {
+    ula: { 1: 0, 2: 0, 3: 0, 4: 0 },
+    wst: { 1: 0, 2: 0 },
+    ulya: { 1: 0, 2: 0 },
+    totalJml: 0,
+  };
+
+  if (!jadwal) return counts;
+
+  LIST_HARI.forEach((hari) => {
+    const val = (jadwal as Record<string, any>)[hari.toLowerCase()] || '';
+    if (!String(val).trim()) return;
+
+    const lines = String(val)
+      .split(/\r?\n|;;/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    lines.forEach((line) => {
+      const p = line.split(' | ');
+      const jamStr = p[0] || '';
+      const matchJam = jamStr.match(/\d+/);
+      const jamNum = matchJam ? parseInt(matchJam[0], 10) : 0;
+
+      if (jamNum === 1 || jamNum === 2) {
+        counts.totalJml++;
+        const lok = formatTampilanKelas(p[2] || '');
+        const match = lok.match(/(\d+)\s+[A-Za-z0-9]+\s+(ULA|WUSTHO|WUSTHA|ULYA)/i);
+
+        if (match) {
+          const kls = parseInt(match[1], 10);
+          const tkt = match[2].toUpperCase();
+          if (tkt === 'ULA' && counts.ula[kls] !== undefined) counts.ula[kls]++;
+          else if ((tkt === 'WUSTHO' || tkt === 'WUSTHA') && counts.wst[kls] !== undefined) counts.wst[kls]++;
+          else if (tkt === 'ULYA' && counts.ulya[kls] !== undefined) counts.ulya[kls]++;
+        } else {
+          // Fallback: gunakan tingkat & kelas Diniyyah milik Asatidz itu sendiri
+          const mTkt = String(asatidzObj?.tingkat_asatidz || '').toUpperCase();
+          const mKls = parseInt(String(asatidzObj?.din_kls_asatidz || ''), 10) || 0;
+          if (mTkt === 'ULA' && counts.ula[mKls] !== undefined) counts.ula[mKls]++;
+          else if (mTkt.includes('WUSTH') && counts.wst[mKls] !== undefined) counts.wst[mKls]++;
+          else if (mTkt === 'ULYA' && counts.ulya[mKls] !== undefined) counts.ulya[mKls]++;
+        }
+      }
+    });
+  });
+
+  return counts;
+}
