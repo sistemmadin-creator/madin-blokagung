@@ -10,6 +10,28 @@ import * as XLSX from 'xlsx';
 type RekapMode = 'wajib' | 'tahfidz';
 type TingkatMadin = 'ULA' | 'WUSTHO' | 'ULYA';
 
+// Helper to safely resolve santri tingkat with fallbacks
+function resolveSantriTingkat(s: any): TingkatMadin | '' {
+  const direct = norm(s.tingkat || s[26]);
+  if (direct === 'ULA' || direct === 'WUSTHO' || direct === 'ULYA') {
+    return direct as TingkatMadin;
+  }
+  const combined = norm(`${s.kelas || ''} ${s.din_kls || ''} ${s[20] || ''}`);
+  if (combined.includes('WUSTHO')) return 'WUSTHO';
+  if (combined.includes('ULYA')) return 'ULYA';
+  if (combined.includes('ULA')) return 'ULA';
+  return '';
+}
+
+// Helper to safely resolve santri class (din_kls)
+function resolveSantriKelas(s: any): string {
+  const raw = String(s.din_kls || s[24] || '').trim();
+  if (raw) return raw;
+  const fallback = String(s.kelas || s[20] || '').trim();
+  const match = fallback.match(/^([1-4])/);
+  return match ? match[1] : '';
+}
+
 export default function RekapHafalanPage() {
   const { setoranList, config, fetchSetoranData, isLoading: loadingSetoran } = useMuhafadzohStore();
   const { santriList, fetchSantri, isLoading: loadingSantri } = useSantriStore();
@@ -22,9 +44,21 @@ export default function RekapHafalanPage() {
     if (santriList.length === 0) fetchSantri();
   }, [fetchSetoranData, fetchSantri, santriList.length]);
 
-  // Filter santri by selected tingkat (norm matching)
+  // Hitung jumlah santri aktif per tingkatan
+  const tingkatCounts = useMemo(() => {
+    const counts: Record<TingkatMadin, number> = { ULA: 0, WUSTHO: 0, ULYA: 0 };
+    santriList.forEach((s: any) => {
+      const t = resolveSantriTingkat(s);
+      if (t && counts[t] !== undefined) {
+        counts[t]++;
+      }
+    });
+    return counts;
+  }, [santriList]);
+
+  // Filter santri by selected tingkat (with robust fallback matching)
   const santriTingkat = useMemo(() => {
-    return santriList.filter((s: any) => norm(s.tingkat || s[26]) === tingkat);
+    return santriList.filter((s: any) => resolveSantriTingkat(s) === tingkat);
   }, [santriList, tingkat]);
 
   // Map setoran by no_induk: Map<no_induk, Map<hafalan_norm, tgl>>
@@ -97,7 +131,7 @@ export default function RekapHafalanPage() {
     return kelasList
       .map((kls) => {
         const santriKelas = santriTingkat
-          .filter((s: any) => String(s.din_kls || s[24] || '').trim() === kls)
+          .filter((s: any) => resolveSantriKelas(s) === kls)
           .sort((a: any, b: any) => {
             const bagA = String(a.din_bag || a[25] || '');
             const bagB = String(b.din_bag || b[25] || '');
@@ -366,9 +400,9 @@ export default function RekapHafalanPage() {
               onChange={(e) => setTingkat(e.target.value as TingkatMadin)}
               className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-700 shadow-2xs focus:border-emerald-600 focus:outline-none"
             >
-              <option value="ULA">Tingkat ULA</option>
-              <option value="WUSTHO">Tingkat WUSTHO</option>
-              <option value="ULYA">Tingkat ULYA</option>
+              <option value="ULA">Tingkat ULA ({tingkatCounts.ULA} Santri)</option>
+              <option value="WUSTHO">Tingkat WUSTHO ({tingkatCounts.WUSTHO} Santri)</option>
+              <option value="ULYA">Tingkat ULYA ({tingkatCounts.ULYA} Santri)</option>
             </select>
 
             {/* Tombol Cetak A4 */}
@@ -405,9 +439,40 @@ export default function RekapHafalanPage() {
         <div className="card-panel text-center py-12 text-slate-500 border border-slate-200 shadow-sm rounded-xl bg-white">
           <Inbox className="w-12 h-12 text-slate-400 mx-auto mb-3" />
           <h6 className="font-bold text-slate-700 text-sm mb-1">Data Santri Tidak Ditemukan</h6>
-          <p className="text-xs text-slate-500 mb-0">
+          <p className="text-xs text-slate-500 mb-3">
             Belum ada data santri yang terdaftar pada Tingkat <b>{tingkat}</b>.
           </p>
+
+          {/* Quick Action jika ada santri di tingkatan lain */}
+          {(() => {
+            const alternative = (['ULA', 'WUSTHO', 'ULYA'] as TingkatMadin[]).find(
+              (t) => t !== tingkat && tingkatCounts[t] > 0
+            );
+            if (alternative) {
+              return (
+                <div className="inline-flex flex-col sm:flex-row items-center gap-2 p-2.5 px-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 mt-1 shadow-2xs">
+                  <span>
+                    Ditemukan <b>{tingkatCounts[alternative]}</b> santri terdaftar pada Tingkat <b>{alternative}</b>.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setTingkat(alternative)}
+                    className="font-bold text-emerald-700 hover:text-emerald-900 underline ml-1 cursor-pointer"
+                  >
+                    Buka Tingkat {alternative} &rarr;
+                  </button>
+                </div>
+              );
+            }
+            return (
+              <a
+                href="/santri"
+                className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition"
+              >
+                <span>Kelola Data Santri</span>
+              </a>
+            );
+          })()}
         </div>
       ) : mode === 'wajib' ? (
         /* 4. MODE HAFALAN WAJIB (Grouped per Kelas) */

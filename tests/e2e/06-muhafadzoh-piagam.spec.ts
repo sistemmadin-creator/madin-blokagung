@@ -100,6 +100,21 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
     // Switch back to Wajib
     await btnWajib.click();
     await expect(btnWajib).toHaveClass(/bg-emerald-700/);
+
+    // Empty state on ULA with quick action to WUSTHO
+    await expect(page.getByText('Data Santri Tidak Ditemukan')).toBeVisible();
+    await expect(page.getByText(/Belum ada data santri yang terdaftar pada Tingkat/i)).toBeVisible();
+
+    // Select WUSTHO and verify santri table renders
+    await selectTingkat.selectOption('WUSTHO');
+    await expect(selectTingkat).toHaveValue('WUSTHO');
+
+    // Verify Kelas 1 - Tingkat WUSTHO table rendered
+    await expect(page.getByRole('heading', { name: /Kelas 1 - Tingkat WUSTHO/i })).toBeVisible();
+    await expect(page.getByText('ANDIKO DWI SAPUTRA')).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Al-Fiyyah 350' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Al-Fiyyah 500' })).toBeVisible();
+    await expect(page.getByText('1 / 2')).toBeVisible();
   });
 
   test('Studio Piagam Kelulusan and coordinate inspector', async ({ page }) => {
