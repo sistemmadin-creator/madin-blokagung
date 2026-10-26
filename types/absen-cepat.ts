@@ -1,4 +1,4 @@
-import { StatusAbsensi, JamKbm } from './absensi';
+import { StatusAbsensi, JamKbm, SesiJadwalHarian } from './absensi';
 
 export interface AbsenCepatCardItem {
   nia: string;
@@ -20,6 +20,14 @@ export interface AbsenCepatState {
   selectedKeys: string[];
   search: string;
   filterBlok: string;
-  sortBy: 'kelas_asc' | 'kelas_desc' | 'nama_asc';
+  sortBy: 'kelas_asc' | 'blok_asc' | 'nama_asc';
   modalStatus: StatusAbsensi;
+  detailSesi: SesiJadwalHarian | null;
+}
+
+export interface UserAkunMadin {
+  username: string;
+  nama: string;
+  role: string;
+  aktif?: boolean;
 }

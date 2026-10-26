@@ -1,209 +1,248 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import Dialog from '@/components/ui/Dialog';
+import React, { useState, useEffect } from 'react';
+import { MessageSquare, Copy, Check, X, Send, RefreshCw } from 'lucide-react';
 import { useAbsensiStore } from '@/stores/useAbsensiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
-import { RecordSesiAbsensi } from '@/types/absensi';
-import { Asatidz } from '@/types/asatidz';
-import { Copy, CheckCheck } from 'lucide-react';
+import { useJadwalStore } from '@/stores/useJadwalStore';
+import { useFormasiStore } from '@/stores/useFormasiStore';
+import { useFanStore } from '@/stores/useFanStore';
+import { JamKbm } from '@/types/absensi';
+import { generateLaporanWAText } from '@/lib/utils/absensiHelper';
+
+interface ModalGeneratorWAProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialJam?: JamKbm | 'ALL';
+}
 
 export default function ModalGeneratorWA({
   isOpen,
   onClose,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-}) {
-  const { absensiMapByDate, selectedDate } = useAbsensiStore();
-  const { asatidzList } = useAsatidzStore();
+  initialJam = 'ALL',
+}: ModalGeneratorWAProps) {
+  const {
+    selectedDate,
+    sesiHariIni,
+    liburMapByDate,
+    getSesiStatusData,
+    syncSesiHariIni,
+  } = useAbsensiStore();
 
-  const [date, setDate] = useState(selectedDate);
-  const [includeJam12, setIncludeJam12] = useState(true);
-  const [includeJam3, setIncludeJam3] = useState(true);
-  const [includeJam4, setIncludeJam4] = useState(true);
-  const [genderFilter, setGenderFilter] = useState<'SEMUA' | 'PA' | 'PI'>('SEMUA');
+  const { asatidzList, fetchAsatidz } = useAsatidzStore();
+  const { jadwalMap, fetchJadwal } = useJadwalStore();
+  const { formasiList, fetchFormasi } = useFormasiStore();
+  const { fanConfig, fetchFanData } = useFanStore();
+
+  const [jamPilihan, setJamPilihan] = useState<string>(String(initialJam));
+  const [waText, setWaText] = useState<string>('');
   const [copied, setCopied] = useState(false);
 
-  // Generate WhatsApp text
-  const waText = useMemo(() => {
-    const sessions = absensiMapByDate[date];
-    if (!sessions) {
-      return `*LAPORAN REKAPITULASI PRESENSI KBM ASATIDZ*\nMadrasah Diniyyah Al Amiriyyah Blokagung\nTanggal: ${date}\n\nBelum ada data presensi yang tersimpan untuk tanggal ini.`;
+  useEffect(() => {
+    if (isOpen) {
+      setJamPilihan(String(initialJam));
+      if (asatidzList.length === 0) fetchAsatidz();
+      if (Object.keys(jadwalMap).length === 0) fetchJadwal();
+      if (formasiList.length === 0) fetchFormasi();
+      if (Object.keys(fanConfig).length === 0) fetchFanData();
     }
+  }, [
+    isOpen,
+    initialJam,
+    asatidzList.length,
+    jadwalMap,
+    formasiList.length,
+    fanConfig,
+    fetchAsatidz,
+    fetchJadwal,
+    fetchFormasi,
+    fetchFanData,
+  ]);
 
-    // Collect all records according to active sessions
-    let allRecords: RecordSesiAbsensi[] = [];
-    if (includeJam12) {
-      if (sessions[1]) allRecords = allRecords.concat(sessions[1]);
-      if (sessions[2]) allRecords = allRecords.concat(sessions[2]);
+  // Pastikan sesiHariIni tersinkronisasi bila dibuka dari halaman Rekap Absensi
+  useEffect(() => {
+    if (isOpen && asatidzList.length > 0) {
+      const totalSesi =
+        (sesiHariIni[1]?.length || 0) +
+        (sesiHariIni[2]?.length || 0) +
+        (sesiHariIni[3]?.length || 0) +
+        (sesiHariIni[4]?.length || 0);
+      if (totalSesi === 0) {
+        syncSesiHariIni(
+          asatidzList,
+          jadwalMap,
+          formasiList,
+          fanConfig
+        );
+      }
     }
-    if (includeJam3 && sessions[3]) {
-      allRecords = allRecords.concat(sessions[3]);
+  }, [
+    isOpen,
+    asatidzList,
+    jadwalMap,
+    formasiList,
+    fanConfig,
+    sesiHariIni,
+    syncSesiHariIni,
+  ]);
+
+  const regenerateText = () => {
+    const infoLibur = liburMapByDate[selectedDate] || null;
+    const isLibur = Boolean(infoLibur);
+    const jamNums: JamKbm[] =
+      jamPilihan === 'ALL'
+        ? [1, 2, 3, 4]
+        : [parseInt(jamPilihan, 10) as JamKbm];
+
+    const text = generateLaporanWAText({
+      tanggal: selectedDate,
+      sesiHariIni,
+      getSesiStatus: getSesiStatusData,
+      jamNums,
+      judulJamLabel:
+        jamPilihan === 'ALL' ? undefined : `JAM KE-${jamPilihan}`,
+      isLibur,
+      infoLibur,
+    });
+    setWaText(text);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      regenerateText();
     }
-    if (includeJam4 && sessions[4]) {
-      allRecords = allRecords.concat(sessions[4]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, selectedDate, jamPilihan, sesiHariIni, liburMapByDate]);
+
+  if (!isOpen) return null;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(waText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback copy
     }
+  };
 
-    // Map gender lookup
-    const asatidzMap = new Map<string, Asatidz>();
-    asatidzList.forEach((a) => asatidzMap.set(a.nama_asatidz.toUpperCase(), a));
-
-    if (genderFilter !== 'SEMUA') {
-      allRecords = allRecords.filter((r) => {
-        const aObj = asatidzMap.get(r.nama_asatidz.toUpperCase());
-        return aObj?.pa_pi === genderFilter;
-      });
-    }
-
-    const total = allRecords.length;
-    const hadir = allRecords.filter((r) => r.status === 'Hadir').length;
-    const izin = allRecords.filter((r) => r.status === 'Izin').length;
-    const sakit = allRecords.filter((r) => r.status === 'Sakit').length;
-    const alfa = allRecords.filter((r) => r.status === 'Alfa').length;
-    const badal = allRecords.filter((r) => r.status === 'Badal').length;
-
-    const persen = total > 0 ? Math.round((hadir / total) * 100) : 0;
-
-    const tidakHadirList = allRecords.filter((r) => r.status !== 'Hadir');
-
-    let text = `*LAPORAN REKAPITULASI PRESENSI KBM ASATIDZ*\n`;
-    text += `*MADRASAH DINIYYAH AL AMIRIYYAH BLOKAGUNG*\n`;
-    text += `Tanggal : ${date}\n`;
-    text += `Kategori : ${genderFilter === 'SEMUA' ? 'Putra & Putri' : genderFilter === 'PA' ? 'Santri Putra' : 'Santri Putri'}\n`;
-    text += `---------------------------------------------------\n`;
-    text += `TOTAL SLOT TUGAS : ${total}\n`;
-    text += `✅ HADIR : ${hadir} (${persen}%)\n`;
-    text += `⚠️ IZIN  : ${izin}\n`;
-    text += `🏥 SAKIT : ${sakit}\n`;
-    text += `❌ ALFA  : ${alfa}\n`;
-    text += `🔄 BADAL : ${badal}\n`;
-    text += `---------------------------------------------------\n`;
-
-    if (tidakHadirList.length === 0) {
-      text += `_Alhamdulillah seluruh dewan asatidz hadir lengkap._\n`;
-    } else {
-      text += `*DAFTAR ASATIDZ TIDAK HADIR / BADAL:*\n`;
-      tidakHadirList.forEach((r, idx) => {
-        text += `${idx + 1}. *${r.nama_asatidz}* (${r.kelas} - ${r.fan})\n`;
-        text += `   Status: *${r.status}*`;
-        if (r.status === 'Badal' && r.asatidz_pengganti) {
-          text += ` (Badal: ${r.asatidz_pengganti})`;
-        }
-        text += `\n`;
-      });
-    }
-
-    text += `---------------------------------------------------\n`;
-    text += `_Dilaporkan otomatis oleh Sistem Informasi Madin Al Amiriyyah_`;
-
-    return text;
-  }, [absensiMapByDate, date, includeJam12, includeJam3, includeJam4, genderFilter, asatidzList]);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(waText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleSendWA = () => {
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(waText)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <Dialog
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Generator Pesan WhatsApp Rekapitulasi Presensi"
-      maxWidth="lg"
-    >
-      <div className="space-y-4">
-        {/* Controls */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs">
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">Tanggal Laporan</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white"
-            />
-          </div>
-
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">Kategori Dewan Asatidz</label>
-            <select
-              value={genderFilter}
-              onChange={(e) => setGenderFilter(e.target.value as 'SEMUA' | 'PA' | 'PI')}
-              className="w-full py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white"
-            >
-              <option value="SEMUA">Semua (Putra & Putri)</option>
-              <option value="PA">Khusus Ustadz (PA)</option>
-              <option value="PI">Khusus Ustadzah (PI)</option>
-            </select>
-          </div>
-
-          <div className="sm:col-span-2 space-y-1">
-            <label className="block font-semibold text-slate-700">Sesi Jam Pelajaran:</label>
-            <div className="flex flex-wrap gap-4 pt-0.5">
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeJam12}
-                  onChange={(e) => setIncludeJam12(e.target.checked)}
-                  className="rounded border-slate-300 text-emerald-600"
-                />
-                <span>Jam 1 & 2 (Diniyyah)</span>
-              </label>
-
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeJam3}
-                  onChange={(e) => setIncludeJam3(e.target.checked)}
-                  className="rounded border-slate-300 text-emerald-600"
-                />
-                <span>Jam 3 (Bandongan/Syawir)</span>
-              </label>
-
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeJam4}
-                  onChange={(e) => setIncludeJam4(e.target.checked)}
-                  className="rounded border-slate-300 text-emerald-600"
-                />
-                <span>Jam 4 (Takror)</span>
-              </label>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 bg-emerald-700 text-white">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center">
+              <MessageSquare className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold">
+                Generator Laporan WhatsApp
+              </h3>
+              <p className="text-[11px] text-emerald-100">
+                Format pesan otomatis dikelompokkan per Blok & Kelas
+              </p>
             </div>
           </div>
-        </div>
-
-        {/* Preview Area */}
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-slate-700">
-            Preview Teks Pesan WhatsApp:
-          </label>
-          <pre className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-xl text-xs font-mono text-slate-800 whitespace-pre-wrap max-h-64 overflow-y-auto leading-relaxed">
-            {waText}
-          </pre>
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-between items-center pt-3 border-t border-slate-100">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600"
+            aria-label="Tutup modal"
+            className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
           >
-            Tutup
-          </button>
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition"
-          >
-            {copied ? <CheckCheck className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            <span>{copied ? 'Teks Tersalin!' : 'Salin Teks WhatsApp'}</span>
+            <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Body */}
+        <div className="p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-bold text-slate-700">
+                Cakupan Jam:
+              </label>
+              <select
+                value={jamPilihan}
+                onChange={(e) => setJamPilihan(e.target.value)}
+                className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="ALL">Semua Jam (Jam 1 - 4)</option>
+                <option value="1">Khusus Jam Ke-1</option>
+                <option value="2">Khusus Jam Ke-2</option>
+                <option value="3">Khusus Jam Ke-3</option>
+                <option value="4">Khusus Jam Ke-4</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 font-bold text-[11px]">
+                {waText.length} Karakter
+              </span>
+              <button
+                type="button"
+                onClick={regenerateText}
+                title="Susun ulang teks"
+                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <textarea
+              rows={13}
+              value={waText}
+              onChange={(e) => setWaText(e.target.value)}
+              className="w-full p-3.5 text-xs font-mono bg-slate-50 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 leading-relaxed"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              Tutup
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white transition-colors"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    Tersalin!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    Salin Teks WhatsApp
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSendWA}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Kirim ke WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-    </Dialog>
+    </div>
   );
 }

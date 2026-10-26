@@ -1,54 +1,139 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Modul 04: Kesiswaan & Presensi', () => {
-  test('Presensi KBM page, hour tabs and holiday modal', async ({ page }) => {
+test.describe('Modul 04: Kesiswaan & Presensi (Absensi Asatidz, Absen Cepat, Rekap Absensi)', () => {
+  test('Absensi Asatidz page, KPI modal, 4-hour progressive blocks, holiday modal, and Riwayat tab', async ({ page }) => {
     await page.goto('/absensi');
 
-    await expect(page.getByRole('heading', { name: /(Absensi Asatidz|Presensi KBM)/i }).first()).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /(Absensi Asatidz|Presensi KBM)/i }).first()
+    ).toBeVisible();
 
-    // Check hour buttons
-    await expect(page.getByRole('button', { name: /Jam.*1/i }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /Jam.*2/i }).first()).toBeVisible();
+    // Ensure non-Friday date (2026-10-27 is Selasa) so all 4 Jam blocks render
+    const dateInput = page.locator('input[type="date"]').first();
+    await dateInput.fill('2026-10-27');
 
-    // Holiday settings modal button
+    // Check 4 progressive hour headings
+    await expect(
+      page.getByRole('heading', { name: /Daftar Pengajar Jam Ke-1/i })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /Daftar Pengajar Jam Ke-2/i })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /Daftar Pengajar Jam Ke-3/i })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /Daftar Pengajar Jam Ke-4/i })
+    ).toBeVisible();
+
+    // Check interactive KPI card opens ModalListStatusKPI
+    const kpiTotalBtn = page.getByRole('button', { name: /Total Sesi Hari Ini/i });
+    await expect(kpiTotalBtn).toBeVisible();
+    await kpiTotalBtn.click();
+    await expect(
+      page.getByRole('heading', { name: /Daftar Semua Sesi KBM Hari Ini/i })
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Tutup', exact: true }).click();
+    await expect(
+      page.getByRole('heading', { name: /Daftar Semua Sesi KBM Hari Ini/i })
+    ).toBeHidden();
+
+    // Check Holiday settings modal
     const holidayBtn = page.getByRole('button', { name: /Libur \/ Event|Atur Hari Libur/i });
     await expect(holidayBtn).toBeVisible();
     await holidayBtn.click();
 
-    await expect(page.getByRole('heading', { name: /Pengaturan Hari Libur/i })).toBeVisible();
-    const closeBtn = page.getByRole('button', { name: /Batal/i });
-    await closeBtn.click();
+    await expect(
+      page.getByRole('heading', { name: /Pengaturan Hari Libur/i })
+    ).toBeVisible();
+    await page.getByRole('button', { name: /Batal/i }).click();
+    await expect(
+      page.getByRole('heading', { name: /Pengaturan Hari Libur/i })
+    ).toBeHidden();
+
+    // Switch to Tab 2: Riwayat & Rekap Data
+    const riwayatTabBtn = page.getByRole('button', { name: /Riwayat & Rekap Data/i });
+    await expect(riwayatTabBtn).toBeVisible();
+    await riwayatTabBtn.click();
+
+    await expect(
+      page.getByRole('heading', { name: /Filter Riwayat & Rekap Kehadiran/i })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /Export Excel/i })
+    ).toBeVisible();
   });
 
-  test('Absen Cepat page and dormitory block cards', async ({ page }) => {
+  test('Absen Cepat page, round hour tabs, Notif monitoring modal, and action buttons', async ({ page }) => {
     await page.goto('/absen-cepat');
 
-    await expect(page.getByRole('heading', { name: /Absen Cepat/i }).first()).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /Absen Cepat/i }).first()
+    ).toBeVisible();
 
-    // Block filter tabs
-    await expect(page.getByRole('button', { name: /Semua/i }).first()).toBeVisible();
+    // Ensure non-Friday date
+    const dateInput = page.locator('input[type="date"]').first();
+    await dateInput.fill('2026-10-27');
 
-    // Save button
-    await expect(page.getByRole('button', { name: /Simpan Presensi Cepat/i })).toBeVisible();
+    // Check round hour selector buttons (Jam Ke-1 .. Jam Ke-4)
+    await expect(page.getByRole('button', { name: 'Jam Ke-1' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Jam Ke-2' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Jam Ke-3' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Jam Ke-4' })).toBeVisible();
+
+    // Switch to Jam Ke-2
+    await page.getByRole('button', { name: 'Jam Ke-2' }).click();
+    await expect(
+      page.getByRole('heading', { name: /Daftar Pengajar Jam Ke-2/i })
+    ).toBeVisible();
+
+    // Check Tandai Semua Hadir & Simpan Jam Ini buttons
+    await expect(
+      page.getByRole('button', { name: /Tandai Semua Hadir/i })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /Simpan Jam Ini/i })
+    ).toBeVisible();
+
+    // Open Notif monitoring modal
+    const notifBtn = page.getByRole('button', { name: /Notif/i });
+    await expect(notifBtn).toBeVisible();
+    await notifBtn.click();
+
+    await expect(
+      page.getByRole('heading', { name: /Monitoring & Notifikasi Absensi Per Blok/i })
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Tutup', exact: true }).click();
+    await expect(
+      page.getByRole('heading', { name: /Monitoring & Notifikasi Absensi Per Blok/i })
+    ).toBeHidden();
   });
 
   test('Rekap Presensi page and WhatsApp generator modal', async ({ page }) => {
     await page.goto('/rekap-absensi');
 
-    await expect(page.getByRole('heading', { name: /Rekapitulasi|Rekap Absensi/i }).first()).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /Rekapitulasi|Rekap Absensi/i }).first()
+    ).toBeVisible();
 
     // WhatsApp generator modal
     const waBtn = page.getByRole('button', { name: /Broadcast WA|Kirim Pesan WhatsApp/i });
     await expect(waBtn).toBeVisible();
     await waBtn.click();
 
-    await expect(page.getByRole('heading', { name: /Generator Pesan WhatsApp/i })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /Generator.*WhatsApp/i })
+    ).toBeVisible();
 
     // Check copy button
-    await expect(page.getByRole('button', { name: /Salin Teks WhatsApp/i })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /Salin Teks WhatsApp/i })
+    ).toBeVisible();
 
     const closeBtn = page.getByRole('button', { name: 'Tutup', exact: true });
     await closeBtn.click();
-    await expect(page.getByRole('heading', { name: /Generator Pesan WhatsApp/i })).toBeHidden();
+    await expect(
+      page.getByRole('heading', { name: /Generator.*WhatsApp/i })
+    ).toBeHidden();
   });
 });
