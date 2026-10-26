@@ -17,11 +17,60 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
 
     await expect(page.getByRole('heading', { name: /Pengaturan Target Muhafadzoh/i })).toBeVisible();
 
+    // Verify 4 tabs inside settings modal
+    await expect(page.getByRole('button', { name: 'Hafalan Wajib' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Hafalan Sunnah' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Hafalan Kitab' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Akses Penjaga' })).toBeVisible();
+
     // Close settings modal
     const closeBtn = page.getByRole('button', { name: /Tutup|Batal/i }).or(page.locator('button:has-text("✕")')).first();
     if (await closeBtn.isVisible()) {
       await closeBtn.click();
     }
+  });
+
+  test('Setoran Muhafadzoh: Form Input, Kategori Token, dan Kartu Bukti Fisik', async ({ page }) => {
+    await page.goto('/setoran');
+
+    // 1. Verify Category Pill Tokens
+    await expect(page.getByRole('button', { name: 'Wajib', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sunnah', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Tahfidz', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Kitab', exact: true })).toBeVisible();
+
+    // 2. Verify Official Card Container
+    const kartu = page.locator('.kartu-container');
+    await expect(kartu).toBeVisible();
+    await expect(kartu.getByText(/MADRASAH DINIYYAH AL AMIRIYYAH/i)).toBeVisible();
+    await expect(kartu.getByText(/PKM MUHAFAZAH/i)).toBeVisible();
+
+    // 3. Verify Action Buttons in Header
+    await expect(page.getByTitle('Print Kartu')).toBeVisible();
+    await expect(page.getByTitle('Unduh JPG')).toBeVisible();
+  });
+
+  test('Setoran Muhafadzoh: Tabel Riwayat 11 Kolom dan Checkbox Seleksi', async ({ page }) => {
+    await page.goto('/setoran');
+
+    // 1. Verify 11 Column Headers
+    const table = page.locator('table.tabel-kbm-resmi');
+    await expect(table).toBeVisible();
+
+    await expect(table.getByRole('columnheader', { name: 'NO', exact: true })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'NO. INDUK' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'TGL SETOR' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'NAMA SANTRI' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'TEMPAT, TGL LAHIR' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'PENJAGA' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'ASATIDZ' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'KELAS' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'HAFALAN' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'KATEGORI' })).toBeVisible();
+
+    // 2. Search Input for table
+    const searchInput = page.getByRole('textbox', { name: 'Pencarian...' });
+    await expect(searchInput).toBeVisible();
   });
 
   test('Rekap Hafalan page and progress overview', async ({ page }) => {

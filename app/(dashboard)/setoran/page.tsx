@@ -1,160 +1,552 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
+import { useFormasiStore } from '@/stores/useFormasiStore';
 import {
   Grid,
   Save,
   Search,
   Printer,
-  Award,
-  User,
+  Image as ImageIcon,
+  Settings,
+  Pencil,
   Sliders,
-  Trash2
+  Trash2,
+  Eye,
+  RotateCcw,
 } from 'lucide-react';
 import ModalSettingsHafalan from '@/components/modules/setoran/ModalSettingsHafalan';
-
-function getTodayDateTime() {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-}
+import ModalDetailRiwayatSetoran from '@/components/modules/setoran/ModalDetailRiwayatSetoran';
+import KartuBuktiSetoran, { KartuData } from '@/components/modules/setoran/KartuBuktiSetoran';
+import {
+  getNowLocalDateTimeString,
+  formatDateTimeSetoran,
+  toDateTimeLocalInput,
+  formatTanggalResmi,
+  cariMustahiqSantri,
+  norm,
+} from '@/lib/utils/setoranHelper';
+import { SetoranHafalan } from '@/types/setoran';
+import html2canvas from 'html2canvas';
 
 export default function SetoranPage() {
-  const { setoranList, config, fetchSetoranData, addSetoran, deleteSetoran, openSettings } = useMuhafadzohStore();
+  const {
+    setoranList,
+    config,
+    fetchSetoranData,
+    addSetoran,
+    updateSetoran,
+    deleteSetoran,
+    bulkDeleteSetoran,
+    openSettings,
+    editingRecord,
+    editOldKey,
+    setEditingRecord,
+  } = useMuhafadzohStore();
+
   const { santriList, fetchSantri } = useSantriStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
+  const { formasiList, fetchFormasi } = useFormasiStore();
 
+  // Top Filter & Search
   const [filterGender, setFilterGender] = useState<'SEMUA' | 'PA' | 'PI'>('SEMUA');
   const [searchHistory, setSearchHistory] = useState('');
+  const [selectedIndukList, setSelectedIndukList] = useState<string[]>([]);
 
-  // Input Form
-  const [tglSetor, setTglSetor] = useState(getTodayDateTime());
+  // Form State
+  const [tglSetor, setTglSetor] = useState(getNowLocalDateTimeString());
   const [noInduk, setNoInduk] = useState('');
   const [namaSantri, setNamaSantri] = useState('');
-  const [kelasSantri, setKelasSantri] = useState('');
-  const [kamarSantri, setKamarSantri] = useState('');
-  const [genderSantri, setGenderSantri] = useState('PA');
-  const [kategoriHafalan, setKategoriHafalan] = useState<'wajib' | 'sunnah' | 'kitab'>('wajib');
-  const [itemHafalan, setItemHafalan] = useState('');
-  const [capaian, setCapaian] = useState('');
-  const [nilai, setNilai] = useState('Mumtaz (A)');
+
+  // Auto-filled Metadata
+  const [tglLahir, setTglLahir] = useState('');
+  const [blnLahir, setBlnLahir] = useState('');
+  const [thnLahir, setThnLahir] = useState('');
+  const [tempatLahir, setTempatLahir] = useState('');
+  const [mustahiq, setMustahiq] = useState('');
+  const [dinKls, setDinKls] = useState('');
+  const [dinBag, setDinBag] = useState('');
+  const [tingkat, setTingkat] = useState('');
+  const [kecamatan, setKecamatan] = useState('');
+  const [kabupaten, setKabupaten] = useState('');
+  const [provinsi, setProvinsi] = useState('');
+  const [bin, setBin] = useState('');
+  const [paPiSantri, setPaPiSantri] = useState('');
+
+  // Active Hafalan State
   const [penjaga, setPenjaga] = useState('');
+  const [itemHafalan, setItemHafalan] = useState('');
+  const [kategori, setKategori] = useState<'Wajib' | 'Sunnah' | 'Tahfidz' | 'Kitab' | ''>('Wajib');
+
+  // Modal Detail State
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedSetoranForDetail, setSelectedSetoranForDetail] = useState<SetoranHafalan | null>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchSetoranData();
     if (santriList.length === 0) fetchSantri();
     if (asatidzList.length === 0) fetchAsatidz();
-  }, [fetchSetoranData, fetchSantri, fetchAsatidz, santriList.length, asatidzList.length]);
+    if (formasiList.length === 0) fetchFormasi();
+  }, [fetchSetoranData, fetchSantri, fetchAsatidz, fetchFormasi, santriList.length, asatidzList.length, formasiList.length]);
 
-  // Handle autocomplete matching
-  const handleSelectSantri = (val: string) => {
-    setNoInduk(val);
-    const s = santriList.find(
-      (item) => item.no_induk === val || item.nama.toLowerCase() === val.toLowerCase()
-    );
-    if (s) {
-      setNoInduk(s.no_induk);
-      setNamaSantri(s.nama);
-      setKelasSantri(`${s.tingkat || ''} ${s.din_kls || ''}${s.din_bag || ''}`.trim());
-      setKamarSantri(`${s.blok || ''} ${s.kamar || ''}`.trim());
-      setGenderSantri(s.pa_pi || 'PA');
+  // Load editing record into form if available
+  useEffect(() => {
+    if (editingRecord) {
+      setNoInduk(editingRecord.no_induk || '');
+      setNamaSantri(editingRecord.nama || '');
+      setTglSetor(toDateTimeLocalInput(editingRecord.tanggal));
+      setTglLahir(editingRecord.tgl_lahir || '');
+      setBlnLahir(editingRecord.bln_lahir || '');
+      setThnLahir(editingRecord.thn_lahir || '');
+      setTempatLahir(editingRecord.tempat_lahir || '');
+      setMustahiq(editingRecord.mustahiq || '');
+      setDinKls(editingRecord.din_kls || '');
+      setDinBag(editingRecord.din_bag || '');
+      setTingkat(editingRecord.tingkat || '');
+      setKecamatan(editingRecord.kecamatan || '');
+      setKabupaten(editingRecord.kabupaten || '');
+      setProvinsi(editingRecord.provinsi || '');
+      setBin(editingRecord.bin || '');
+      setPenjaga(editingRecord.penjaga || '');
+      setItemHafalan(editingRecord.item_hafalan || '');
+      setKategori((editingRecord.kategori as any) || 'Wajib');
     }
+  }, [editingRecord]);
+
+  // Datalist sumber santri terfilter gender
+  const filteredSantriList = useMemo(() => {
+    if (filterGender === 'SEMUA') return santriList;
+    return santriList.filter((s) => norm(s.pa_pi) === filterGender);
+  }, [santriList, filterGender]);
+
+  // Handle santri selection
+  const fillSantriData = (santri: any) => {
+    if (!santri) return;
+    const sInduk = santri.no_induk || santri[1] || '';
+    const sNama = santri.nama || santri[5] || '';
+    const sTglLahir = santri.tgl_lahir || santri[7] || '';
+    const sBlnLahir = santri.bln_lahir || santri[8] || '';
+    const sThnLahir = santri.thn_lahir || santri[9] || '';
+    const sTempatLahir = santri.tempat_lahir || santri[6] || '';
+    const sTingkat = santri.tingkat || santri[26] || '';
+    const sDinBag = santri.din_bag || santri[25] || '';
+    const sDinKls = santri.din_kls || santri[24] || '';
+    const sPaPi = santri.pa_pi || santri[4] || '';
+    const sKec = santri.kecamatan || santri[12] || '';
+    const sKab = santri.kabupaten || santri[13] || '';
+    const sProv = santri.provinsi || santri[14] || '';
+    const sBin = santri.bin || santri.nama_ayah || santri[30] || '';
+
+    setNoInduk(sInduk);
+    setNamaSantri(sNama);
+    setTglLahir(sTglLahir);
+    setBlnLahir(sBlnLahir);
+    setThnLahir(sThnLahir);
+    setTempatLahir(sTempatLahir);
+    setTingkat(sTingkat);
+    setDinBag(sDinBag);
+    setDinKls(sDinKls);
+    setPaPiSantri(sPaPi);
+    setKecamatan(sKec);
+    setKabupaten(sKab);
+    setProvinsi(sProv);
+    setBin(sBin);
+
+    const wali = cariMustahiqSantri(sTingkat, sDinBag, sDinKls, sPaPi, asatidzList, formasiList);
+    setMustahiq(wali);
+    setPenjaga('');
+    setItemHafalan('');
   };
 
-  const itemOptions = useMemo(() => {
-    if (kategoriHafalan === 'wajib') return Object.keys(config.hafWajib);
-    if (kategoriHafalan === 'sunnah') return Object.keys(config.hafSunnah);
-    return Object.keys(config.hafKitab);
-  }, [kategoriHafalan, config]);
+  // Autocomplete change by Induk
+  const handleIndukChange = (val: string) => {
+    setNoInduk(val);
+    const cleanVal = val.trim();
+    if (!cleanVal) return;
+    const found = santriList.find(
+      (s: any) => String(s.no_induk || s[1]).trim() === cleanVal
+    );
+    if (found) fillSantriData(found);
+  };
 
+  // Autocomplete change by Nama
+  const handleNamaChange = (val: string) => {
+    setNamaSantri(val);
+    const cleanVal = val.trim().toUpperCase();
+    if (!cleanVal) return;
+    const found = santriList.find(
+      (s: any) => norm(s.nama || s[5]) === cleanVal
+    );
+    if (found) fillSantriData(found);
+  };
+
+  // Penjaga Options
+  const penjagaOptions = useMemo(() => {
+    if (!tingkat && !paPiSantri) {
+      return asatidzList.map((a) => a.nama_asatidz).filter(Boolean);
+    }
+
+    const bebasSet = new Set((config.penjagaBebas || []).map(norm));
+    const cleanTingkat = norm(tingkat);
+    const cleanPaPi = norm(paPiSantri);
+
+    const matches = asatidzList.filter((a) => {
+      const aNama = norm(a.nama_asatidz);
+      const aTkt = norm(a.tingkat_asatidz);
+      const aPaPi = norm(a.pa_pi);
+
+      const isBebas = bebasSet.has(aNama);
+      const isDefault = aTkt === cleanTingkat && aPaPi === cleanPaPi;
+      return isDefault || isBebas;
+    });
+
+    const unique = Array.from(new Set(matches.map((a) => a.nama_asatidz))).filter(Boolean);
+    return unique.sort();
+  }, [tingkat, paPiSantri, asatidzList, config.penjagaBebas]);
+
+  // Item Hafalan Options based on Category and Tingkat/Kls
+  const itemHafalanOptions = useMemo(() => {
+    if (!kategori) return [];
+
+    if (kategori === 'Tahfidz') {
+      const juzArr: string[] = [];
+      for (let i = 1; i <= 30; i++) juzArr.push(`Juz ${i}`);
+      return juzArr;
+    }
+
+    const key = `${norm(tingkat)}_${norm(dinKls)}`;
+    let source: Record<string, string[]> = {};
+    if (kategori === 'Wajib') source = config.hafWajib;
+    else if (kategori === 'Sunnah') source = config.hafSunnah;
+    else if (kategori === 'Kitab') source = config.hafKitab;
+
+    const list = source[key];
+    if (Array.isArray(list)) return list;
+    if (typeof list === 'string') return String(list).split(',').map((s) => s.trim()).filter(Boolean);
+
+    // Fallback default
+    if (kategori === 'Wajib') {
+      const def = (config.hafWajib as any)?.[key];
+      if (Array.isArray(def)) return def;
+    }
+    return [];
+  }, [kategori, tingkat, dinKls, config]);
+
+  // Live Preview Data for Card
+  const kartuPreviewData: KartuData = useMemo(() => {
+    const ttlArr: string[] = [];
+    if (tempatLahir) ttlArr.push(tempatLahir);
+    if (tglLahir && blnLahir && thnLahir) {
+      ttlArr.push(`${tglLahir} ${blnLahir} ${thnLahir}`);
+    }
+
+    const klsArr: string[] = [];
+    if (dinKls) klsArr.push(dinKls);
+    if (dinBag) klsArr.push(dinBag);
+    if (tingkat) klsArr.push(tingkat);
+
+    return {
+      nama: namaSantri,
+      bin,
+      nis: noInduk,
+      ttl: ttlArr.join(', '),
+      mustahiq,
+      kelas: klsArr.join(' - '),
+      kec: kecamatan,
+      kab: kabupaten,
+      prov: provinsi,
+      penjaga,
+      hafalan: itemHafalan,
+      tglSetor: formatTanggalResmi(tglSetor),
+    };
+  }, [
+    namaSantri,
+    bin,
+    noInduk,
+    tempatLahir,
+    tglLahir,
+    blnLahir,
+    thnLahir,
+    mustahiq,
+    dinKls,
+    dinBag,
+    tingkat,
+    kecamatan,
+    kabupaten,
+    provinsi,
+    penjaga,
+    itemHafalan,
+    tglSetor,
+  ]);
+
+  // Reset Form
+  const handleResetForm = () => {
+    setTglSetor(getNowLocalDateTimeString());
+    setNoInduk('');
+    setNamaSantri('');
+    setTglLahir('');
+    setBlnLahir('');
+    setThnLahir('');
+    setTempatLahir('');
+    setMustahiq('');
+    setDinKls('');
+    setDinBag('');
+    setTingkat('');
+    setKecamatan('');
+    setKabupaten('');
+    setProvinsi('');
+    setBin('');
+    setPaPiSantri('');
+    setPenjaga('');
+    setItemHafalan('');
+    setKategori('Wajib');
+    setEditingRecord(null);
+  };
+
+  // Submit Simpan / Update Setoran
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!namaSantri || !itemHafalan || !capaian) {
-      alert('Mohon lengkapi data santri, mata hafalan, dan capaian ayat/bait.');
+    if (!noInduk || !namaSantri) {
+      alert('Pilih Santri terlebih dahulu!');
+      return;
+    }
+    if (!penjaga) {
+      alert('Kolom Penjaga wajib diisi!');
+      return;
+    }
+    if (!itemHafalan) {
+      alert('Kolom Hafalan wajib diisi!');
       return;
     }
 
     setIsSubmitting(true);
-    await addSetoran({
-      id: `${Date.now()}_${noInduk}`,
-      tanggal: tglSetor.split('T')[0],
+    const formattedTgl = formatDateTimeSetoran(tglSetor);
+    const kelasGabung = `${dinKls || ''} ${dinBag || ''} ${tingkat || ''}`.trim();
+
+    const record: SetoranHafalan = {
+      id: `${noInduk}_${formattedTgl}_${itemHafalan}`,
       no_induk: noInduk,
+      tanggal: formattedTgl,
       nama: namaSantri,
-      kelas: kelasSantri,
-      kamar: kamarSantri,
-      kategori: kategoriHafalan,
+      tgl_lahir: tglLahir,
+      bln_lahir: blnLahir,
+      thn_lahir: thnLahir,
+      tempat_lahir: tempatLahir,
+      penjaga,
+      mustahiq,
+      tingkat,
+      din_bag: dinBag,
+      din_kls: dinKls,
+      kecamatan,
+      kabupaten,
+      provinsi,
+      bin,
       item_hafalan: itemHafalan,
-      capaian,
-      nilai,
-      penjaga: penjaga || 'Admin',
-      created_at: new Date().toISOString(),
-    });
+      kategori: kategori || 'Wajib',
+      kelas: kelasGabung,
+      capaian: itemHafalan,
+      nilai: 'Mumtaz (A)',
+    };
+
+    let success = false;
+    if (editingRecord && editOldKey) {
+      success = await updateSetoran(record, editOldKey);
+    } else {
+      success = await addSetoran(record);
+    }
+
     setIsSubmitting(false);
 
-    alert(`Setoran atas nama ${namaSantri} berhasil dicatat!`);
-    setCapaian('');
+    if (success) {
+      alert(editingRecord ? 'Data setoran hafalan berhasil diperbarui!' : 'Data setoran hafalan berhasil dicatat!');
+      handleResetForm();
+    }
   };
 
   // Filtered History
   const filteredHistory = useMemo(() => {
     return setoranList.filter((s) => {
       if (filterGender !== 'SEMUA') {
-        const found = santriList.find((item) => item.no_induk === s.no_induk);
-        if (found && found.pa_pi !== filterGender) return false;
+        const found = santriList.find((item: any) => String(item.no_induk || item[1]).trim() === String(s.no_induk).trim());
+        if (found && norm(found.pa_pi || (found as any)[4]) !== filterGender) return false;
       }
       if (searchHistory.trim()) {
         const q = searchHistory.toLowerCase().trim();
         return (
-          s.nama.toLowerCase().includes(q) ||
-          s.no_induk.toLowerCase().includes(q) ||
-          s.item_hafalan.toLowerCase().includes(q) ||
-          s.capaian.toLowerCase().includes(q)
+          (s.nama || '').toLowerCase().includes(q) ||
+          (s.no_induk || '').toLowerCase().includes(q) ||
+          (s.item_hafalan || '').toLowerCase().includes(q) ||
+          (s.penjaga || '').toLowerCase().includes(q) ||
+          (s.mustahiq || '').toLowerCase().includes(q)
         );
       }
       return true;
     });
   }, [setoranList, filterGender, searchHistory, santriList]);
 
-  // Santri's specific setoran list
-  const santriSetoranHistory = useMemo(() => {
-    if (!noInduk) return [];
-    return setoranList.filter((s) => s.no_induk === noInduk).slice(0, 5);
-  }, [setoranList, noInduk]);
+  // Bulk Selection Checkbox Handlers
+  const handleSelectAllRows = (checked: boolean) => {
+    if (checked) {
+      const allIds = filteredHistory.map((s) => String(s.no_induk).trim());
+      setSelectedIndukList(Array.from(new Set(allIds)));
+    } else {
+      setSelectedIndukList([]);
+    }
+  };
 
+  const handleRowCheckboxToggle = (induk: string, checked: boolean) => {
+    const clean = String(induk).trim();
+    if (checked) {
+      setSelectedIndukList([...selectedIndukList, clean]);
+    } else {
+      setSelectedIndukList(selectedIndukList.filter((id) => id !== clean));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIndukList.length === 0) {
+      alert('Centang minimal satu data riwayat setoran terlebih dahulu!');
+      return;
+    }
+    if (
+      !confirm(
+        `Yakin ingin menghapus seluruh riwayat setoran untuk ${selectedIndukList.length} santri yang dicentang?`
+      )
+    ) {
+      return;
+    }
+    const success = await bulkDeleteSetoran(selectedIndukList);
+    if (success) {
+      setSelectedIndukList([]);
+      alert('Data riwayat terpilih berhasil dihapus!');
+    }
+  };
+
+  // Cetak Kartu
   const handlePrintKartu = () => {
-    window.print();
+    document.body.classList.add('printing-kartu-setoran');
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove('printing-kartu-setoran');
+      }, 600);
+    }, 150);
+  };
+
+  // Unduh JPG Kartu
+  const handleDownloadJpg = async () => {
+    const element = document.querySelector('.kartu-container') as HTMLElement;
+    if (!element) return;
+
+    try {
+      const canvas = await (html2canvas as any)(element, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+      });
+      const imageURL = canvas.toDataURL('image/jpeg', 0.95);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = imageURL;
+      downloadLink.download = `Kartu_Setoran_${noInduk || 'Santri'}.jpg`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    } catch (err: any) {
+      console.error('Gagal mengunduh gambar JPG:', err);
+      alert('Terjadi kesalahan saat mengunduh gambar kartu: ' + err.message);
+    }
+  };
+
+  // Edit from Modal Detail
+  const handleEditFromDetail = (record: SetoranHafalan) => {
+    setEditingRecord(record, {
+      noInduk: record.no_induk,
+      tglSetor: record.tanggal,
+      hafalan: record.item_hafalan,
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Print from Modal Detail
+  const handlePrintFromDetail = (record: SetoranHafalan) => {
+    // Isi data preview kartu sementara
+    setNoInduk(record.no_induk);
+    setNamaSantri(record.nama);
+    setTglLahir(record.tgl_lahir || '');
+    setBlnLahir(record.bln_lahir || '');
+    setThnLahir(record.thn_lahir || '');
+    setTempatLahir(record.tempat_lahir || '');
+    setMustahiq(record.mustahiq || '');
+    setDinKls(record.din_kls || '');
+    setDinBag(record.din_bag || '');
+    setTingkat(record.tingkat || '');
+    setKecamatan(record.kecamatan || '');
+    setKabupaten(record.kabupaten || '');
+    setProvinsi(record.provinsi || '');
+    setBin(record.bin || '');
+    setPenjaga(record.penjaga || '');
+    setItemHafalan(record.item_hafalan || '');
+    setTglSetor(toDateTimeLocalInput(record.tanggal));
+
+    setDetailModalOpen(false);
+    setTimeout(() => {
+      handlePrintKartu();
+    }, 400);
+  };
+
+  // Delete from Modal Detail
+  const handleDeleteFromDetail = async (record: SetoranHafalan) => {
+    if (
+      !confirm(
+        `Hapus setoran hafalan ${record.item_hafalan} (${record.nama}) tanggal ${record.tanggal}?`
+      )
+    ) {
+      return;
+    }
+    const success = await deleteSetoran({
+      noInduk: record.no_induk,
+      tglSetor: record.tanggal,
+      hafalan: record.item_hafalan,
+    });
+    if (success) {
+      setDetailModalOpen(false);
+      alert('Data setoran berhasil dihapus.');
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* 1. Header Sesuai setoran.html */}
+      {/* 1. Header Toolbar Sesuai setoran.html (Gambar 2) */}
       <div className="card-panel border-0 no-print-kbm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
           <div className="flex items-center gap-3.5">
             <div className="w-[50px] h-[50px] rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center flex-shrink-0">
-              <Grid className="w-6 h-6 text-madin-700" />
+              <Grid className="w-6 h-6 text-emerald-700" />
             </div>
             <div>
               <h2 className="text-xl md:text-2xl font-bold text-slate-800 m-0 leading-tight">
-                Muhafadzoh Madin
+                Muhafadzoh Madin <span className="text-slate-400 font-normal text-lg">(Setoran)</span>
               </h2>
               <p className="text-slate-500 text-xs m-0 mt-0.5">
-                Kelola data setoran hafalan santri Madrasah Diniyyah Al Amiriyyah
+                Kelola data setoran hafalan santri Madrasah Diniyyah Al Amiriyyah.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Gender:</label>
+          <div className="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-2xs">
+            <div className="px-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5 leading-none">
+                Filter Gender
+              </label>
               <select
                 value={filterGender}
                 onChange={(e) => setFilterGender(e.target.value as 'SEMUA' | 'PA' | 'PI')}
-                className="text-xs font-semibold text-slate-700 bg-transparent focus:outline-none"
+                className="text-xs font-semibold text-slate-700 bg-slate-50 border-0 rounded px-2 py-1 focus:outline-none"
               >
                 <option value="SEMUA">Semua</option>
                 <option value="PA">Putra (PA)</option>
@@ -162,334 +554,424 @@ export default function SetoranPage() {
               </select>
             </div>
 
+            <div className="w-px h-6 bg-slate-200 mx-1" />
+
             <button
               type="button"
               onClick={handlePrintKartu}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-madin-700 text-madin-700 hover:bg-madin-50 transition shadow-xs flex items-center gap-1.5"
+              title="Print Kartu"
+              className="p-2 rounded-lg text-emerald-700 hover:bg-emerald-50 transition border border-transparent hover:border-emerald-200"
             >
-              <Printer className="w-3.5 h-3.5 text-madin-700" />
-              <span>Print Kartu</span>
+              <Printer className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadJpg}
+              title="Unduh JPG"
+              className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition border border-transparent hover:border-blue-200"
+            >
+              <ImageIcon className="w-4 h-4" />
             </button>
 
             <button
               type="button"
               onClick={openSettings}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition shadow-xs flex items-center gap-1.5"
+              title="Pengaturan Target & Akses Hafalan"
+              className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition border border-transparent hover:border-slate-200"
             >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>Opsi Hafalan</span>
+              <Settings className="w-4 h-4" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* 2. Tata Letak 2 Kolom: Form Input Kiri & Kartu Digital Kanan */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Kolom Kiri: Form Input Hafalan */}
-        <div className="lg:col-span-7">
-          <div className="card-panel border-t-4 border-t-madin-700 p-6 shadow-sm">
-            <h3 className="font-bold text-slate-800 text-base mb-4 flex items-center gap-2 pb-2 border-b border-slate-100">
-              <Award className="w-5 h-5 text-madin-700" /> Form Input Hafalan Santri
-            </h3>
+      {/* 2. Grid 2 Kolom: Form Input Kiri & Live Preview Kartu Kanan */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        {/* Kotak Kiri: INPUT HAFALAN */}
+        <div className="xl:col-span-6">
+          <div className="card-panel border-t-4 border-t-emerald-700 p-5 shadow-sm h-full">
+            {/* Header Panel */}
+            <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
+              <h5 className="font-bold text-slate-800 text-sm flex items-center gap-2 m-0">
+                <Pencil className="w-4 h-4 text-emerald-700" /> Form Input Hafalan
+              </h5>
+              <button
+                type="button"
+                onClick={openSettings}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition shadow-2xs flex items-center gap-1.5"
+                title="Pengaturan Item Hafalan"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Opsi Hafalan</span>
+              </button>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3.5">
+              {/* Baris 1: Tgl, No Induk, Nama Santri */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
                     Tgl &amp; Waktu Setor
                   </label>
                   <input
                     type="datetime-local"
                     value={tglSetor}
                     onChange={(e) => setTglSetor(e.target.value)}
-                    className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 focus:outline-none"
+                    className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-300 bg-slate-50 focus:outline-none focus:border-emerald-600"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-madin-700 mb-1">
-                    No. Induk Santri
+                  <label className="block text-xs font-bold text-emerald-700 mb-1">
+                    No. Induk (Ketik/Pilih)
                   </label>
                   <input
+                    list="dl_m_induk"
                     type="text"
                     value={noInduk}
-                    onChange={(e) => handleSelectSantri(e.target.value)}
-                    placeholder="Contoh: 12345..."
-                    className="w-full text-xs py-2 px-3 rounded-lg border border-madin-700/60 bg-emerald-50/20 focus:outline-none font-mono"
-                    required
+                    onChange={(e) => handleIndukChange(e.target.value)}
+                    placeholder="Pencarian..."
+                    className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-emerald-600 focus:outline-none shadow-2xs font-mono"
                   />
+                  <datalist id="dl_m_induk">
+                    {filteredSantriList.map((s: any) => {
+                      const idVal = s.no_induk || s[1];
+                      return idVal ? <option key={idVal} value={idVal} /> : null;
+                    })}
+                  </datalist>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-madin-700 mb-1">
-                    Nama Lengkap Santri
+                  <label className="block text-xs font-bold text-emerald-700 mb-1">
+                    Nama Santri (Ketik/Pilih)
                   </label>
                   <input
+                    list="dl_m_nama"
                     type="text"
                     value={namaSantri}
-                    onChange={(e) => setNamaSantri(e.target.value)}
-                    placeholder="Nama santri..."
-                    className="w-full text-xs py-2 px-3 rounded-lg border border-madin-700/60 bg-emerald-50/20 focus:outline-none"
-                    required
+                    onChange={(e) => handleNamaChange(e.target.value)}
+                    placeholder="Pencarian..."
+                    className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-emerald-600 focus:outline-none shadow-2xs font-medium"
                   />
+                  <datalist id="dl_m_nama">
+                    {filteredSantriList.map((s: any) => {
+                      const nVal = s.nama || s[5];
+                      return nVal ? <option key={nVal} value={nVal} /> : null;
+                    })}
+                  </datalist>
                 </div>
               </div>
 
-              {/* Biodata Santri Terpilih */}
-              {namaSantri && (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs grid grid-cols-3 gap-2">
-                  <div><strong>Kelas:</strong> {kelasSantri || '-'}</div>
-                  <div><strong>Kamar:</strong> {kamarSantri || '-'}</div>
-                  <div><strong>Gender:</strong> {genderSantri}</div>
-                </div>
-              )}
-
-              <hr className="border-slate-100" />
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Info Otomatis Santri (Auto-filled) */}
+              <hr className="border-slate-200/80 my-2" />
+              <div className="grid grid-cols-4 gap-2 text-xs">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">
-                    Kategori Hafalan
-                  </label>
-                  <select
-                    value={kategoriHafalan}
-                    onChange={(e) => {
-                      setKategoriHafalan(e.target.value as 'wajib' | 'sunnah' | 'kitab');
-                      setItemHafalan('');
-                    }}
-                    className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white"
-                  >
-                    <option value="wajib">Hafalan Wajib</option>
-                    <option value="sunnah">Hafalan Sunnah</option>
-                    <option value="kitab">Hafalan Nadhom/Kitab</option>
-                  </select>
+                  <label className="block text-[11px] text-slate-400 font-semibold mb-0.5">Tgl Lahir</label>
+                  <span className="font-bold text-slate-800 block truncate">{tglLahir || '-'}</span>
                 </div>
-
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">
-                    Mata Hafalan
-                  </label>
-                  <select
-                    value={itemHafalan}
-                    onChange={(e) => setItemHafalan(e.target.value)}
-                    className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white"
-                    required
-                  >
-                    <option value="">Pilih Item Hafalan...</option>
-                    {itemOptions.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="block text-[11px] text-slate-400 font-semibold mb-0.5">Bln Lahir</label>
+                  <span className="font-bold text-slate-800 block truncate">{blnLahir || '-'}</span>
                 </div>
-
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">
-                    Nilai / Kualitas
-                  </label>
-                  <select
-                    value={nilai}
-                    onChange={(e) => setNilai(e.target.value)}
-                    className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white"
-                  >
-                    <option value="Mumtaz (A)">Mumtaz (A)</option>
-                    <option value="Jayyid Jiddan (B+)">Jayyid Jiddan (B+)</option>
-                    <option value="Jayyid (B)">Jayyid (B)</option>
-                    <option value="Maqbul (C)">Maqbul (C)</option>
-                  </select>
+                  <label className="block text-[11px] text-slate-400 font-semibold mb-0.5">Thn Lahir</label>
+                  <span className="font-bold text-slate-800 block truncate">{thnLahir || '-'}</span>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 font-semibold mb-0.5">Asatidz</label>
+                  <span className="font-bold text-emerald-700 block truncate">{mustahiq || '-'}</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-4 gap-2 text-xs pt-1">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">
-                    Capaian (Ayat / Bait / Halaman)
-                  </label>
-                  <input
-                    type="text"
-                    value={capaian}
-                    onChange={(e) => setCapaian(e.target.value)}
-                    placeholder="Contoh: Ayat 1-25 / Bait 1-50..."
-                    className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300"
-                    required
-                  />
+                  <label className="block text-[11px] text-slate-400 font-semibold mb-0.5">Tempat Lahir</label>
+                  <span className="font-bold text-slate-800 block truncate">{tempatLahir || '-'}</span>
                 </div>
-
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">
-                    Asatidz Penerima Setoran
-                  </label>
+                  <label className="block text-[11px] text-slate-400 font-semibold mb-0.5">Din. Kls</label>
+                  <span className="font-bold text-slate-800 block truncate">{dinKls || '-'}</span>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 font-semibold mb-0.5">Din. Bag</label>
+                  <span className="font-bold text-slate-800 block truncate">{dinBag || '-'}</span>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 font-semibold mb-0.5">Tingkat</label>
+                  <span className="font-bold text-slate-800 block truncate">{tingkat || '-'}</span>
+                </div>
+              </div>
+
+              <hr className="border-slate-200/80 my-2" />
+
+              {/* Input Hafalan Aktif */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <div className="sm:col-span-5">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Penjaga</label>
                   <input
+                    list="dl_m_penjaga"
                     type="text"
                     value={penjaga}
                     onChange={(e) => setPenjaga(e.target.value)}
-                    placeholder="Nama penguji/penjaga..."
-                    className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300"
+                    disabled={!namaSantri}
+                    placeholder={!namaSantri ? 'Pilih Santri dahulu...' : 'Pilih Penjaga...'}
+                    className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-emerald-600 disabled:bg-slate-100 disabled:text-slate-400"
+                    required
                   />
+                  <datalist id="dl_m_penjaga">
+                    {penjagaOptions.map((p) => (
+                      <option key={p} value={p} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div className="sm:col-span-7">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Item Hafalan</label>
+                  <input
+                    list="dl_m_hafalan"
+                    type="text"
+                    value={itemHafalan}
+                    onChange={(e) => setItemHafalan(e.target.value)}
+                    placeholder="Pilih hafalan disini..."
+                    className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-emerald-600 font-medium"
+                    required
+                  />
+                  <datalist id="dl_m_hafalan">
+                    {itemHafalanOptions.map((opt) => (
+                      <option key={opt} value={opt} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 
-              <div className="pt-2">
+              {/* Radio Pill Tokens: Wajib / Sunnah / Tahfidz / Kitab */}
+              <div className="pt-1">
+                <div className="flex flex-wrap gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                  {(['Wajib', 'Sunnah', 'Tahfidz', 'Kitab'] as const).map((kat) => {
+                    const isSelected = kategori === kat;
+                    return (
+                      <button
+                        key={kat}
+                        type="button"
+                        onClick={() => {
+                          setKategori(kat);
+                          setItemHafalan('');
+                        }}
+                        className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-md transition text-center border ${
+                          isSelected
+                            ? 'bg-emerald-700 text-white border-emerald-700 shadow-2xs'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                        }`}
+                      >
+                        {kat}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Tombol Aksi Form */}
+              <div className="flex justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={handleResetForm}
+                  className="px-4 py-2 text-xs font-semibold rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition flex items-center gap-1.5"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset Form</span>
+                </button>
+
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-2.5 rounded-lg bg-madin-700 hover:bg-madin-800 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-2"
+                  className={`px-5 py-2 text-xs font-bold rounded-lg text-white shadow-sm transition flex items-center gap-2 ${
+                    editingRecord
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : 'bg-emerald-700 hover:bg-emerald-800'
+                  }`}
                 >
                   <Save className="w-4 h-4" />
-                  <span>{isSubmitting ? 'Menyimpan...' : 'Simpan Data Setoran'}</span>
+                  <span>
+                    {isSubmitting
+                      ? 'Menyimpan...'
+                      : editingRecord
+                      ? 'Update Riwayat'
+                      : 'Simpan Setoran'}
+                  </span>
                 </button>
               </div>
             </form>
           </div>
         </div>
 
-        {/* Kolom Kanan: Kartu Digital Muhafadzoh Santri Sesuai setoran.html */}
-        <div className="lg:col-span-5">
-          <div className="card-panel border-0 p-6 shadow-sm bg-gradient-to-br from-white to-slate-50 space-y-4">
-            <div className="text-center border-b border-slate-200 pb-3">
-              <span className="text-[10px] font-bold text-madin-700 uppercase tracking-widest block">
-                Madrasah Diniyyah Al Amiriyyah
+        {/* Kotak Kanan: KARTU BUKTI SETORAN (Live Preview & Print Area) */}
+        <div className="xl:col-span-6">
+          <div
+            className="card-panel border-0 p-5 shadow-sm h-full flex flex-col items-center justify-center bg-slate-50"
+            style={{
+              backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
+              backgroundSize: '20px 20px',
+            }}
+          >
+            <div className="mb-4 d-print-none">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold text-slate-600 bg-white border border-slate-200 shadow-2xs">
+                <Eye className="w-3.5 h-3.5 text-emerald-700" /> Live Preview Kartu
               </span>
-              <h4 className="font-bold text-slate-800 text-base">
-                Kartu Setoran Muhafadzoh
-              </h4>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-20 rounded-lg bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-400 font-bold flex-shrink-0 shadow-inner">
-                <User className="w-8 h-8" />
+            <div className="w-full overflow-x-auto pb-2 flex justify-center">
+              <div id="print-area">
+                <KartuBuktiSetoran data={kartuPreviewData} />
               </div>
-              <div className="space-y-1 text-xs">
-                <h5 className="font-bold text-slate-900 text-sm">
-                  {namaSantri || 'Nama Santri'}
-                </h5>
-                <div className="text-slate-500 font-mono text-[11px]">
-                  No. Induk: {noInduk || '-'}
-                </div>
-                <div className="text-slate-600">
-                  Kelas: {kelasSantri || '-'}
-                </div>
-                <div className="text-slate-500 text-[11px]">
-                  Kamar: {kamarSantri || '-'}
-                </div>
-              </div>
-            </div>
-
-            {/* Riwayat Setoran Terakhir */}
-            <div className="pt-2">
-              <h6 className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">
-                5 Setoran Terakhir Santri:
-              </h6>
-              {santriSetoranHistory.length === 0 ? (
-                <div className="p-3 bg-white rounded-lg border border-slate-200 text-center text-slate-400 text-xs">
-                  Belum ada riwayat setoran untuk santri ini.
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  {santriSetoranHistory.map((h) => (
-                    <div
-                      key={h.id}
-                      className="p-2 rounded-lg bg-white border border-slate-200 text-xs flex items-center justify-between shadow-2xs"
-                    >
-                      <div>
-                        <strong className="text-madin-700">{h.item_hafalan}</strong>
-                        <span className="text-slate-500 ml-1.5">({h.capaian})</span>
-                      </div>
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
-                        {h.nilai}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. Tabel Riwayat Semua Setoran */}
-      <div className="card-panel border-0 p-4 md:p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <h4 className="font-bold text-slate-800 text-base">
-            Riwayat Seluruh Setoran Muhafadzoh
-          </h4>
+      {/* 3. Kotak Bawah: TABEL RIWAYAT HAFALAN (11 Kolom Sesuai setoran.html) */}
+      <div className="card-panel border-0 p-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-200">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+              <Grid className="w-4 h-4" />
+            </div>
+            <h5 className="font-bold text-slate-800 text-sm m-0">Tabel Riwayat Hafalan</h5>
+          </div>
 
-          <div className="relative w-full sm:w-72">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchHistory}
-              onChange={(e) => setSearchHistory(e.target.value)}
-              placeholder="Cari nama, induk, materi..."
-              className="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 focus:outline-none"
-            />
+          <div className="flex items-center gap-2">
+            {selectedIndukList.length > 0 && (
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 transition flex items-center gap-1.5"
+                title="Hapus Terpilih"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus Terpilih ({selectedIndukList.length})</span>
+              </button>
+            )}
+
+            <div className="relative w-full sm:w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchHistory}
+                onChange={(e) => setSearchHistory(e.target.value)}
+                placeholder="Pencarian..."
+                className="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 focus:outline-none focus:border-emerald-600 bg-white"
+              />
+            </div>
           </div>
         </div>
 
         <div className="table-responsive overflow-x-auto">
-          <table className="tabel-kbm-resmi w-full">
+          <table className="tabel-kbm-resmi w-full text-xs">
             <thead>
               <tr>
-                <th style={{ width: 40 }}>NO</th>
-                <th style={{ width: 90 }}>TANGGAL</th>
-                <th style={{ width: 90 }}>INDUK</th>
+                <th style={{ width: 40 }} className="text-center">
+                  <input
+                    type="checkbox"
+                    checked={
+                      filteredHistory.length > 0 &&
+                      selectedIndukList.length >= filteredHistory.length
+                    }
+                    onChange={(e) => handleSelectAllRows(e.target.checked)}
+                    className="rounded border-slate-300 text-emerald-600 focus:ring-0 cursor-pointer"
+                  />
+                </th>
+                <th style={{ width: 40 }} className="text-center">NO</th>
+                <th style={{ width: 90 }}>NO. INDUK</th>
+                <th style={{ width: 130 }}>TGL SETOR</th>
                 <th style={{ minWidth: 160 }}>NAMA SANTRI</th>
+                <th style={{ minWidth: 150 }}>TEMPAT, TGL LAHIR</th>
+                <th style={{ minWidth: 130 }}>PENJAGA</th>
+                <th style={{ minWidth: 130 }}>ASATIDZ</th>
                 <th style={{ width: 100 }}>KELAS</th>
-                <th style={{ minWidth: 140 }}>MATERI HAFALAN</th>
-                <th style={{ minWidth: 140 }}>CAPAIAN</th>
-                <th style={{ width: 100 }}>NILAI</th>
-                <th style={{ width: 120 }}>PENGUJI</th>
-                <th style={{ width: 50 }}>AKSI</th>
+                <th style={{ minWidth: 150 }}>HAFALAN</th>
+                <th style={{ width: 100 }} className="text-center">KATEGORI</th>
               </tr>
             </thead>
             <tbody>
               {filteredHistory.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-6 text-slate-400">
-                    Tidak ada riwayat setoran yang cocok.
+                  <td colSpan={11} className="text-center py-8 text-slate-400 italic">
+                    Belum ada data riwayat setoran hafalan.
                   </td>
                 </tr>
               ) : (
-                filteredHistory.map((s, idx) => (
-                  <tr key={s.id} className="hover:bg-slate-50 transition">
-                    <td className="text-center font-bold text-slate-600">{idx + 1}</td>
-                    <td className="text-center text-xs font-mono">{s.tanggal}</td>
-                    <td className="text-center text-xs font-mono font-bold text-madin-700">{s.no_induk}</td>
-                    <td className="font-semibold text-slate-800 px-2">{s.nama}</td>
-                    <td className="text-center text-xs">{s.kelas || '-'}</td>
-                    <td className="font-medium text-slate-800 px-2">{s.item_hafalan}</td>
-                    <td className="text-xs text-slate-700 px-2">{s.capaian}</td>
-                    <td className="text-center font-bold text-xs">
-                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px]">
-                        {s.nilai}
-                      </span>
-                    </td>
-                    <td className="text-xs text-slate-600 px-2">{s.penjaga}</td>
-                    <td className="text-center">
-                      <button
-                        onClick={() => {
-                          if (confirm(`Hapus catatan setoran ${s.nama}?`)) {
-                            if (s.id) deleteSetoran(s.id);
-                          }
-                        }}
-                        className="p-1 text-slate-400 hover:text-rose-600 rounded"
-                        title="Hapus"
+                filteredHistory.map((row, idx) => {
+                  const sInduk = String(row.no_induk).trim();
+                  const isChecked = selectedIndukList.includes(sInduk);
+
+                  const ttlGabung = [
+                    row.tempat_lahir,
+                    [row.tgl_lahir, row.bln_lahir, row.thn_lahir].filter(Boolean).join(' '),
+                  ]
+                    .filter(Boolean)
+                    .join(', ');
+
+                  const klsGabung =
+                    row.kelas ||
+                    `${row.din_kls || ''} ${row.din_bag || ''} ${row.tingkat || ''}`.trim() ||
+                    '-';
+
+                  return (
+                    <tr
+                      key={row.id || `${sInduk}_${row.tanggal}_${idx}`}
+                      onClick={() => {
+                        setSelectedSetoranForDetail(row);
+                        setDetailModalOpen(true);
+                      }}
+                      className="hover:bg-slate-50 transition cursor-pointer select-none"
+                    >
+                      <td
+                        className="text-center"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => handleRowCheckboxToggle(sInduk, e.target.checked)}
+                          className="rounded border-slate-300 text-emerald-600 focus:ring-0 cursor-pointer"
+                        />
+                      </td>
+                      <td className="text-center text-slate-400 font-mono">{idx + 1}</td>
+                      <td className="font-mono text-slate-600">{row.no_induk}</td>
+                      <td className="text-slate-700 whitespace-nowrap">{row.tanggal}</td>
+                      <td className="font-bold text-slate-900">{row.nama}</td>
+                      <td className="text-slate-600">{ttlGabung || '-'}</td>
+                      <td className="text-slate-700">{row.penjaga || '-'}</td>
+                      <td className="text-slate-700">{row.mustahiq || '-'}</td>
+                      <td className="text-slate-600 font-medium">{klsGabung}</td>
+                      <td className="text-emerald-700 font-bold">{row.item_hafalan}</td>
+                      <td className="text-center">
+                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                          {row.kategori || 'Wajib'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modal Settings */}
+      {/* 4. Modals */}
       <ModalSettingsHafalan />
+
+      <ModalDetailRiwayatSetoran
+        isOpen={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        clickedSetoran={selectedSetoranForDetail}
+        allSetoranList={setoranList}
+        onEdit={handleEditFromDetail}
+        onPrint={handlePrintFromDetail}
+        onDelete={handleDeleteFromDetail}
+      />
     </div>
   );
 }

@@ -1,79 +1,170 @@
 import { create } from 'zustand';
-import { SetoranHafalan, HafalanConfig } from '@/types/setoran';
+import { SetoranHafalan, HafalanConfig, RiwayatSetoranRawRow } from '@/types/setoran';
 import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
+import { DEFAULT_HAFALAN_WAJIB, convertRawToSetoran, convertSetoranToRaw } from '@/lib/utils/setoranHelper';
 
-export const KEY_DB_MUHAFADZOH = 'KEY_DB_MUHAFADZOH';
-export const KEY_DB_HAFALAN_CONFIG = 'KEY_DB_HAFALAN_CONFIG';
+export const KEY_DB_RIWAYAT_MUHAFADZOH = 'RIWAYAT_MUHAFADZOH_DATA';
+export const KEY_DB_HAFALAN_CONFIG = 'MUHAFADZOH_HAFALAN_CONFIG';
+export const LS_RIWAYAT_MUHAFADZOH = 'MADIN_RIWAYAT_MUHAFADZOH';
+export const LS_HAFALAN_CONFIG = 'MADIN_HAFALAN_CONFIG';
+
+// Fallback legacy keys
+export const KEY_DB_MUHAFADZOH_LEGACY = 'KEY_DB_MUHAFADZOH';
+export const KEY_DB_HAFALAN_CONFIG_LEGACY = 'KEY_DB_HAFALAN_CONFIG';
 
 const DEFAULT_CONFIG: HafalanConfig = {
-  hafWajib: {
-    'Nadhom Imrithi': 254,
-    'Alfiyah Ibnu Malik Jilid 1': 500,
-    'Alfiyah Ibnu Malik Jilid 2': 502,
-    'Nadhom Maqsud': 150,
-    'Jauharul Maknun': 291,
-  },
-  hafSunnah: {
-    'Hidayatush Shibyan': 40,
-    'Tuhfatul Athfal': 61,
-    'Mandhumah Baiquniyyah': 34,
-    "Ro'sun Sirah": 100,
-    'Amtsilah Tashrifiyyah': 120,
-  },
-  hafKitab: {
-    'Mabadi Fiqhiyyah Juz 1': 30,
-    'Mabadi Fiqhiyyah Juz 2': 45,
-    'Aqidatul Awwam': 57,
-    'Taisirul Khollaq': 50,
-  },
-  penjagaBebas: ['Ust. Ahmad', 'Ust. Zaid', 'Ust. Sholih', 'Ust. Mansur'],
+  hafWajib: DEFAULT_HAFALAN_WAJIB,
+  hafSunnah: {},
+  hafKitab: {},
+  penjagaBebas: [],
 };
 
 interface MuhafadzohState {
   setoranList: SetoranHafalan[];
+  rawRows: RiwayatSetoranRawRow[];
   config: HafalanConfig;
   isLoading: boolean;
   isSettingsOpen: boolean;
+  editingRecord: SetoranHafalan | null;
+  editOldKey: { noInduk: string; tglSetor: string; hafalan: string } | null;
 
   fetchSetoranData: () => Promise<void>;
-  addSetoran: (setoran: SetoranHafalan) => Promise<boolean>;
-  deleteSetoran: (id: string) => Promise<boolean>;
+  addSetoran: (entry: SetoranHafalan) => Promise<boolean>;
+  updateSetoran: (
+    entry: SetoranHafalan,
+    oldKey: { noInduk: string; tglSetor: string; hafalan: string }
+  ) => Promise<boolean>;
+  deleteSetoran: (idOrKey: string | { noInduk: string; tglSetor: string; hafalan: string }) => Promise<boolean>;
+  bulkDeleteSetoran: (noIndukList: string[]) => Promise<boolean>;
   saveConfig: (cfg: HafalanConfig) => Promise<boolean>;
 
   openSettings: () => void;
   closeSettings: () => void;
+  setEditingRecord: (
+    rec: SetoranHafalan | null,
+    oldKey?: { noInduk: string; tglSetor: string; hafalan: string } | null
+  ) => void;
 }
 
 export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
   setoranList: [],
+  rawRows: [],
   config: DEFAULT_CONFIG,
   isLoading: false,
   isSettingsOpen: false,
+  editingRecord: null,
+  editOldKey: null,
 
   fetchSetoranData: async () => {
     set({ isLoading: true });
+
+    // 1. Muat dari localStorage terlebih dahulu
+    try {
+      if (typeof window !== 'undefined') {
+        const rawMuh = localStorage.getItem(LS_RIWAYAT_MUHAFADZOH);
+        if (rawMuh) {
+          const parsed = JSON.parse(rawMuh);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const list: SetoranHafalan[] = parsed.map((item: any) =>
+              Array.isArray(item) ? convertRawToSetoran(item) : item
+            );
+            set({ setoranList: list });
+          }
+        }
+
+        const rawCfg = localStorage.getItem(LS_HAFALAN_CONFIG);
+        if (rawCfg) {
+          const parsedCfg = JSON.parse(rawCfg);
+          if (parsedCfg && typeof parsedCfg === 'object') {
+            const pb = Array.isArray(parsedCfg.penjagaBebas)
+              ? parsedCfg.penjagaBebas
+              : String(parsedCfg.penjagaBebas || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+
+            set({
+              config: {
+                hafWajib: parsedCfg.hafWajib && Object.keys(parsedCfg.hafWajib).length > 0
+                  ? parsedCfg.hafWajib
+                  : DEFAULT_HAFALAN_WAJIB,
+                hafSunnah: parsedCfg.hafSunnah || {},
+                hafKitab: parsedCfg.hafKitab || {},
+                penjagaBebas: pb,
+              },
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal memuat cache local setoran:', e);
+    }
+
+    // 2. Tarik data dari Supabase
     try {
       const { data, error } = await supabase
         .from('app_settings')
         .select('key, value')
-        .in('key', [KEY_DB_MUHAFADZOH, KEY_DB_HAFALAN_CONFIG]);
+        .in('key', [
+          KEY_DB_RIWAYAT_MUHAFADZOH,
+          KEY_DB_HAFALAN_CONFIG,
+          KEY_DB_MUHAFADZOH_LEGACY,
+          KEY_DB_HAFALAN_CONFIG_LEGACY,
+        ]);
 
       if (error) throw error;
 
       if (data && data.length > 0) {
+        let loadedList: SetoranHafalan[] | null = null;
+        let loadedConfig: HafalanConfig | null = null;
+
         data.forEach((row) => {
           let val = row.value;
           if (typeof val === 'string') {
-            try { val = JSON.parse(val); } catch (e) {}
+            try {
+              val = JSON.parse(val);
+            } catch (e) {}
           }
 
-          if (row.key === KEY_DB_MUHAFADZOH && Array.isArray(val)) {
-            set({ setoranList: val });
-          } else if (row.key === KEY_DB_HAFALAN_CONFIG && val && typeof val === 'object') {
-            set({ config: { ...DEFAULT_CONFIG, ...val } });
+          if (
+            (row.key === KEY_DB_RIWAYAT_MUHAFADZOH || (!loadedList && row.key === KEY_DB_MUHAFADZOH_LEGACY)) &&
+            Array.isArray(val)
+          ) {
+            loadedList = val.map((item: any) =>
+              Array.isArray(item) ? convertRawToSetoran(item) : item
+            );
+            try {
+              if (typeof window !== 'undefined') {
+                localStorage.setItem(LS_RIWAYAT_MUHAFADZOH, JSON.stringify(val));
+              }
+            } catch (e) {}
+          } else if (
+            (row.key === KEY_DB_HAFALAN_CONFIG || (!loadedConfig && row.key === KEY_DB_HAFALAN_CONFIG_LEGACY)) &&
+            val &&
+            typeof val === 'object'
+          ) {
+            const pb = Array.isArray(val.penjagaBebas)
+              ? val.penjagaBebas
+              : String(val.penjagaBebas || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+
+            loadedConfig = {
+              hafWajib: val.hafWajib && Object.keys(val.hafWajib).length > 0 ? val.hafWajib : DEFAULT_HAFALAN_WAJIB,
+              hafSunnah: val.hafSunnah || {},
+              hafKitab: val.hafKitab || {},
+              penjagaBebas: pb,
+            };
+            try {
+              if (typeof window !== 'undefined') {
+                localStorage.setItem(LS_HAFALAN_CONFIG, JSON.stringify(val));
+              }
+            } catch (e) {}
           }
         });
+
+        if (loadedList) {
+          set({ setoranList: loadedList });
+        }
+        if (loadedConfig) {
+          set({ config: loadedConfig });
+        }
       }
     } catch (err: any) {
       console.error('Fetch setoran error:', err.message);
@@ -85,42 +176,163 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
   openSettings: () => set({ isSettingsOpen: true }),
   closeSettings: () => set({ isSettingsOpen: false }),
 
+  setEditingRecord: (rec, oldKey = null) => {
+    set({
+      editingRecord: rec,
+      editOldKey: oldKey || (rec ? { noInduk: rec.no_induk, tglSetor: rec.tanggal, hafalan: rec.item_hafalan } : null),
+    });
+  },
+
   addSetoran: async (newEntry) => {
     try {
-      const entryWithId = {
-        ...newEntry,
-        id: newEntry.id || `set_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-      };
-
       const currentList = get().setoranList;
-      const updated = [entryWithId, ...currentList];
-      set({ setoranList: updated });
+      const updatedList = [newEntry, ...currentList];
+      set({ setoranList: updatedList });
+
+      // Simpan ke localStorage & Supabase
+      const rawPayload = updatedList.map(convertSetoranToRaw);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LS_RIWAYAT_MUHAFADZOH, JSON.stringify(rawPayload));
+      }
 
       await supabase
         .from('app_settings')
-        .upsert([{ key: KEY_DB_MUHAFADZOH, value: updated }], { onConflict: 'key' });
+        .upsert(
+          [
+            { key: KEY_DB_RIWAYAT_MUHAFADZOH, value: rawPayload },
+            { key: KEY_DB_MUHAFADZOH_LEGACY, value: updatedList }
+          ],
+          { onConflict: 'key' }
+        );
 
-      await logActivity('INPUT SETORAN MUHAFADZOH', `Setoran santri: ${newEntry.nama} (${newEntry.item_hafalan} - Capaian: ${newEntry.capaian})`);
+      await logActivity(
+        'INPUT SETORAN MUHAFADZOH',
+        `Mencatat setoran [${newEntry.item_hafalan}] santri: ${newEntry.nama} (Penjaga: ${newEntry.penjaga})`
+      );
       return true;
     } catch (err: any) {
+      console.error('Gagal menyimpan setoran:', err);
       alert('Gagal menyimpan setoran: ' + err.message);
       return false;
     }
   },
 
-  deleteSetoran: async (id) => {
-    if (!confirm('Hapus riwayat setoran ini?')) return false;
+  updateSetoran: async (entry, oldKey) => {
     try {
-      const updated = get().setoranList.filter((s) => s.id !== id);
-      set({ setoranList: updated });
+      const currentList = get().setoranList;
+      const idx = currentList.findIndex(
+        (r) =>
+          String(r.no_induk).trim() === String(oldKey.noInduk).trim() &&
+          String(r.tanggal).trim() === String(oldKey.tglSetor).trim() &&
+          String(r.item_hafalan).trim() === String(oldKey.hafalan).trim()
+      );
+
+      let updatedList = [...currentList];
+      if (idx !== -1) {
+        updatedList[idx] = entry;
+      } else {
+        updatedList.unshift(entry);
+      }
+      set({ setoranList: updatedList, editingRecord: null, editOldKey: null });
+
+      const rawPayload = updatedList.map(convertSetoranToRaw);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LS_RIWAYAT_MUHAFADZOH, JSON.stringify(rawPayload));
+      }
 
       await supabase
         .from('app_settings')
-        .upsert([{ key: KEY_DB_MUHAFADZOH, value: updated }], { onConflict: 'key' });
+        .upsert(
+          [
+            { key: KEY_DB_RIWAYAT_MUHAFADZOH, value: rawPayload },
+            { key: KEY_DB_MUHAFADZOH_LEGACY, value: updatedList }
+          ],
+          { onConflict: 'key' }
+        );
 
-      await logActivity('HAPUS SETORAN', `Menghapus setoran ID: ${id}`);
+      await logActivity(
+        'UPDATE SETORAN',
+        `Mengubah setoran santri: ${entry.nama} dari [${oldKey.hafalan}] ke [${entry.item_hafalan}]`
+      );
       return true;
     } catch (err: any) {
+      console.error('Gagal memperbarui setoran:', err);
+      alert('Gagal memperbarui setoran: ' + err.message);
+      return false;
+    }
+  },
+
+  deleteSetoran: async (idOrKey) => {
+    try {
+      const currentList = get().setoranList;
+      let updatedList: SetoranHafalan[];
+
+      if (typeof idOrKey === 'string') {
+        updatedList = currentList.filter((s) => s.id !== idOrKey && s.no_induk !== idOrKey);
+      } else {
+        updatedList = currentList.filter(
+          (r) =>
+            !(
+              String(r.no_induk).trim() === String(idOrKey.noInduk).trim() &&
+              String(r.tanggal).trim() === String(idOrKey.tglSetor).trim() &&
+              String(r.item_hafalan).trim() === String(idOrKey.hafalan).trim()
+            )
+        );
+      }
+
+      set({ setoranList: updatedList });
+
+      const rawPayload = updatedList.map(convertSetoranToRaw);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LS_RIWAYAT_MUHAFADZOH, JSON.stringify(rawPayload));
+      }
+
+      await supabase
+        .from('app_settings')
+        .upsert(
+          [
+            { key: KEY_DB_RIWAYAT_MUHAFADZOH, value: rawPayload },
+            { key: KEY_DB_MUHAFADZOH_LEGACY, value: updatedList }
+          ],
+          { onConflict: 'key' }
+        );
+
+      await logActivity('HAPUS SETORAN', `Menghapus rekaman setoran`);
+      return true;
+    } catch (err: any) {
+      console.error('Gagal menghapus setoran:', err);
+      alert('Gagal menghapus setoran: ' + err.message);
+      return false;
+    }
+  },
+
+  bulkDeleteSetoran: async (noIndukList) => {
+    try {
+      const setDelete = new Set(noIndukList.map((s) => String(s).trim()));
+      const currentList = get().setoranList;
+      const updatedList = currentList.filter((r) => !setDelete.has(String(r.no_induk).trim()));
+
+      set({ setoranList: updatedList });
+
+      const rawPayload = updatedList.map(convertSetoranToRaw);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LS_RIWAYAT_MUHAFADZOH, JSON.stringify(rawPayload));
+      }
+
+      await supabase
+        .from('app_settings')
+        .upsert(
+          [
+            { key: KEY_DB_RIWAYAT_MUHAFADZOH, value: rawPayload },
+            { key: KEY_DB_MUHAFADZOH_LEGACY, value: updatedList }
+          ],
+          { onConflict: 'key' }
+        );
+
+      await logActivity('HAPUS RIWAYAT SETORAN', `Menghapus riwayat setoran untuk ${noIndukList.length} santri terpilih`);
+      return true;
+    } catch (err: any) {
+      console.error('Gagal menghapus riwayat terpilih:', err);
       alert('Gagal menghapus setoran: ' + err.message);
       return false;
     }
@@ -130,11 +342,28 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
     try {
       set({ config: newConfig });
 
+      const payload = {
+        hafWajib: newConfig.hafWajib,
+        hafSunnah: newConfig.hafSunnah,
+        hafKitab: newConfig.hafKitab,
+        penjagaBebas: newConfig.penjagaBebas.join(', '),
+      };
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LS_HAFALAN_CONFIG, JSON.stringify(payload));
+      }
+
       await supabase
         .from('app_settings')
-        .upsert([{ key: KEY_DB_HAFALAN_CONFIG, value: newConfig }], { onConflict: 'key' });
+        .upsert(
+          [
+            { key: KEY_DB_HAFALAN_CONFIG, value: payload },
+            { key: KEY_DB_HAFALAN_CONFIG_LEGACY, value: newConfig },
+          ],
+          { onConflict: 'key' }
+        );
 
-      await logActivity('PENGATURAN TARGET HAFALAN', 'Memperbarui konfigurasi target muhafadzoh');
+      await logActivity('SIMPAN PENGATURAN HAFALAN', 'Memperbarui konfigurasi target muhafadzoh & akses penjaga');
       return true;
     } catch (err: any) {
       alert('Gagal menyimpan target hafalan: ' + err.message);
