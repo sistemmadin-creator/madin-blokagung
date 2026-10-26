@@ -11,6 +11,11 @@ interface FotoModalData {
   namaKelas: string;
 }
 
+export interface BlokGroupMeta {
+  namaBlok: string;
+  gender: 'PA' | 'PI';
+}
+
 interface FormasiState {
   formasiList: FormasiKelas[];
   isLoading: boolean;
@@ -27,6 +32,12 @@ interface FormasiState {
   isFotoModalOpen: boolean;
   fotoModalData: FotoModalData | null;
 
+  isBlokModalOpen: boolean;
+  blokModalDefaultGender: 'PA' | 'PI' | null;
+  blokModalPreselectedIds: string[];
+  blokModalEditGroupName: string | null;
+  savedBlokGroups: BlokGroupMeta[];
+
   hiddenColumns: number[];
   customFilters: {
     tingkat?: string;
@@ -37,6 +48,7 @@ interface FormasiState {
   };
 
   fetchFormasi: () => Promise<void>;
+  fetchSavedBlokGroups: () => Promise<void>;
   openInputModal: (formasiToEdit?: FormasiKelas | null, defaultGender?: 'PA' | 'PI') => void;
   closeInputModal: () => void;
   openDetailModal: (formasi: FormasiWithStats) => void;
@@ -49,6 +61,12 @@ interface FormasiState {
   closeHideModal: () => void;
   openFotoModal: (data: FotoModalData) => void;
   closeFotoModal: () => void;
+  openBlokModal: (
+    defaultGender?: 'PA' | 'PI' | null,
+    preselectedIds?: string[],
+    editGroupName?: string | null
+  ) => void;
+  closeBlokModal: () => void;
 
   setHiddenColumns: (cols: number[]) => void;
   setCustomFilters: (filters: Partial<FormasiState['customFilters']>) => void;
@@ -59,6 +77,13 @@ interface FormasiState {
   bulkDeleteFormasi: (ids: string[]) => Promise<boolean>;
   quickUploadFoto: (id: string, jenis: 'takror' | 'diniyyah', base64: string) => Promise<boolean>;
   deleteFoto: (id: string, jenis: 'takror' | 'diniyyah') => Promise<boolean>;
+  saveBlokKelasGroup: (
+    gender: 'PA' | 'PI',
+    oldGroupName: string | null,
+    newGroupName: string,
+    selectedKelasIds: string[]
+  ) => Promise<boolean>;
+  deleteBlokKelasGroup: (gender: 'PA' | 'PI', groupName: string) => Promise<boolean>;
   generateFormasiRange: (
     tingkat: string,
     pa_pi: 'PA' | 'PI',
@@ -85,6 +110,12 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
   isFotoModalOpen: false,
   fotoModalData: null,
 
+  isBlokModalOpen: false,
+  blokModalDefaultGender: null,
+  blokModalPreselectedIds: [],
+  blokModalEditGroupName: null,
+  savedBlokGroups: [],
+
   hiddenColumns: [],
   customFilters: {},
 
@@ -104,6 +135,29 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
       console.error('Fetch formasi error:', err.message);
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  fetchSavedBlokGroups: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'PENGATURAN_BLOK_KELAS')
+        .maybeSingle();
+
+      if (!error && data && Array.isArray(data.value)) {
+        set({
+          savedBlokGroups: data.value
+            .filter((item: any) => item && item.namaBlok)
+            .map((item: any) => ({
+              namaBlok: String(item.namaBlok).trim(),
+              gender: String(item.gender || 'PA').toUpperCase() === 'PI' ? 'PI' : 'PA',
+            })),
+        });
+      }
+    } catch (err: any) {
+      console.error('Fetch saved blok groups error:', err.message);
     }
   },
 
@@ -144,6 +198,21 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
 
   openFotoModal: (data) => set({ isFotoModalOpen: true, fotoModalData: data }),
   closeFotoModal: () => set({ isFotoModalOpen: false, fotoModalData: null }),
+
+  openBlokModal: (defaultGender = null, preselectedIds = [], editGroupName = null) =>
+    set({
+      isBlokModalOpen: true,
+      blokModalDefaultGender: defaultGender || null,
+      blokModalPreselectedIds: preselectedIds || [],
+      blokModalEditGroupName: editGroupName || null,
+    }),
+  closeBlokModal: () =>
+    set({
+      isBlokModalOpen: false,
+      blokModalDefaultGender: null,
+      blokModalPreselectedIds: [],
+      blokModalEditGroupName: null,
+    }),
 
   setHiddenColumns: (cols) => set({ hiddenColumns: cols }),
   setCustomFilters: (filters) =>
@@ -277,6 +346,169 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
     } catch (err: any) {
       console.error('Delete foto error:', err.message);
       alert('Gagal menghapus foto: ' + err.message);
+      return false;
+    }
+  },
+
+  saveBlokKelasGroup: async (gender, oldGroupName, newGroupName, selectedKelasIds) => {
+    const trimmedName = String(newGroupName || '').trim();
+    if (!trimmedName) {
+      alert('Nama Blok tidak boleh kosong.');
+      return false;
+    }
+
+    try {
+      const currentList = get().formasiList;
+      const selectedSet = new Set(selectedKelasIds);
+      const oldUpper = oldGroupName ? oldGroupName.trim().toUpperCase() : null;
+      const newUpper = trimmedName.toUpperCase();
+
+      // Kelas yang sebelumnya berada di grup ini namun sekarang dilepas centangnya
+      const idsToClear = currentList
+        .filter((f) => {
+          if (f.pa_pi !== gender || !f.id) return false;
+          const fBlokUpper = String(f.blok || '').trim().toUpperCase();
+          const wasInGroup =
+            (oldUpper && fBlokUpper === oldUpper) || fBlokUpper === newUpper;
+          return wasInGroup && !selectedSet.has(f.id);
+        })
+        .map((f) => f.id as string);
+
+      // Kelas yang dicentang untuk masuk ke grup blok ini
+      const idsToSet = currentList
+        .filter((f) => f.pa_pi === gender && f.id && selectedSet.has(f.id))
+        .map((f) => f.id as string);
+
+      if (idsToClear.length > 0) {
+        const { error: clearErr } = await supabase
+          .from('formasi_kelas')
+          .update({ blok: '' })
+          .in('id', idsToClear);
+        if (clearErr) throw clearErr;
+      }
+
+      if (idsToSet.length > 0) {
+        const { error: setErr } = await supabase
+          .from('formasi_kelas')
+          .update({ blok: trimmedName })
+          .in('id', idsToSet);
+        if (setErr) throw setErr;
+      }
+
+      // Perbarui state formasiList lokal
+      const updatedFormasiList = currentList.map((f) => {
+        if (!f.id || f.pa_pi !== gender) return f;
+        if (idsToSet.includes(f.id)) return { ...f, blok: trimmedName };
+        if (idsToClear.includes(f.id)) return { ...f, blok: '' };
+        return f;
+      });
+
+      // Perbarui daftar master grup blok di app_settings
+      const existingGroups = [...get().savedBlokGroups];
+      const nextGroups: BlokGroupMeta[] = [];
+      let replacedOrFound = false;
+
+      for (const g of existingGroups) {
+        const gUpper = g.namaBlok.trim().toUpperCase();
+        if (g.gender === gender && ((oldUpper && gUpper === oldUpper) || gUpper === newUpper)) {
+          if (!replacedOrFound) {
+            nextGroups.push({ namaBlok: trimmedName, gender });
+            replacedOrFound = true;
+          }
+        } else {
+          nextGroups.push(g);
+        }
+      }
+      if (!replacedOrFound) {
+        nextGroups.push({ namaBlok: trimmedName, gender });
+      }
+
+      // Pastikan seluruh blok aktif di formasi_kelas juga tercatat di nextGroups
+      for (const f of updatedFormasiList) {
+        const bName = String(f.blok || '').trim();
+        if (!bName) continue;
+        const exists = nextGroups.some(
+          (g) => g.gender === f.pa_pi && g.namaBlok.trim().toUpperCase() === bName.toUpperCase()
+        );
+        if (!exists) {
+          nextGroups.push({ namaBlok: bName, gender: f.pa_pi });
+        }
+      }
+
+      await supabase
+        .from('app_settings')
+        .upsert({ key: 'PENGATURAN_BLOK_KELAS', value: nextGroups }, { onConflict: 'key' });
+
+      set({
+        formasiList: updatedFormasiList,
+        savedBlokGroups: nextGroups,
+      });
+
+      await logActivity(
+        'ATUR BLOK KELAS',
+        `Menyimpan blok kelas ${gender}: ${trimmedName} (${idsToSet.length} kelas)`
+      );
+      return true;
+    } catch (err: any) {
+      console.error('Save blok kelas group error:', err.message);
+      alert('Gagal menyimpan pengaturan blok kelas: ' + err.message);
+      return false;
+    }
+  },
+
+  deleteBlokKelasGroup: async (gender, groupName) => {
+    const trimmed = String(groupName || '').trim();
+    if (!trimmed) return false;
+
+    try {
+      const currentList = get().formasiList;
+      const targetUpper = trimmed.toUpperCase();
+
+      const idsToClear = currentList
+        .filter(
+          (f) =>
+            f.pa_pi === gender &&
+            f.id &&
+            String(f.blok || '').trim().toUpperCase() === targetUpper
+        )
+        .map((f) => f.id as string);
+
+      if (idsToClear.length > 0) {
+        const { error } = await supabase
+          .from('formasi_kelas')
+          .update({ blok: '' })
+          .in('id', idsToClear);
+        if (error) throw error;
+      }
+
+      const updatedFormasiList = currentList.map((f) => {
+        if (f.id && idsToClear.includes(f.id)) {
+          return { ...f, blok: '' };
+        }
+        return f;
+      });
+
+      const nextGroups = get().savedBlokGroups.filter(
+        (g) => !(g.gender === gender && g.namaBlok.trim().toUpperCase() === targetUpper)
+      );
+
+      await supabase
+        .from('app_settings')
+        .upsert({ key: 'PENGATURAN_BLOK_KELAS', value: nextGroups }, { onConflict: 'key' });
+
+      set({
+        formasiList: updatedFormasiList,
+        savedBlokGroups: nextGroups,
+      });
+
+      await logActivity(
+        'HAPUS BLOK KELAS',
+        `Menghapus blok kelas ${gender}: ${trimmed} (${idsToClear.length} kelas dikosongkan)`
+      );
+      return true;
+    } catch (err: any) {
+      console.error('Delete blok kelas group error:', err.message);
+      alert('Gagal menghapus grup blok kelas: ' + err.message);
       return false;
     }
   },

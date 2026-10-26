@@ -21,6 +21,7 @@ import ModalInputFormasi from '@/components/modules/formasi/ModalInputFormasi';
 import ModalDetailFormasi from '@/components/modules/formasi/ModalDetailFormasi';
 import ModalGeneratorFormasi from '@/components/modules/formasi/ModalGeneratorFormasi';
 import ModalFotoFormasi from '@/components/modules/formasi/ModalFotoFormasi';
+import ModalPengaturanBlokKelas from '@/components/modules/formasi/ModalPengaturanBlokKelas';
 
 export default function FormasiPiPage() {
   const {
@@ -28,6 +29,7 @@ export default function FormasiPiPage() {
     fetchFormasi,
     openDetailModal,
     openFotoModal,
+    openBlokModal,
     quickUploadFoto,
   } = useFormasiStore();
 
@@ -41,8 +43,21 @@ export default function FormasiPiPage() {
     jenis: 'takror' | 'diniyyah';
   } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    kelasId: string;
+    namaKelas: string;
+    currentBlok: string;
+  } | null>(null);
 
   const quickFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const closeMenu = () => setContextMenu(null);
+    window.addEventListener('click', closeMenu);
+    return () => window.removeEventListener('click', closeMenu);
+  }, []);
 
   useEffect(() => {
     fetchFormasi();
@@ -222,7 +237,16 @@ export default function FormasiPiPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => openBlokModal('PI')}
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 transition shadow-2xs flex items-center gap-2"
+            >
+              <Building className="w-4 h-4 text-pink-600" />
+              <span>Atur Blok Kelas Putri</span>
+            </button>
+
             <button
               type="button"
               onClick={handleExportExcel}
@@ -360,8 +384,19 @@ export default function FormasiPiPage() {
                     <tr
                       key={f.id || idx}
                       onClick={() => openDetailModal(f)}
+                      onContextMenu={(e) => {
+                        if (!f.id) return;
+                        e.preventDefault();
+                        setContextMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          kelasId: f.id,
+                          namaKelas,
+                          currentBlok: f.blok || '',
+                        });
+                      }}
                       className="hover:bg-slate-50 transition cursor-pointer"
-                      title="Klik untuk melihat detail kelas & daftar santri"
+                      title="Klik kiri untuk detail kelas, klik kanan untuk pengaturan blok kelas"
                     >
                       {/* NO */}
                       <td className="py-2.5 px-3 text-center font-semibold text-slate-600 border-r border-slate-200">
@@ -405,10 +440,18 @@ export default function FormasiPiPage() {
                           </span>
                           <div className="flex items-center gap-1.5 flex-wrap print:hidden">
                             {blokLabel && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-medium">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openBlokModal('PI', [], f.blok);
+                                }}
+                                title="Klik untuk mengedit grup blok ini"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[10px] font-medium transition"
+                              >
                                 <Building className="w-2.5 h-2.5" />
                                 <span>{blokLabel}</span>
-                              </span>
+                              </button>
                             )}
                             {hasFotoTakror ? (
                               <button
@@ -441,10 +484,18 @@ export default function FormasiPiPage() {
                           </span>
                           <div className="flex items-center gap-1.5 flex-wrap print:hidden">
                             {blokLabel && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-medium">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openBlokModal('PI', [], f.blok);
+                                }}
+                                title="Klik untuk mengedit grup blok ini"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[10px] font-medium transition"
+                              >
                                 <Building className="w-2.5 h-2.5" />
                                 <span>{blokLabel}</span>
-                              </span>
+                              </button>
                             )}
                             {hasFotoDiniyyah ? (
                               <button
@@ -496,11 +547,50 @@ export default function FormasiPiPage() {
         </div>
       )}
 
+      {/* Context Menu Klik Kanan Pengaturan Blok */}
+      {contextMenu && (
+        <div
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          className="fixed z-50 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[210px] text-xs"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 py-1.5 border-b border-slate-100 font-bold text-slate-700 bg-slate-50">
+            Kelas {contextMenu.namaKelas}
+          </div>
+          {contextMenu.currentBlok ? (
+            <button
+              type="button"
+              onClick={() => {
+                openBlokModal('PI', [], contextMenu.currentBlok);
+                setContextMenu(null);
+              }}
+              className="w-full text-left px-3 py-2 hover:bg-pink-50 text-slate-700 font-medium flex items-center gap-2"
+            >
+              <Building className="w-3.5 h-3.5 text-pink-600" />
+              <span>Edit Grup &ldquo;{contextMenu.currentBlok}&rdquo;</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                openBlokModal('PI', [contextMenu.kelasId]);
+                setContextMenu(null);
+              }}
+              className="w-full text-left px-3 py-2 hover:bg-pink-50 text-slate-700 font-medium flex items-center gap-2"
+            >
+              <Building className="w-3.5 h-3.5 text-pink-600" />
+              <span>Masukkan ke Pengaturan Blok</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Modals */}
       <ModalInputFormasi gender="PI" />
       <ModalDetailFormasi />
       <ModalGeneratorFormasi gender="PI" />
       <ModalFotoFormasi />
+      <ModalPengaturanBlokKelas fixedGender="PI" />
     </div>
   );
 }

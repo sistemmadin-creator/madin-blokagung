@@ -17,6 +17,7 @@ import {
   Search,
   Star,
   ChevronDown,
+  Building,
 } from 'lucide-react';
 import ModalInputFormasi from '@/components/modules/formasi/ModalInputFormasi';
 import ModalDetailFormasi from '@/components/modules/formasi/ModalDetailFormasi';
@@ -24,6 +25,7 @@ import ModalGeneratorFormasi from '@/components/modules/formasi/ModalGeneratorFo
 import ModalFilterFormasi from '@/components/modules/formasi/ModalFilterFormasi';
 import ModalHideFormasi from '@/components/modules/formasi/ModalHideFormasi';
 import ModalFotoFormasi from '@/components/modules/formasi/ModalFotoFormasi';
+import ModalPengaturanBlokKelas from '@/components/modules/formasi/ModalPengaturanBlokKelas';
 
 export default function FormasiMasterPage() {
   const {
@@ -35,6 +37,7 @@ export default function FormasiMasterPage() {
     openFilterModal,
     openHideModal,
     openFotoModal,
+    openBlokModal,
     deleteFormasi,
     bulkDeleteFormasi,
     hiddenColumns,
@@ -217,6 +220,16 @@ export default function FormasiMasterPage() {
             <span>♀</span>
             <span>Kelas Putri</span>
           </Link>
+
+          <button
+            type="button"
+            onClick={() => openBlokModal('PA', selectedIds)}
+            className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 transition shadow-2xs flex items-center gap-1.5"
+            title="Kelola Pengaturan Blok Kelas Putra & Putri"
+          >
+            <Building className="w-3.5 h-3.5 text-[#0f766e]" />
+            <span>Atur Blok</span>
+          </button>
 
           <button
             type="button"
@@ -545,7 +558,31 @@ export default function FormasiMasterPage() {
 
                       {/* 10. Blok */}
                       {!isColHidden(10) && (
-                        <td className="py-2.5 px-3 text-slate-600">{f.blok || '-'}</td>
+                        <td
+                          className="py-2.5 px-3"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {f.blok ? (
+                            <button
+                              type="button"
+                              onClick={() => openBlokModal(f.pa_pi, [], f.blok)}
+                              title="Klik untuk mengedit grup blok ini"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[11px] font-semibold transition"
+                            >
+                              <Building className="w-2.5 h-2.5" />
+                              <span>{f.blok}</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openBlokModal(f.pa_pi, f.id ? [f.id] : [])}
+                              title="Masukkan kelas ini ke grup blok"
+                              className="text-slate-400 hover:text-slate-700 text-[11px] font-medium transition"
+                            >
+                              -
+                            </button>
+                          )}
+                        </td>
                       )}
 
                       {/* 11. Aksi */}
@@ -620,6 +657,7 @@ export default function FormasiMasterPage() {
       <ModalFilterFormasi isOpen={isFilterModalOpen} onClose={closeFilterModal} />
       <ModalHideFormasi isOpen={isHideModalOpen} onClose={closeHideModal} />
       <ModalFotoFormasi />
+      <ModalPengaturanBlokKelas />
     </div>
   );
 }
