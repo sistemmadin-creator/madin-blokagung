@@ -3,59 +3,47 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { useSantriStore } from '@/stores/useSantriStore';
-import { Printer, Download, Search } from 'lucide-react';
-import { exportToExcel } from '@/lib/utils/excel';
+import { Printer, Download, Inbox, GraduationCap, BookOpen, CheckCircle2, Star, Hourglass } from 'lucide-react';
+import { DEFAULT_HAFALAN_WAJIB, norm } from '@/lib/utils/setoranHelper';
+import * as XLSX from 'xlsx';
 
 type RekapMode = 'wajib' | 'tahfidz';
 type TingkatMadin = 'ULA' | 'WUSTHO' | 'ULYA';
 
-const DEFAULT_TARGET_WAJIB: Record<string, string[]> = {
-  ULA_1: ['Aqidatul Awam', 'Hidayatus Shibyan', 'Taisirul Khalaq'],
-  ULA_2: ['Jurumiyyah', 'Tuhfatul Athfal', 'Washoya'],
-  ULA_3: ['Nadhom Maqsud', 'Al-Amtsilah At-Tashrifiyyah', 'Tanbihul Mutaallim'],
-  ULA_4: ['Imrithi', 'Qowaidul Irob', 'Sulmul Munawroq'],
-  WUSTHO_1: ['Alfiyah Ibnu Malik (Bait 1-500)', 'Fathul Qorib', 'Jawahirul Kalamiyyah'],
-  WUSTHO_2: ['Alfiyah Ibnu Malik (Bait 501-1002)', 'Ghayatul Wushul', 'Uqudul Lujain'],
-  ULYA_1: ['Ibnu Aqil', 'Fathul Muin', 'Al-Balaghah'],
-  ULYA_2: ['Kafrawi', 'Tafsir Jalalain', 'Shahih Bukhari'],
-};
-
 export default function RekapHafalanPage() {
-  const { setoranList, fetchSetoranData, isLoading: loadingSetoran } = useMuhafadzohStore();
+  const { setoranList, config, fetchSetoranData, isLoading: loadingSetoran } = useMuhafadzohStore();
   const { santriList, fetchSantri, isLoading: loadingSantri } = useSantriStore();
 
   const [mode, setMode] = useState<RekapMode>('wajib');
   const [tingkat, setTingkat] = useState<TingkatMadin>('ULA');
-  const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetchSetoranData();
     if (santriList.length === 0) fetchSantri();
   }, [fetchSetoranData, fetchSantri, santriList.length]);
 
-  // Filter santri by selected tingkat
+  // Filter santri by selected tingkat (norm matching)
   const santriTingkat = useMemo(() => {
-    return santriList.filter((s) => String(s.tingkat || '').toUpperCase() === tingkat);
+    return santriList.filter((s: any) => norm(s.tingkat || s[26]) === tingkat);
   }, [santriList, tingkat]);
 
-  // Map setoran by no_induk: Map<no_induk, Map<item_hafalan_norm, { date, nilai }>>
+  // Map setoran by no_induk: Map<no_induk, Map<hafalan_norm, tgl>>
   const setoranMap = useMemo(() => {
-    const map = new Map<string, Map<string, { tgl: string; nilai: string }>>();
+    const map = new Map<string, Map<string, string>>();
 
-    setoranList.forEach((setoran) => {
-      const noInduk = String(setoran.no_induk || '').trim();
-      const hafalan = String(setoran.item_hafalan || '').trim().toLowerCase();
-      const tgl = setoran.tanggal || '-';
-      const nilai = setoran.nilai || 'A';
+    setoranList.forEach((row) => {
+      const noInduk = norm(row.no_induk);
+      const hafalan = norm(row.item_hafalan);
+      const tgl = row.tanggal || '-';
 
       if (!noInduk || !hafalan) return;
 
       if (!map.has(noInduk)) {
         map.set(noInduk, new Map());
       }
-      const sub = map.get(noInduk)!;
-      if (!sub.has(hafalan)) {
-        sub.set(hafalan, { tgl, nilai });
+      const m = map.get(noInduk)!;
+      if (!m.has(hafalan)) {
+        m.set(hafalan, tgl);
       }
     });
 
@@ -67,16 +55,19 @@ export default function RekapHafalanPage() {
     const map = new Map<string, { juzSet: Set<string>; lastDate: string }>();
 
     setoranList.forEach((row) => {
-      const noInduk = String(row.no_induk || '').trim();
+      const noInduk = norm(row.no_induk);
       const hafalan = String(row.item_hafalan || '').trim();
-      const kategori = String(row.kategori || '').toUpperCase();
+      const kategori = norm(row.kategori);
       const tgl = row.tanggal || '-';
 
-      const isTahfidz = kategori.includes('TAHFIDZ') || hafalan.toUpperCase().startsWith('JUZ ');
+      const isTahfidz = kategori.includes('TAHFIDZ') || norm(hafalan).startsWith('JUZ ');
       if (!noInduk || !isTahfidz) return;
 
       if (!map.has(noInduk)) {
-        map.set(noInduk, { juzSet: new Set(), lastDate: tgl });
+        map.set(noInduk, {
+          juzSet: new Set(),
+          lastDate: tgl,
+        });
       }
       const entry = map.get(noInduk)!;
       entry.juzSet.add(hafalan);
@@ -86,80 +77,253 @@ export default function RekapHafalanPage() {
     return map;
   }, [setoranList]);
 
-  // Classes for current tingkat
+  // Daftar kelas sesuai tingkatan
   const kelasList = useMemo(() => {
     if (tingkat === 'WUSTHO' || tingkat === 'ULYA') return ['1', '2'];
     return ['1', '2', '3', '4'];
   }, [tingkat]);
 
-  // Export Excel
-  const handleExport = () => {
-    if (mode === 'wajib') {
-      const rows: Record<string, unknown>[] = [];
-      let no = 1;
+  // Konfigurasi target hafalan wajib dari store atau fallback default
+  const hafWajibConfig = useMemo(() => {
+    return config.hafWajib && Object.keys(config.hafWajib).length > 0
+      ? config.hafWajib
+      : DEFAULT_HAFALAN_WAJIB;
+  }, [config.hafWajib]);
 
-      kelasList.forEach((kls) => {
-        const configKey = `${tingkat}_${kls}`;
-        const targetItems = DEFAULT_TARGET_WAJIB[configKey] || [];
-        const santriKelas = santriTingkat.filter((s) => String(s.din_kls || '').trim() === kls);
+  // Processed Wajib Groups per Class
+  const processedWajibGroups = useMemo(() => {
+    if (santriTingkat.length === 0) return [];
 
-        santriKelas.forEach((s) => {
-          const subMap = setoranMap.get(String(s.no_induk || '').trim());
-          let completedCount = 0;
-
-          const rowData: Record<string, unknown> = {
-            No: no++,
-            'Tingkat / Kelas': `${tingkat} ${kls}-${s.din_bag || ''}`,
-            'No. Induk': s.no_induk,
-            'Nama Santri': s.nama,
-            'PA/PI': s.pa_pi,
-          };
-
-          targetItems.forEach((target) => {
-            const hasPassed = subMap?.has(target.toLowerCase());
-            if (hasPassed) completedCount++;
-            rowData[target] = hasPassed ? `Lulus (${subMap?.get(target.toLowerCase())?.tgl})` : '-';
+    return kelasList
+      .map((kls) => {
+        const santriKelas = santriTingkat
+          .filter((s: any) => String(s.din_kls || s[24] || '').trim() === kls)
+          .sort((a: any, b: any) => {
+            const bagA = String(a.din_bag || a[25] || '');
+            const bagB = String(b.din_bag || b[25] || '');
+            if (bagA !== bagB) return bagA.localeCompare(bagB);
+            return String(a.nama || a[5] || '').localeCompare(String(b.nama || b[5] || ''));
           });
 
-          rowData['Total Capaian'] = `${completedCount} / ${targetItems.length}`;
-          rowData['Status'] = completedCount >= targetItems.length && targetItems.length > 0 ? 'Tuntas' : 'Belum Tuntas';
-          rows.push(rowData);
-        });
-      });
+        if (santriKelas.length === 0) return null;
 
-      exportToExcel(rows, `Rekap_Hafalan_Wajib_${tingkat}`);
-    } else {
-      const rows = santriTingkat.map((s, idx) => {
-        const entry = tahfidzMap.get(String(s.no_induk || '').trim());
-        const juzList = entry ? Array.from(entry.juzSet).join(', ') : '-';
-        const totalJuz = entry ? entry.juzSet.size : 0;
+        const configKey = `${tingkat}_${kls}`;
+        const rawReq = hafWajibConfig[configKey];
+        const requiredList: string[] = Array.isArray(rawReq)
+          ? rawReq
+          : typeof rawReq === 'string'
+          ? String(rawReq).split(',').map((s) => s.trim()).filter(Boolean)
+          : [];
+
+        let totalTuntas = 0;
+
+        const rows = santriKelas.map((s: any, idx: number) => {
+          const sInduk = String(s.no_induk || s[1] || '').trim();
+          const sNama = s.nama || s[5] || '-';
+          const sDinBag = s.din_bag || s[25] || '-';
+          const sGender = s.pa_pi || s[4] || '-';
+
+          const santriSetoran = setoranMap.get(norm(sInduk)) || new Map<string, string>();
+          const itemStatus: Record<string, { completed: boolean; tgl: string }> = {};
+          let completedCount = 0;
+
+          requiredList.forEach((item) => {
+            const itemNorm = norm(item);
+            let completed = false;
+            let tgl = '';
+
+            if (santriSetoran.has(itemNorm)) {
+              completed = true;
+              tgl = santriSetoran.get(itemNorm)!;
+            } else {
+              Array.from(santriSetoran.entries()).some(([k, v]) => {
+                if (k.includes(itemNorm) || itemNorm.includes(k)) {
+                  completed = true;
+                  tgl = v;
+                  return true;
+                }
+                return false;
+              });
+            }
+
+            if (completed) {
+              completedCount++;
+              itemStatus[item] = { completed: true, tgl };
+            } else {
+              itemStatus[item] = { completed: false, tgl: '-' };
+            }
+          });
+
+          const isTuntas = requiredList.length > 0 && completedCount >= requiredList.length;
+          if (isTuntas) totalTuntas++;
+
+          return {
+            no: idx + 1,
+            noInduk: sInduk,
+            nama: sNama,
+            dinBag: sDinBag,
+            gender: sGender,
+            itemStatus,
+            completedCount,
+            isTuntas,
+          };
+        });
+
+        const persenTuntas = santriKelas.length > 0 ? Math.round((totalTuntas / santriKelas.length) * 100) : 0;
 
         return {
-          No: idx + 1,
-          'No. Induk': s.no_induk,
-          'Nama Santri': s.nama,
-          'Kelas Diniyyah': `${tingkat} ${s.din_kls || ''}-${s.din_bag || ''}`,
-          'PA/PI': s.pa_pi,
-          'Daftar Juz Selesai': juzList,
-          'Total Juz': totalJuz,
-          'Tanggal Setoran Terakhir': entry?.lastDate || '-',
+          kls,
+          tingkat,
+          requiredList,
+          santriCount: santriKelas.length,
+          totalTuntas,
+          persenTuntas,
+          rows,
         };
+      })
+      .filter(Boolean) as Array<{
+      kls: string;
+      tingkat: string;
+      requiredList: string[];
+      santriCount: number;
+      totalTuntas: number;
+      persenTuntas: number;
+      rows: any[];
+    }>;
+  }, [santriTingkat, kelasList, hafWajibConfig, tingkat, setoranMap]);
+
+  // Processed Tahfidz Data
+  const processedTahfidzData = useMemo(() => {
+    if (santriTingkat.length === 0) return [];
+
+    const list = santriTingkat.map((s: any) => {
+      const sInduk = String(s.no_induk || s[1] || '').trim();
+      const sNama = s.nama || s[5] || '-';
+      const sDinKls = s.din_kls || s[24] || '-';
+      const sDinBag = s.din_bag || s[25] || '-';
+      const sGender = s.pa_pi || s[4] || '-';
+
+      const entry = tahfidzMap.get(norm(sInduk));
+      const rawJuzList = entry ? Array.from(entry.juzSet) : [];
+
+      const sortedJuzList = rawJuzList.sort((a, b) => {
+        const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
+        const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
+        return numA - numB;
       });
 
-      exportToExcel(rows, `Rekap_Hafalan_Tahfidz_${tingkat}`);
-    }
+      return {
+        noInduk: sInduk,
+        nama: sNama,
+        dinKls: sDinKls,
+        dinBag: sDinBag,
+        gender: sGender,
+        juzList: sortedJuzList,
+        juzCount: sortedJuzList.length,
+        lastDate: entry ? entry.lastDate : '-',
+      };
+    });
+
+    // Urutkan juz terbanyak di atas, lalu nama alfabetis
+    list.sort((a, b) => {
+      if (b.juzCount !== a.juzCount) return b.juzCount - a.juzCount;
+      return a.nama.localeCompare(b.nama);
+    });
+
+    return list;
+  }, [santriTingkat, tahfidzMap]);
+
+  // Cetak A4 (Printing Isolation)
+  const handlePrint = () => {
+    document.body.classList.add('printing-rekap-hafalan');
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove('printing-rekap-hafalan');
+      }, 500);
+    }, 200);
   };
 
-  const handlePrint = () => {
-    window.print();
+  // Export Excel Resmi Multi-Sheet
+  const handleExport = () => {
+    const wb = XLSX.utils.book_new();
+
+    if (mode === 'wajib') {
+      if (processedWajibGroups.length === 0) {
+        alert('Tidak ada data hafalan wajib untuk diekspor.');
+        return;
+      }
+
+      processedWajibGroups.forEach((group) => {
+        const aoa: any[][] = [
+          [`REKAPITULASI HAFALAN WAJIB - KELAS ${group.kls} TINGKAT ${tingkat}`],
+          [`Madrasah Diniyyah Al Amiriyyah Blokagung`],
+          [],
+          ['No', 'No. Induk', 'Nama Santri', 'Bagian', 'Gender', ...group.requiredList, 'Total Selesai', 'Status'],
+        ];
+
+        group.rows.forEach((r, idx) => {
+          aoa.push([
+            idx + 1,
+            r.noInduk,
+            r.nama,
+            r.dinBag,
+            r.gender,
+            ...group.requiredList.map((item) => (r.itemStatus[item]?.completed ? r.itemStatus[item].tgl : '-')),
+            `${r.completedCount} / ${group.requiredList.length}`,
+            r.isTuntas ? 'TUNTAS' : r.completedCount > 0 ? 'PROGRES' : 'BELUM SETOR',
+          ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        XLSX.utils.book_append_sheet(wb, ws, `Kelas ${group.kls}`);
+      });
+
+      XLSX.writeFile(wb, `Rekap_Hafalan_Wajib_${tingkat}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } else {
+      if (processedTahfidzData.length === 0) {
+        alert('Tidak ada data hafalan tahfidz untuk diekspor.');
+        return;
+      }
+
+      const aoa: any[][] = [
+        [`REKAPITULASI HAFALAN TAHFIDZ AL-QUR'AN - TINGKAT ${tingkat}`],
+        [`Madrasah Diniyyah Al Amiriyyah Blokagung`],
+        [],
+        ['No', 'No. Induk', 'Nama Santri', 'Kelas', 'Bagian', 'Gender', 'Daftar Juz Disetorkan', 'Total Juz', 'Tgl Terakhir Setor', 'Status'],
+      ];
+
+      processedTahfidzData.forEach((r, idx) => {
+        aoa.push([
+          idx + 1,
+          r.noInduk,
+          r.nama,
+          r.dinKls,
+          r.dinBag,
+          r.gender,
+          r.juzList.join(', '),
+          r.juzCount,
+          r.lastDate || '-',
+          r.juzCount >= 30 ? 'KHATAM 30 JUZ' : r.juzCount > 0 ? 'AKTIF' : 'BELUM SETOR',
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      XLSX.utils.book_append_sheet(wb, ws, `Tahfidz ${tingkat}`);
+      XLSX.writeFile(wb, `Rekap_Hafalan_Tahfidz_${tingkat}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }
   };
 
   const isLoading = loadingSetoran || loadingSantri;
 
+  // Stats for Tahfidz Mode
+  const totalSantriTahfidz = processedTahfidzData.filter((p) => p.juzCount > 0).length;
+  const totalKhatamTahfidz = processedTahfidzData.filter((p) => p.juzCount >= 30).length;
+
   return (
     <div className="space-y-4">
-      {/* Header & Toolbar (Identik dengan rekap-hafalan.html) */}
-      <div className="card-panel border-0 bg-white p-4 rounded-xl border border-slate-200 shadow-xs print:hidden">
+      {/* 1. Header & Toolbar Sesuai rekap-hafalan.html (Gambar 2) */}
+      <div className="card-panel border-0 bg-white p-4 rounded-xl border border-slate-200 shadow-xs card-panel-header">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold text-slate-800 m-0">Rekapitulasi Hafalan Pertingkatan</h1>
@@ -177,7 +341,7 @@ export default function RekapHafalanPage() {
                 onClick={() => setMode('wajib')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-md transition ${
                   mode === 'wajib'
-                    ? 'bg-[#0f766e] text-white shadow-xs'
+                    ? 'bg-emerald-700 text-white shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -188,7 +352,7 @@ export default function RekapHafalanPage() {
                 onClick={() => setMode('tahfidz')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-md transition ${
                   mode === 'tahfidz'
-                    ? 'bg-[#0f766e] text-white shadow-xs'
+                    ? 'bg-emerald-700 text-white shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -200,7 +364,7 @@ export default function RekapHafalanPage() {
             <select
               value={tingkat}
               onChange={(e) => setTingkat(e.target.value as TingkatMadin)}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-700 shadow-xs focus:ring-1 focus:ring-[#0f766e] focus:outline-none"
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-700 shadow-2xs focus:border-emerald-600 focus:outline-none"
             >
               <option value="ULA">Tingkat ULA</option>
               <option value="WUSTHO">Tingkat WUSTHO</option>
@@ -209,8 +373,9 @@ export default function RekapHafalanPage() {
 
             {/* Tombol Cetak A4 */}
             <button
+              type="button"
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 shadow-xs transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs transition"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Cetak A4</span>
@@ -218,122 +383,127 @@ export default function RekapHafalanPage() {
 
             {/* Tombol Export Excel */}
             <button
+              type="button"
               onClick={handleExport}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#115e59] text-white shadow-xs transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white shadow-2xs transition"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Export Excel</span>
             </button>
           </div>
         </div>
-
-        {/* Search input in card */}
-        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
-          <div className="relative w-full sm:w-72">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari santri / nomor induk..."
-              className="w-full pl-8 pr-3 py-1 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0f766e]"
-            />
-          </div>
-          <span className="text-xs text-slate-500 font-medium">
-            Total Santri Tingkat {tingkat}: <b className="text-slate-800">{santriTingkat.length}</b>
-          </span>
-        </div>
       </div>
 
+      {/* 2. Loading State */}
       {isLoading ? (
         <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-emerald-600 border-t-transparent mb-2"></div>
           <p className="text-xs text-slate-500">Sedang memuat data rekapitulasi hafalan...</p>
         </div>
+      ) : santriTingkat.length === 0 ? (
+        /* 3. Empty State (Gambar 2: Data Santri Tidak Ditemukan) */
+        <div className="card-panel text-center py-12 text-slate-500 border border-slate-200 shadow-sm rounded-xl bg-white">
+          <Inbox className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+          <h6 className="font-bold text-slate-700 text-sm mb-1">Data Santri Tidak Ditemukan</h6>
+          <p className="text-xs text-slate-500 mb-0">
+            Belum ada data santri yang terdaftar pada Tingkat <b>{tingkat}</b>.
+          </p>
+        </div>
       ) : mode === 'wajib' ? (
-        /* ================= MODE HAFALAN WAJIB ================= */
+        /* 4. MODE HAFALAN WAJIB (Grouped per Kelas) */
         <div className="space-y-6">
-          {kelasList.map((kls) => {
-            const configKey = `${tingkat}_${kls}`;
-            const targetItems = DEFAULT_TARGET_WAJIB[configKey] || [];
-            let santriKelas = santriTingkat.filter((s) => String(s.din_kls || '').trim() === kls);
-
-            if (search.trim()) {
-              const q = search.toLowerCase();
-              santriKelas = santriKelas.filter(
-                (s) => s.nama.toLowerCase().includes(q) || s.no_induk.toLowerCase().includes(q)
-              );
-            }
-
-            if (santriKelas.length === 0) return null;
-
-            return (
+          {processedWajibGroups.length === 0 ? (
+            <div className="card-panel text-center py-10 text-slate-400 bg-white border border-slate-200 rounded-xl">
+              <p className="text-xs mb-0">Belum ada santri pada kelas di tingkat ini.</p>
+            </div>
+          ) : (
+            processedWajibGroups.map((group) => (
               <div
-                key={kls}
-                className="card-panel border-0 bg-white p-4 rounded-xl border border-slate-200 shadow-xs print:p-0 print:border-none print:shadow-none"
+                key={group.kls}
+                className="card-panel border border-slate-200 bg-white p-4 rounded-xl shadow-xs"
               >
-                <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded bg-emerald-100 text-emerald-800 font-bold text-xs">
-                      Kelas {kls} {tingkat}
+                {/* Header Group Kelas */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-slate-200 gap-2">
+                  <div>
+                    <h6 className="font-bold m-0 text-emerald-800 text-sm uppercase flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-emerald-700" />
+                      Kelas {group.kls} - Tingkat {group.tingkat}
+                    </h6>
+                    <span className="text-[11px] text-slate-500 block mt-0.5">
+                      Target Wajib:{' '}
+                      {group.requiredList.length > 0 ? (
+                        <span className="font-semibold text-slate-700">{group.requiredList.join(', ')}</span>
+                      ) : (
+                        <span className="text-rose-500 font-semibold">Belum ada konfigurasi</span>
+                      )}
                     </span>
-                    <h2 className="text-sm font-bold text-slate-800">
-                      Target Hafalan: {targetItems.join(' • ') || 'Belum Diatur'}
-                    </h2>
                   </div>
-                  <span className="text-xs text-slate-500">
-                    Jumlah: <b className="text-slate-800">{santriKelas.length} Santri</b>
-                  </span>
+
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                      Total Santri: <b>{group.santriCount}</b>
+                    </span>
+                    <span className="inline-block px-2.5 py-1 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      Tuntas: <b>{group.totalTuntas} ({group.persenTuntas}%)</b>
+                    </span>
+                  </div>
                 </div>
 
+                {/* Table Rekap Hafalan Wajib */}
                 <div className="overflow-x-auto">
-                  <table className="tabel-kbm-resmi w-full text-xs">
+                  <table className="table-rekap tabel-kbm-resmi w-full text-xs">
                     <thead>
                       <tr>
-                        <th style={{ width: '40px' }} className="text-center">NO</th>
-                        <th style={{ width: '100px' }} className="text-center">NO INDUK</th>
-                        <th>NAMA SANTRI</th>
-                        <th style={{ width: '50px' }} className="text-center">BAG</th>
-                        <th style={{ width: '50px' }} className="text-center">PA/PI</th>
-                        {targetItems.map((item, idx) => (
-                          <th key={idx} className="text-center px-3">
+                        <th style={{ width: '45px' }} className="text-center">NO</th>
+                        <th style={{ width: '110px' }} className="text-center">NO. INDUK</th>
+                        <th style={{ minWidth: '160px' }}>NAMA SANTRI</th>
+                        <th style={{ width: '60px' }} className="text-center">BAG</th>
+                        <th style={{ width: '65px' }} className="text-center">GENDER</th>
+                        {group.requiredList.map((item, idx) => (
+                          <th key={idx} className="text-center px-3" style={{ minWidth: '130px' }}>
                             {item}
                           </th>
                         ))}
-                        <th style={{ width: '80px' }} className="text-center">CAPAIAN</th>
-                        <th style={{ width: '100px' }} className="text-center">STATUS</th>
+                        <th style={{ width: '95px' }} className="text-center">PROGRESS</th>
+                        <th style={{ width: '115px' }} className="text-center">STATUS</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {santriKelas.map((s, idx) => {
-                        const subMap = setoranMap.get(String(s.no_induk || '').trim());
-                        let completedCount = 0;
+                      {group.rows.map((r, idx) => {
+                        const rowClass = r.isTuntas ? 'highlight-progress' : '';
 
                         return (
-                          <tr key={s.no_induk} className="hover:bg-slate-50">
-                            <td className="text-center text-slate-500">{idx + 1}</td>
-                            <td className="text-center font-mono font-semibold text-slate-700">{s.no_induk}</td>
-                            <td className="font-bold text-slate-900">{s.nama}</td>
-                            <td className="text-center font-bold">{s.din_bag || '-'}</td>
+                          <tr key={r.noInduk || idx} className={`${rowClass} hover:bg-slate-50/70 transition`}>
+                            <td className="text-center text-slate-400 font-mono">{r.no}</td>
+                            <td className="font-mono font-semibold text-slate-700 text-center">{r.noInduk}</td>
+                            <td className="font-bold text-slate-900">{r.nama}</td>
+                            <td className="text-center font-bold">{r.dinBag}</td>
                             <td className="text-center">
                               <span
-                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                  s.pa_pi === 'PA' ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'
+                                className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                  r.gender === 'PA'
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                    : 'bg-rose-50 text-rose-700 border-rose-200'
                                 }`}
                               >
-                                {s.pa_pi}
+                                {r.gender}
                               </span>
                             </td>
-                            {targetItems.map((target, tIdx) => {
-                              const match = subMap?.get(target.toLowerCase());
-                              const isCompleted = !!match;
-                              if (isCompleted) completedCount++;
+
+                            {/* Dynamic Target Item Columns */}
+                            {group.requiredList.map((item, tIdx) => {
+                              const status = r.itemStatus[item];
+                              const isCompleted = status?.completed;
 
                               return (
                                 <td key={tIdx} className="text-center">
                                   {isCompleted ? (
-                                    <span className="badge bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded text-[11px] font-semibold">
-                                      ✓ {match.tgl.split(' ')[0]}
+                                    <span
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                      title={`Lulus pada ${status.tgl}`}
+                                    >
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      <span>{status.tgl.split(' ')[0]}</span>
                                     </span>
                                   ) : (
                                     <span className="text-slate-400 font-mono">-</span>
@@ -341,22 +511,28 @@ export default function RekapHafalanPage() {
                                 </td>
                               );
                             })}
+
                             <td className="text-center font-bold text-slate-700">
-                              {completedCount} / {targetItems.length}
+                              {r.completedCount} / {group.requiredList.length}
                             </td>
+
                             <td className="text-center">
-                              {targetItems.length === 0 ? (
-                                <span className="text-slate-400 text-[10px]">-</span>
-                              ) : completedCount >= targetItems.length ? (
-                                <span className="badge bg-emerald-600 text-white font-bold px-2 py-0.5 rounded text-[10px]">
-                                  Tuntas
+                              {group.requiredList.length === 0 ? (
+                                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                                  Belum Dikonfigurasi
                                 </span>
-                              ) : completedCount > 0 ? (
-                                <span className="badge bg-amber-500 text-white font-bold px-2 py-0.5 rounded text-[10px]">
-                                  {completedCount}/{targetItems.length}
+                              ) : r.isTuntas ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-700 text-white shadow-2xs">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>Tuntas</span>
+                                </span>
+                              ) : r.completedCount > 0 ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-white shadow-2xs">
+                                  <Hourglass className="w-3 h-3" />
+                                  <span>{r.completedCount}/{group.requiredList.length}</span>
                                 </span>
                               ) : (
-                                <span className="badge bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded text-[10px]">
+                                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
                                   Belum Setor
                                 </span>
                               )}
@@ -368,64 +544,86 @@ export default function RekapHafalanPage() {
                   </table>
                 </div>
               </div>
-            );
-          })}
+            ))
+          )}
         </div>
       ) : (
-        /* ================= MODE HAFALAN TAHFIDZ ================= */
-        <div className="card-panel border-0 bg-white p-4 rounded-xl border border-slate-200 shadow-xs print:p-0 print:border-none print:shadow-none">
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
-            <h2 className="text-sm font-bold text-slate-800">
-              Rekapitulasi Santri Tahfidz Qur&apos;an - Tingkat {tingkat}
-            </h2>
-            <span className="text-xs text-slate-500">
-              Total: <b className="text-slate-800">{santriTingkat.length} Santri</b>
-            </span>
+        /* 5. MODE HAFALAN TAHFIDZ */
+        <div className="card-panel border border-slate-200 bg-white p-4 rounded-xl shadow-xs">
+          {/* Header Banner Tahfidz */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-slate-200 gap-2">
+            <div>
+              <h6 className="font-bold m-0 text-emerald-800 text-sm uppercase flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-emerald-700" />
+                Rekapitulasi Hafalan Tahfidz Al-Qur&apos;an - Tingkat {tingkat}
+              </h6>
+              <span className="text-[11px] text-slate-500 block mt-0.5">
+                Daftar capaian setoran juz Al-Qur&apos;an santri madrasah diniyyah
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="inline-block px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                Total Santri: <b>{processedTahfidzData.length}</b>
+              </span>
+              <span className="inline-block px-2.5 py-1 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                Aktif Tahfidz: <b>{totalSantriTahfidz}</b>
+              </span>
+              <span className="inline-block px-2.5 py-1 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                Khatam 30 Juz: <b>{totalKhatamTahfidz}</b>
+              </span>
+            </div>
           </div>
 
+          {/* Table Tahfidz */}
           <div className="overflow-x-auto">
-            <table className="tabel-kbm-resmi w-full text-xs">
+            <table className="table-rekap tabel-kbm-resmi w-full text-xs">
               <thead>
                 <tr>
-                  <th style={{ width: '40px' }} className="text-center">NO</th>
-                  <th style={{ width: '100px' }} className="text-center">NO INDUK</th>
-                  <th>NAMA SANTRI</th>
+                  <th style={{ width: '45px' }} className="text-center">NO</th>
+                  <th style={{ width: '110px' }} className="text-center">NO. INDUK</th>
+                  <th style={{ minWidth: '160px' }}>NAMA SANTRI</th>
                   <th style={{ width: '80px' }} className="text-center">KELAS</th>
-                  <th style={{ width: '50px' }} className="text-center">PA/PI</th>
-                  <th>DAFTAR JUZ SELESAI</th>
-                  <th style={{ width: '90px' }} className="text-center">TOTAL JUZ</th>
-                  <th style={{ width: '110px' }} className="text-center">TGL TERAKHIR</th>
+                  <th style={{ width: '65px' }} className="text-center">GENDER</th>
+                  <th>DAFTAR JUZ YANG DISETORKAN</th>
+                  <th style={{ width: '100px' }} className="text-center">TOTAL</th>
+                  <th style={{ width: '120px' }} className="text-center">TGL TERAKHIR</th>
+                  <th style={{ width: '125px' }} className="text-center">STATUS</th>
                 </tr>
               </thead>
               <tbody>
-                {santriTingkat.map((s, idx) => {
-                  const entry = tahfidzMap.get(String(s.no_induk || '').trim());
-                  const juzArray = entry ? Array.from(entry.juzSet) : [];
+                {processedTahfidzData.map((p, idx) => {
+                  const isKhatam = p.juzCount >= 30;
+                  const rowClass = isKhatam ? 'highlight-progress' : '';
 
                   return (
-                    <tr key={s.no_induk} className="hover:bg-slate-50">
-                      <td className="text-center text-slate-500">{idx + 1}</td>
-                      <td className="text-center font-mono font-semibold text-slate-700">{s.no_induk}</td>
-                      <td className="font-bold text-slate-900">{s.nama}</td>
-                      <td className="text-center font-semibold">
-                        {tingkat} {s.din_kls}-{s.din_bag}
+                    <tr key={p.noInduk || idx} className={`${rowClass} hover:bg-slate-50/70 transition`}>
+                      <td className="text-center text-slate-400 font-mono">{idx + 1}</td>
+                      <td className="font-mono font-semibold text-slate-700 text-center">{p.noInduk}</td>
+                      <td className="font-bold text-slate-900">{p.nama}</td>
+                      <td className="text-center font-bold">
+                        {p.dinKls} {p.dinBag}
                       </td>
                       <td className="text-center">
                         <span
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                            s.pa_pi === 'PA' ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'
+                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            p.gender === 'PA'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : 'bg-rose-50 text-rose-700 border-rose-200'
                           }`}
                         >
-                          {s.pa_pi}
+                          {p.gender}
                         </span>
                       </td>
+
+                      {/* Flex Badges Juz Disetorkan */}
                       <td>
-                        {juzArray.length > 0 ? (
+                        {p.juzList.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
-                            {juzArray.map((juz, jIdx) => (
+                            {p.juzList.map((juz, jIdx) => (
                               <span
                                 key={jIdx}
-                                className="badge bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-semibold"
+                                className="inline-block px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200"
                               >
                                 {juz}
                               </span>
@@ -435,11 +633,38 @@ export default function RekapHafalanPage() {
                           <span className="text-slate-400 font-mono">-</span>
                         )}
                       </td>
-                      <td className="text-center font-bold text-emerald-700">
-                        {juzArray.length > 0 ? `${juzArray.length} Juz` : '-'}
+
+                      <td className="text-center">
+                        <span
+                          className={`inline-block px-2.5 py-1 rounded text-xs font-bold ${
+                            p.juzCount > 0
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-slate-100 text-slate-500'
+                          }`}
+                        >
+                          {p.juzCount} Juz
+                        </span>
                       </td>
-                      <td className="text-center text-slate-600 font-mono text-[11px]">
-                        {entry?.lastDate || '-'}
+
+                      <td className="text-center text-slate-600 font-mono whitespace-nowrap">
+                        {p.lastDate}
+                      </td>
+
+                      <td className="text-center">
+                        {isKhatam ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-700 text-white shadow-2xs">
+                            <Star className="w-3 h-3 text-amber-300 fill-amber-300" />
+                            <span>Khatam 30 Juz</span>
+                          </span>
+                        ) : p.juzCount > 0 ? (
+                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                            Aktif Menghafal
+                          </span>
+                        ) : (
+                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                            Belum Ada Setoran
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );

@@ -256,5 +256,46 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* Aturan Cetak Khusus Rekap Hafalan (A4) */
+  body.printing-rekap-hafalan {
+    background-color: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  body.printing-rekap-hafalan .card-panel-header,
+  body.printing-rekap-hafalan .d-print-none {
+    display: none !important;
+  }
+  body.printing-rekap-hafalan .table-rekap {
+    width: 100% !important;
+    font-size: 8pt !important;
+    border-collapse: collapse !important;
+    margin-bottom: 20px !important;
+    page-break-inside: auto;
+  }
+  body.printing-rekap-hafalan .table-rekap tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  body.printing-rekap-hafalan .table-rekap th,
+  body.printing-rekap-hafalan .table-rekap td {
+    padding: 3px 5px !important;
+    border: 1px solid #334155 !important;
+    color: #000000 !important;
+  }
+  body.printing-rekap-hafalan .highlight-progress,
+  body.printing-rekap-hafalan .table-rekap tr.highlight-progress > td {
+    background-color: #dcfce7 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }
+
+/* Highlight Baris Tuntas / Khatam */
+.highlight-progress,
+tr.highlight-progress > td {
+  background-color: #f0fdf4 !important;
+}
+
 

@@ -73,14 +73,33 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
     await expect(searchInput).toBeVisible();
   });
 
-  test('Rekap Hafalan page and progress overview', async ({ page }) => {
+  test('Rekap Hafalan: Toolbar, Mode Pills, Dropdown Tingkat, dan Tombol Export/Cetak', async ({ page }) => {
     await page.goto('/rekap-hafalan');
 
     await expect(page.getByRole('heading', { name: /Rekapitulasi Hafalan Pertingkatan/i }).first()).toBeVisible();
 
     // Mode buttons
-    await expect(page.getByRole('button', { name: /Hafalan Wajib/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Hafalan Tahfidz/i })).toBeVisible();
+    const btnWajib = page.getByRole('button', { name: 'Hafalan Wajib', exact: true });
+    const btnTahfidz = page.getByRole('button', { name: 'Hafalan Tahfidz', exact: true });
+    await expect(btnWajib).toBeVisible();
+    await expect(btnTahfidz).toBeVisible();
+
+    // Tingkat Select
+    const selectTingkat = page.getByRole('combobox').first();
+    await expect(selectTingkat).toBeVisible();
+    await expect(selectTingkat).toHaveValue('ULA');
+
+    // Action Buttons
+    await expect(page.getByRole('button', { name: /Cetak A4/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Export Excel/i })).toBeVisible();
+
+    // Switch to Tahfidz
+    await btnTahfidz.click();
+    await expect(btnTahfidz).toHaveClass(/bg-emerald-700/);
+
+    // Switch back to Wajib
+    await btnWajib.click();
+    await expect(btnWajib).toHaveClass(/bg-emerald-700/);
   });
 
   test('Studio Piagam Kelulusan and coordinate inspector', async ({ page }) => {
