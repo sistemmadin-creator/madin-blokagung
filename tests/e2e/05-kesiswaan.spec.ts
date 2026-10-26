@@ -109,12 +109,40 @@ test.describe('Modul 04: Kesiswaan & Presensi (Absensi Asatidz, Absen Cepat, Rek
     ).toBeHidden();
   });
 
-  test('Rekap Presensi page and WhatsApp generator modal', async ({ page }) => {
+  test('Rekap Presensi page, filter panel, 4 KPI cards, 14-column table, Top 10 Alfa dropdown, and WhatsApp generator modal', async ({ page }) => {
     await page.goto('/rekap-absensi');
 
     await expect(
       page.getByRole('heading', { name: /Rekapitulasi|Rekap Absensi/i }).first()
     ).toBeVisible();
+
+    // Check Filter Periode & Kriteria section & shortcut buttons
+    await expect(page.getByText(/Filter Periode & Kriteria/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Minggu Ini' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Bulan Ini' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Bulan Lalu' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Reset Filter/i })).toBeVisible();
+
+    // Check 4 KPI summary cards
+    await expect(page.getByText('Total Asatidz')).toBeVisible();
+    await expect(page.getByText('Rata-rata % Kehadiran')).toBeVisible();
+    await expect(page.getByText('Sesi Tidak Terlaksana')).toBeVisible();
+    await expect(page.getByText('Kehadiran Terendah')).toBeVisible();
+
+    // Check 14-column table headers
+    await expect(page.getByRole('columnheader', { name: /SESI TERJADWAL/i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /TERLAMBAT/i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /DIGANTIKAN/i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /% KEHADIRAN/i })).toBeVisible();
+
+    // Check Top 10 Alfa dropdown
+    const top10Btn = page.getByRole('button', { name: /Top 10 Alfa/i });
+    await expect(top10Btn).toBeVisible();
+    await top10Btn.click();
+    await expect(page.getByText(/TOP 10 ALFA TERBANYAK/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Cetak Dokumen Resmi/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Unduh Berkas Excel/i })).toBeVisible();
+    await top10Btn.click();
 
     // WhatsApp generator modal
     const waBtn = page.getByRole('button', { name: /Broadcast WA|Kirim Pesan WhatsApp/i });
