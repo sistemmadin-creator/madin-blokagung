@@ -13,6 +13,7 @@ test.describe('Modul Asatidz: Pengujian Komprehensif Fitur & Modal', () => {
     test('1.1 Pengatur ukuran data halaman (Page Size Selector 10/25/50/100)', async ({ page }) => {
       const pageSizeSelect = page.getByTestId('page-size-select');
       await expect(pageSizeSelect).toBeVisible();
+      await expect(pageSizeSelect).toHaveValue('25');
 
       // Pilih 10 data
       await pageSizeSelect.selectOption('10');
@@ -184,7 +185,7 @@ test.describe('Modul Asatidz: Pengujian Komprehensif Fitur & Modal', () => {
         await expect(modalDialog.getByRole('button', { name: /Edit Data Asatidz/i })).toBeVisible();
 
         // Tutup modal
-        await modalDialog.getByRole('button', { name: /Tutup/i }).click();
+        await modalDialog.getByRole('button', { name: 'Tutup', exact: true }).click();
         await expect(modalDialog).toBeHidden();
     });
   });

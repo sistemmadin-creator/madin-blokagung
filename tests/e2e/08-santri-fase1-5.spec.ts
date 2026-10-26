@@ -219,7 +219,7 @@ test.describe('Modul Santri: Pengujian Komprehensif Fase 1 - 5', () => {
       await expect(detailModal.getByText(/Pendidikan Formal/i)).toBeVisible();
 
       // Tutup modal detail
-      await detailModal.getByRole('button', { name: /Tutup/i }).click();
+      await detailModal.getByRole('button', { name: 'Tutup', exact: true }).click();
       await expect(detailModal).toBeHidden();
     });
   });

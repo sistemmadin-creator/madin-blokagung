@@ -47,7 +47,7 @@ test.describe('Modul 04: Kesiswaan & Presensi', () => {
     // Check copy button
     await expect(page.getByRole('button', { name: /Salin Teks WhatsApp/i })).toBeVisible();
 
-    const closeBtn = page.getByRole('button', { name: /Tutup/i });
+    const closeBtn = page.getByRole('button', { name: 'Tutup', exact: true });
     await closeBtn.click();
     await expect(page.getByRole('heading', { name: /Generator Pesan WhatsApp/i })).toBeHidden();
   });

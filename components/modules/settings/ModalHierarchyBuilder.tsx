@@ -212,13 +212,12 @@ export default function ModalHierarchyBuilder({
     const fetchSettings = async () => {
       setLoading(true);
       try {
-        const loadedRules = await loadHierarchyRules();
+        const [loadedRules, loadedTree2] = await Promise.all([
+          loadHierarchyRules(),
+          loadTree2Rules(),
+        ]);
         if (isMounted) {
           setRules(loadedRules.length > 0 ? loadedRules : DEFAULT_HIERARCHY_RULES);
-        }
-
-        const loadedTree2 = await loadTree2Rules();
-        if (isMounted) {
           const list = loadedTree2 && loadedTree2.length > 0 ? loadedTree2 : DEFAULT_TREE2_RULES;
           const normalized = list.map((r, idx) => ({
             ...r,
@@ -726,9 +725,10 @@ export default function ModalHierarchyBuilder({
                   <button
                     type="button"
                     onClick={handleAddRule}
+                    disabled={loading}
                     title="Tambah Aturan Baru"
                     aria-label="Tambah Aturan Baru"
-                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-sm hover:bg-emerald-800 transition"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-sm hover:bg-emerald-800 disabled:opacity-40 transition"
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -1124,9 +1124,10 @@ export default function ModalHierarchyBuilder({
                       <button
                         type="button"
                         onClick={() => handleAddTree2Rule()}
+                        disabled={loading}
                         title="Tambah Aturan Kelas Formal Baru"
                         aria-label="Tambah Aturan Kelas Formal Baru"
-                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-700 text-white shadow-sm hover:bg-blue-800 transition"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-700 text-white shadow-sm hover:bg-blue-800 disabled:opacity-40 transition"
                       >
                         <Plus className="h-4 w-4" />
                       </button>
@@ -1223,9 +1224,10 @@ export default function ModalHierarchyBuilder({
                                 <button
                                   type="button"
                                   onClick={() => handleAddTree2Rule(group.name)}
+                                  disabled={loading}
                                   title={`Tambah Jurusan Baru di ${group.name}`}
                                   aria-label={`Tambah Jurusan Baru di ${group.name}`}
-                                  className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-900"
+                                  className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-40 transition dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-900"
                                 >
                                   <Plus className="h-3 w-3" />
                                   <span>Jurusan</span>

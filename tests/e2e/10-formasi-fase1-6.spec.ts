@@ -13,7 +13,7 @@ test.describe('Formasi Kelas Phase 1-6 Full Verification', () => {
     await expect(page.getByRole('button', { name: /Generator/i })).toBeVisible();
 
     // Controls DataTables
-    await expect(page.getByRole('button', { name: /Hapus/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Hapus', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /Sembunyikan/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Filter/i })).toBeVisible();
     await expect(page.getByPlaceholder(/Ketik pencarian/i)).toBeVisible();
@@ -108,6 +108,6 @@ test.describe('Formasi Kelas Phase 1-6 Full Verification', () => {
     await expect(page.getByPlaceholder(/Cari nama \/ NIS \/ kamar/i)).toBeVisible();
 
     // Tutup modal
-    await page.getByRole('button', { name: /Tutup/i }).click();
+    await page.getByRole('button', { name: 'Tutup', exact: true }).click();
   });
 });

@@ -99,9 +99,11 @@ test.describe('Modul 07: Pengaturan Hierarki Dropdown Blok > Asrama > Kode > Kam
     await expect(dialog).toBeVisible();
 
     // Ensure data is fully loaded before adding rule
+    await expect(dialog.getByText('Memuat...')).toBeHidden();
     await expect(dialog.getByText(/63 aturan/i)).toBeVisible();
 
     const addRuleBtn = dialog.getByRole('button', { name: 'Tambah Aturan Baru', exact: true });
+    await expect(addRuleBtn).toBeEnabled();
     await addRuleBtn.click();
 
     // Newly added rule opens edit view
@@ -247,11 +249,12 @@ test.describe('Modul 07: Pengaturan Hierarki Dropdown Blok > Asrama > Kode > Kam
 
     // Switch to Tree 2 and wait for data load
     await dialog.getByRole('button', { name: /Hierarki Kelas Formal/i }).click();
+    await expect(dialog.getByText('Memuat...')).toBeHidden();
     await expect(dialog.getByText(/\d+ aturan/i)).toBeVisible();
     await dialog.getByRole('button', { name: /Buka Semua/i }).click();
 
     // Click card Tahfidz to open editor
-    const tahfidzCard = dialog.getByText(/Jurusan: Tahfidz/i);
+    const tahfidzCard = dialog.getByText(/Jurusan: Tahfidz/i).first();
     await tahfidzCard.click();
 
     // Verify live preview is visible
@@ -276,10 +279,12 @@ test.describe('Modul 07: Pengaturan Hierarki Dropdown Blok > Asrama > Kode > Kam
 
     // Switch to Tree 2 and wait for data load
     await dialog.getByRole('button', { name: /Hierarki Kelas Formal/i }).click();
+    await expect(dialog.getByText('Memuat...')).toBeHidden();
     await expect(dialog.getByText(/\d+ aturan/i)).toBeVisible();
 
     // Click + Jurusan on SMP Plus Darussalam
     const addJurusanBtn = dialog.getByRole('button', { name: /Tambah Jurusan Baru di SMP Plus Darussalam/i });
+    await expect(addJurusanBtn).toBeEnabled();
     await addJurusanBtn.click();
 
     // Verify draft Jurusan Baru was added

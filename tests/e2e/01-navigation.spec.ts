@@ -49,14 +49,14 @@ test.describe('Navigation & System Shell', () => {
     await hierarkiBtn.click();
 
     // Modal should appear
-    await expect(page.getByText(/Pengaturan Hierarki Kamar & Kelas Formal/i)).toBeVisible();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: /Pengaturan Hierarki Dropdown/i })).toBeVisible();
 
     // Close button
-    const closeBtn = page.getByRole('button', { name: /Batal/i }).or(page.locator('button:has-text("✕")')).first();
-    if (await closeBtn.isVisible()) {
-      await closeBtn.click();
-      await expect(page.getByText(/Pengaturan Hierarki Kamar & Kelas Formal/i)).toBeHidden();
-    }
+    const closeBtn = dialog.getByRole('button', { name: /Tutup pengaturan hierarki|Batal/i }).or(dialog.locator('button:has-text("✕")')).first();
+    await closeBtn.click();
+    await expect(dialog).toBeHidden();
   });
 
   test('navbar audit logs modal opens and closes cleanly', async ({ page }) => {
