@@ -5,6 +5,7 @@ import { useAbsensiStore } from '@/stores/useAbsensiStore';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
+import { calculateFieldDelta } from '@/lib/utils/deltaHelper';
 
 // In-memory mock databases
 let mockSantriDb: any[] = [];
@@ -17,8 +18,18 @@ vi.mock('@/lib/supabase/client', () => ({
     from: (table: string) => {
       if (table === 'santri') {
         return {
-          select: () => ({
+          select: (_cols?: string) => ({
             order: async () => ({ data: [...mockSantriDb], error: null }),
+            eq: (_col: string, val: any) => ({
+              maybeSingle: async () => {
+                const row = mockSantriDb.find((s) => s.no_induk === val);
+                return { data: row || null, error: null };
+              },
+            }),
+            in: async (_col: string, vals: any[]) => ({
+              data: mockSantriDb.filter((s) => vals.includes(s.no_induk)),
+              error: null,
+            }),
           }),
           insert: async (rows: any[]) => {
             mockSantriDb.push(...rows);
@@ -46,8 +57,18 @@ vi.mock('@/lib/supabase/client', () => ({
 
       if (table === 'asatidz') {
         return {
-          select: () => ({
+          select: (_cols?: string) => ({
             order: async () => ({ data: [...mockAsatidzDb], error: null }),
+            eq: (_col: string, val: any) => ({
+              maybeSingle: async () => {
+                const row = mockAsatidzDb.find((a) => a.nia === val);
+                return { data: row || null, error: null };
+              },
+            }),
+            in: async (_col: string, vals: any[]) => ({
+              data: mockAsatidzDb.filter((a) => vals.includes(a.nia)),
+              error: null,
+            }),
           }),
           insert: async (rows: any[]) => {
             mockAsatidzDb.push(...rows);
@@ -85,13 +106,14 @@ vi.mock('@/lib/supabase/client', () => ({
           }
           return { error: null };
         },
-        select: () => ({
+        select: (_cols?: string) => ({
           in: async () => ({
             data: Object.entries(mockAppSettingsDb).map(([key, value]) => ({ key, value })),
             error: null,
           }),
-          eq: () => ({
-            single: async () => ({ data: null, error: null }),
+          eq: (_col: string, val: any) => ({
+            single: async () => ({ data: mockAppSettingsDb[val] ? { value: mockAppSettingsDb[val] } : null, error: null }),
+            maybeSingle: async () => ({ data: mockAppSettingsDb[val] ? { value: mockAppSettingsDb[val] } : null, error: null }),
           }),
         }),
       };
@@ -503,5 +525,161 @@ describe('Integrasi Modul 4: Setoran Muhafadzoh Undo/Redo', () => {
     // Redo -> config kembali ke newConfig
     await useUndoRedoStore.getState().redo();
     expect(useMuhafadzohStore.getState().config.penjagaBebas).toContain('Ust. Zaid');
+  });
+});
+
+describe('Delta Helper Engine: calculateFieldDelta', () => {
+  it('harus mendeteksi perbedaan kolom dengan benar dan membuat prevDelta & nextDelta', () => {
+    const prev = { id: 1, nama: 'Ahmad', status: 'Aktif', alamat: 'Banyuwangi' };
+    const next = { id: 1, nama: 'Ahmad Fauzi', status: 'Aktif', alamat: 'Genteng' };
+
+    const { prevDelta, nextDelta, changedKeys, hasChanges } = calculateFieldDelta(prev, next);
+
+    expect(hasChanges).toBe(true);
+    expect(changedKeys).toEqual(['nama', 'alamat']);
+    expect(prevDelta).toEqual({ nama: 'Ahmad', alamat: 'Banyuwangi' });
+    expect(nextDelta).toEqual({ nama: 'Ahmad Fauzi', alamat: 'Genteng' });
+  });
+
+  it('harus mengabaikan kolom metadata (id, created_at, updated_at)', () => {
+    const prev = { id: 'uuid-1', created_at: '2026-01-01', updated_at: '2026-01-01', status: 'Aktif' };
+    const next = { id: 'uuid-1', created_at: '2026-01-01', updated_at: '2026-01-02', status: 'Aktif' };
+
+    const { hasChanges, changedKeys } = calculateFieldDelta(prev, next);
+    expect(hasChanges).toBe(false);
+    expect(changedKeys.length).toBe(0);
+  });
+
+  it('mengembalikan hasChanges false jika kedua objek sama', () => {
+    const objA = { nama: 'Zaid', nia: 'A001' };
+    const objB = { nama: 'Zaid', nia: 'A001' };
+
+    const { hasChanges } = calculateFieldDelta(objA, objB);
+    expect(hasChanges).toBe(false);
+  });
+});
+
+describe('Konkurensi & Multi-User Safety (Fase 1: Delta Inversion & Granular Scope)', () => {
+  beforeEach(() => {
+    useUndoRedoStore.getState().clearHistory();
+    mockSantriDb = [];
+    mockAsatidzDb = [];
+    mockAppSettingsDb = {};
+    useSantriStore.setState({ santriList: [] });
+    useAsatidzStore.setState({ asatidzList: [] });
+    useAbsensiStore.setState({ rawBucketMap: {}, liburMapByDate: {} });
+    useMuhafadzohStore.setState({ setoranList: [] });
+  });
+
+  it('Data Santri: Undo hanya membatalkan field yang diedit (Delta Diff) tanpa merusak field yang diubah user lain', async () => {
+    const santriStore = useSantriStore.getState();
+
+    // Data awal
+    const awal: any = {
+      no_induk: 'S101',
+      nama: 'Ahmad',
+      status: 'Aktif',
+      alamat: 'Banyuwangi',
+    };
+    mockSantriDb = [{ ...awal }];
+    useSantriStore.setState({ santriList: [{ ...awal }] });
+
+    // 1. User A mengedit status: Aktif -> Boyong
+    const editUserA = { ...awal, status: 'Boyong' };
+    await santriStore.saveSantri(editUserA, true, 'S101');
+    expect(mockSantriDb[0].status).toBe('Boyong');
+
+    // 2. Simulasi User B (concurrent user) mengubah alamat santri di database: Banyuwangi -> Genteng
+    mockSantriDb[0].alamat = 'Genteng';
+
+    // 3. User A melakukan Undo pada aksinya
+    await useUndoRedoStore.getState().undo();
+
+    // Status kembali ke 'Aktif' (Undo aksi User A)
+    expect(mockSantriDb[0].status).toBe('Aktif');
+    // Alamat 'Genteng' milik User B TETAP UTUH (tidak tertimpa kembali ke 'Banyuwangi')!
+    expect(mockSantriDb[0].alamat).toBe('Genteng');
+  });
+
+  it('Absensi Asatidz: restoreAbsensiBucket hanya memodifikasi jam terkait tanpa menimpa jam lain dari user lain', async () => {
+    const absensiStore = useAbsensiStore.getState();
+
+    // Simulasi data awal: Jam 2 sudah diabsen oleh User B
+    const bucketJam2: any = {
+      tanggal: '2026-10-27',
+      hari: 'Selasa',
+      jamKe: 'Jam 2',
+      waktuUpdate: '10:00',
+      diinputOleh: 'User B',
+      data: [['ABS-B1', '2026-10-27', 'Selasa', 'Jam 2', 'Ust. Umar', 'A02', 'Ula', '1', 'A', 'Blok A', 'PA', '1 A', 'Nahwu', 'R1', 'Hadir', '', '', '', 'User B', '10:00']],
+    };
+    useAbsensiStore.setState({
+      rawBucketMap: {
+        '2026-10-27|Jam 2': bucketJam2,
+      },
+    });
+
+    // User A mengabsen Jam 1
+    const bucketJam1: any = {
+      tanggal: '2026-10-27',
+      hari: 'Selasa',
+      jamKe: 'Jam 1',
+      waktuUpdate: '10:15',
+      diinputOleh: 'User A',
+      data: [['ABS-A1', '2026-10-27', 'Selasa', 'Jam 1', 'Ust. Zaid', 'A01', 'Ula', '1', 'A', 'Blok A', 'PA', '1 A', 'Fiqih', 'R1', 'Hadir', '', '', '', 'User A', '10:15']],
+    };
+    await absensiStore.restoreAbsensiBucket('2026-10-27|Jam 1', bucketJam1, 'Simpan Jam 1');
+
+    // Kedua bucket ada
+    expect(useAbsensiStore.getState().rawBucketMap['2026-10-27|Jam 1']).toBeDefined();
+    expect(useAbsensiStore.getState().rawBucketMap['2026-10-27|Jam 2']).toBeDefined();
+
+    // User A meng-undo pengabsenan Jam 1 (bucket Jam 1 dihapus kembali ke null)
+    await absensiStore.restoreAbsensiBucket('2026-10-27|Jam 1', null, 'Undo Jam 1');
+
+    // Bucket Jam 1 terhapus, tetapi Bucket Jam 2 milik User B tetap aman 100%!
+    expect(useAbsensiStore.getState().rawBucketMap['2026-10-27|Jam 1']).toBeUndefined();
+    expect(useAbsensiStore.getState().rawBucketMap['2026-10-27|Jam 2']).toBeDefined();
+    expect(useAbsensiStore.getState().rawBucketMap['2026-10-27|Jam 2'].diinputOleh).toBe('User B');
+  });
+
+  it('Muhafadzoh: Granular Undo addSetoran hanya menghapus setoran sendiri tanpa merusak setoran yang ditambah user lain', async () => {
+    const muhafadzohStore = useMuhafadzohStore.getState();
+
+    // User A menambah setoran
+    const setoranA: any = {
+      id: 'SET-A',
+      no_induk: 'S101',
+      nama: 'Santri A',
+      tanggal: '2026-10-27',
+      item_hafalan: 'Juz 1',
+      kategori: 'Wajib',
+      penjaga: 'Ust. Zaid',
+    };
+    await muhafadzohStore.addSetoran(setoranA);
+    expect(useMuhafadzohStore.getState().setoranList.length).toBe(1);
+
+    // Simulasi User B (concurrent) menambahkan setoran di waktu bersamaan
+    const setoranB: any = {
+      id: 'SET-B',
+      no_induk: 'S102',
+      nama: 'Santri B',
+      tanggal: '2026-10-27',
+      item_hafalan: 'Juz 2',
+      kategori: 'Wajib',
+      penjaga: 'Ust. Umar',
+    };
+    useMuhafadzohStore.setState((state) => ({
+      setoranList: [setoranB, ...state.setoranList],
+    }));
+    expect(useMuhafadzohStore.getState().setoranList.length).toBe(2);
+
+    // User A melakukan Undo
+    await useUndoRedoStore.getState().undo();
+
+    // Setoran A terhapus, namun Setoran B milik User B tetap aman!
+    const remainingList = useMuhafadzohStore.getState().setoranList;
+    expect(remainingList.length).toBe(1);
+    expect(remainingList[0].nama).toBe('Santri B');
   });
 });

@@ -342,9 +342,31 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
     } catch {}
 
     try {
+      // Ambil data server terbaru bila tersedia untuk menjaga agar guru lain yang diedit concurrent user tidak tertimpa
+      let finalMapToSave = currentMap;
+      try {
+        const { data: dbData } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', KEY_DB_JADWAL_ASATIDZ)
+          .maybeSingle();
+        if (dbData?.value) {
+          const parsed = typeof dbData.value === 'string' ? JSON.parse(dbData.value) : dbData.value;
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            finalMapToSave = { ...parsed };
+            Object.keys(mapPerubahan).forEach((k) => {
+              const keyUpper = String(k || '').trim().toUpperCase();
+              if (keyUpper && nextTeachers[keyUpper]) {
+                finalMapToSave[keyUpper] = nextTeachers[keyUpper];
+              }
+            });
+          }
+        }
+      } catch {}
+
       const { error } = await supabase
         .from('app_settings')
-        .upsert([{ key: KEY_DB_JADWAL_ASATIDZ, value: currentMap }], { onConflict: 'key' });
+        .upsert([{ key: KEY_DB_JADWAL_ASATIDZ, value: finalMapToSave }], { onConflict: 'key' });
       if (error) throw error;
 
       if (logDesc) {

@@ -249,10 +249,17 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
           module: 'muhafadzoh',
           title: `Tambah Setoran: ${newEntry.nama} (${newEntry.item_hafalan})`,
           undo: async () => {
-            await get().restoreSetoranList(prevList, `Undo: Hapus setoran ${newEntry.nama}`);
+            return await get().deleteSetoran(
+              {
+                noInduk: newEntry.no_induk,
+                tglSetor: newEntry.tanggal,
+                hafalan: newEntry.item_hafalan,
+              },
+              true
+            );
           },
           redo: async () => {
-            await get().restoreSetoranList(updatedList, `Redo: Tambah setoran ${newEntry.nama}`);
+            return await get().addSetoran(newEntry, true);
           },
         });
       }
@@ -304,14 +311,26 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
       );
 
       if (!skipHistory) {
+        const prevItem = idx !== -1 ? prevList[idx] : null;
         useUndoRedoStore.getState().recordAction({
           module: 'muhafadzoh',
           title: `Update Setoran: ${entry.nama} (${entry.item_hafalan})`,
           undo: async () => {
-            await get().restoreSetoranList(prevList, `Undo: Kembalikan update setoran ${entry.nama}`);
+            if (prevItem) {
+              return await get().updateSetoran(
+                prevItem,
+                {
+                  noInduk: entry.no_induk,
+                  tglSetor: entry.tanggal,
+                  hafalan: entry.item_hafalan,
+                },
+                true
+              );
+            }
+            return false;
           },
           redo: async () => {
-            await get().restoreSetoranList(updatedList, `Redo: Update setoran ${entry.nama}`);
+            return await get().updateSetoran(entry, oldKey, true);
           },
         });
       }
@@ -369,16 +388,16 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
 
       await logActivity('HAPUS SETORAN', `Menghapus rekaman setoran`);
 
-      if (!skipHistory) {
-        const itemLabel = targetItem ? `${targetItem.nama} (${targetItem.item_hafalan})` : 'Setoran';
+      if (!skipHistory && targetItem) {
+        const itemLabel = `${targetItem.nama} (${targetItem.item_hafalan})`;
         useUndoRedoStore.getState().recordAction({
           module: 'muhafadzoh',
           title: `Hapus Setoran: ${itemLabel}`,
           undo: async () => {
-            await get().restoreSetoranList(prevList, `Undo: Kembalikan hapus setoran ${itemLabel}`);
+            return await get().addSetoran(targetItem, true);
           },
           redo: async () => {
-            await get().restoreSetoranList(updatedList, `Redo: Hapus setoran ${itemLabel}`);
+            return await get().deleteSetoran(idOrKey, true);
           },
         });
       }

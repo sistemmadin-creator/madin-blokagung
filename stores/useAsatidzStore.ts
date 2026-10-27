@@ -4,6 +4,7 @@ import { Asatidz } from '@/types/asatidz';
 import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
 import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
+import { calculateFieldDelta } from '@/lib/utils/deltaHelper';
 
 interface AsatidzState {
   asatidzList: Asatidz[];
@@ -250,18 +251,49 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
         if (!skipHistory && prevAsatidz) {
           const prevPayload = { ...prevAsatidz };
           delete prevPayload.id;
-          useUndoRedoStore.getState().recordAction({
-            module: 'asatidz',
-            title: `Edit Asatidz: ${data.nama_asatidz}`,
-            undo: async () => {
-              await supabase.from('asatidz').update(prevPayload).eq('nia', data.nia);
-              await get().fetchAsatidz();
-            },
-            redo: async () => {
-              await supabase.from('asatidz').update(payload).eq('nia', prevAsatidz.nia);
-              await get().fetchAsatidz();
-            },
-          });
+          const { prevDelta, nextDelta, hasChanges } = calculateFieldDelta(prevPayload, payload);
+
+          if (hasChanges) {
+            useUndoRedoStore.getState().recordAction({
+              module: 'asatidz',
+              title: `Edit Asatidz: ${data.nama_asatidz}`,
+              undo: async () => {
+                const { data: existRow } = await supabase
+                  .from('asatidz')
+                  .select('nia')
+                  .eq('nia', data.nia)
+                  .maybeSingle();
+
+                if (!existRow) {
+                  console.warn(`[UNDO ASATIDZ] Gagal: Asatidz ${data.nia} tidak ditemukan.`);
+                  await get().fetchAsatidz();
+                  return false;
+                }
+
+                await supabase.from('asatidz').update(prevDelta).eq('nia', data.nia);
+                await get().fetchAsatidz();
+                return true;
+              },
+              redo: async () => {
+                const targetKey = (prevDelta.nia as string) || data.nia;
+                const { data: existRow } = await supabase
+                  .from('asatidz')
+                  .select('nia')
+                  .eq('nia', targetKey)
+                  .maybeSingle();
+
+                if (!existRow) {
+                  console.warn(`[REDO ASATIDZ] Gagal: Asatidz ${targetKey} tidak ditemukan.`);
+                  await get().fetchAsatidz();
+                  return false;
+                }
+
+                await supabase.from('asatidz').update(nextDelta).eq('nia', targetKey);
+                await get().fetchAsatidz();
+                return true;
+              },
+            });
+          }
         }
       } else {
         const { error } = await supabase
@@ -277,10 +309,20 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
             undo: async () => {
               await supabase.from('asatidz').delete().eq('nia', data.nia);
               await get().fetchAsatidz();
+              return true;
             },
             redo: async () => {
-              await supabase.from('asatidz').insert([payload]);
+              const { data: existRow } = await supabase
+                .from('asatidz')
+                .select('nia')
+                .eq('nia', data.nia)
+                .maybeSingle();
+
+              if (!existRow) {
+                await supabase.from('asatidz').insert([payload]);
+              }
               await get().fetchAsatidz();
+              return true;
             },
           });
         }
@@ -311,12 +353,22 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
           module: 'asatidz',
           title: `Hapus Asatidz: ${targetAsatidz.nama_asatidz || nia}`,
           undo: async () => {
-            await supabase.from('asatidz').insert([restorePayload]);
+            const { data: existRow } = await supabase
+              .from('asatidz')
+              .select('nia')
+              .eq('nia', nia)
+              .maybeSingle();
+
+            if (!existRow) {
+              await supabase.from('asatidz').insert([restorePayload]);
+            }
             await get().fetchAsatidz();
+            return true;
           },
           redo: async () => {
             await supabase.from('asatidz').delete().eq('nia', nia);
             await get().fetchAsatidz();
+            return true;
           },
         });
       }
@@ -356,12 +408,22 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
           module: 'asatidz',
           title: `Hapus ${deletedList.length} Asatidz Terpilih`,
           undo: async () => {
-            await supabase.from('asatidz').insert(restoreList);
+            const { data: existingRows } = await supabase
+              .from('asatidz')
+              .select('nia')
+              .in('nia', selected);
+            const existingKeys = new Set((existingRows || []).map((r) => r.nia));
+            const toInsert = restoreList.filter((a) => !existingKeys.has(a.nia));
+            if (toInsert.length > 0) {
+              await supabase.from('asatidz').insert(toInsert);
+            }
             await get().fetchAsatidz();
+            return true;
           },
           redo: async () => {
             await supabase.from('asatidz').delete().in('nia', selected);
             await get().fetchAsatidz();
+            return true;
           },
         });
       }

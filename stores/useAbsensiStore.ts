@@ -301,6 +301,11 @@ interface AbsensiState {
     targetRawMap: Record<string, BucketAbsensiCompact>,
     logDesc?: string
   ) => Promise<boolean>;
+  restoreAbsensiBucket: (
+    bucketKey: string,
+    bucketData: BucketAbsensiCompact | null,
+    logDesc?: string
+  ) => Promise<boolean>;
   restoreLiburMap: (
     targetLiburMap: Record<string, HariLiburInfo>,
     logDesc?: string
@@ -739,18 +744,21 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       );
 
       if (!skipHistory) {
+        const prevBucket = prevRawMap[bucketKey] ? JSON.parse(JSON.stringify(prevRawMap[bucketKey])) : null;
         useUndoRedoStore.getState().recordAction({
           module: 'absensi',
           title: `Simpan Absensi ${selectedDate} (${jamKe})`,
           undo: async () => {
-            return await get().restoreAbsensiRawMap(
-              prevRawMap,
+            return await get().restoreAbsensiBucket(
+              bucketKey,
+              prevBucket,
               `[UNDO] Simpan Absensi ${selectedDate} (${jamKe})`
             );
           },
           redo: async () => {
-            return await get().restoreAbsensiRawMap(
-              nextRawMap,
+            return await get().restoreAbsensiBucket(
+              bucketKey,
+              newBucket,
               `[REDO] Simpan Absensi ${selectedDate} (${jamKe})`
             );
           },
@@ -1110,14 +1118,15 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       );
 
       if (!skipHistory) {
+        const prevLiburInfo = prevLibur[date] ? JSON.parse(JSON.stringify(prevLibur[date])) : null;
         useUndoRedoStore.getState().recordAction({
           module: 'absensi',
           title: info ? `Set Libur: ${date} (${info.kategori})` : `Hapus Libur: ${date}`,
           undo: async () => {
-            return await get().restoreLiburMap(prevLibur, `[UNDO] Libur ${date}`);
+            return await get().setHariLibur(date, prevLiburInfo, actorName, true);
           },
           redo: async () => {
-            return await get().restoreLiburMap(current, `[REDO] Libur ${date}`);
+            return await get().setHariLibur(date, info, actorName, true);
           },
         });
       }
@@ -1168,6 +1177,55 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       return true;
     } catch (err: any) {
       console.error('Restore absensi error:', err.message);
+      return false;
+    }
+  },
+
+  restoreAbsensiBucket: async (bucketKey: string, bucketData: BucketAbsensiCompact | null, logDesc = '') => {
+    const { selectedDate, sesiHariIni, forceUnlockedJams, rawBucketMap } = get();
+    try {
+      const nextRawMap = { ...rawBucketMap };
+      if (bucketData) {
+        nextRawMap[bucketKey] = bucketData;
+      } else {
+        delete nextRawMap[bucketKey];
+      }
+
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({ key: KEY_DB_ABSENSI, value: nextRawMap }, { onConflict: 'key' });
+      if (error) throw error;
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(LS_CACHE_ABSENSI, JSON.stringify(nextRawMap));
+        } catch {}
+      }
+
+      const nextSavedRecords = buildSavedRecordsForDate(selectedDate, nextRawMap);
+      const nextAbsensiMapByDate = buildLegacyAbsensiMapByDate(nextRawMap);
+      const { savedJams, unlockedJams } = computeJamLocks(
+        selectedDate,
+        sesiHariIni,
+        nextSavedRecords,
+        forceUnlockedJams
+      );
+
+      if (logDesc) {
+        await logActivity('UNDO/REDO ABSENSI ASATIDZ', logDesc);
+      }
+
+      set({
+        rawBucketMap: nextRawMap,
+        absensiMapByDate: nextAbsensiMapByDate,
+        savedRecords: nextSavedRecords,
+        savedJams,
+        unlockedJams,
+      });
+
+      return true;
+    } catch (err: any) {
+      console.error('Restore absensi bucket error:', err.message);
       return false;
     }
   },

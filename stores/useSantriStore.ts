@@ -3,6 +3,7 @@ import { Santri } from '@/types/santri';
 import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
 import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
+import { calculateFieldDelta } from '@/lib/utils/deltaHelper';
 
 interface SantriState {
   santriList: Santri[];
@@ -191,18 +192,48 @@ export const useSantriStore = create<SantriState>((set, get) => ({
         await logActivity('EDIT DATA SANTRI', `Memperbarui santri No. Induk: ${data.no_induk} (${data.nama})`);
 
         if (!skipHistory && prevSantri) {
-          useUndoRedoStore.getState().recordAction({
-            module: 'santri',
-            title: `Edit Santri: ${data.nama}`,
-            undo: async () => {
-              await supabase.from('santri').update(prevSantri).eq('no_induk', data.no_induk);
-              await get().fetchSantri();
-            },
-            redo: async () => {
-              await supabase.from('santri').update(data).eq('no_induk', prevSantri.no_induk);
-              await get().fetchSantri();
-            },
-          });
+          const { prevDelta, nextDelta, hasChanges } = calculateFieldDelta(prevSantri, data);
+          if (hasChanges) {
+            useUndoRedoStore.getState().recordAction({
+              module: 'santri',
+              title: `Edit Santri: ${data.nama}`,
+              undo: async () => {
+                const { data: existRow } = await supabase
+                  .from('santri')
+                  .select('no_induk')
+                  .eq('no_induk', data.no_induk)
+                  .maybeSingle();
+
+                if (!existRow) {
+                  console.warn(`[UNDO SANTRI] Gagal: Santri ${data.no_induk} tidak ditemukan.`);
+                  await get().fetchSantri();
+                  return false;
+                }
+
+                await supabase.from('santri').update(prevDelta).eq('no_induk', data.no_induk);
+                await get().fetchSantri();
+                return true;
+              },
+              redo: async () => {
+                const targetKey = (prevDelta.no_induk as string) || data.no_induk;
+                const { data: existRow } = await supabase
+                  .from('santri')
+                  .select('no_induk')
+                  .eq('no_induk', targetKey)
+                  .maybeSingle();
+
+                if (!existRow) {
+                  console.warn(`[REDO SANTRI] Gagal: Santri ${targetKey} tidak ditemukan.`);
+                  await get().fetchSantri();
+                  return false;
+                }
+
+                await supabase.from('santri').update(nextDelta).eq('no_induk', targetKey);
+                await get().fetchSantri();
+                return true;
+              },
+            });
+          }
         }
       } else {
         const { error } = await supabase
@@ -218,10 +249,20 @@ export const useSantriStore = create<SantriState>((set, get) => ({
             undo: async () => {
               await supabase.from('santri').delete().eq('no_induk', data.no_induk);
               await get().fetchSantri();
+              return true;
             },
             redo: async () => {
-              await supabase.from('santri').insert([data]);
+              const { data: existRow } = await supabase
+                .from('santri')
+                .select('no_induk')
+                .eq('no_induk', data.no_induk)
+                .maybeSingle();
+
+              if (!existRow) {
+                await supabase.from('santri').insert([data]);
+              }
               await get().fetchSantri();
+              return true;
             },
           });
         }
@@ -251,12 +292,22 @@ export const useSantriStore = create<SantriState>((set, get) => ({
           module: 'santri',
           title: `Hapus Santri: ${targetSantri.nama || no_induk}`,
           undo: async () => {
-            await supabase.from('santri').insert([targetSantri]);
+            const { data: existRow } = await supabase
+              .from('santri')
+              .select('no_induk')
+              .eq('no_induk', no_induk)
+              .maybeSingle();
+
+            if (!existRow) {
+              await supabase.from('santri').insert([targetSantri]);
+            }
             await get().fetchSantri();
+            return true;
           },
           redo: async () => {
             await supabase.from('santri').delete().eq('no_induk', no_induk);
             await get().fetchSantri();
+            return true;
           },
         });
       }
@@ -287,12 +338,22 @@ export const useSantriStore = create<SantriState>((set, get) => ({
           module: 'santri',
           title: `Hapus ${deletedList.length} Santri Terpilih`,
           undo: async () => {
-            await supabase.from('santri').insert(deletedList);
+            const { data: existingRows } = await supabase
+              .from('santri')
+              .select('no_induk')
+              .in('no_induk', selected);
+            const existingKeys = new Set((existingRows || []).map((r) => r.no_induk));
+            const toInsert = deletedList.filter((s) => !existingKeys.has(s.no_induk));
+            if (toInsert.length > 0) {
+              await supabase.from('santri').insert(toInsert);
+            }
             await get().fetchSantri();
+            return true;
           },
           redo: async () => {
             await supabase.from('santri').delete().in('no_induk', selected);
             await get().fetchSantri();
+            return true;
           },
         });
       }
