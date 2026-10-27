@@ -3,6 +3,7 @@ import { SetoranHafalan, HafalanConfig, RiwayatSetoranRawRow } from '@/types/set
 import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
 import { DEFAULT_HAFALAN_WAJIB, convertRawToSetoran, convertSetoranToRaw } from '@/lib/utils/setoranHelper';
+import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 
 export const KEY_DB_RIWAYAT_MUHAFADZOH = 'RIWAYAT_MUHAFADZOH_DATA';
 export const KEY_DB_HAFALAN_CONFIG = 'MUHAFADZOH_HAFALAN_CONFIG';
@@ -30,14 +31,19 @@ interface MuhafadzohState {
   editOldKey: { noInduk: string; tglSetor: string; hafalan: string } | null;
 
   fetchSetoranData: () => Promise<void>;
-  addSetoran: (entry: SetoranHafalan) => Promise<boolean>;
+  addSetoran: (entry: SetoranHafalan, skipHistory?: boolean) => Promise<boolean>;
   updateSetoran: (
     entry: SetoranHafalan,
-    oldKey: { noInduk: string; tglSetor: string; hafalan: string }
+    oldKey: { noInduk: string; tglSetor: string; hafalan: string },
+    skipHistory?: boolean
   ) => Promise<boolean>;
-  deleteSetoran: (idOrKey: string | { noInduk: string; tglSetor: string; hafalan: string }) => Promise<boolean>;
-  bulkDeleteSetoran: (noIndukList: string[]) => Promise<boolean>;
-  saveConfig: (cfg: HafalanConfig) => Promise<boolean>;
+  deleteSetoran: (
+    idOrKey: string | { noInduk: string; tglSetor: string; hafalan: string },
+    skipHistory?: boolean
+  ) => Promise<boolean>;
+  bulkDeleteSetoran: (noIndukList: string[], skipHistory?: boolean) => Promise<boolean>;
+  restoreSetoranList: (targetList: SetoranHafalan[], logDesc?: string) => Promise<boolean>;
+  saveConfig: (cfg: HafalanConfig, skipHistory?: boolean) => Promise<boolean>;
 
   openSettings: () => void;
   closeSettings: () => void;
@@ -183,10 +189,38 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
     });
   },
 
-  addSetoran: async (newEntry) => {
+  restoreSetoranList: async (targetList: SetoranHafalan[], logDesc?: string) => {
     try {
-      const currentList = get().setoranList;
-      const updatedList = [newEntry, ...currentList];
+      set({ setoranList: targetList });
+      const rawPayload = targetList.map(convertSetoranToRaw);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LS_RIWAYAT_MUHAFADZOH, JSON.stringify(rawPayload));
+      }
+
+      await supabase
+        .from('app_settings')
+        .upsert(
+          [
+            { key: KEY_DB_RIWAYAT_MUHAFADZOH, value: rawPayload },
+            { key: KEY_DB_MUHAFADZOH_LEGACY, value: targetList },
+          ],
+          { onConflict: 'key' }
+        );
+
+      if (logDesc) {
+        await logActivity('UNDO/REDO MUHAFADZOH', logDesc);
+      }
+      return true;
+    } catch (err: any) {
+      console.error('Gagal memulihkan setoran muhafadzoh:', err);
+      return false;
+    }
+  },
+
+  addSetoran: async (newEntry, skipHistory = false) => {
+    try {
+      const prevList = [...get().setoranList];
+      const updatedList = [newEntry, ...prevList];
       set({ setoranList: updatedList });
 
       // Simpan ke localStorage & Supabase
@@ -209,6 +243,20 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
         'INPUT SETORAN MUHAFADZOH',
         `Mencatat setoran [${newEntry.item_hafalan}] santri: ${newEntry.nama} (Penjaga: ${newEntry.penjaga})`
       );
+
+      if (!skipHistory) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'muhafadzoh',
+          title: `Tambah Setoran: ${newEntry.nama} (${newEntry.item_hafalan})`,
+          undo: async () => {
+            await get().restoreSetoranList(prevList, `Undo: Hapus setoran ${newEntry.nama}`);
+          },
+          redo: async () => {
+            await get().restoreSetoranList(updatedList, `Redo: Tambah setoran ${newEntry.nama}`);
+          },
+        });
+      }
+
       return true;
     } catch (err: any) {
       console.error('Gagal menyimpan setoran:', err);
@@ -217,17 +265,17 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
     }
   },
 
-  updateSetoran: async (entry, oldKey) => {
+  updateSetoran: async (entry, oldKey, skipHistory = false) => {
     try {
-      const currentList = get().setoranList;
-      const idx = currentList.findIndex(
+      const prevList = [...get().setoranList];
+      const idx = prevList.findIndex(
         (r) =>
           String(r.no_induk).trim() === String(oldKey.noInduk).trim() &&
           String(r.tanggal).trim() === String(oldKey.tglSetor).trim() &&
           String(r.item_hafalan).trim() === String(oldKey.hafalan).trim()
       );
 
-      let updatedList = [...currentList];
+      let updatedList = [...prevList];
       if (idx !== -1) {
         updatedList[idx] = entry;
       } else {
@@ -254,6 +302,20 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
         'UPDATE SETORAN',
         `Mengubah setoran santri: ${entry.nama} dari [${oldKey.hafalan}] ke [${entry.item_hafalan}]`
       );
+
+      if (!skipHistory) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'muhafadzoh',
+          title: `Update Setoran: ${entry.nama} (${entry.item_hafalan})`,
+          undo: async () => {
+            await get().restoreSetoranList(prevList, `Undo: Kembalikan update setoran ${entry.nama}`);
+          },
+          redo: async () => {
+            await get().restoreSetoranList(updatedList, `Redo: Update setoran ${entry.nama}`);
+          },
+        });
+      }
+
       return true;
     } catch (err: any) {
       console.error('Gagal memperbarui setoran:', err);
@@ -262,15 +324,23 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
     }
   },
 
-  deleteSetoran: async (idOrKey) => {
+  deleteSetoran: async (idOrKey, skipHistory = false) => {
     try {
-      const currentList = get().setoranList;
+      const prevList = [...get().setoranList];
       let updatedList: SetoranHafalan[];
+      let targetItem: SetoranHafalan | undefined;
 
       if (typeof idOrKey === 'string') {
-        updatedList = currentList.filter((s) => s.id !== idOrKey && s.no_induk !== idOrKey);
+        targetItem = prevList.find((s) => s.id === idOrKey || s.no_induk === idOrKey);
+        updatedList = prevList.filter((s) => s.id !== idOrKey && s.no_induk !== idOrKey);
       } else {
-        updatedList = currentList.filter(
+        targetItem = prevList.find(
+          (r) =>
+            String(r.no_induk).trim() === String(idOrKey.noInduk).trim() &&
+            String(r.tanggal).trim() === String(idOrKey.tglSetor).trim() &&
+            String(r.item_hafalan).trim() === String(idOrKey.hafalan).trim()
+        );
+        updatedList = prevList.filter(
           (r) =>
             !(
               String(r.no_induk).trim() === String(idOrKey.noInduk).trim() &&
@@ -298,6 +368,21 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
         );
 
       await logActivity('HAPUS SETORAN', `Menghapus rekaman setoran`);
+
+      if (!skipHistory) {
+        const itemLabel = targetItem ? `${targetItem.nama} (${targetItem.item_hafalan})` : 'Setoran';
+        useUndoRedoStore.getState().recordAction({
+          module: 'muhafadzoh',
+          title: `Hapus Setoran: ${itemLabel}`,
+          undo: async () => {
+            await get().restoreSetoranList(prevList, `Undo: Kembalikan hapus setoran ${itemLabel}`);
+          },
+          redo: async () => {
+            await get().restoreSetoranList(updatedList, `Redo: Hapus setoran ${itemLabel}`);
+          },
+        });
+      }
+
       return true;
     } catch (err: any) {
       console.error('Gagal menghapus setoran:', err);
@@ -306,11 +391,11 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
     }
   },
 
-  bulkDeleteSetoran: async (noIndukList) => {
+  bulkDeleteSetoran: async (noIndukList, skipHistory = false) => {
     try {
       const setDelete = new Set(noIndukList.map((s) => String(s).trim()));
-      const currentList = get().setoranList;
-      const updatedList = currentList.filter((r) => !setDelete.has(String(r.no_induk).trim()));
+      const prevList = [...get().setoranList];
+      const updatedList = prevList.filter((r) => !setDelete.has(String(r.no_induk).trim()));
 
       set({ setoranList: updatedList });
 
@@ -330,6 +415,20 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
         );
 
       await logActivity('HAPUS RIWAYAT SETORAN', `Menghapus riwayat setoran untuk ${noIndukList.length} santri terpilih`);
+
+      if (!skipHistory) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'muhafadzoh',
+          title: `Hapus Setoran ${noIndukList.length} Santri`,
+          undo: async () => {
+            await get().restoreSetoranList(prevList, `Undo: Kembalikan hapus setoran ${noIndukList.length} santri`);
+          },
+          redo: async () => {
+            await get().restoreSetoranList(updatedList, `Redo: Hapus setoran ${noIndukList.length} santri`);
+          },
+        });
+      }
+
       return true;
     } catch (err: any) {
       console.error('Gagal menghapus riwayat terpilih:', err);
@@ -338,8 +437,9 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
     }
   },
 
-  saveConfig: async (newConfig) => {
+  saveConfig: async (newConfig, skipHistory = false) => {
     try {
+      const prevConfig = { ...get().config };
       set({ config: newConfig });
 
       const payload = {
@@ -364,6 +464,20 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
         );
 
       await logActivity('SIMPAN PENGATURAN HAFALAN', 'Memperbarui konfigurasi target muhafadzoh & akses penjaga');
+
+      if (!skipHistory) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'muhafadzoh',
+          title: 'Ubah Target/Pengaturan Hafalan',
+          undo: async () => {
+            await get().saveConfig(prevConfig, true);
+          },
+          redo: async () => {
+            await get().saveConfig(newConfig, true);
+          },
+        });
+      }
+
       return true;
     } catch (err: any) {
       alert('Gagal menyimpan target hafalan: ' + err.message);
@@ -371,3 +485,7 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
     }
   },
 }));
+
+if (typeof window !== 'undefined') {
+  (window as any).useMuhafadzohStore = useMuhafadzohStore;
+}

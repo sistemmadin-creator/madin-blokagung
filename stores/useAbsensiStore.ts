@@ -16,6 +16,7 @@ import { FanConfigMap } from '@/types/fan';
 import { TeacherJadwalRow, KelasKbmItem } from '@/types/jadwal';
 import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
+import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import {
   getDefaultTanggalAbsensi,
   getNamaHariDariTgl,
@@ -273,7 +274,8 @@ interface AbsensiState {
 
   simpanAbsensiJam: (
     jam: JamKbm,
-    actorName?: string
+    actorName?: string,
+    skipHistory?: boolean
   ) => Promise<{ success: boolean; count: number; message?: string }>;
   editRekamanRiwayat: (
     id: string,
@@ -283,12 +285,26 @@ interface AbsensiState {
       namaPengganti?: string;
       keterangan?: string;
     },
-    actorName?: string
+    actorName?: string,
+    skipHistory?: boolean
   ) => Promise<boolean>;
-  hapusRekamanRiwayat: (id: string) => Promise<boolean>;
+  hapusRekamanRiwayat: (id: string, skipHistory?: boolean) => Promise<boolean>;
 
   saveAbsensiJam: (date: string, jam: JamKbm, records: RecordSesiAbsensi[]) => Promise<boolean>;
-  setHariLibur: (date: string, info: HariLiburInfo | null, actorName?: string) => Promise<boolean>;
+  setHariLibur: (
+    date: string,
+    info: HariLiburInfo | null,
+    actorName?: string,
+    skipHistory?: boolean
+  ) => Promise<boolean>;
+  restoreAbsensiRawMap: (
+    targetRawMap: Record<string, BucketAbsensiCompact>,
+    logDesc?: string
+  ) => Promise<boolean>;
+  restoreLiburMap: (
+    targetLiburMap: Record<string, HariLiburInfo>,
+    logDesc?: string
+  ) => Promise<boolean>;
 }
 
 const initialDate = getDefaultTanggalAbsensi();
@@ -606,7 +622,7 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
     });
   },
 
-  simpanAbsensiJam: async (jam, actorName = 'Master Administrator') => {
+  simpanAbsensiJam: async (jam, actorName = 'Master Administrator', skipHistory = false) => {
     const {
       selectedDate,
       hari,
@@ -616,6 +632,8 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       getSesiStatusData,
       forceUnlockedJams,
     } = get();
+
+    const prevRawMap = JSON.parse(JSON.stringify(rawBucketMap));
 
     const listSesi = sesiHariIni[jam] || [];
     if (listSesi.length === 0) {
@@ -720,6 +738,25 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
         `Menyimpan ${compactTuples.length} sesi pada ${selectedDate} (${jamKe})`
       );
 
+      if (!skipHistory) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'absensi',
+          title: `Simpan Absensi ${selectedDate} (${jamKe})`,
+          undo: async () => {
+            return await get().restoreAbsensiRawMap(
+              prevRawMap,
+              `[UNDO] Simpan Absensi ${selectedDate} (${jamKe})`
+            );
+          },
+          redo: async () => {
+            return await get().restoreAbsensiRawMap(
+              nextRawMap,
+              `[REDO] Simpan Absensi ${selectedDate} (${jamKe})`
+            );
+          },
+        });
+      }
+
       set({
         rawBucketMap: nextRawMap,
         absensiMapByDate: nextAbsensiMapByDate,
@@ -746,9 +783,11 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
   editRekamanRiwayat: async (
     id,
     updates,
-    actorName = 'Master Administrator'
+    actorName = 'Master Administrator',
+    skipHistory = false
   ) => {
     const { rawBucketMap, selectedDate, sesiHariIni, forceUnlockedJams } = get();
+    const prevRawMap = JSON.parse(JSON.stringify(rawBucketMap));
     const waktuSekarang = formatWaktuSekarangWIB();
     const nextRawMap: Record<string, any> = { ...rawBucketMap };
     let ditemukan = false;
@@ -829,6 +868,25 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
 
       await logActivity('Edit Riwayat Absensi', `Mengubah rekaman absensi ID: ${id}`);
 
+      if (!skipHistory) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'absensi',
+          title: `Edit Status Absensi (ID: ${id})`,
+          undo: async () => {
+            return await get().restoreAbsensiRawMap(
+              prevRawMap,
+              `[UNDO] Edit Status Absensi (ID: ${id})`
+            );
+          },
+          redo: async () => {
+            return await get().restoreAbsensiRawMap(
+              nextRawMap,
+              `[REDO] Edit Status Absensi (ID: ${id})`
+            );
+          },
+        });
+      }
+
       set({
         rawBucketMap: nextRawMap,
         absensiMapByDate: nextAbsensiMapByDate,
@@ -845,8 +903,9 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
     }
   },
 
-  hapusRekamanRiwayat: async (id) => {
+  hapusRekamanRiwayat: async (id, skipHistory = false) => {
     const { rawBucketMap, selectedDate, sesiHariIni, forceUnlockedJams } = get();
+    const prevRawMap = JSON.parse(JSON.stringify(rawBucketMap));
     const nextRawMap: Record<string, any> = { ...rawBucketMap };
     let ditemukan = false;
 
@@ -900,6 +959,25 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       );
 
       await logActivity('Hapus Riwayat Absensi', `Menghapus rekaman absensi ID: ${id}`);
+
+      if (!skipHistory) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'absensi',
+          title: `Hapus Rekaman Absensi ID: ${id}`,
+          undo: async () => {
+            return await get().restoreAbsensiRawMap(
+              prevRawMap,
+              `[UNDO] Hapus Rekaman Absensi ID: ${id}`
+            );
+          },
+          redo: async () => {
+            return await get().restoreAbsensiRawMap(
+              nextRawMap,
+              `[REDO] Hapus Rekaman Absensi ID: ${id}`
+            );
+          },
+        });
+      }
 
       set({
         rawBucketMap: nextRawMap,
@@ -991,7 +1069,13 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
     }
   },
 
-  setHariLibur: async (date, info, actorName = 'Master Administrator') => {
+  setHariLibur: async (
+    date,
+    info,
+    actorName = 'Master Administrator',
+    skipHistory = false
+  ) => {
+    const prevLibur = JSON.parse(JSON.stringify(get().liburMapByDate));
     const current = { ...get().liburMapByDate };
     if (info) {
       current[date] = {
@@ -1024,6 +1108,20 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
         info ? 'Set Hari Libur KBM' : 'Hapus Hari Libur KBM',
         `Tanggal: ${date}${info ? ` (${info.kategori}: ${info.keterangan})` : ''}`
       );
+
+      if (!skipHistory) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'absensi',
+          title: info ? `Set Libur: ${date} (${info.kategori})` : `Hapus Libur: ${date}`,
+          undo: async () => {
+            return await get().restoreLiburMap(prevLibur, `[UNDO] Libur ${date}`);
+          },
+          redo: async () => {
+            return await get().restoreLiburMap(current, `[REDO] Libur ${date}`);
+          },
+        });
+      }
+
       set({ liburMapByDate: current });
       return true;
     } catch (err: any) {
@@ -1031,4 +1129,75 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       return false;
     }
   },
+
+  restoreAbsensiRawMap: async (targetRawMap, logDesc = '') => {
+    const { selectedDate, sesiHariIni, forceUnlockedJams } = get();
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({ key: KEY_DB_ABSENSI, value: targetRawMap }, { onConflict: 'key' });
+      if (error) throw error;
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(LS_CACHE_ABSENSI, JSON.stringify(targetRawMap));
+        } catch {}
+      }
+
+      const nextSavedRecords = buildSavedRecordsForDate(selectedDate, targetRawMap);
+      const nextAbsensiMapByDate = buildLegacyAbsensiMapByDate(targetRawMap);
+      const { savedJams, unlockedJams } = computeJamLocks(
+        selectedDate,
+        sesiHariIni,
+        nextSavedRecords,
+        forceUnlockedJams
+      );
+
+      if (logDesc) {
+        await logActivity('UNDO/REDO ABSENSI ASATIDZ', logDesc);
+      }
+
+      set({
+        rawBucketMap: targetRawMap,
+        absensiMapByDate: nextAbsensiMapByDate,
+        savedRecords: nextSavedRecords,
+        pendingStatus: {},
+        savedJams,
+        unlockedJams,
+      });
+      return true;
+    } catch (err: any) {
+      console.error('Restore absensi error:', err.message);
+      return false;
+    }
+  },
+
+  restoreLiburMap: async (targetLiburMap, logDesc = '') => {
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({ key: KEY_DB_LIBUR, value: targetLiburMap }, { onConflict: 'key' });
+      if (error) throw error;
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(LS_CACHE_LIBUR, JSON.stringify(targetLiburMap));
+        } catch {}
+      }
+
+      if (logDesc) {
+        await logActivity('UNDO/REDO LIBUR MADIN', logDesc);
+      }
+
+      set({ liburMapByDate: targetLiburMap });
+      return true;
+    } catch (err: any) {
+      console.error('Restore libur error:', err.message);
+      return false;
+    }
+  },
 }));
+
+if (typeof window !== 'undefined') {
+  (window as any).useAbsensiStore = useAbsensiStore;
+}

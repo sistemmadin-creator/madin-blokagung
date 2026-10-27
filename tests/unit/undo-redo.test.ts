@@ -1,17 +1,101 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useUndoRedoStore, MAX_HISTORY_STEPS } from '@/stores/useUndoRedoStore';
 import { useJadwalStore } from '@/stores/useJadwalStore';
+import { useAbsensiStore } from '@/stores/useAbsensiStore';
+import { useSantriStore } from '@/stores/useSantriStore';
+import { useAsatidzStore } from '@/stores/useAsatidzStore';
+import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 
-// Mock supabase dan audit
+// In-memory mock databases
+let mockSantriDb: any[] = [];
+let mockAsatidzDb: any[] = [];
+let mockAppSettingsDb: Record<string, any> = {};
+
+// Mock Supabase
 vi.mock('@/lib/supabase/client', () => ({
   supabase: {
-    from: () => ({
-      upsert: async () => ({ error: null }),
-      insert: async () => ({ error: null }),
-      select: () => ({
-        eq: () => ({ single: async () => ({ data: null, error: null }) }),
-      }),
-    }),
+    from: (table: string) => {
+      if (table === 'santri') {
+        return {
+          select: () => ({
+            order: async () => ({ data: [...mockSantriDb], error: null }),
+          }),
+          insert: async (rows: any[]) => {
+            mockSantriDb.push(...rows);
+            return { error: null };
+          },
+          update: (fields: any) => ({
+            eq: async (_col: string, val: any) => {
+              const idx = mockSantriDb.findIndex((s) => s.no_induk === val);
+              if (idx !== -1) mockSantriDb[idx] = { ...mockSantriDb[idx], ...fields };
+              return { error: null };
+            },
+          }),
+          delete: () => ({
+            eq: async (_col: string, val: any) => {
+              mockSantriDb = mockSantriDb.filter((s) => s.no_induk !== val);
+              return { error: null };
+            },
+            in: async (_col: string, vals: any[]) => {
+              mockSantriDb = mockSantriDb.filter((s) => !vals.includes(s.no_induk));
+              return { error: null };
+            },
+          }),
+        };
+      }
+
+      if (table === 'asatidz') {
+        return {
+          select: () => ({
+            order: async () => ({ data: [...mockAsatidzDb], error: null }),
+          }),
+          insert: async (rows: any[]) => {
+            mockAsatidzDb.push(...rows);
+            return { error: null };
+          },
+          update: (fields: any) => ({
+            eq: async (_col: string, val: any) => {
+              const idx = mockAsatidzDb.findIndex((a) => a.nia === val);
+              if (idx !== -1) mockAsatidzDb[idx] = { ...mockAsatidzDb[idx], ...fields };
+              return { error: null };
+            },
+          }),
+          delete: () => ({
+            eq: async (_col: string, val: any) => {
+              mockAsatidzDb = mockAsatidzDb.filter((a) => a.nia !== val);
+              return { error: null };
+            },
+            in: async (_col: string, vals: any[]) => {
+              mockAsatidzDb = mockAsatidzDb.filter((a) => !vals.includes(a.nia));
+              return { error: null };
+            },
+          }),
+        };
+      }
+
+      // Default app_settings handler
+      return {
+        upsert: async (payload: any) => {
+          if (Array.isArray(payload)) {
+            payload.forEach((item) => {
+              mockAppSettingsDb[item.key] = item.value;
+            });
+          } else if (payload && payload.key) {
+            mockAppSettingsDb[payload.key] = payload.value;
+          }
+          return { error: null };
+        },
+        select: () => ({
+          in: async () => ({
+            data: Object.entries(mockAppSettingsDb).map(([key, value]) => ({ key, value })),
+            error: null,
+          }),
+          eq: () => ({
+            single: async () => ({ data: null, error: null }),
+          }),
+        }),
+      };
+    },
   },
 }));
 
@@ -19,9 +103,16 @@ vi.mock('@/lib/utils/audit', () => ({
   logActivity: async () => {},
 }));
 
-describe('useUndoRedoStore', () => {
+// Setup global browser dialogs
+globalThis.confirm = vi.fn(() => true);
+globalThis.alert = vi.fn();
+
+describe('Central useUndoRedoStore Core', () => {
   beforeEach(() => {
     useUndoRedoStore.getState().clearHistory();
+    mockSantriDb = [];
+    mockAsatidzDb = [];
+    mockAppSettingsDb = {};
   });
 
   it('harus membatasi kapasitas undo stack maksimal 5 langkah', () => {
@@ -68,14 +159,14 @@ describe('useUndoRedoStore', () => {
     // Jalankan Undo
     const undoRes = await useUndoRedoStore.getState().undo();
     expect(undoRes).toBe(true);
-    expect(nilai).toBe(0); // Nilai berhasil dikembalikan
+    expect(nilai).toBe(0);
     expect(useUndoRedoStore.getState().undoStack.length).toBe(0);
     expect(useUndoRedoStore.getState().redoStack.length).toBe(1);
 
     // Jalankan Redo
     const redoRes = await useUndoRedoStore.getState().redo();
     expect(redoRes).toBe(true);
-    expect(nilai).toBe(10); // Nilai berhasil diterapkan ulang
+    expect(nilai).toBe(10);
     expect(useUndoRedoStore.getState().undoStack.length).toBe(1);
     expect(useUndoRedoStore.getState().redoStack.length).toBe(0);
   });
@@ -107,95 +198,310 @@ describe('useUndoRedoStore', () => {
     expect(useUndoRedoStore.getState().undoStack.length).toBe(1);
     expect(useUndoRedoStore.getState().undoStack[0].title).toBe('Aksi 2');
   });
+});
 
-  describe('Integrasi Undo & Redo pada Jadwal KBM', () => {
-    beforeEach(() => {
-      useUndoRedoStore.getState().clearHistory();
-      useJadwalStore.setState({
-        jadwalMap: {
-          'USTADZ AHMAD': {
-            nama_asatidz: 'USTADZ AHMAD',
-            sabtu: 'Jam 1|1A|Nahwu;;Jam 2|1A|Shorof',
-            total_jam: 2,
-          },
+describe('Integrasi Modul 1: Jadwal KBM Undo/Redo', () => {
+  beforeEach(() => {
+    useUndoRedoStore.getState().clearHistory();
+    useJadwalStore.setState({
+      jadwalMap: {
+        'USTADZ AHMAD': {
+          nama_asatidz: 'USTADZ AHMAD',
+          sabtu: 'Jam 1|1A|Nahwu;;Jam 2|1A|Shorof',
+          total_jam: 2,
         },
-      });
+      },
     });
+  });
 
-    it('otomatis merekam aksi riwayat saat simpanBatchJadwalAsatidz dipanggil', async () => {
-      const jadwalStore = useJadwalStore.getState();
+  it('otomatis merekam aksi riwayat saat simpanBatchJadwalAsatidz dipanggil', async () => {
+    const jadwalStore = useJadwalStore.getState();
 
-      // Update jadwal Ust. Ahmad di hari sabtu jam 1 diganti Fiqih
-      const updateResult = await jadwalStore.simpanBatchJadwalAsatidz(
-        {
-          'USTADZ AHMAD': {
-            nama_asatidz: 'USTADZ AHMAD',
-            sabtu: 'Jam 1|1A|Fiqih;;Jam 2|1A|Shorof',
-            total_jam: 2,
-          },
+    const updateResult = await jadwalStore.simpanBatchJadwalAsatidz(
+      {
+        'USTADZ AHMAD': {
+          nama_asatidz: 'USTADZ AHMAD',
+          sabtu: 'Jam 1|1A|Fiqih;;Jam 2|1A|Shorof',
+          total_jam: 2,
         },
-        'Ganti Mapel Jam 1 menjadi Fiqih'
-      );
+      },
+      'Ganti Mapel Jam 1 menjadi Fiqih'
+    );
 
-      expect(updateResult).toBe(true);
-      expect(useJadwalStore.getState().jadwalMap['USTADZ AHMAD'].sabtu).toContain('Fiqih');
+    expect(updateResult).toBe(true);
+    expect(useJadwalStore.getState().jadwalMap['USTADZ AHMAD'].sabtu).toContain('Fiqih');
 
-      // Periksa bahwa aksi telah direkam ke undoRedoStore
-      const historyState = useUndoRedoStore.getState();
-      expect(historyState.undoStack.length).toBe(1);
-      expect(historyState.undoStack[0].title).toBe('Ganti Mapel Jam 1 menjadi Fiqih');
-      expect(historyState.undoStack[0].module).toBe('jadwal');
+    const historyState = useUndoRedoStore.getState();
+    expect(historyState.undoStack.length).toBe(1);
+    expect(historyState.undoStack[0].title).toBe('Ganti Mapel Jam 1 menjadi Fiqih');
+    expect(historyState.undoStack[0].module).toBe('jadwal');
 
-      // Jalankan Undo: Jadwal harus kembali ke Nahwu
-      const undoRes = await useUndoRedoStore.getState().undo();
-      expect(undoRes).toBe(true);
-      expect(useJadwalStore.getState().jadwalMap['USTADZ AHMAD'].sabtu).toContain('Nahwu');
-      expect(useJadwalStore.getState().jadwalMap['USTADZ AHMAD'].sabtu).not.toContain('Fiqih');
-      expect(useUndoRedoStore.getState().redoStack.length).toBe(1);
+    // Undo -> kembali ke Nahwu
+    await useUndoRedoStore.getState().undo();
+    expect(useJadwalStore.getState().jadwalMap['USTADZ AHMAD'].sabtu).toContain('Nahwu');
+    expect(useJadwalStore.getState().jadwalMap['USTADZ AHMAD'].sabtu).not.toContain('Fiqih');
 
-      // Jalankan Redo: Jadwal harus kembali ke Fiqih
-      const redoRes = await useUndoRedoStore.getState().redo();
-      expect(redoRes).toBe(true);
-      expect(useJadwalStore.getState().jadwalMap['USTADZ AHMAD'].sabtu).toContain('Fiqih');
-      expect(useUndoRedoStore.getState().undoStack.length).toBe(1);
-      expect(useUndoRedoStore.getState().redoStack.length).toBe(0);
-    });
+    // Redo -> kembali ke Fiqih
+    await useUndoRedoStore.getState().redo();
+    expect(useJadwalStore.getState().jadwalMap['USTADZ AHMAD'].sabtu).toContain('Fiqih');
+  });
+});
 
-    it('mendukung rangkaian hingga 5 langkah undo berurutan pada jadwal', async () => {
-      const jadwalStore = useJadwalStore.getState();
-
-      // Lakukan 5 mutasi berturut-turut
-      for (let i = 1; i <= 5; i++) {
-        await jadwalStore.simpanBatchJadwalAsatidz(
+describe('Integrasi Modul 2: Absensi Asatidz Undo/Redo', () => {
+  beforeEach(() => {
+    useUndoRedoStore.getState().clearHistory();
+    useAbsensiStore.setState({
+      selectedDate: '2026-10-27',
+      hari: 'Selasa',
+      rawBucketMap: {},
+      liburMapByDate: {},
+      sesiHariIni: {
+        1: [
           {
-            'USTADZ AHMAD': {
-              nama_asatidz: 'USTADZ AHMAD',
-              sabtu: `Jam 1|1A|Mapel${i}`,
-              total_jam: 1,
-            },
-          },
-          `Ubah ke Mapel ${i}`
-        );
-      }
-
-      expect(useUndoRedoStore.getState().undoStack.length).toBe(5);
-      expect(useJadwalStore.getState().jadwalMap['USTADZ AHMAD'].sabtu).toBe('Jam 1|1A|Mapel5');
-
-      // Undo langkah ke-5 (kembali ke Mapel 4)
-      await useUndoRedoStore.getState().undo();
-      expect(useJadwalStore.getState().jadwalMap['USTADZ AHMAD'].sabtu).toBe('Jam 1|1A|Mapel4');
-
-      // Undo langkah ke-4 (kembali ke Mapel 3)
-      await useUndoRedoStore.getState().undo();
-      expect(useJadwalStore.getState().jadwalMap['USTADZ AHMAD'].sabtu).toBe('Jam 1|1A|Mapel3');
-
-      // Undo langkah ke-3 (kembali ke Mapel 2)
-      await useUndoRedoStore.getState().undo();
-      expect(useJadwalStore.getState().jadwalMap['USTADZ AHMAD'].sabtu).toBe('Jam 1|1A|Mapel2');
-
-      // Redo satu langkah (kembali ke Mapel 3)
-      await useUndoRedoStore.getState().redo();
-      expect(useJadwalStore.getState().jadwalMap['USTADZ AHMAD'].sabtu).toBe('Jam 1|1A|Mapel3');
+            nama: 'USTADZ KHALIL',
+            nia: '101',
+            tingkat: 'Wustho',
+            dinKls: '1',
+            dinBag: 'A',
+            blok: 'Pusat',
+            gender: 'PA',
+            kelasMengajar: '1A',
+            fan: 'Nahwu',
+            lokasi: 'Gedung A',
+          } as any,
+        ],
+        2: [],
+        3: [],
+        4: [],
+      },
+      savedRecords: {},
+      pendingStatus: {},
     });
+  });
+
+  it('otomatis merekam aksi saat simpanAbsensiJam dan mendukung undo/redo', async () => {
+    const absensiStore = useAbsensiStore.getState();
+
+    // Simpan absensi jam 1
+    const res = await absensiStore.simpanAbsensiJam(1, 'Admin Tester');
+    expect(res.success).toBe(true);
+    expect(Object.keys(useAbsensiStore.getState().rawBucketMap).length).toBe(1);
+
+    const undoStore = useUndoRedoStore.getState();
+    expect(undoStore.undoStack.length).toBe(1);
+    expect(undoStore.undoStack[0].module).toBe('absensi');
+
+    // Undo simpan absensi -> rawBucketMap kembali kosong
+    await useUndoRedoStore.getState().undo();
+    expect(Object.keys(useAbsensiStore.getState().rawBucketMap).length).toBe(0);
+
+    // Redo simpan absensi -> rawBucketMap terisi kembali
+    await useUndoRedoStore.getState().redo();
+    expect(Object.keys(useAbsensiStore.getState().rawBucketMap).length).toBe(1);
+  });
+
+  it('merekam aksi setHariLibur dan mendukung undo/redo', async () => {
+    const absensiStore = useAbsensiStore.getState();
+
+    await absensiStore.setHariLibur('2026-10-27', {
+      tanggal: '2026-10-27',
+      hari: 'Selasa',
+      kategori: 'Libur',
+      keterangan: 'Hari Libur Nasional',
+      waktuUpdate: '',
+      diinputOleh: 'Admin',
+    });
+    expect(useAbsensiStore.getState().liburMapByDate['2026-10-27']?.keterangan).toBe('Hari Libur Nasional');
+
+    // Undo -> hari libur dicabut (kembali undefined)
+    await useUndoRedoStore.getState().undo();
+    expect(useAbsensiStore.getState().liburMapByDate['2026-10-27']).toBeUndefined();
+
+    // Redo -> hari libur aktif kembali
+    await useUndoRedoStore.getState().redo();
+    expect(useAbsensiStore.getState().liburMapByDate['2026-10-27']?.keterangan).toBe('Hari Libur Nasional');
+  });
+});
+
+describe('Integrasi Modul 3: Data Santri & Asatidz Undo/Redo', () => {
+  beforeEach(() => {
+    useUndoRedoStore.getState().clearHistory();
+    mockSantriDb = [];
+    mockAsatidzDb = [];
+    useSantriStore.setState({ santriList: [] });
+    useAsatidzStore.setState({ asatidzList: [] });
+  });
+
+  it('merekam aksi tambah & hapus santri dan mendukung undo/redo', async () => {
+    const santriStore = useSantriStore.getState();
+    const santriBaru: any = {
+      no_induk: 'S001',
+      nama: 'Ahmad Faiz',
+      tingkat: 'Ula',
+      din_kls: '1',
+      din_bag: 'A',
+      pa_pi: 'PA',
+    };
+
+    // 1. Tambah Santri
+    await santriStore.saveSantri(santriBaru, false);
+    expect(useSantriStore.getState().santriList.length).toBe(1);
+    expect(useUndoRedoStore.getState().undoStack[0].title).toBe('Tambah Santri: Ahmad Faiz');
+
+    // Undo tambah -> santri terhapus
+    await useUndoRedoStore.getState().undo();
+    expect(useSantriStore.getState().santriList.length).toBe(0);
+
+    // Redo tambah -> santri kembali ada
+    await useUndoRedoStore.getState().redo();
+    expect(useSantriStore.getState().santriList.length).toBe(1);
+
+    // 2. Hapus Santri
+    await santriStore.deleteSantri('S001');
+    expect(useSantriStore.getState().santriList.length).toBe(0);
+
+    // Undo hapus -> santri pulih
+    await useUndoRedoStore.getState().undo();
+    expect(useSantriStore.getState().santriList.length).toBe(1);
+    expect(useSantriStore.getState().santriList[0].nama).toBe('Ahmad Faiz');
+  });
+
+  it('merekam aksi tambah & hapus asatidz dan mendukung undo/redo', async () => {
+    const asatidzStore = useAsatidzStore.getState();
+    const asatidzBaru: any = {
+      nia: 'A001',
+      nama_asatidz: 'Ust. Zaid',
+      kategori: 'Tetap',
+      tugas_mengajar: 'Nahwu',
+    };
+
+    // 1. Tambah Asatidz
+    await asatidzStore.saveAsatidz(asatidzBaru, false);
+    expect(useAsatidzStore.getState().asatidzList.length).toBe(1);
+    expect(useUndoRedoStore.getState().undoStack[0].title).toBe('Tambah Asatidz: Ust. Zaid');
+
+    // Undo tambah -> asatidz terhapus
+    await useUndoRedoStore.getState().undo();
+    expect(useAsatidzStore.getState().asatidzList.length).toBe(0);
+
+    // Redo tambah -> asatidz kembali ada
+    await useUndoRedoStore.getState().redo();
+    expect(useAsatidzStore.getState().asatidzList.length).toBe(1);
+
+    // 2. Hapus Asatidz
+    await asatidzStore.deleteAsatidz('A001');
+    expect(useAsatidzStore.getState().asatidzList.length).toBe(0);
+
+    // Undo hapus -> asatidz pulih
+    await useUndoRedoStore.getState().undo();
+    expect(useAsatidzStore.getState().asatidzList.length).toBe(1);
+    expect(useAsatidzStore.getState().asatidzList[0].nama_asatidz.toUpperCase()).toBe('UST. ZAID');
+  });
+});
+
+describe('Integrasi Modul 4: Setoran Muhafadzoh Undo/Redo', () => {
+  beforeEach(() => {
+    useUndoRedoStore.getState().clearHistory();
+    useMuhafadzohStore.setState({
+      setoranList: [],
+      config: {
+        hafWajib: {},
+        hafSunnah: {},
+        hafKitab: {},
+        penjagaBebas: [],
+      },
+    });
+  });
+
+  it('merekam aksi addSetoran dan mendukung undo/redo', async () => {
+    const muhafadzohStore = useMuhafadzohStore.getState();
+    const entry: any = {
+      id: 'SET-1',
+      no_induk: 'S001',
+      nama: 'Ahmad Faiz',
+      tanggal: '2026-10-27 08:00',
+      item_hafalan: 'Juz Amma',
+      kategori: 'Wajib',
+      penjaga: 'Ust. Ali',
+    };
+
+    // Tambah setoran
+    await muhafadzohStore.addSetoran(entry);
+    expect(useMuhafadzohStore.getState().setoranList.length).toBe(1);
+    expect(useUndoRedoStore.getState().undoStack[0].title).toBe('Tambah Setoran: Ahmad Faiz (Juz Amma)');
+
+    // Undo tambah -> setoran kembali kosong
+    await useUndoRedoStore.getState().undo();
+    expect(useMuhafadzohStore.getState().setoranList.length).toBe(0);
+
+    // Redo tambah -> setoran ada lagi
+    await useUndoRedoStore.getState().redo();
+    expect(useMuhafadzohStore.getState().setoranList.length).toBe(1);
+    expect(useMuhafadzohStore.getState().setoranList[0].item_hafalan).toBe('Juz Amma');
+  });
+
+  it('merekam aksi deleteSetoran & bulkDeleteSetoran dan mendukung undo/redo', async () => {
+    const muhafadzohStore = useMuhafadzohStore.getState();
+    useMuhafadzohStore.setState({
+      setoranList: [
+        {
+          id: 'SET-1',
+          no_induk: 'S001',
+          nama: 'Santri 1',
+          tanggal: '2026-10-27 08:00',
+          item_hafalan: 'Juz 1',
+          kategori: 'Wajib',
+          penjaga: 'Ust. Ali',
+        } as any,
+        {
+          id: 'SET-2',
+          no_induk: 'S002',
+          nama: 'Santri 2',
+          tanggal: '2026-10-27 08:30',
+          item_hafalan: 'Juz 2',
+          kategori: 'Wajib',
+          penjaga: 'Ust. Ali',
+        } as any,
+      ],
+    });
+
+    // 1. Delete single setoran
+    await muhafadzohStore.deleteSetoran('SET-1');
+    expect(useMuhafadzohStore.getState().setoranList.length).toBe(1);
+    expect(useMuhafadzohStore.getState().setoranList[0].id).toBe('SET-2');
+
+    // Undo delete -> setoran SET-1 kembali
+    await useUndoRedoStore.getState().undo();
+    expect(useMuhafadzohStore.getState().setoranList.length).toBe(2);
+
+    // 2. Bulk delete
+    await muhafadzohStore.bulkDeleteSetoran(['S001', 'S002']);
+    expect(useMuhafadzohStore.getState().setoranList.length).toBe(0);
+
+    // Undo bulk delete -> kedua setoran kembali
+    await useUndoRedoStore.getState().undo();
+    expect(useMuhafadzohStore.getState().setoranList.length).toBe(2);
+  });
+
+  it('merekam aksi saveConfig target hafalan dan mendukung undo/redo', async () => {
+    const muhafadzohStore = useMuhafadzohStore.getState();
+    const oldConfig = useMuhafadzohStore.getState().config;
+    const newConfig = {
+      hafWajib: { Ula_1: ['Surah An-Naba', 'Surah An-Naziat'] },
+      hafSunnah: {},
+      hafKitab: {},
+      penjagaBebas: ['Ust. Zaid'],
+    };
+
+    await muhafadzohStore.saveConfig(newConfig);
+    expect(useMuhafadzohStore.getState().config.penjagaBebas).toContain('Ust. Zaid');
+
+    // Undo -> config kembali ke oldConfig
+    await useUndoRedoStore.getState().undo();
+    expect(useMuhafadzohStore.getState().config.penjagaBebas.length).toBe(0);
+
+    // Redo -> config kembali ke newConfig
+    await useUndoRedoStore.getState().redo();
+    expect(useMuhafadzohStore.getState().config.penjagaBebas).toContain('Ust. Zaid');
   });
 });

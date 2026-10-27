@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { Asatidz } from '@/types/asatidz';
 import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
+import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 
 interface AsatidzState {
   asatidzList: Asatidz[];
@@ -68,9 +69,14 @@ interface AsatidzState {
   generateNextNIA: (prefix: string) => string;
 
   // CRUD
-  saveAsatidz: (data: Asatidz, isEdit: boolean, oldNia?: string) => Promise<boolean>;
-  deleteAsatidz: (nia: string) => Promise<boolean>;
-  deleteSelectedAsatidz: () => Promise<boolean>;
+  saveAsatidz: (
+    data: Asatidz,
+    isEdit: boolean,
+    oldNia?: string,
+    skipHistory?: boolean
+  ) => Promise<boolean>;
+  deleteAsatidz: (nia: string, skipHistory?: boolean) => Promise<boolean>;
+  deleteSelectedAsatidz: (skipHistory?: boolean) => Promise<boolean>;
 }
 
 export const useAsatidzStore = create<AsatidzState>((set, get) => ({
@@ -221,8 +227,12 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
     return `${cleanPrefix}${nextNum}`;
   },
 
-  saveAsatidz: async (data, isEdit, oldNia) => {
+  saveAsatidz: async (data, isEdit, oldNia, skipHistory = false) => {
     try {
+      const prevAsatidz = isEdit
+        ? get().asatidzList.find((a) => a.nia === (oldNia || data.nia))
+        : null;
+
       const payload: Record<string, any> = { ...data };
       delete payload.id; // Let supabase handle primary key or update
       if (payload.nama_asatidz) {
@@ -236,12 +246,44 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
           .eq('nia', oldNia);
         if (error) throw error;
         await logActivity('EDIT DEWAN ASATIDZ', `Memperbarui asatidz: ${data.nama_asatidz} (NIA: ${data.nia})`);
+
+        if (!skipHistory && prevAsatidz) {
+          const prevPayload = { ...prevAsatidz };
+          delete prevPayload.id;
+          useUndoRedoStore.getState().recordAction({
+            module: 'asatidz',
+            title: `Edit Asatidz: ${data.nama_asatidz}`,
+            undo: async () => {
+              await supabase.from('asatidz').update(prevPayload).eq('nia', data.nia);
+              await get().fetchAsatidz();
+            },
+            redo: async () => {
+              await supabase.from('asatidz').update(payload).eq('nia', prevAsatidz.nia);
+              await get().fetchAsatidz();
+            },
+          });
+        }
       } else {
         const { error } = await supabase
           .from('asatidz')
           .insert([payload]);
         if (error) throw error;
         await logActivity('TAMBAH ASATIDZ', `Menambahkan asatidz baru: ${data.nama_asatidz} (NIA: ${data.nia})`);
+
+        if (!skipHistory) {
+          useUndoRedoStore.getState().recordAction({
+            module: 'asatidz',
+            title: `Tambah Asatidz: ${data.nama_asatidz}`,
+            undo: async () => {
+              await supabase.from('asatidz').delete().eq('nia', data.nia);
+              await get().fetchAsatidz();
+            },
+            redo: async () => {
+              await supabase.from('asatidz').insert([payload]);
+              await get().fetchAsatidz();
+            },
+          });
+        }
       }
       await get().fetchAsatidz();
       return true;
@@ -252,7 +294,8 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
     }
   },
 
-  deleteAsatidz: async (nia) => {
+  deleteAsatidz: async (nia, skipHistory = false) => {
+    const targetAsatidz = get().asatidzList.find((a) => a.nia === nia);
     try {
       const { error } = await supabase
         .from('asatidz')
@@ -260,6 +303,24 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
         .eq('nia', nia);
       if (error) throw error;
       await logActivity('HAPUS DEWAN ASATIDZ', `Menghapus asatidz NIA: ${nia}`);
+
+      if (!skipHistory && targetAsatidz) {
+        const restorePayload = { ...targetAsatidz };
+        delete restorePayload.id;
+        useUndoRedoStore.getState().recordAction({
+          module: 'asatidz',
+          title: `Hapus Asatidz: ${targetAsatidz.nama_asatidz || nia}`,
+          undo: async () => {
+            await supabase.from('asatidz').insert([restorePayload]);
+            await get().fetchAsatidz();
+          },
+          redo: async () => {
+            await supabase.from('asatidz').delete().eq('nia', nia);
+            await get().fetchAsatidz();
+          },
+        });
+      }
+
       set((state) => ({
         selectedNiaList: state.selectedNiaList.filter((n) => n !== nia),
       }));
@@ -272,9 +333,10 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
     }
   },
 
-  deleteSelectedAsatidz: async () => {
+  deleteSelectedAsatidz: async (skipHistory = false) => {
     const selected = get().selectedNiaList;
     if (selected.length === 0) return false;
+    const deletedList = get().asatidzList.filter((a) => selected.includes(a.nia));
 
     try {
       const { error } = await supabase
@@ -283,6 +345,27 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
         .in('nia', selected);
       if (error) throw error;
       await logActivity('HAPUS BANYAK ASATIDZ', `Menghapus ${selected.length} asatidz terpilih`);
+
+      if (!skipHistory && deletedList.length > 0) {
+        const restoreList = deletedList.map((item) => {
+          const c = { ...item };
+          delete c.id;
+          return c;
+        });
+        useUndoRedoStore.getState().recordAction({
+          module: 'asatidz',
+          title: `Hapus ${deletedList.length} Asatidz Terpilih`,
+          undo: async () => {
+            await supabase.from('asatidz').insert(restoreList);
+            await get().fetchAsatidz();
+          },
+          redo: async () => {
+            await supabase.from('asatidz').delete().in('nia', selected);
+            await get().fetchAsatidz();
+          },
+        });
+      }
+
       set({ selectedNiaList: [] });
       await get().fetchAsatidz();
       return true;
@@ -293,3 +376,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
     }
   },
 }));
+
+if (typeof window !== 'undefined') {
+  (window as any).useAsatidzStore = useAsatidzStore;
+}

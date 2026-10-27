@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Santri } from '@/types/santri';
 import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
+import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 
 interface SantriState {
   santriList: Santri[];
@@ -51,9 +52,14 @@ interface SantriState {
   closeDetailModal: () => void;
 
   // CRUD
-  saveSantri: (data: Santri, isEdit: boolean, oldNoInduk?: string) => Promise<boolean>;
-  deleteSantri: (no_induk: string) => Promise<boolean>;
-  deleteSelectedSantri: () => Promise<boolean>;
+  saveSantri: (
+    data: Santri,
+    isEdit: boolean,
+    oldNoInduk?: string,
+    skipHistory?: boolean
+  ) => Promise<boolean>;
+  deleteSantri: (no_induk: string, skipHistory?: boolean) => Promise<boolean>;
+  deleteSelectedSantri: (skipHistory?: boolean) => Promise<boolean>;
   deleteAllSantri: () => Promise<boolean>;
 }
 
@@ -170,8 +176,12 @@ export const useSantriStore = create<SantriState>((set, get) => ({
     set({ isDetailModalOpen: true, selectedSantri: santri }),
   closeDetailModal: () => set({ isDetailModalOpen: false, selectedSantri: null }),
 
-  saveSantri: async (data, isEdit, oldNoInduk) => {
+  saveSantri: async (data, isEdit, oldNoInduk, skipHistory = false) => {
     try {
+      const prevSantri = isEdit
+        ? get().santriList.find((s) => s.no_induk === (oldNoInduk || data.no_induk))
+        : null;
+
       if (isEdit && oldNoInduk) {
         const { error } = await supabase
           .from('santri')
@@ -179,12 +189,42 @@ export const useSantriStore = create<SantriState>((set, get) => ({
           .eq('no_induk', oldNoInduk);
         if (error) throw error;
         await logActivity('EDIT DATA SANTRI', `Memperbarui santri No. Induk: ${data.no_induk} (${data.nama})`);
+
+        if (!skipHistory && prevSantri) {
+          useUndoRedoStore.getState().recordAction({
+            module: 'santri',
+            title: `Edit Santri: ${data.nama}`,
+            undo: async () => {
+              await supabase.from('santri').update(prevSantri).eq('no_induk', data.no_induk);
+              await get().fetchSantri();
+            },
+            redo: async () => {
+              await supabase.from('santri').update(data).eq('no_induk', prevSantri.no_induk);
+              await get().fetchSantri();
+            },
+          });
+        }
       } else {
         const { error } = await supabase
           .from('santri')
           .insert([data]);
         if (error) throw error;
         await logActivity('TAMBAH SANTRI', `Menambahkan santri baru No. Induk: ${data.no_induk} (${data.nama})`);
+
+        if (!skipHistory) {
+          useUndoRedoStore.getState().recordAction({
+            module: 'santri',
+            title: `Tambah Santri: ${data.nama}`,
+            undo: async () => {
+              await supabase.from('santri').delete().eq('no_induk', data.no_induk);
+              await get().fetchSantri();
+            },
+            redo: async () => {
+              await supabase.from('santri').insert([data]);
+              await get().fetchSantri();
+            },
+          });
+        }
       }
       await get().fetchSantri();
       return true;
@@ -195,7 +235,8 @@ export const useSantriStore = create<SantriState>((set, get) => ({
     }
   },
 
-  deleteSantri: async (no_induk) => {
+  deleteSantri: async (no_induk, skipHistory = false) => {
+    const targetSantri = get().santriList.find((s) => s.no_induk === no_induk);
     if (!confirm(`Yakin ingin menghapus santri dengan No. Induk: ${no_induk}?`)) return false;
     try {
       const { error } = await supabase
@@ -204,6 +245,22 @@ export const useSantriStore = create<SantriState>((set, get) => ({
         .eq('no_induk', no_induk);
       if (error) throw error;
       await logActivity('HAPUS DATA SANTRI', `Menghapus santri No. Induk: ${no_induk}`);
+
+      if (!skipHistory && targetSantri) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'santri',
+          title: `Hapus Santri: ${targetSantri.nama || no_induk}`,
+          undo: async () => {
+            await supabase.from('santri').insert([targetSantri]);
+            await get().fetchSantri();
+          },
+          redo: async () => {
+            await supabase.from('santri').delete().eq('no_induk', no_induk);
+            await get().fetchSantri();
+          },
+        });
+      }
+
       await get().fetchSantri();
       return true;
     } catch (err: any) {
@@ -213,9 +270,10 @@ export const useSantriStore = create<SantriState>((set, get) => ({
     }
   },
 
-  deleteSelectedSantri: async () => {
+  deleteSelectedSantri: async (skipHistory = false) => {
     const selected = get().selectedNoInduk;
     if (selected.length === 0) return false;
+    const deletedList = get().santriList.filter((s) => selected.includes(s.no_induk));
     try {
       const { error } = await supabase
         .from('santri')
@@ -223,6 +281,22 @@ export const useSantriStore = create<SantriState>((set, get) => ({
         .in('no_induk', selected);
       if (error) throw error;
       await logActivity('HAPUS BANYAK SANTRI', `Menghapus ${selected.length} santri terpilih`);
+
+      if (!skipHistory && deletedList.length > 0) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'santri',
+          title: `Hapus ${deletedList.length} Santri Terpilih`,
+          undo: async () => {
+            await supabase.from('santri').insert(deletedList);
+            await get().fetchSantri();
+          },
+          redo: async () => {
+            await supabase.from('santri').delete().in('no_induk', selected);
+            await get().fetchSantri();
+          },
+        });
+      }
+
       set({ selectedNoInduk: [] });
       await get().fetchSantri();
       return true;
@@ -251,3 +325,7 @@ export const useSantriStore = create<SantriState>((set, get) => ({
     }
   },
 }));
+
+if (typeof window !== 'undefined') {
+  (window as any).useSantriStore = useSantriStore;
+}
