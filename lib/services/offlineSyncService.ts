@@ -243,7 +243,7 @@ export class OfflineSyncService {
             }
             tx.oncomplete = resolve;
           });
-        } catch (itemErr: any) {
+        } catch {
           failed += 1;
         }
       }

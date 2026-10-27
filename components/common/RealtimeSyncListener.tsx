@@ -7,7 +7,6 @@ import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useJadwalStore, KEY_DB_JADWAL_ASATIDZ } from '@/stores/useJadwalStore';
 import { useAbsensiStore, KEY_DB_ABSENSI, KEY_DB_LIBUR } from '@/stores/useAbsensiStore';
 import { useMuhafadzohStore, KEY_DB_RIWAYAT_MUHAFADZOH } from '@/stores/useMuhafadzohStore';
-import { Radio } from 'lucide-react';
 
 export default function RealtimeSyncListener() {
   const [isConnected, setIsConnected] = useState(false);

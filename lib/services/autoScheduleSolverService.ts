@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { JadwalSlotRecord } from '@/types/database';
-import { HariKbm, LIST_HARI } from '@/types/jadwal';
+import { HariKbm } from '@/types/jadwal';
 
 export interface ScheduleConflict {
   type: 'bentrok_guru' | 'bentrok_lokasi' | 'jam_invalid';

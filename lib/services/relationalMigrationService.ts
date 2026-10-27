@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from '@/lib/supabase/client';
-import { TeacherJadwalRow, LIST_HARI, HariKbm } from '@/types/jadwal';
+import { TeacherJadwalRow, HariKbm } from '@/types/jadwal';
 import { JadwalSlotRecord, AbsensiRecord, SetoranRecord } from '@/types/database';
-import { CompactSesiTuple, BucketAbsensiCompact } from '@/types/absensi';
+import { BucketAbsensiCompact } from '@/types/absensi';
 import { RiwayatSetoranRawRow, SetoranHafalan } from '@/types/setoran';
 import { Asatidz } from '@/types/asatidz';
 import { parseJadwalCell_Client } from '@/lib/utils/jadwalHelper';
@@ -503,7 +503,6 @@ export const RelationalMigrationService = {
       }
 
       await logActivity(
-        'Admin',
         'Migrasi Relasional Fase 1',
         `Menjalankan migrasi data relasional: ${slotsSaved} slots jadwal, ${recordsSaved} presensi, ${setoranSaved} setoran hafalan.`
       );
