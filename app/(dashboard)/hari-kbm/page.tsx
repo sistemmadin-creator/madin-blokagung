@@ -165,7 +165,9 @@ export default function HariKbmPage() {
   // 2. Filter data berdasarkan pencarian, tingkat, dan jam
   const filteredGuruAktif = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const qClean = q.replace(/\s+/g, '');
     const fTkt = fltTingkat.trim().toUpperCase();
+    const isIstTarget = fTkt === "ISTI'DAD" || fTkt === 'IST';
     const fJamNum = fltJam === '1' ? 1 : fltJam === '2' ? 2 : 0;
 
     return listGuruAktif.filter((item) => {
@@ -177,9 +179,12 @@ export default function HariKbmPage() {
       }
 
       if (fTkt) {
-        const matchTkt =
-          validSlots.some((s) => String(s.kelas || '').toUpperCase().includes(fTkt)) ||
-          item.tingkat.includes(fTkt);
+        const matchTkt = validSlots.some((s) => {
+          const kUpper = String(s.kelas || '').toUpperCase();
+          if (isIstTarget) return kUpper.includes("ISTI'DAD") || kUpper.includes('IST');
+          return kUpper.includes(fTkt);
+        }) || (isIstTarget ? (item.tingkat === "ISTI'DAD" || item.tingkat === 'IST') : item.tingkat.includes(fTkt));
+
         if (!matchTkt) return false;
       }
 
@@ -198,7 +203,8 @@ export default function HariKbmPage() {
           .toLowerCase();
 
         const fullText = `${item.nama} ${item.nia} ${item.jah} ${item.blok} ${slotsText}`.toLowerCase();
-        if (!fullText.includes(q)) return false;
+        const fullTextClean = fullText.replace(/\s+/g, '');
+        if (!fullText.includes(q) && !fullTextClean.includes(qClean)) return false;
       }
 
       return true;
@@ -495,14 +501,14 @@ export default function HariKbmPage() {
             </h6>
           </div>
 
-          <div className="table-responsive overflow-x-auto">
-            <table className="tabel-kbm-resmi w-full" id="tableHariKBM">
+          <div className="table-responsive overflow-x-auto rounded-xl border border-slate-200 shadow-xs bg-white">
+            <table className="tabel-kbm-resmi w-full min-w-[980px]" id="tableHariKBM">
               <thead>
                 <tr>
-                  <th style={{ width: 40 }} className="text-center">NO</th>
-                  <th style={{ width: 65 }} className="text-center">KODE</th>
+                  <th style={{ width: 44, minWidth: 44 }} className="text-center sticky left-0 z-30 bg-[#e2e8f0]">NO</th>
+                  <th style={{ width: 70, minWidth: 70 }} className="text-center sticky left-[44px] z-30 bg-[#e2e8f0] border-r-2 border-r-slate-400">KODE</th>
                   <th style={{ minWidth: 200 }}>ASATIDZ</th>
-                  <th style={{ width: 100 }} className="text-center">JAH</th>
+                  <th style={{ width: 100, minWidth: 100 }} className="text-center">JAH</th>
                   <th style={{ minWidth: 170 }}>MENGAJAR (JAM &amp; FAN)</th>
                   <th style={{ minWidth: 180 }}>KELAS &amp; MUSTAHIQ</th>
                   <th style={{ minWidth: 170 }}>LOKASI DINIYYAH</th>
@@ -561,10 +567,16 @@ export default function HariKbmPage() {
 
                           return (
                             <tr key={`${kelompok.namaBlok}-${item.nama}`} className="hover:bg-slate-50/70 transition-colors">
-                              <td className="text-center font-bold text-slate-400 text-xs">
+                              <td
+                                className="text-center font-bold text-slate-400 text-xs sticky left-0 z-10 bg-white"
+                                style={{ width: 44, minWidth: 44 }}
+                              >
                                 {noUrut}
                               </td>
-                              <td className="text-center font-mono font-bold text-slate-800 text-xs">
+                              <td
+                                className="text-center font-mono font-bold text-slate-800 text-xs sticky left-[44px] z-10 bg-white border-r-2 border-r-slate-200"
+                                style={{ width: 70, minWidth: 70 }}
+                              >
                                 {item.nia}
                               </td>
                               <td>
