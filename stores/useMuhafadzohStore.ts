@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
 import { DEFAULT_HAFALAN_WAJIB, convertRawToSetoran, convertSetoranToRaw } from '@/lib/utils/setoranHelper';
 import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
+import { RelationalMigrationService } from '@/lib/services/relationalMigrationService';
 
 export const KEY_DB_RIWAYAT_MUHAFADZOH = 'RIWAYAT_MUHAFADZOH_DATA';
 export const KEY_DB_HAFALAN_CONFIG = 'MUHAFADZOH_HAFALAN_CONFIG';
@@ -52,6 +53,22 @@ interface MuhafadzohState {
     oldKey?: { noInduk: string; tglSetor: string; hafalan: string } | null
   ) => void;
   handleRealtimeMuhafadzoh: (newValue: any) => void;
+}
+
+async function syncSetoranToRelational(rawPayload: RiwayatSetoranRawRow[]) {
+  try {
+    const avail = await RelationalMigrationService.isTableAvailable('setoran_hafalan_records');
+    if (avail) {
+      const records = RelationalMigrationService.parseSetoranRawToRecords(rawPayload);
+      if (records.length > 0) {
+        await supabase
+          .from('setoran_hafalan_records' as any)
+          .upsert(records, { onConflict: 'id' });
+      }
+    }
+  } catch (e) {
+    console.warn('Dual-write ke setoran_hafalan_records gagal:', e);
+  }
 }
 
 export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
@@ -105,7 +122,19 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
       console.warn('Gagal memuat cache local setoran:', e);
     }
 
-    // 2. Tarik data dari Supabase
+    // 1.5 Coba muat dari tabel relasional setoran_hafalan_records bila tersedia
+    try {
+      const { data: sRows, error: sErr } = await supabase
+        .from('setoran_hafalan_records' as any)
+        .select('*');
+      if (!sErr && sRows && sRows.length > 0) {
+        const rawRows = RelationalMigrationService.reconstructSetoranRawFromRecords(sRows as any);
+        const list: SetoranHafalan[] = rawRows.map((r) => convertRawToSetoran(r));
+        set({ setoranList: list, rawRows });
+      }
+    } catch {}
+
+    // 2. Tarik data dari Supabase app_settings
     try {
       const { data, error } = await supabase
         .from('app_settings')
@@ -208,6 +237,8 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
           { onConflict: 'key' }
         );
 
+      syncSetoranToRelational(rawPayload);
+
       if (logDesc) {
         await logActivity('UNDO/REDO MUHAFADZOH', logDesc);
       }
@@ -239,6 +270,8 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
           ],
           { onConflict: 'key' }
         );
+
+      syncSetoranToRelational(rawPayload);
 
       await logActivity(
         'INPUT SETORAN MUHAFADZOH',
@@ -305,6 +338,8 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
           ],
           { onConflict: 'key' }
         );
+
+      syncSetoranToRelational(rawPayload);
 
       await logActivity(
         'UPDATE SETORAN',
@@ -387,6 +422,8 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
           { onConflict: 'key' }
         );
 
+      syncSetoranToRelational(rawPayload);
+
       await logActivity('HAPUS SETORAN', `Menghapus rekaman setoran`);
 
       if (!skipHistory && targetItem) {
@@ -433,6 +470,8 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
           ],
           { onConflict: 'key' }
         );
+
+      syncSetoranToRelational(rawPayload);
 
       await logActivity('HAPUS RIWAYAT SETORAN', `Menghapus riwayat setoran untuk ${noIndukList.length} santri terpilih`);
 

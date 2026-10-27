@@ -73,7 +73,7 @@ test.describe('Navigation & System Shell', () => {
     await expect(page.getByText(/Audit Log Aktivitas Sistem/i)).toBeVisible();
 
     // Close modal
-    const closeBtn = page.getByRole('button', { name: /Batal/i }).or(page.locator('button:has-text("✕")')).first();
+    const closeBtn = page.getByRole('dialog').getByRole('button', { name: /Tutup dialog/i }).or(page.locator('button:has-text("✕")')).first();
     if (await closeBtn.isVisible()) {
       await closeBtn.click();
       await expect(page.getByText(/Audit Log Aktivitas Sistem/i)).toBeHidden();

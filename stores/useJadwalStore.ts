@@ -43,6 +43,7 @@ import { useFanStore } from '@/stores/useFanStore';
 import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
+import { RelationalMigrationService } from '@/lib/services/relationalMigrationService';
 
 export const KEY_DB_JADWAL_ASATIDZ = 'JADWAL_MENGAJAR_ASATIDZ';
 export const LS_JADWAL_ASATIDZ = 'MADIN_JADWAL_MENGAJAR_ASATIDZ';
@@ -212,6 +213,24 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
     }
 
     set({ isLoading: true });
+
+    // 2. Coba muat dari tabel relasional jadwal_kbm_slots terlebih dahulu
+    try {
+      const { data: slotRows, error: slotErr } = await supabase
+        .from('jadwal_kbm_slots' as any)
+        .select('*');
+
+      if (!slotErr && slotRows && slotRows.length > 0) {
+        const reconstructed = RelationalMigrationService.reconstructJadwalMapFromSlots(slotRows as any);
+        set({ jadwalMap: reconstructed, isLoading: false });
+        try {
+          localStorage.setItem(LS_JADWAL_ASATIDZ, JSON.stringify(reconstructed));
+        } catch {}
+        return;
+      }
+    } catch {}
+
+    // Fallback ke app_settings (Zero Downtime & Zero Data Loss)
     try {
       const { data, error } = await supabase
         .from('app_settings')
@@ -369,6 +388,23 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
         .from('app_settings')
         .upsert([{ key: KEY_DB_JADWAL_ASATIDZ, value: finalMapToSave }], { onConflict: 'key' });
       if (error) throw error;
+
+      // Sinkronisasi ganda (Dual-Write) ke tabel relasional jadwal_kbm_slots bila tabel tersedia
+      RelationalMigrationService.isTableAvailable('jadwal_kbm_slots').then(async (avail) => {
+        if (avail) {
+          try {
+            const slots = RelationalMigrationService.parseJadwalMapToSlots(finalMapToSave);
+            for (let i = 0; i < slots.length; i += 100) {
+              const chunk = slots.slice(i, i + 100);
+              await supabase
+                .from('jadwal_kbm_slots' as any)
+                .upsert(chunk, { onConflict: 'nama_asatidz,hari,jam,kelas_lengkap' });
+            }
+          } catch (syncErr) {
+            console.warn('Dual-write ke jadwal_kbm_slots gagal:', syncErr);
+          }
+        }
+      });
 
       if (logDesc) {
         await logActivity('UPDATE JADWAL KBM', logDesc);

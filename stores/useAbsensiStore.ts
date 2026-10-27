@@ -26,6 +26,7 @@ import {
   unpackCompactArrayToSesi,
   ekstraksiSesiJadwalHariIni,
 } from '@/lib/utils/absensiHelper';
+import { RelationalMigrationService } from '@/lib/services/relationalMigrationService';
 
 export const KEY_DB_ABSENSI = 'ABSENSI_ASATIDZ_DATA';
 export const KEY_DB_LIBUR = 'PENGATURAN_LIBUR_MADIN';
@@ -399,6 +400,17 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
           // Abaikan bila gagal parse LocalStorage
         }
       }
+
+      // Coba baca dari tabel relasional absensi_records bila tersedia (Fase 1 Relational)
+      try {
+        const { data: recRows, error: recErr } = await supabase
+          .from('absensi_records' as any)
+          .select('*');
+        if (!recErr && recRows && recRows.length > 0) {
+          const reconstructed = RelationalMigrationService.reconstructAbsensiBucketsFromRecords(recRows as any);
+          mergedRaw = { ...mergedRaw, ...reconstructed };
+        }
+      } catch {}
 
       const { data: rows, error } = await supabase
         .from('app_settings')
@@ -1083,6 +1095,23 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
         .upsert({ key: KEY_DB_ABSENSI, value: nextRawMap }, { onConflict: 'key' });
       if (error) throw error;
 
+      // Dual-write ke tabel relasional absensi_records bila tersedia
+      RelationalMigrationService.isTableAvailable('absensi_records').then(async (avail) => {
+        if (avail) {
+          try {
+            const records = RelationalMigrationService.parseAbsensiBucketsToRecords(nextRawMap);
+            for (let i = 0; i < records.length; i += 100) {
+              const chunk = records.slice(i, i + 100);
+              await supabase
+                .from('absensi_records' as any)
+                .upsert(chunk, { onConflict: 'id' });
+            }
+          } catch (syncErr) {
+            console.warn('Dual-write ke absensi_records gagal:', syncErr);
+          }
+        }
+      });
+
       const nextSavedRecords = buildSavedRecordsForDate(date, nextRawMap);
       const nextAbsensiMapByDate = buildLegacyAbsensiMapByDate(nextRawMap);
       const { savedJams, unlockedJams } = computeJamLocks(
@@ -1223,6 +1252,23 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
         .from('app_settings')
         .upsert({ key: KEY_DB_ABSENSI, value: nextRawMap }, { onConflict: 'key' });
       if (error) throw error;
+
+      // Dual-write ke tabel relasional absensi_records bila tersedia
+      RelationalMigrationService.isTableAvailable('absensi_records').then(async (avail) => {
+        if (avail) {
+          try {
+            const records = RelationalMigrationService.parseAbsensiBucketsToRecords(nextRawMap);
+            for (let i = 0; i < records.length; i += 100) {
+              const chunk = records.slice(i, i + 100);
+              await supabase
+                .from('absensi_records' as any)
+                .upsert(chunk, { onConflict: 'id' });
+            }
+          } catch (syncErr) {
+            console.warn('Dual-write ke absensi_records gagal:', syncErr);
+          }
+        }
+      });
 
       if (typeof window !== 'undefined') {
         try {
