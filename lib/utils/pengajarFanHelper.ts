@@ -183,10 +183,52 @@ export function buildUnifiedTeacherMap(
     });
   });
 
-  // 3. Urutkan hasil per Asatidz
+  // 3. Subsumpsi Cerdas (Smart Subsumption) & Pengurutan Hasil per Asatidz
+  // Jika seorang asatidz sudah memiliki penugasan di rombel spesifik (misal "Shorof (3 C ULA)"),
+  // maka entri tingkat generik untuk fan yang sama pada jenjang itu ("Shorof (3 ULA)")
+  // otomatis diserap/dieliminasi agar tidak terjadi penumpukan lencana ganda.
   const finalPeta: Record<string, FanEntryRow[]> = {};
   Object.keys(tempPeta).forEach((k) => {
-    finalPeta[k] = Object.values(tempPeta[k]).sort(
+    const rawList = Object.values(tempPeta[k]);
+
+    // Kumpulkan seluruh fan spesifik rombel (bagian kelas >= 3 kata, misal "3 C ULA", "1 B ULA", "3 A ULA Ug")
+    const specificFanGroups = new Set<string>();
+    rawList.forEach((e) => {
+      const cleanKelas = e.kelas.replace(/\s*Ug$/i, '').trim();
+      const parts = cleanKelas.split(/\s+/);
+      if (parts.length >= 3) {
+        specificFanGroups.add(`${e.fan.toLowerCase()}|${e.tingkat.toUpperCase()}|${e.klsNum}`);
+      }
+    });
+
+    // Saring entri: jika entri adalah tingkat generik (misal "3 ULA") dan sudah ada rombel spesifik untuk fan tersebut, serap!
+    const filteredList = rawList.filter((e) => {
+      const cleanKelas = e.kelas.replace(/\s*Ug$/i, '').trim();
+      const parts = cleanKelas.split(/\s+/);
+      if (parts.length < 3) {
+        const groupKey = `${e.fan.toLowerCase()}|${e.tingkat.toUpperCase()}|${e.klsNum}`;
+        if (specificFanGroups.has(groupKey)) {
+          // Gabungkan informasi kitab ke entri spesifik terkait
+          rawList.forEach((spec) => {
+            const specClean = spec.kelas.replace(/\s*Ug$/i, '').trim();
+            if (
+              specClean.split(/\s+/).length >= 3 &&
+              spec.fan.toLowerCase() === e.fan.toLowerCase() &&
+              spec.tingkat.toUpperCase() === e.tingkat.toUpperCase() &&
+              spec.klsNum === e.klsNum
+            ) {
+              e.kitab.forEach((ktb) => {
+                if (!spec.kitab.includes(ktb)) spec.kitab.push(ktb);
+              });
+            }
+          });
+          return false; // Eliminasi entri generik yang redundant
+        }
+      }
+      return true;
+    });
+
+    finalPeta[k] = filteredList.sort(
       (a, b) =>
         (URUTAN_TINGKAT[a.tingkat] || 99) - (URUTAN_TINGKAT[b.tingkat] || 99) ||
         a.klsNum - b.klsNum ||

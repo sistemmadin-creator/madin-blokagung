@@ -215,4 +215,63 @@ describe('Pemisahan Fan MS & Sinkronisasi Pengajar Fan', () => {
       payload.updatedDetail.item?.['1 A WUSTHO (Ug)||(Nahwu) Nahwu']?.asatidz
     ).toContain('RIZQI MAULANA ACHMAD');
   });
+
+  it('6. Smart Subsumption: entri spesifik rombel (misal 3 C ULA) menyerap entri generik (3 ULA)', () => {
+    const fanConfig: FanConfigMap = {
+      '3 ULA': ['(Shorof) Tasrif Istilah', '(Nahwu) Jurumiyyah'],
+    };
+    const fanDetail: FanPelajaranDetail = {
+      item: {
+        '3 ULA||(Shorof) Tasrif Istilah': {
+          pengajar: 'MS',
+          asatidz: ['HAUL BAHRUN NAIM'],
+        },
+        '3 ULA||(Nahwu) Jurumiyyah': {
+          pengajar: 'MS',
+          asatidz: ['HAUL BAHRUN NAIM'],
+        },
+      },
+    };
+    const mockJadwalMap: Record<string, TeacherJadwalRow> = {
+      'HAUL BAHRUN NAIM': {
+        nama_asatidz: 'HAUL BAHRUN NAIM',
+        senin: 'Jam 1 | Shorof | 3 C ULA (PA) (Masjid Lt.3 R.8)\nJam 2 | Nahwu | 3 C ULA (PA) (Masjid Lt.3 R.8)',
+      },
+    };
+    const mockAsatidzLocal: Asatidz[] = [
+      {
+        id: 'hbn',
+        nia: 'B29',
+        nama_asatidz: 'HAUL BAHRUN NAIM',
+        jah_asatidz: 'Mustahiq',
+        tingkat_asatidz: 'ULA',
+        din_kls_asatidz: '3',
+        din_bag_asatidz: 'C',
+        pa_pi: 'PA',
+      },
+    ];
+
+    const unifiedMap = buildUnifiedTeacherMap(
+      mockAsatidzLocal,
+      fanDetail,
+      fanConfig,
+      mockJadwalMap,
+      mockFormasi
+    );
+
+    const hbnEntries = unifiedMap['HAUL BAHRUN NAIM'];
+    expect(hbnEntries).toBeDefined();
+
+    // Pastikan HANYA ada 2 lencana (Shorof dan Nahwu) pada kelas spesifik '3 C ULA'
+    expect(hbnEntries.length).toBe(2);
+
+    const kelasList = hbnEntries.map((e) => e.kelas);
+    expect(kelasList).toContain('3 C ULA');
+    expect(kelasList).not.toContain('3 ULA');
+
+    // Pastikan nama kitab 'Tasrif Istilah' terserap ke entri spesifik
+    const shorofEntry = hbnEntries.find((e) => e.fan === 'Shorof');
+    expect(shorofEntry?.kelas).toBe('3 C ULA');
+    expect(shorofEntry?.kitab).toContain('Tasrif Istilah');
+  });
 });
