@@ -16,7 +16,9 @@ import {
   Pencil,
   Search,
   X,
+  Sparkles,
 } from 'lucide-react';
+import { SyncFanJadwalService } from '@/lib/services/syncFanJadwalService';
 import * as XLSX from 'xlsx';
 import {
   dapatkanTahunAjaranKBM,
@@ -52,6 +54,31 @@ export default function JadwalKbmPage() {
   const [fltGender, setFltGender] = useState<string>('');
   const [fltSearch, setFltSearch] = useState<string>('');
   const [switchMode, setSwitchMode] = useState<'semua' | 'reguler' | 'unggulan'>('semua');
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
+  const handleSyncFanMustahiq = async () => {
+    if (
+      !confirm(
+        'Sinkronkan Fan Wajib Mustahiq ke Jadwal KBM?\n\nSistem akan mengisi slot Jam 1 & 2 untuk kelas-kelas yang masih kosong berdasarkan penugasan Mustahiq dan Fan Wajib yang terdaftar.'
+      )
+    ) {
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const res = await SyncFanJadwalService.syncAllMustahiqToJadwalKBM();
+      await SyncFanJadwalService.cleanFanDetailDuplicates();
+      await fetchJadwal(true);
+      alert(
+        `✅ SINKRONISASI SELESAI!\n\n• ${res.classesProcessed} kelas diproses\n• ${res.teachersUpdated} asatidz diperbarui\n• ${res.slotsAdded} slot jam KBM ditambahkan`
+      );
+    } catch (err: unknown) {
+      alert('Gagal menyinkronkan: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const touchStateRef = useRef<{
@@ -318,6 +345,17 @@ export default function JadwalKbmPage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={handleSyncFanMustahiq}
+              disabled={isSyncing || isLoading}
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-50 border border-emerald-600 text-emerald-800 hover:bg-emerald-100 transition shadow-xs flex items-center gap-1.5"
+              title="Sinkronkan Fan Wajib Mustahiq ke slot Jam 1 & 2 kelas yang masih kosong"
+            >
+              <Sparkles className={`w-3.5 h-3.5 text-emerald-700 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Fan Mustahiq'}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => fetchJadwal(true)}

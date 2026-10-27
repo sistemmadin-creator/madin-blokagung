@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
 import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import { calculateFieldDelta } from '@/lib/utils/deltaHelper';
+import { CascadeAsatidzService, CascadeDeleteSnapshot } from '@/lib/services/cascadeAsatidzService';
 
 interface AsatidzState {
   asatidzList: Asatidz[];
@@ -242,6 +243,19 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
       }
 
       if (isEdit && oldNia) {
+        // Cascade rename ke Fan Pelajaran, Jadwal KBM & Formasi jika nama asatidz berubah
+        if (
+          prevAsatidz &&
+          prevAsatidz.nama_asatidz &&
+          payload.nama_asatidz &&
+          prevAsatidz.nama_asatidz.trim().toUpperCase() !== payload.nama_asatidz.trim().toUpperCase()
+        ) {
+          await CascadeAsatidzService.cascadeRenameAsatidz(
+            prevAsatidz.nama_asatidz,
+            payload.nama_asatidz
+          );
+        }
+
         const { error } = await supabase
           .from('asatidz')
           .update(payload)
@@ -367,6 +381,12 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
   deleteAsatidz: async (nia, skipHistory = false) => {
     const targetAsatidz = get().asatidzList.find((a) => a.nia === nia);
     try {
+      // 1. Eksekusi cascade deletion ke Fan Pelajaran, Jadwal KBM, dan Formasi Kelas
+      let cascadeSnapshot: CascadeDeleteSnapshot | null = null;
+      if (targetAsatidz) {
+        cascadeSnapshot = await CascadeAsatidzService.cascadeDeleteAsatidz([targetAsatidz]);
+      }
+
       const { error } = await supabase
         .from('asatidz')
         .delete()
@@ -390,11 +410,17 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
             if (!existRow) {
               await supabase.from('asatidz').insert([restorePayload]);
             }
+            if (cascadeSnapshot) {
+              await CascadeAsatidzService.restoreSnapshot(cascadeSnapshot);
+            }
             await get().fetchAsatidz();
             return true;
           },
           redo: async () => {
             await supabase.from('asatidz').delete().eq('nia', nia);
+            if (targetAsatidz) {
+              await CascadeAsatidzService.cascadeDeleteAsatidz([targetAsatidz]);
+            }
             await get().fetchAsatidz();
             return true;
           },
@@ -419,6 +445,12 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
     const deletedList = get().asatidzList.filter((a) => selected.includes(a.nia));
 
     try {
+      // 1. Eksekusi cascade deletion ke Fan Pelajaran, Jadwal KBM, dan Formasi Kelas
+      let cascadeSnapshot: CascadeDeleteSnapshot | null = null;
+      if (deletedList.length > 0) {
+        cascadeSnapshot = await CascadeAsatidzService.cascadeDeleteAsatidz(deletedList);
+      }
+
       const { error } = await supabase
         .from('asatidz')
         .delete()
@@ -445,11 +477,17 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
             if (toInsert.length > 0) {
               await supabase.from('asatidz').insert(toInsert);
             }
+            if (cascadeSnapshot) {
+              await CascadeAsatidzService.restoreSnapshot(cascadeSnapshot);
+            }
             await get().fetchAsatidz();
             return true;
           },
           redo: async () => {
             await supabase.from('asatidz').delete().in('nia', selected);
+            if (deletedList.length > 0) {
+              await CascadeAsatidzService.cascadeDeleteAsatidz(deletedList);
+            }
             await get().fetchAsatidz();
             return true;
           },
