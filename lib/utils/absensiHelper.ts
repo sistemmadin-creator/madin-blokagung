@@ -71,14 +71,41 @@ export function formatWaktuSekarangWIB(): string {
  * Otomatis maju +1 hari mulai pukul 18:00 WIB (Maghrib / pergantian hari pesantren).
  */
 export function getDefaultTanggalAbsensi(): string {
-  const today = new Date();
-  if (today.getHours() >= 18) {
-    today.setDate(today.getDate() + 1);
+  // Ambil waktu terkini dalam zona waktu Asia/Jakarta (WIB)
+  const nowWibStr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' });
+  const nowWib = new Date(nowWibStr);
+
+  if (nowWib.getHours() >= 18) {
+    nowWib.setDate(nowWib.getDate() + 1);
   }
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
+  const yyyy = nowWib.getFullYear();
+  const mm = String(nowWib.getMonth() + 1).padStart(2, '0');
+  const dd = String(nowWib.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
+ * Helper penentuan label waktu KBM Pesantren:
+ * - Jam Ke-1, 2, 3: (Malam Sebelumnya) dilaksanakan malam hari ba'da Maghrib/Isya
+ * - Jam Ke-4: (Siang Hari) dilaksanakan siang hari ba'da Dzuhur (Takror)
+ */
+export function getLabelWaktuJamKBM(jam: number): {
+  label: string;
+  deskripsi: string;
+  badgeClass: string;
+} {
+  if (jam <= 3) {
+    return {
+      label: '(Malam Sebelumnya)',
+      deskripsi: 'KBM Malam (Ba\'da Maghrib/Isya)',
+      badgeClass: 'bg-slate-800 text-white border-slate-700',
+    };
+  }
+  return {
+    label: '(Siang Hari)',
+    deskripsi: 'Takror Siang (Ba\'da Dzuhur)',
+    badgeClass: 'bg-emerald-700 text-white border-emerald-600',
+  };
 }
 
 /**

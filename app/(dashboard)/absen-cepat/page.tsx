@@ -25,7 +25,7 @@ import {
   SesiJadwalHarian,
   StatusAbsensi,
 } from '@/types/absensi';
-import { getSesiKey } from '@/lib/utils/absensiHelper';
+import { getSesiKey, getLabelWaktuJamKBM } from '@/lib/utils/absensiHelper';
 import {
   bandingkanBlokHariKBM,
   formatLabelBlokHariKBM,
@@ -392,8 +392,7 @@ export default function AbsenCepatPage() {
     }
   };
 
-  const waktuLabel =
-    selectedJam === 4 ? '(Malam Sebelumnya)' : '(Siang Hari)';
+  const waktuInfo = getLabelWaktuJamKBM(selectedJam);
 
   return (
     <div
@@ -516,8 +515,11 @@ export default function AbsenCepatPage() {
                 <h2 className="text-sm font-extrabold text-slate-800">
                   Daftar Pengajar Jam Ke-{selectedJam}
                 </h2>
-                <span className="text-xs font-semibold text-slate-500">
-                  {waktuLabel}
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded shadow-xs ${waktuInfo.badgeClass}`}
+                  title={waktuInfo.deskripsi}
+                >
+                  {waktuInfo.label}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500">

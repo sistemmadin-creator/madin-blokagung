@@ -48,6 +48,7 @@ import {
   getSesiKey,
   bangunDaftarRiwayatAbsensi,
   formatTanggalPanjangIndo,
+  getLabelWaktuJamKBM,
 } from '@/lib/utils/absensiHelper';
 import {
   bandingkanBlokHariKBM,
@@ -224,6 +225,10 @@ export default function AbsensiAsatidzPage() {
 
   // Hitung KPI Hari Ini lintas Jam 1 - 4
   const kpiStats = useMemo(() => {
+    if (isHariJumat || currentLibur) {
+      return { total: 0, hadir: 0, izinSakit: 0, alfa: 0, terlambatGanti: 0 };
+    }
+
     let total = 0;
     let hadir = 0;
     let izinSakit = 0;
@@ -750,6 +755,27 @@ export default function AbsensiAsatidzPage() {
                 Kegiatan Belajar Mengajar reguler diliburkan setiap hari Jumat. Silakan pilih tanggal lain untuk mengisi absensi harian.
               </p>
             </div>
+          ) : currentLibur ? (
+            <div className="bg-white rounded-xl border border-amber-200 p-10 text-center space-y-3 shadow-sm">
+              <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+                <CalendarOff className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-800">
+                Kegiatan Pembelajaran Diliburkan: {currentLibur.kategori}
+              </h3>
+              <p className="text-xs text-slate-600 max-w-md mx-auto">
+                {currentLibur.keterangan || 'KBM reguler diliburkan pada tanggal ini.'}
+              </p>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setHariLibur(selectedDate, null)}
+                  className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition shadow-xs"
+                >
+                  Batalkan Status Libur
+                </button>
+              </div>
+            </div>
           ) : (
             ([1, 2, 3, 4] as JamKbm[]).map((jamNum) => {
               const allSesiJam = sesiHariIni[jamNum] || [];
@@ -804,8 +830,7 @@ export default function AbsensiAsatidzPage() {
                   );
                 });
 
-              const waktuLabel =
-                jamNum === 4 ? '(Malam Sebelumnya)' : '(Siang Hari)';
+              const waktuInfo = getLabelWaktuJamKBM(jamNum);
 
               return (
                 <section
@@ -854,8 +879,11 @@ export default function AbsensiAsatidzPage() {
                           <h2 className="text-sm font-extrabold text-slate-800">
                             Daftar Pengajar Jam Ke-{jamNum}
                           </h2>
-                          <span className="text-xs font-semibold text-slate-500">
-                            {waktuLabel}
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded shadow-xs ${waktuInfo.badgeClass}`}
+                            title={waktuInfo.deskripsi}
+                          >
+                            {waktuInfo.label}
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500">

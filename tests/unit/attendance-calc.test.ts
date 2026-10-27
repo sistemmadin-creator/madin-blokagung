@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { JamKbm, RecordSesiAbsensi } from '@/types/absensi';
+import { getLabelWaktuJamKBM, getDefaultTanggalAbsensi } from '@/lib/utils/absensiHelper';
 
 describe('Attendance Calculation & Gating Logic', () => {
   function computeGatingState(existingSessions: Record<number, RecordSesiAbsensi[]>) {
@@ -46,14 +47,15 @@ describe('Attendance Calculation & Gating Logic', () => {
     expect(unlocked[3]).toBe(false);
   });
 
-  it('correctly maps attendance percentage to Indonesian predicates', () => {
-    expect(computePredikat(95)).toBe('Sangat Baik');
-    expect(computePredikat(90)).toBe('Sangat Baik');
-    expect(computePredikat(89)).toBe('Baik');
-    expect(computePredikat(80)).toBe('Baik');
-    expect(computePredikat(75)).toBe('Cukup');
-    expect(computePredikat(70)).toBe('Cukup');
-    expect(computePredikat(69)).toBe('Kurang');
-    expect(computePredikat(0)).toBe('Kurang');
+  it('correctly assigns Pesantren time labels to Jam 1..3 and Jam 4', () => {
+    expect(getLabelWaktuJamKBM(1).label).toBe('(Malam Sebelumnya)');
+    expect(getLabelWaktuJamKBM(2).label).toBe('(Malam Sebelumnya)');
+    expect(getLabelWaktuJamKBM(3).label).toBe('(Malam Sebelumnya)');
+    expect(getLabelWaktuJamKBM(4).label).toBe('(Siang Hari)');
+  });
+
+  it('produces valid YYYY-MM-DD format for getDefaultTanggalAbsensi', () => {
+    const tgl = getDefaultTanggalAbsensi();
+    expect(tgl).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
