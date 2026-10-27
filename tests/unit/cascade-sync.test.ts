@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CascadeAsatidzService } from '@/lib/services/cascadeAsatidzService';
-import { SyncFanJadwalService } from '@/lib/services/syncFanJadwalService';
 import { Asatidz } from '@/types/asatidz';
 
 // Mock supabase client
