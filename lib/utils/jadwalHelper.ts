@@ -1043,6 +1043,15 @@ export function cekFanMSuntukKelas(
     return ditemukan;
   };
 
+  if (primaryFanKey && primaryFanKey !== fallbackFanKey) {
+    const hasInPrimary = Object.keys(fanDetail.item).some(
+      (iKey) => iKey.indexOf(primaryFanKey + '||') === 0
+    );
+    if (hasInPrimary) {
+      return cariDiKey(primaryFanKey);
+    }
+  }
+
   return cariDiKey(primaryFanKey) || cariDiKey(fallbackFanKey);
 }
 

@@ -182,3 +182,86 @@ export function getItemsKonfigFanKelas(
   }
   return null;
 }
+
+/**
+ * Mengambil daftar bagian (din_bag) yang berstatus Unggulan untuk Tingkat dan Din. Kls tertentu
+ */
+export function getDaftarBagUnggulanTingkatKls(
+  tingkat: string,
+  dinKls: string,
+  formasiList: Formasi[]
+): string[] {
+  const tktUpper = String(tingkat || '').trim().toUpperCase();
+  const klsStr = String(dinKls || '').trim();
+  const bagSet = new Set<string>();
+
+  (formasiList || []).forEach((f) => {
+    if (
+      f &&
+      f.is_unggulan &&
+      String(f.tingkat || '').trim().toUpperCase() === tktUpper &&
+      String(f.din_kls || '').trim() === klsStr
+    ) {
+      const bag = String(f.din_bag || '').trim().toUpperCase();
+      if (bag) bagSet.add(bag);
+    }
+  });
+
+  return Array.from(bagSet).sort();
+}
+
+/**
+ * Mengambil daftar nama Mustahiq berdasarkan Cakupan (Reguler vs Unggulan)
+ * Menjamin Mustahiq kelas Unggulan tidak bocor ke kelas Reguler, dan sebaliknya.
+ */
+export function getMustahiqByScope(
+  params: {
+    tingkat: string;
+    dinKls: string;
+    scope: 'reguler' | 'unggulan';
+    selectedBag?: string; // Jika 'ALL' atau kosong, mencakup semua bagian pada cakupan tersebut
+  },
+  asatidzList: Asatidz[],
+  formasiList: Formasi[]
+): string[] {
+  const tktUpper = String(params.tingkat || '').trim().toUpperCase();
+  const klsStr = String(params.dinKls || '').trim();
+  const selBag = String(params.selectedBag || '').trim().toUpperCase();
+  const daftarBagUg = getDaftarBagUnggulanTingkatKls(tktUpper, klsStr, formasiList);
+  const result: string[] = [];
+
+  (asatidzList || []).forEach((a) => {
+    const rTkt = String(a.tingkat_asatidz || '').trim().toUpperCase();
+    const rKls = String(a.din_kls_asatidz || '').trim();
+    const rBag = String(a.din_bag_asatidz || '').trim().toUpperCase();
+    const rNama = String(a.nama_asatidz || '').trim();
+
+    if (!rNama || rTkt !== tktUpper || rKls !== klsStr) return;
+
+    const { isMS } = cekKategoriJahAsatidz(a.jah_asatidz);
+    if (!isMS) return;
+
+    const isUgBag = daftarBagUg.includes(rBag) || isKelasUnggulan(`${klsStr} ${rBag} ${tktUpper}`, formasiList);
+
+    if (params.scope === 'reguler') {
+      // Untuk kelas reguler, HANYA masukkan Mustahiq yang BUKAN kelas unggulan
+      if (!isUgBag) {
+        if (!result.includes(rNama)) result.push(rNama);
+      }
+    } else {
+      // Untuk kelas unggulan, HANYA masukkan Mustahiq kelas unggulan
+      if (isUgBag) {
+        if (selBag && selBag !== 'ALL') {
+          if (rBag === selBag && !result.includes(rNama)) {
+            result.push(rNama);
+          }
+        } else {
+          if (!result.includes(rNama)) result.push(rNama);
+        }
+      }
+    }
+  });
+
+  return result;
+}
+

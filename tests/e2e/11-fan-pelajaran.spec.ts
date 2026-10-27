@@ -115,18 +115,36 @@ test.describe('Fan Pelajaran & Pengajar Fan Migration Full Verification', () => 
     await expect(dialog).not.toBeVisible();
   });
 
-  test('4.0 Fan Pelajaran: Modal Atur Fan MS (Batch Setup)', async ({ page }) => {
+  test('4.0 Fan Pelajaran: Modal Atur Fan MS (Batch Setup dengan Pemisahan Cakupan Reguler vs Unggulan)', async ({ page }) => {
     await page.goto('/fan/pelajaran');
 
     await page.getByRole('button', { name: /Atur Fan MS/i }).click();
-    await expect(page.getByRole('heading', { name: /Atur Fan Khusus MS \(Mustahiq\)/i })).toBeVisible();
-    await expect(page.getByText('1. Tingkat')).toBeVisible();
-    await expect(page.getByText('2. Din. Kls')).toBeVisible();
-    await expect(page.getByText('3. Pilih Fan yang Wajib Diajar MS')).toBeVisible();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading', { name: /Atur Fan Khusus MS \(Mustahiq\)/i })).toBeVisible();
+    await expect(dialog.getByText(/1\. Tingkat Diniyyah/i)).toBeVisible();
+    await expect(dialog.getByText(/2\. Din\. Kelas/i)).toBeVisible();
+    await expect(dialog.getByText(/3\. Pilih Cakupan Kelas/i)).toBeVisible();
+
+    // Verifikasi Segmented Scope Buttons
+    const btnRegulerScope = dialog.getByRole('button', { name: /Kelas Reguler \(Non-Unggulan\)/i });
+    const btnUnggulanScope = dialog.getByRole('button', { name: /Kelas Unggulan \(Ug\)/i });
+    await expect(btnRegulerScope).toBeVisible();
+    await expect(btnUnggulanScope).toBeVisible();
+
+    // Klik tab Kelas Unggulan
+    await btnUnggulanScope.click();
+    await expect(dialog.getByText(/Target Bagian Unggulan/i)).toBeVisible();
+
+    // Kembalikan ke Kelas Reguler
+    await btnRegulerScope.click();
+    await expect(dialog.getByText(/Centang Fan Wajib Diajar Mustahiq \(Reguler\)/i)).toBeVisible();
+
+    // Verifikasi tombol pembersihan mandiri
+    await expect(dialog.getByRole('button', { name: /Bersihkan Mustahiq Unggulan dari Reguler/i })).toBeVisible();
 
     // Tutup dialog
-    await page.getByRole('button', { name: /Batal/i }).click();
-    await expect(page.getByRole('heading', { name: /Atur Fan Khusus MS \(Mustahiq\)/i })).not.toBeVisible();
+    await dialog.getByRole('button', { name: /Batal/i }).click();
+    await expect(dialog).not.toBeVisible();
   });
 
   test('5.0 Fan Pelajaran: Modal Pilih Asatidz Fan dari Kolom Pengajar', async ({ page }) => {
@@ -156,6 +174,7 @@ test.describe('Fan Pelajaran & Pengajar Fan Migration Full Verification', () => 
     // Buttons
     await expect(page.getByRole('button', { name: /Grup Asal/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Segarkan Data/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Sinkronkan Jadwal/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Export Excel/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Print \/ Cetak Dokumen/i })).toBeVisible();
 
@@ -181,5 +200,21 @@ test.describe('Fan Pelajaran & Pengajar Fan Migration Full Verification', () => 
     // Tutup Modal Grup Asal
     await page.getByRole('button', { name: /Tutup dialog/i }).click();
     await expect(page.getByRole('heading', { name: /Pengaturan Grup Asal Asatidz/i })).not.toBeVisible();
+  });
+
+  test('7.0 Pengajar Fan: Penelusuran Asatidz Mustahiq Unggulan & Verifikasi Lencana Fan', async ({ page }) => {
+    await page.goto('/fan/pengajar');
+
+    const searchInput = page.getByPlaceholder('Cari Kode / Nama / Fan / Jah...');
+    await searchInput.fill('RIZQI MAULANA ACHMAD');
+
+    // Baris tabel untuk Rizqi Maulana Achmad harus muncul
+    const row = page.locator('tr', { hasText: 'RIZQI MAULANA ACHMAD' });
+    await expect(row).toBeVisible();
+
+    // Verifikasi lencana fan di baris tersebut
+    // Harus memuat kelas unggulan (1 A WUSTHO Ug) dan tidak memuat kelas reguler bocor (1 WUSTHO)
+    await expect(row.getByText(/1 A WUSTHO Ug/i).first()).toBeVisible();
+    await expect(row.getByText(/Fiqih/i).first()).toBeVisible();
   });
 });

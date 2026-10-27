@@ -4,12 +4,17 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useFanStore } from '@/stores/useFanStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
+import { useJadwalStore } from '@/stores/useJadwalStore';
 import {
   sortAsatidzByKodeNatural,
   parseFanItemString,
   URUTAN_TINGKAT,
   getItemsKonfigFanKelas,
 } from '@/lib/utils/fanHelper';
+import {
+  buildUnifiedTeacherMap,
+  buildSyncJadwalToFanPayload,
+} from '@/lib/utils/pengajarFanHelper';
 import * as XLSX from 'xlsx';
 import ModalGrupAsal from '@/components/modules/fan/ModalGrupAsal';
 import ModalDetailAsatidz from '@/components/modules/asatidz/ModalDetailAsatidz';
@@ -22,6 +27,7 @@ import {
   RotateCcw,
   X,
   Star,
+  Sparkles,
 } from 'lucide-react';
 import { Asatidz } from '@/types/asatidz';
 
@@ -42,17 +48,20 @@ export default function PengajarFanPage() {
     isLoading: loadingAsatidz,
   } = useAsatidzStore();
 
-  const { fetchFormasi } = useFormasiStore();
+  const { fetchFormasi, formasiList } = useFormasiStore();
+  const { jadwalMap, fetchJadwal, isLoading: loadingJadwal } = useJadwalStore();
 
   const [search, setSearch] = useState('');
   const [filterTingkat, setFilterTingkat] = useState('');
   const [filterJah, setFilterJah] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     fetchFanData();
     fetchFormasi();
+    fetchJadwal();
     if (asatidzList.length === 0) fetchAsatidz();
-  }, [fetchFanData, fetchFormasi, fetchAsatidz, asatidzList.length]);
+  }, [fetchFanData, fetchFormasi, fetchJadwal, fetchAsatidz, asatidzList.length]);
 
   // Distinct Jah options
   const jahOptions = useMemo(() => {
@@ -64,99 +73,19 @@ export default function PengajarFanPage() {
     return Array.from(s).sort();
   }, [asatidzList]);
 
-  // Ekstraksi data pengajar fan dan metrik keterisian
+  // Ekstraksi data pengajar fan terpadu (Fan Pelajaran + Jadwal KBM)
   const { teacherMap, totalItemFan, itemFanTerisi } = useMemo(() => {
-    const tempPeta: Record<
-      string,
-      Record<
-        string,
-        {
-          fan: string;
-          kelas: string;
-          tingkat: string;
-          klsNum: number;
-          isUg: boolean;
-          kitab: string[];
-        }
-      >
-    > = {};
-
-    (asatidzList || []).forEach((a) => {
-      const n = String(a.nama_asatidz || '').trim().toUpperCase();
-      if (n) tempPeta[n] = {};
-    });
-
-    const items = fanDetail.item || {};
-    Object.keys(items).forEach((itemKey) => {
-      const idx = itemKey.indexOf('||');
-      if (idx < 0) return;
-      const kelasKey = itemKey.substring(0, idx);
-      const rawItem = itemKey.substring(idx + 2);
-
-      const daftarCfg = getItemsKonfigFanKelas(kelasKey, fanConfig);
-      if (daftarCfg && !daftarCfg.includes(rawItem)) return;
-
-      const det = items[itemKey] || {};
-      const guru = Array.isArray(det.asatidz) ? det.asatidz : [];
-      if (!guru.length) return;
-
-      const parsed = parseFanItemString(rawItem);
-      const namaFan = parsed.fan && parsed.fan !== '-' ? parsed.fan : parsed.mapel;
-      const isUg = /\(Ug\)\s*$/i.test(kelasKey);
-      const kelasBersih = kelasKey.replace(/\s*\(Ug\)\s*$/i, '').trim();
-      const kelasLabel = isUg ? `${kelasBersih} Ug` : kelasBersih;
-      const parts = kelasBersih.split(/\s+/);
-      const tingkat = String(parts[parts.length - 1] || '').toUpperCase();
-      const klsNum = parseInt(parts[0], 10) || 0;
-
-      guru.forEach((g) => {
-        const key = String(g || '').trim().toUpperCase();
-        if (!key || !tempPeta[key]) return;
-        const ek = `${namaFan.toLowerCase()}|${kelasLabel.toLowerCase()}`;
-        if (!tempPeta[key][ek]) {
-          tempPeta[key][ek] = {
-            fan: namaFan,
-            kelas: kelasLabel,
-            tingkat,
-            klsNum,
-            isUg,
-            kitab: [],
-          };
-        }
-        if (
-          parsed.mapel &&
-          parsed.mapel !== '-' &&
-          !tempPeta[key][ek].kitab.includes(parsed.mapel)
-        ) {
-          tempPeta[key][ek].kitab.push(parsed.mapel);
-        }
-      });
-    });
-
-    const finalPeta: Record<
-      string,
-      Array<{
-        fan: string;
-        kelas: string;
-        tingkat: string;
-        klsNum: number;
-        isUg: boolean;
-        kitab: string[];
-      }>
-    > = {};
-
-    Object.keys(tempPeta).forEach((k) => {
-      finalPeta[k] = Object.values(tempPeta[k]).sort(
-        (a, b) =>
-          (URUTAN_TINGKAT[a.tingkat] || 99) - (URUTAN_TINGKAT[b.tingkat] || 99) ||
-          a.klsNum - b.klsNum ||
-          a.kelas.localeCompare(b.kelas, undefined, { numeric: true }) ||
-          a.fan.localeCompare(b.fan)
-      );
-    });
+    const finalPeta = buildUnifiedTeacherMap(
+      asatidzList,
+      fanDetail,
+      fanConfig,
+      jadwalMap,
+      formasiList
+    );
 
     let total = 0;
     let terisi = 0;
+    const items = fanDetail.item || {};
     Object.keys(fanConfig || {}).forEach((kelasKey) => {
       (fanConfig[kelasKey] || []).forEach((raw) => {
         total++;
@@ -170,7 +99,7 @@ export default function PengajarFanPage() {
       totalItemFan: total,
       itemFanTerisi: terisi,
     };
-  }, [asatidzList, fanDetail, fanConfig]);
+  }, [asatidzList, fanDetail, fanConfig, jadwalMap, formasiList]);
 
   // Kelompokkan Asatidz berdasarkan Master Grup Asal & terapkan filtering
   const groupedAsatidzList = useMemo(() => {
@@ -293,6 +222,41 @@ export default function PengajarFanPage() {
     setFilterJah('');
   };
 
+  const handleSyncJadwalKeFan = async () => {
+    if (
+      !confirm(
+        'Sinkronkan penugasan dari Jadwal KBM ke daftar Fan Pelajaran dan bersihkan mustahiq unggulan dari data reguler?'
+      )
+    ) {
+      return;
+    }
+
+    setIsSyncing(true);
+    // 1. Bersihkan mustahiq unggulan dari fan reguler
+    const cleanRes = await useFanStore
+      .getState()
+      .bersihkanMustahiqUnggulanDariReguler(asatidzList, formasiList);
+
+    // 2. Sinkronkan jadwal aktif ke Fan Pelajaran
+    const syncRes = buildSyncJadwalToFanPayload(
+      jadwalMap,
+      fanConfig,
+      useFanStore.getState().fanDetail,
+      formasiList
+    );
+
+    if (syncRes.changesCount > 0) {
+      await useFanStore.getState().saveFanConfig(syncRes.updatedConfig);
+      useFanStore.setState({ fanDetail: syncRes.updatedDetail });
+      useFanStore.getState().triggerAutoSaveFanDetail();
+    }
+
+    setIsSyncing(false);
+    alert(
+      `Sinkronisasi selesai!\n- ${cleanRes.cleanedCount} item reguler dibersihkan dari mustahiq unggulan.\n- ${syncRes.changesCount} penugasan mata pelajaran dari jadwal KBM berhasil diselaraskan.`
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* 1. Header & Toolbar Card */}
@@ -329,14 +293,30 @@ export default function PengajarFanPage() {
               onClick={() => {
                 fetchFanData();
                 fetchAsatidz();
+                fetchJadwal();
+                fetchFormasi();
               }}
-              disabled={loadingFan || loadingAsatidz}
+              disabled={loadingFan || loadingAsatidz || loadingJadwal}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-emerald-300 text-emerald-700 hover:bg-emerald-50 shadow-xs transition-colors disabled:opacity-50"
             >
               <RefreshCw
-                className={`w-3.5 h-3.5 ${loadingFan || loadingAsatidz ? 'animate-spin' : ''}`}
+                className={`w-3.5 h-3.5 ${loadingFan || loadingAsatidz || loadingJadwal ? 'animate-spin' : ''}`}
               />
               <span>Segarkan Data</span>
+            </button>
+
+            {/* 2b. Sinkronkan Jadwal ke Fan */}
+            <button
+              type="button"
+              onClick={handleSyncJadwalKeFan}
+              disabled={isSyncing || loadingFan || loadingAsatidz || loadingJadwal}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-amber-300 text-amber-800 bg-amber-50/60 hover:bg-amber-100/70 shadow-xs transition-colors disabled:opacity-50"
+              title="Sinkronkan penugasan di Jadwal KBM ke Fan Pelajaran dan bersihkan data ganda"
+            >
+              <Sparkles
+                className={`w-3.5 h-3.5 text-amber-600 ${isSyncing ? 'animate-spin' : ''}`}
+              />
+              <span>{isSyncing ? 'Menyelaraskan...' : 'Sinkronkan Jadwal'}</span>
             </button>
 
             {/* 3. Export Excel */}

@@ -10,7 +10,11 @@ import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
 import { Asatidz } from '@/types/asatidz';
 import { Formasi } from '@/types/formasi';
-import { isKelasUnggulan } from '@/lib/utils/fanHelper';
+import {
+  isKelasUnggulan,
+  getMustahiqByScope,
+  getDaftarBagUnggulanTingkatKls,
+} from '@/lib/utils/fanHelper';
 
 const KEY_DB_FAN_CONFIG = 'FAN_CONFIG';
 const KEY_DB_FAN_DETAIL = 'FAN_PELAJARAN_DETAIL';
@@ -142,8 +146,15 @@ interface FanState {
     kls: string,
     selectedItems: string[],
     asatidzList: Asatidz[],
-    formasiList: Formasi[]
+    formasiList: Formasi[],
+    scope?: 'reguler' | 'unggulan' | 'semua',
+    selectedBagUg?: string
   ) => Promise<boolean>;
+
+  bersihkanMustahiqUnggulanDariReguler: (
+    asatidzList: Asatidz[],
+    formasiList: Formasi[]
+  ) => Promise<{ cleanedCount: number; affectedTeachers: string[] }>;
 }
 
 export const useFanStore = create<FanState>((set, get) => ({
@@ -521,89 +532,60 @@ export const useFanStore = create<FanState>((set, get) => ({
     kls: string,
     selectedItems: string[],
     asatidzList: Asatidz[],
-    formasiList: Formasi[]
+    formasiList: Formasi[],
+    scope: 'reguler' | 'unggulan' | 'semua' = 'reguler',
+    selectedBagUg?: string
   ) => {
     const tktUpper = String(tingkat || '').trim().toUpperCase();
     const klsStr = String(kls || '').trim();
     const keyReguler = `${klsStr} ${tktUpper}`;
-
-    // Temukan seluruh Mustahiq untuk Tingkat + Din.Kls ini
-    const mustahiqReguler: string[] = [];
-    (asatidzList || []).forEach((a) => {
-      const rTkt = String(a.tingkat_asatidz || '').trim().toUpperCase();
-      const rKls = String(a.din_kls_asatidz || '').trim();
-      const rJah = String(a.jah_asatidz || '').toLowerCase();
-      const rNama = String(a.nama_asatidz || '').trim();
-
-      const isMustahiq =
-        rJah.includes('mustahiq') ||
-        rJah.includes('ms & koor') ||
-        rJah === 'ist' ||
-        rJah.includes("isti'dad");
-
-      if (isMustahiq && rTkt === tktUpper && rKls === klsStr && rNama) {
-        if (!mustahiqReguler.includes(rNama)) mustahiqReguler.push(rNama);
-      }
-    });
-
-    // Cari daftar din_bag untuk tingkat & kelas ini
-    const daftarBag = new Set<string>();
-    (formasiList || []).forEach((f) => {
-      if (
-        String(f.tingkat || '').trim().toUpperCase() === tktUpper &&
-        String(f.din_kls || '').trim() === klsStr
-      ) {
-        const bag = String(f.din_bag || '').trim().toUpperCase();
-        if (bag) daftarBag.add(bag);
-      }
-    });
-
+    const cfg = get().fanConfig;
     const detail = { ...get().fanDetail };
     if (!detail.item) detail.item = {};
 
-    const cfg = get().fanConfig;
-    const itemsReguler = cfg[keyReguler] || [];
+    const daftarBagUg = getDaftarBagUnggulanTingkatKls(tktUpper, klsStr, formasiList);
 
-    // 1. Terapkan pada kelas reguler
-    itemsReguler.forEach((rawItem) => {
-      const itemKeyReg = `${keyReguler}||${rawItem}`;
-      if (!detail.item![itemKeyReg]) detail.item![itemKeyReg] = {};
+    // 1. Cakupan REGULER (Hanya terapkan ke key reguler, mengecualikan Mustahiq Unggulan)
+    if (scope === 'reguler' || scope === 'semua') {
+      const mustahiqReguler = getMustahiqByScope(
+        { tingkat: tktUpper, dinKls: klsStr, scope: 'reguler' },
+        asatidzList,
+        formasiList
+      );
+      const itemsReguler = cfg[keyReguler] || [];
 
-      if (selectedItems.includes(rawItem)) {
-        detail.item![itemKeyReg].pengajar = 'MS';
-        detail.item![itemKeyReg].asatidz = [...mustahiqReguler];
-      } else if (detail.item![itemKeyReg].pengajar === 'MS') {
-        detail.item![itemKeyReg].pengajar = '';
-        detail.item![itemKeyReg].asatidz = [];
-      }
-    });
+      itemsReguler.forEach((rawItem) => {
+        const itemKeyReg = `${keyReguler}||${rawItem}`;
+        if (!detail.item![itemKeyReg]) detail.item![itemKeyReg] = {};
 
-    // 2. Terapkan pada sub-kelas unggulan jika ada
-    daftarBag.forEach((bag) => {
-      const namaKelas = `${klsStr} ${bag} ${tktUpper}`;
-      if (isKelasUnggulan(namaKelas, formasiList)) {
+        if (selectedItems.includes(rawItem)) {
+          detail.item![itemKeyReg].pengajar = 'MS';
+          // Pastikan hanya mustahiq reguler (bersihkan mustahiq unggulan)
+          detail.item![itemKeyReg].asatidz = [...mustahiqReguler];
+        } else if (detail.item![itemKeyReg].pengajar === 'MS') {
+          detail.item![itemKeyReg].pengajar = '';
+          detail.item![itemKeyReg].asatidz = [];
+        }
+      });
+    }
+
+    // 2. Cakupan UNGGULAN (Hanya terapkan ke key Unggulan, tanpa mengotori key Reguler)
+    if (scope === 'unggulan' || scope === 'semua') {
+      const targetBags =
+        selectedBagUg && selectedBagUg !== 'ALL'
+          ? [selectedBagUg.toUpperCase()]
+          : daftarBagUg;
+
+      targetBags.forEach((bag) => {
+        const namaKelas = `${klsStr} ${bag} ${tktUpper}`;
         const keyUg = `${namaKelas} (Ug)`;
-        const itemsUg = cfg[keyUg] || itemsReguler;
+        const itemsUg = cfg[keyUg] || cfg[keyReguler] || [];
 
-        // Ambil mustahiq khusus bagian ini
-        const mustahiqBag: string[] = [];
-        (asatidzList || []).forEach((a) => {
-          const rTkt = String(a.tingkat_asatidz || '').trim().toUpperCase();
-          const rKls = String(a.din_kls_asatidz || '').trim();
-          const rBag = String(a.din_bag_asatidz || '').trim().toUpperCase();
-          const rJah = String(a.jah_asatidz || '').toLowerCase();
-          const rNama = String(a.nama_asatidz || '').trim();
-
-          const isMustahiq =
-            rJah.includes('mustahiq') ||
-            rJah.includes('ms & koor') ||
-            rJah === 'ist' ||
-            rJah.includes("isti'dad");
-
-          if (isMustahiq && rTkt === tktUpper && rKls === klsStr && rBag === bag && rNama) {
-            if (!mustahiqBag.includes(rNama)) mustahiqBag.push(rNama);
-          }
-        });
+        const mustahiqBag = getMustahiqByScope(
+          { tingkat: tktUpper, dinKls: klsStr, scope: 'unggulan', selectedBag: bag },
+          asatidzList,
+          formasiList
+        );
 
         itemsUg.forEach((rawItem) => {
           const itemKeyUg = `${keyUg}||${rawItem}`;
@@ -611,15 +593,14 @@ export const useFanStore = create<FanState>((set, get) => ({
 
           if (selectedItems.includes(rawItem)) {
             detail.item![itemKeyUg].pengajar = 'MS';
-            detail.item![itemKeyUg].asatidz =
-              mustahiqBag.length > 0 ? [...mustahiqBag] : [...mustahiqReguler];
+            detail.item![itemKeyUg].asatidz = [...mustahiqBag];
           } else if (detail.item![itemKeyUg].pengajar === 'MS') {
             detail.item![itemKeyUg].pengajar = '';
             detail.item![itemKeyUg].asatidz = [];
           }
         });
-      }
-    });
+      });
+    }
 
     set({ fanDetail: detail });
     try {
@@ -629,12 +610,78 @@ export const useFanStore = create<FanState>((set, get) => ({
         .upsert([{ key: KEY_DB_FAN_DETAIL, value: detail }], { onConflict: 'key' });
       await logActivity(
         'BATCH SETUP FAN MS',
-        `Menetapkan ${selectedItems.length} Fan MS untuk kelas ${klsStr} ${tktUpper}`
+        `Menetapkan ${selectedItems.length} Fan MS untuk kelas ${klsStr} ${tktUpper} (Scope: ${scope})`
       );
       return true;
     } catch (err: any) {
       console.error('Batch setup fan MS error:', err.message);
       return false;
     }
+  },
+
+  bersihkanMustahiqUnggulanDariReguler: async (
+    asatidzList: Asatidz[],
+    formasiList: Formasi[]
+  ) => {
+    const detail = { ...get().fanDetail };
+    if (!detail.item) detail.item = {};
+
+    let cleanedCount = 0;
+    const affectedTeachers = new Set<string>();
+
+    Object.keys(detail.item).forEach((itemKey) => {
+      const idx = itemKey.indexOf('||');
+      if (idx < 0) return;
+      const kelasKey = itemKey.substring(0, idx).trim();
+      // Hanya periksa key reguler (bukan yang berakhir dengan (Ug))
+      if (/\(Ug\)\s*$/i.test(kelasKey)) return;
+
+      const parts = kelasKey.split(/\s+/);
+      const klsStr = parts[0];
+      const tktUpper = parts[parts.length - 1]?.toUpperCase();
+
+      const mustahiqUg = getMustahiqByScope(
+        { tingkat: tktUpper, dinKls: klsStr, scope: 'unggulan' },
+        asatidzList,
+        formasiList
+      );
+      if (mustahiqUg.length === 0) return;
+
+      const itemDet = detail.item![itemKey];
+      const currentList = Array.isArray(itemDet.asatidz) ? itemDet.asatidz : [];
+
+      const filteredList = currentList.filter((g) => {
+        const isUg = mustahiqUg.some(
+          (u) => u.trim().toUpperCase() === String(g).trim().toUpperCase()
+        );
+        if (isUg) {
+          affectedTeachers.add(String(g).trim());
+        }
+        return !isUg;
+      });
+
+      if (filteredList.length !== currentList.length) {
+        detail.item![itemKey].asatidz = filteredList;
+        cleanedCount++;
+      }
+    });
+
+    if (cleanedCount > 0) {
+      set({ fanDetail: detail });
+      try {
+        localStorage.setItem(LS_FAN_DETAIL, JSON.stringify(detail));
+        await supabase
+          .from('app_settings')
+          .upsert([{ key: KEY_DB_FAN_DETAIL, value: detail }], { onConflict: 'key' });
+        await logActivity(
+          'CLEANUP MUSTAHIQ UNGGULAN DARI REGULER',
+          `Membersihkan ${cleanedCount} item fan reguler dari mustahiq unggulan: ${Array.from(affectedTeachers).join(', ')}`
+        );
+      } catch (err: any) {
+        console.error('Error saat cleanup mustahiq unggulan dari reguler:', err);
+      }
+    }
+
+    return { cleanedCount, affectedTeachers: Array.from(affectedTeachers) };
   },
 }));
