@@ -112,6 +112,10 @@
   padding: 5px 6px !important;
   vertical-align: middle !important;
 }
+.tabel-kbm-resmi th.sticky,
+.tabel-kbm-resmi td.sticky {
+  box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.08);
+}
 .tabel-kbm-resmi thead th {
   background-color: #e2e8f0 !important;
   color: #0f172a !important;

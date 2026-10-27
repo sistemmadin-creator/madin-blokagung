@@ -214,21 +214,46 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
 
     set({ isLoading: true });
 
-    // 2. Coba muat dari tabel relasional jadwal_kbm_slots terlebih dahulu
+    // 2. Coba muat dari tabel relasional jadwal_kbm_slots dengan chunking paginasi (mengatasi limit 1.000 PostgREST)
     try {
-      const { data: slotRows, error: slotErr } = await supabase
-        .from('jadwal_kbm_slots' as any)
-        .select('*');
+      const allRows: any[] = [];
+      const pageSize = 1000;
+      let from = 0;
+      let hasMore = true;
 
-      if (!slotErr && slotRows && slotRows.length > 0) {
-        const reconstructed = RelationalMigrationService.reconstructJadwalMapFromSlots(slotRows as any);
+      while (hasMore) {
+        const { data: pageRows, error: pageErr } = await supabase
+          .from('jadwal_kbm_slots' as any)
+          .select('*')
+          .range(from, from + pageSize - 1);
+
+        if (pageErr) {
+          throw pageErr;
+        }
+
+        if (pageRows && pageRows.length > 0) {
+          allRows.push(...pageRows);
+          if (pageRows.length < pageSize) {
+            hasMore = false;
+          } else {
+            from += pageSize;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      if (allRows.length > 0) {
+        const reconstructed = RelationalMigrationService.reconstructJadwalMapFromSlots(allRows as any);
         set({ jadwalMap: reconstructed, isLoading: false });
         try {
           localStorage.setItem(LS_JADWAL_ASATIDZ, JSON.stringify(reconstructed));
         } catch {}
         return;
       }
-    } catch {}
+    } catch (err: any) {
+      console.warn('Gagal memuat jadwal_kbm_slots relasional, fallback ke app_settings:', err?.message);
+    }
 
     // Fallback ke app_settings (Zero Downtime & Zero Data Loss)
     try {

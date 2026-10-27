@@ -69,7 +69,8 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
     await expect(table.locator('th', { hasText: 'RABU' })).toBeVisible();
     await expect(table.locator('th', { hasText: 'KAMIS' })).toBeVisible();
 
-    // Verifikasi baris pertama diurutkan mulai dari ULA (bukan Isti'dad)
+    // Verifikasi baris data pertama selesai dirender & diurutkan mulai dari ULA (bukan Isti'dad)
+    await expect(table.locator('tbody tr td.cell-klik-kelas').first()).toBeVisible({ timeout: 15_000 });
     const firstRowTingkat = table.locator('tbody tr').first().locator('.badge-tingkat-ula');
     await expect(firstRowTingkat).toBeVisible();
   });

@@ -53,16 +53,12 @@ export default function JadwalKbmPage() {
   const [fltSearch, setFltSearch] = useState<string>('');
   const [switchMode, setSwitchMode] = useState<'semua' | 'reguler' | 'unggulan'>('semua');
 
-  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStateRef = useRef<{
-    lastTapTime: number;
-    lastTapKey: string;
     startX: number;
     startY: number;
     isScrolling: boolean;
   }>({
-    lastTapTime: 0,
-    lastTapKey: '',
     startX: 0,
     startY: 0,
     isScrolling: false,
@@ -89,7 +85,17 @@ export default function JadwalKbmPage() {
   // Filtered List
   const listTampil = useMemo(() => {
     return masterStrukturKelasKBM.filter((k) => {
-      if (fltTingkat && k.tingkat !== fltTingkat) return false;
+      if (fltTingkat) {
+        const tTarget = fltTingkat.toUpperCase().trim();
+        const kTingkat = (k.tingkat || '').toUpperCase().trim();
+        const isIstTarget = tTarget === "ISTI'DAD" || tTarget === 'IST';
+        const isIstKelas = kTingkat === "ISTI'DAD" || kTingkat === 'IST';
+        if (isIstTarget) {
+          if (!isIstKelas) return false;
+        } else if (kTingkat !== tTarget) {
+          return false;
+        }
+      }
       if (fltGender && k.papi !== fltGender) return false;
 
       const namaKelasMurni = `${k.kls} ${k.bag} ${k.tingkat}`.trim();
@@ -99,6 +105,7 @@ export default function JadwalKbmPage() {
 
       if (fltSearch) {
         const q = fltSearch.toLowerCase().trim();
+        const qClean = q.replace(/\s+/g, '');
         let textToSearch = `${k.kls} ${k.bag} ${k.tingkat} ${k.mustahiqNama} ${k.mustahiqKG} ${k.mustahiqJah} ${k.lokal}`.toLowerCase();
         LIST_HARI.forEach((hari) => {
           [1, 2].forEach((jam) => {
@@ -108,7 +115,8 @@ export default function JadwalKbmPage() {
             });
           });
         });
-        if (!textToSearch.includes(q)) return false;
+        const textClean = textToSearch.replace(/\s+/g, '');
+        if (!textToSearch.includes(q) && !textClean.includes(qClean)) return false;
       }
 
       return true;
@@ -132,19 +140,14 @@ export default function JadwalKbmPage() {
 
   // Click on Class code (Single Click -> Detail, Double Click / Pencil -> Input)
   const handleKlsClick = (k: KelasKbmItem) => {
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-      clickTimeoutRef.current = null;
-      openModalInputJadwal(k.key);
-    } else {
-      clickTimeoutRef.current = setTimeout(() => {
-        openModalDetailKelas(k.key);
-        clickTimeoutRef.current = null;
-      }, 250);
-    }
+    openModalDetailKelas(k.key);
   };
 
-  // Right-click or double-tap on KG cell
+  const handleKlsDoubleClick = (k: KelasKbmItem) => {
+    openModalInputJadwal(k.key);
+  };
+
+  // Right-click or touch on KG cell
   const handleCellContextMenu = (
     e: React.MouseEvent,
     k: KelasKbmItem,
@@ -168,11 +171,43 @@ export default function JadwalKbmPage() {
     );
   };
 
-  const handleTouchStartKG = (e: React.TouchEvent) => {
+  // Mobile long-press timer handling
+  const handleTouchStartKG = (
+    e: React.TouchEvent<HTMLTableCellElement>,
+    k: KelasKbmItem,
+    hari: string,
+    jam: number,
+    sesi: SesiSlot | undefined
+  ) => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
     if (e.touches && e.touches.length === 1) {
       touchStateRef.current.startX = e.touches[0].clientX;
       touchStateRef.current.startY = e.touches[0].clientY;
       touchStateRef.current.isScrolling = false;
+
+      const touch = e.touches[0];
+      const clientX = touch.clientX;
+      const clientY = touch.clientY;
+
+      touchTimerRef.current = setTimeout(() => {
+        if (!touchStateRef.current.isScrolling) {
+          openContextMenuKG(
+            {
+              kelasKey: k.key,
+              classObj: k,
+              hari,
+              jam,
+              guru: sesi?.guru || '',
+              kg: sesi?.kg || '',
+              fan: sesi?.fan || '',
+            },
+            { x: clientX, y: clientY }
+          );
+        }
+      }, 500);
     }
   };
 
@@ -182,53 +217,18 @@ export default function JadwalKbmPage() {
       const dy = Math.abs(e.touches[0].clientY - touchStateRef.current.startY);
       if (dx > 8 || dy > 8) {
         touchStateRef.current.isScrolling = true;
+        if (touchTimerRef.current) {
+          clearTimeout(touchTimerRef.current);
+          touchTimerRef.current = null;
+        }
       }
     }
   };
 
-  const handleTouchEndKG = (
-    e: React.TouchEvent<HTMLTableCellElement>,
-    k: KelasKbmItem,
-    hari: string,
-    jam: number,
-    sesi: SesiSlot | undefined
-  ) => {
-    if (touchStateRef.current.isScrolling) {
-      touchStateRef.current.lastTapTime = 0;
-      touchStateRef.current.lastTapKey = '';
-      return;
-    }
-
-    const tapKey = `${k.key}_${hari}_${jam}`;
-    const now = Date.now();
-    const diff = now - touchStateRef.current.lastTapTime;
-
-    if (touchStateRef.current.lastTapKey === tapKey && diff > 0 && diff < 350) {
-      e.preventDefault();
-      e.stopPropagation();
-      const touch = e.changedTouches ? e.changedTouches[0] : null;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const clientX = touch ? touch.clientX : rect.left + rect.width / 2;
-      const clientY = touch ? touch.clientY : rect.top + rect.height / 2;
-
-      openContextMenuKG(
-        {
-          kelasKey: k.key,
-          classObj: k,
-          hari,
-          jam,
-          guru: sesi?.guru || '',
-          kg: sesi?.kg || '',
-          fan: sesi?.fan || '',
-        },
-        { x: clientX, y: clientY }
-      );
-
-      touchStateRef.current.lastTapTime = 0;
-      touchStateRef.current.lastTapKey = '';
-    } else {
-      touchStateRef.current.lastTapTime = now;
-      touchStateRef.current.lastTapKey = tapKey;
+  const handleTouchEndKG = () => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
     }
   };
 
@@ -255,7 +255,10 @@ export default function JadwalKbmPage() {
 
     masterStrukturKelasKBM.forEach((k, idx) => {
       const noStr = idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`;
-      const klsDisplay = `${k.kls} ${k.bag}`;
+      const isUg = Boolean(
+        k.isUnggulan || isKelasUnggulan(`${k.kls} ${k.bag} ${k.tingkat}`, formasiList)
+      );
+      const klsDisplay = `${k.kls} ${k.bag}${isUg ? ' (Ug)' : ''}`;
 
       // Row Jam 1
       const row1: (string | number)[] = [noStr, klsDisplay, k.papi, k.tingkat, '1'];
@@ -490,35 +493,35 @@ export default function JadwalKbmPage() {
           </h6>
         </div>
 
-        <div className="table-responsive overflow-x-auto">
-          <table className="tabel-kbm-resmi w-full" id="tableJadwalKBM">
+        <div className="table-responsive overflow-x-auto rounded-xl border border-slate-200 shadow-xs bg-white">
+          <table className="tabel-kbm-resmi w-full min-w-[1320px]" id="tableJadwalKBM">
             <thead>
               {/* Baris Header 1 */}
               <tr>
-                <th rowSpan={2} style={{ width: 38 }}>NO</th>
-                <th rowSpan={2} style={{ width: 70 }}>KLS</th>
-                <th rowSpan={2} style={{ width: 45 }}>PI/PA</th>
-                <th rowSpan={2} style={{ width: 75 }}>TINGKAT</th>
-                <th rowSpan={2} style={{ width: 35 }}>JAM</th>
+                <th rowSpan={2} className="sticky left-0 z-30 bg-[#e2e8f0]" style={{ width: 38, minWidth: 38 }}>NO</th>
+                <th rowSpan={2} className="sticky left-[38px] z-30 bg-[#e2e8f0] border-r-2 border-r-slate-400" style={{ width: 70, minWidth: 70 }}>KLS</th>
+                <th rowSpan={2} style={{ width: 45, minWidth: 45 }}>PI/PA</th>
+                <th rowSpan={2} style={{ width: 75, minWidth: 75 }}>TINGKAT</th>
+                <th rowSpan={2} style={{ width: 35, minWidth: 35 }}>JAM</th>
                 <th colSpan={12} className="text-center bg-subhead">HARI</th>
-                <th rowSpan={2} style={{ minWidth: 170 }}>MUSTAHIQ</th>
-                <th rowSpan={2} style={{ width: 55 }}>KG</th>
+                <th rowSpan={2} style={{ minWidth: 175 }}>MUSTAHIQ</th>
+                <th rowSpan={2} style={{ width: 55, minWidth: 55 }}>KG</th>
                 <th rowSpan={2} style={{ minWidth: 150 }}>LOKAL</th>
               </tr>
               {/* Baris Header 2 (Sub-Kolom Hari) */}
               <tr className="bg-subhead">
-                <th style={{ width: 45 }}>KG</th>
-                <th>SABTU</th>
-                <th style={{ width: 45 }}>KG</th>
-                <th>AHAD</th>
-                <th style={{ width: 45 }}>KG</th>
-                <th>SENIN</th>
-                <th style={{ width: 45 }}>KG</th>
-                <th>SELASA</th>
-                <th style={{ width: 45 }}>KG</th>
-                <th>RABU</th>
-                <th style={{ width: 45 }}>KG</th>
-                <th>KAMIS</th>
+                <th style={{ width: 45, minWidth: 45 }}>KG</th>
+                <th style={{ minWidth: 65 }}>SABTU</th>
+                <th style={{ width: 45, minWidth: 45 }}>KG</th>
+                <th style={{ minWidth: 65 }}>AHAD</th>
+                <th style={{ width: 45, minWidth: 45 }}>KG</th>
+                <th style={{ minWidth: 65 }}>SENIN</th>
+                <th style={{ width: 45, minWidth: 45 }}>KG</th>
+                <th style={{ minWidth: 65 }}>SELASA</th>
+                <th style={{ width: 45, minWidth: 45 }}>KG</th>
+                <th style={{ minWidth: 65 }}>RABU</th>
+                <th style={{ width: 45, minWidth: 45 }}>KG</th>
+                <th style={{ minWidth: 65 }}>KAMIS</th>
               </tr>
             </thead>
             <tbody id="tbodyJadwalKBM">
@@ -536,6 +539,7 @@ export default function JadwalKbmPage() {
                   );
                   const isPutri = k.papi === 'PI' || String(k.papi || '').trim().toUpperCase() === 'PUTRI';
                   const rowGenderClass = isPutri ? 'row-jadwal-pi' : 'row-jadwal-pa';
+                  const stickyCellBg = isPutri ? 'bg-[#fff6eb]' : 'bg-white';
 
                   let badgeClass = 'badge-tingkat-ula';
                   if (k.tingkat === 'WUSTHO') badgeClass = 'badge-tingkat-wustho';
@@ -548,16 +552,20 @@ export default function JadwalKbmPage() {
                       <tr className={rowGenderClass}>
                         <td
                           rowSpan={2}
-                          className="text-center font-bold cell-klik-kelas cursor-pointer hover:bg-emerald-50/50"
+                          className={`text-center font-bold cell-klik-kelas cursor-pointer sticky left-0 z-10 ${stickyCellBg} hover:bg-emerald-50/50`}
+                          style={{ width: 38, minWidth: 38 }}
                           onClick={() => handleKlsClick(k)}
-                          title="Klik untuk detail kelas, Dobel-klik untuk input jadwal"
+                          onDoubleClick={() => handleKlsDoubleClick(k)}
+                          title="Klik: Detail Kelas | Dobel-klik: Edit Jadwal"
                         >
                           {noStr}
                         </td>
                         <td
                           rowSpan={2}
-                          className="text-center font-bold text-emerald-700 cell-klik-kelas cursor-pointer hover:bg-emerald-50/60 transition-colors"
+                          className={`text-center font-bold text-emerald-700 cell-klik-kelas cursor-pointer sticky left-[38px] z-10 ${stickyCellBg} border-r-2 border-r-slate-300 hover:bg-emerald-50/60 transition-colors`}
+                          style={{ width: 70, minWidth: 70 }}
                           onClick={() => handleKlsClick(k)}
+                          onDoubleClick={() => handleKlsDoubleClick(k)}
                           title="Klik: Detail Kelas | Dobel-klik / Pensil: Edit Jadwal"
                         >
                           <div className="flex items-center justify-center gap-1">
@@ -608,13 +616,13 @@ export default function JadwalKbmPage() {
                                 className={`cell-kg cell-kg-clickable cursor-context-menu select-none transition-colors ${cutClass}`}
                                 onContextMenu={(e) => handleCellContextMenu(e, k, hari, 1, sesi)}
                                 onDoubleClick={(e) => handleCellContextMenu(e, k, hari, 1, sesi)}
-                                onTouchStart={handleTouchStartKG}
+                                onTouchStart={(e) => handleTouchStartKG(e, k, hari, 1, sesi)}
                                 onTouchMove={handleTouchMoveKG}
-                                onTouchEnd={(e) => handleTouchEndKG(e, k, hari, 1, sesi)}
+                                onTouchEnd={handleTouchEndKG}
                                 title={
                                   sesi
-                                    ? `Asatidz: ${sesi.guru} (${sesi.kg})\nMapel: ${sesi.fan}\n(Klik kanan / dobel klik untuk opsi)`
-                                    : 'Slot Kosong (-)\n(Klik kanan / dobel klik untuk isi/paste)'
+                                    ? `Asatidz: ${sesi.guru} (${sesi.kg})\nMapel: ${sesi.fan}\n(Klik kanan / tahan untuk opsi)`
+                                    : 'Slot Kosong (-)\n(Klik kanan / tahan untuk isi/paste)'
                                 }
                               >
                                 {sesi ? sesi.kg : '-'}
@@ -670,13 +678,13 @@ export default function JadwalKbmPage() {
                                 className={`cell-kg cell-kg-clickable cursor-context-menu select-none transition-colors ${cutClass}`}
                                 onContextMenu={(e) => handleCellContextMenu(e, k, hari, 2, sesi)}
                                 onDoubleClick={(e) => handleCellContextMenu(e, k, hari, 2, sesi)}
-                                onTouchStart={handleTouchStartKG}
+                                onTouchStart={(e) => handleTouchStartKG(e, k, hari, 2, sesi)}
                                 onTouchMove={handleTouchMoveKG}
-                                onTouchEnd={(e) => handleTouchEndKG(e, k, hari, 2, sesi)}
+                                onTouchEnd={handleTouchEndKG}
                                 title={
                                   sesi
-                                    ? `Asatidz: ${sesi.guru} (${sesi.kg})\nMapel: ${sesi.fan}\n(Klik kanan / dobel klik untuk opsi)`
-                                    : 'Slot Kosong (-)\n(Klik kanan / dobel klik untuk isi/paste)'
+                                    ? `Asatidz: ${sesi.guru} (${sesi.kg})\nMapel: ${sesi.fan}\n(Klik kanan / tahan untuk opsi)`
+                                    : 'Slot Kosong (-)\n(Klik kanan / tahan untuk isi/paste)'
                                 }
                               >
                                 {sesi ? sesi.kg : '-'}

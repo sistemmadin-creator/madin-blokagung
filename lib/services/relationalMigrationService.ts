@@ -211,11 +211,20 @@ export const RelationalMigrationService = {
       (['sabtu', 'ahad', 'senin', 'selasa', 'rabu', 'kamis'] as const).forEach((hKey) => {
         if (!row[hKey]) return;
         const parsed = parseJadwalCell_Client(row[hKey]);
-        parsed.sort((a, b) => a.jam - b.jam);
-        row[hKey] = parsed.map((p) => p.raw).join('\n');
-        totalJam += parsed.length;
+        // Deduplikasi slot agar aman terhadap perbedaan casing saat upsert
+        const seenSlots = new Set<string>();
+        const uniqueParsed = parsed.filter((p) => {
+          const key = `${p.jam}_${(p.fan || '').trim().toLowerCase()}_${(p.lokasi || '').trim().toLowerCase()}`;
+          if (seenSlots.has(key)) return false;
+          seenSlots.add(key);
+          return true;
+        });
 
-        parsed.forEach((p) => {
+        uniqueParsed.sort((a, b) => a.jam - b.jam);
+        row[hKey] = uniqueParsed.map((p) => p.raw).join('\n');
+        totalJam += uniqueParsed.length;
+
+        uniqueParsed.forEach((p) => {
           const kInfo = this.extractKelasInfoFromSlot(p.lokasi);
           if (kInfo.kelas_lengkap) classesSet.add(kInfo.kelas_lengkap);
         });
