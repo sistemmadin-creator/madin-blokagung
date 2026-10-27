@@ -10,7 +10,6 @@ import {
 } from '@/lib/utils/fanHelper';
 import {
   buildUnifiedTeacherMap,
-  buildSyncJadwalToFanPayload,
   normNameKey,
   normalizeTingkatName,
 } from '@/lib/utils/pengajarFanHelper';
@@ -26,7 +25,6 @@ import {
   RotateCcw,
   X,
   Star,
-  Sparkles,
 } from 'lucide-react';
 import { Asatidz } from '@/types/asatidz';
 
@@ -53,7 +51,6 @@ export default function PengajarFanPage() {
   const [search, setSearch] = useState('');
   const [filterTingkat, setFilterTingkat] = useState('');
   const [filterJah, setFilterJah] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     fetchFanData();
@@ -233,41 +230,6 @@ export default function PengajarFanPage() {
     setFilterJah('');
   };
 
-  const handleSyncJadwalKeFan = async () => {
-    if (
-      !confirm(
-        'Sinkronkan penugasan dari Jadwal KBM ke daftar Fan Pelajaran dan bersihkan mustahiq unggulan dari data reguler?'
-      )
-    ) {
-      return;
-    }
-
-    setIsSyncing(true);
-    // 1. Bersihkan mustahiq unggulan dari fan reguler
-    const cleanRes = await useFanStore
-      .getState()
-      .bersihkanMustahiqUnggulanDariReguler(asatidzList, formasiList);
-
-    // 2. Sinkronkan jadwal aktif ke Fan Pelajaran
-    const syncRes = buildSyncJadwalToFanPayload(
-      jadwalMap,
-      fanConfig,
-      useFanStore.getState().fanDetail,
-      formasiList
-    );
-
-    if (syncRes.changesCount > 0) {
-      await useFanStore.getState().saveFanConfig(syncRes.updatedConfig);
-      useFanStore.setState({ fanDetail: syncRes.updatedDetail });
-      useFanStore.getState().triggerAutoSaveFanDetail();
-    }
-
-    setIsSyncing(false);
-    alert(
-      `Sinkronisasi selesai!\n- ${cleanRes.cleanedCount} item reguler dibersihkan dari mustahiq unggulan.\n- ${syncRes.changesCount} penugasan mata pelajaran dari jadwal KBM berhasil diselaraskan.`
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* 1. Header & Toolbar Card */}
@@ -314,20 +276,6 @@ export default function PengajarFanPage() {
                 className={`w-3.5 h-3.5 ${loadingFan || loadingAsatidz || loadingJadwal ? 'animate-spin' : ''}`}
               />
               <span>Segarkan Data</span>
-            </button>
-
-            {/* 2b. Sinkronkan Jadwal ke Fan */}
-            <button
-              type="button"
-              onClick={handleSyncJadwalKeFan}
-              disabled={isSyncing || loadingFan || loadingAsatidz || loadingJadwal}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-amber-300 text-amber-800 bg-amber-50/60 hover:bg-amber-100/70 shadow-xs transition-colors disabled:opacity-50"
-              title="Sinkronkan penugasan di Jadwal KBM ke Fan Pelajaran dan bersihkan data ganda"
-            >
-              <Sparkles
-                className={`w-3.5 h-3.5 text-amber-600 ${isSyncing ? 'animate-spin' : ''}`}
-              />
-              <span>{isSyncing ? 'Menyelaraskan...' : 'Sinkronkan Jadwal'}</span>
             </button>
 
             {/* 3. Export Excel */}

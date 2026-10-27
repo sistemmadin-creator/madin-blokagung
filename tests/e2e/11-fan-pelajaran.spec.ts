@@ -174,7 +174,7 @@ test.describe('Fan Pelajaran & Pengajar Fan Migration Full Verification', () => 
     // Buttons
     await expect(page.getByRole('button', { name: /Grup Asal/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Segarkan Data/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Sinkronkan Jadwal/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Sinkronkan Jadwal/i })).not.toBeVisible();
     await expect(page.getByRole('button', { name: /Export Excel/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Print \/ Cetak Dokumen/i })).toBeVisible();
 
