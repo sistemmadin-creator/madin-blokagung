@@ -16,6 +16,48 @@ export interface BlokGroupMeta {
   gender: 'PA' | 'PI';
 }
 
+export const ALLOWED_FORMASI_COLUMNS = [
+  'tingkat',
+  'din_kls',
+  'din_bag',
+  'pa_pi',
+  'is_unggulan',
+  'kapasitas_maksimal',
+  'id_mustahiq',
+  'domisili',
+  'lokasi_takror',
+  'lokasi_diniyyah',
+  'blok',
+  'foto_takror',
+  'foto_diniyyah',
+] as const;
+
+export function sanitizeFormasiPayload(data: Partial<FormasiKelas>): Record<string, any> {
+  const clean: Record<string, any> = {};
+
+  if (data.tingkat !== undefined) clean.tingkat = String(data.tingkat).trim();
+  if (data.din_kls !== undefined) clean.din_kls = String(data.din_kls).trim();
+  if (data.din_bag !== undefined) clean.din_bag = String(data.din_bag).trim().toUpperCase();
+  if (data.pa_pi !== undefined) clean.pa_pi = data.pa_pi;
+
+  // Konversi eksplisit boolean agar status unggulan tersimpan sempurna ke PostgreSQL
+  clean.is_unggulan = Boolean(data.is_unggulan);
+
+  if (data.kapasitas_maksimal !== undefined) {
+    clean.kapasitas_maksimal = Math.min(Math.max(Number(data.kapasitas_maksimal) || 80, 1), 80);
+  }
+
+  clean.id_mustahiq = data.id_mustahiq || '';
+  clean.domisili = data.domisili || '';
+  clean.lokasi_takror = data.lokasi_takror || '';
+  clean.lokasi_diniyyah = data.lokasi_diniyyah || '';
+  clean.blok = data.blok || '';
+  clean.foto_takror = data.foto_takror || '';
+  clean.foto_diniyyah = data.foto_diniyyah || '';
+
+  return clean;
+}
+
 interface FormasiState {
   formasiList: FormasiKelas[];
   isLoading: boolean;
@@ -73,6 +115,7 @@ interface FormasiState {
   resetCustomFilters: () => void;
 
   saveFormasi: (data: Partial<FormasiKelas>, isEdit: boolean, id?: string) => Promise<boolean>;
+  toggleUnggulan: (id: string, currentStatus: boolean) => Promise<boolean>;
   deleteFormasi: (id: string) => Promise<boolean>;
   bulkDeleteFormasi: (ids: string[]) => Promise<boolean>;
   quickUploadFoto: (id: string, jenis: 'takror' | 'diniyyah', base64: string) => Promise<boolean>;
@@ -221,10 +264,12 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
 
   saveFormasi: async (data, isEdit, id) => {
     try {
+      const payload = sanitizeFormasiPayload(data);
+
       if (isEdit && id) {
         const { error } = await supabase
           .from('formasi_kelas')
-          .update(data)
+          .update(payload)
           .eq('id', id);
         if (error) {
           if (error.code === '23505') throw new Error('Kombinasi Tingkat, Kelas, Bagian, dan Gender duplikat!');
@@ -232,19 +277,19 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
         }
         await logActivity(
           'EDIT FORMASI KELAS',
-          `Mengubah formasi kelas: ${data.tingkat} ${data.din_kls}${data.din_bag} (${data.pa_pi})`
+          `Mengubah formasi kelas: ${payload.tingkat} ${payload.din_kls}${payload.din_bag} (${payload.pa_pi})`
         );
       } else {
         const { error } = await supabase
           .from('formasi_kelas')
-          .insert([data]);
+          .insert([payload]);
         if (error) {
           if (error.code === '23505') throw new Error('Kombinasi Tingkat, Kelas, Bagian, dan Gender duplikat!');
           throw error;
         }
         await logActivity(
           'TAMBAH FORMASI KELAS',
-          `Membuat formasi kelas baru: ${data.tingkat} ${data.din_kls}${data.din_bag} (${data.pa_pi})`
+          `Membuat formasi kelas baru: ${payload.tingkat} ${payload.din_kls}${payload.din_bag} (${payload.pa_pi})`
         );
       }
       await get().fetchFormasi();
@@ -252,6 +297,38 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
     } catch (err: any) {
       console.error('Save formasi error:', err.message);
       alert('Gagal menyimpan formasi kelas: ' + err.message);
+      return false;
+    }
+  },
+
+  toggleUnggulan: async (id: string, currentStatus: boolean) => {
+    try {
+      const nextStatus = !currentStatus;
+      const { error } = await supabase
+        .from('formasi_kelas')
+        .update({ is_unggulan: nextStatus })
+        .eq('id', id);
+      if (error) throw error;
+
+      set((state) => ({
+        formasiList: state.formasiList.map((f) =>
+          f.id === id ? { ...f, is_unggulan: nextStatus } : f
+        ),
+        selectedFormasi:
+          state.selectedFormasi?.id === id
+            ? { ...state.selectedFormasi, is_unggulan: nextStatus }
+            : state.selectedFormasi,
+      }));
+
+      await logActivity(
+        'TOGGLE STATUS KELAS UNGGULAN',
+        `Mengubah status kelas ID ${id} menjadi ${nextStatus ? 'Unggulan' : 'Reguler'}`
+      );
+      await get().fetchFormasi();
+      return true;
+    } catch (err: any) {
+      console.error('Toggle unggulan error:', err.message);
+      alert('Gagal mengubah status kelas unggulan: ' + err.message);
       return false;
     }
   },

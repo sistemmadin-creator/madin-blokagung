@@ -23,6 +23,7 @@ export default function ModalDetailFormasi() {
     openInputModal,
     deleteFormasi,
     openFotoModal,
+    toggleUnggulan,
   } = useFormasiStore();
 
   const { santriList } = useSantriStore();
@@ -124,12 +125,31 @@ export default function ModalDetailFormasi() {
                 <span className="text-slate-500">Kelas / Bagian:</span>
                 <span className="font-bold text-slate-800 flex items-center gap-1.5">
                   {f.din_kls} - {f.din_bag}
-                  {f.is_unggulan && (
-                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">
-                      <Star className="w-3 h-3 fill-amber-500 text-amber-600" />
-                      Unggulan
-                    </span>
-                  )}
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (!f.id) return;
+                      await toggleUnggulan(f.id, !!f.is_unggulan);
+                    }}
+                    title={
+                      f.is_unggulan
+                        ? 'Klik untuk menonaktifkan status kelas unggulan'
+                        : 'Klik untuk mengaktifkan status kelas unggulan'
+                    }
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                      f.is_unggulan
+                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 shadow-2xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-300'
+                    }`}
+                  >
+                    <Star
+                      className={`w-3 h-3 ${
+                        f.is_unggulan ? 'fill-amber-500 text-amber-600' : 'text-slate-400'
+                      }`}
+                    />
+                    {f.is_unggulan ? 'Unggulan' : 'Reguler'}
+                  </button>
                 </span>
               </div>
 

@@ -55,9 +55,17 @@ export default function ModalInputFormasi({
   useEffect(() => {
     if (editFormasiData) {
       setFormData({
-        ...editFormasiData,
         tingkat: editFormasiData.tingkat || 'ULA',
+        din_kls: editFormasiData.din_kls || '1',
+        din_bag: editFormasiData.din_bag || 'A',
+        pa_pi: editFormasiData.pa_pi || gender || 'PA',
         kapasitas_maksimal: editFormasiData.kapasitas_maksimal || 80,
+        is_unggulan: Boolean(editFormasiData.is_unggulan),
+        id_mustahiq: editFormasiData.id_mustahiq || '',
+        domisili: editFormasiData.domisili || '',
+        lokasi_diniyyah: editFormasiData.lokasi_diniyyah || '',
+        lokasi_takror: editFormasiData.lokasi_takror || '',
+        blok: editFormasiData.blok || '',
         foto_takror: editFormasiData.foto_takror || '',
         foto_diniyyah: editFormasiData.foto_diniyyah || '',
       });
