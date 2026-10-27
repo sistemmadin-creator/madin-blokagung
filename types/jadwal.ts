@@ -29,6 +29,7 @@ export interface KelasKbmItem {
   mustahiqKG: string;
   mustahiqJah: string;
   lokal: string;
+  isUnggulan?: boolean;
   jadwal: Record<string, Record<1 | 2, SesiSlot[]>>;
 }
 
@@ -84,4 +85,59 @@ export interface ContextKGState {
   guru: string;
   kg: string;
   fan: string;
+  actionType?: ActionTypeModalKG;
+}
+
+export type ModeTempelKG =
+  | 'langsung_pindah'
+  | 'tukar'
+  | 'timpa'
+  | 'tukar_semua'
+  | 'tukar_asatidz'
+  | 'tukar_fan'
+  | 'pindah_hapus'
+  | 'ganti_asatidz'
+  | 'ganti_fan';
+
+export type ActionTypeModalKG = 'hari' | 'jam' | 'kelas' | 'asatidz';
+
+export interface SyncPlanFanKBM {
+  hasChanges: boolean;
+  addFanItems: Array<{
+    slotId: string;
+    kelasKey: string;
+    rawItem: string;
+    fanShort: string;
+  }>;
+  msPrompts: Array<{
+    slotId: string;
+    labelSlot: string;
+    classObj: KelasKbmItem;
+    hari: string;
+    jam: number;
+    kelasKey: string;
+    itemKey: string;
+    rawItem: string;
+    fanShort: string;
+    currentGuru: string;
+    mustahiqNama: string;
+  }>;
+  registerAsatidz: Array<{
+    slotId: string;
+    itemKey: string;
+    kelasKey: string;
+    rawItem: string;
+    fanShort: string;
+    guru: string;
+    newPengajarLabel: string;
+  }>;
+  updateJamQuotas: Array<{
+    itemKey: string;
+    kelasKey: string;
+    rawItem: string;
+    fanShort: string;
+    oldJam: number;
+    newJam: number;
+    totalPakai: number;
+  }>;
 }

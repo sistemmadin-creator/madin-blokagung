@@ -19,14 +19,14 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
-  URUTAN_TINGKAT_KBM,
-  normalisasiNamaKelas,
-  ambilNamaFanSingkat,
   dapatkanTahunAjaranKBM,
+  buildMasterStrukturKelasKBM,
 } from '@/lib/utils/jadwalHelper';
+import { isKelasUnggulan } from '@/lib/utils/fanHelper';
 import { KelasKbmItem, SesiSlot } from '@/types/jadwal';
 import ModalDetailKelasKBM from '@/components/modules/jadwal-kbm/ModalDetailKelasKBM';
 import ModalInputJadwalKelas from '@/components/modules/jadwal-kbm/ModalInputJadwalKelas';
+import ModalAksiKlikKananKG from '@/components/modules/jadwal-kbm/ModalAksiKlikKananKG';
 import ContextMenuKG from '@/components/modules/jadwal-kbm/ContextMenuKG';
 import FloatingBarClipboardKG from '@/components/modules/jadwal-kbm/FloatingBarClipboardKG';
 import ModalDetailAsatidz from '@/components/modules/asatidz/ModalDetailAsatidz';
@@ -35,6 +35,7 @@ export default function JadwalKbmPage() {
   const {
     jadwalMap,
     fetchJadwal,
+    rebuildMasterStrukturKelas,
     isLoading,
     openModalDetailKelas,
     openModalInputJadwal,
@@ -44,7 +45,7 @@ export default function JadwalKbmPage() {
 
   const { formasiList, fetchFormasi } = useFormasiStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
-  const { fanItems, fetchFanData } = useFanStore();
+  const { fanConfig, fetchFanData } = useFanStore();
 
   // Filters
   const [fltTingkat, setFltTingkat] = useState<string>('');
@@ -53,197 +54,37 @@ export default function JadwalKbmPage() {
   const [switchMode, setSwitchMode] = useState<'semua' | 'reguler' | 'unggulan'>('semua');
 
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStateRef = useRef<{
+    lastTapTime: number;
+    lastTapKey: string;
+    startX: number;
+    startY: number;
+    isScrolling: boolean;
+  }>({
+    lastTapTime: 0,
+    lastTapKey: '',
+    startX: 0,
+    startY: 0,
+    isScrolling: false,
+  });
 
   useEffect(() => {
     fetchJadwal();
     if (formasiList.length === 0) fetchFormasi();
     if (asatidzList.length === 0) fetchAsatidz();
-    if (fanItems.length === 0) fetchFanData();
-  }, [fetchJadwal, fetchFormasi, fetchAsatidz, fetchFanData, formasiList.length, asatidzList.length, fanItems.length]);
+    fetchFanData();
+  }, [fetchJadwal, fetchFormasi, fetchAsatidz, fetchFanData, formasiList.length, asatidzList.length]);
 
   const tahunAjaran = useMemo(() => dapatkanTahunAjaranKBM(), []);
 
-  const isKelasUnggulan = (str: string) => {
-    return /\(ug\)|\bunggulan\b/i.test(str);
-  };
-
-  // Build Full Class Schedule Matrix
+  // Build Full Class Schedule Matrix & Sync to Global Store
   const masterStrukturKelasKBM = useMemo(() => {
-    // 1. Kamus Asatidz profil
-    const asatidzMap = new Map<string, (typeof asatidzList)[0]>();
-    asatidzList.forEach((a) => {
-      if (a.nama_asatidz) {
-        asatidzMap.set(a.nama_asatidz.trim().toUpperCase(), a);
-      }
-    });
+    return buildMasterStrukturKelasKBM(formasiList, asatidzList, jadwalMap, fanConfig);
+  }, [formasiList, asatidzList, jadwalMap, fanConfig]);
 
-    const buatObjekKelasKosong = (
-      key: string,
-      tingkat: string,
-      kls: string,
-      bag: string,
-      papi: string,
-      lokal = '-'
-    ): KelasKbmItem => ({
-      key,
-      tingkat,
-      kls,
-      bag,
-      papi,
-      mustahiqNama: '-',
-      mustahiqKG: '-',
-      mustahiqJah: '-',
-      lokal: lokal || '-',
-      jadwal: {
-        Sabtu: { 1: [], 2: [] },
-        Ahad: { 1: [], 2: [] },
-        Senin: { 1: [], 2: [] },
-        Selasa: { 1: [], 2: [] },
-        Rabu: { 1: [], 2: [] },
-        Kamis: { 1: [], 2: [] },
-      },
-    });
-
-    const mapKelas: Record<string, KelasKbmItem> = {};
-
-    // 2A. Ekstraksi struktur dari formasi
-    formasiList.forEach((f) => {
-      const tingkat = String(f.tingkat || '').trim().toUpperCase();
-      const bag = String(f.din_bag || '').trim().toUpperCase();
-      const kls = String(f.din_kls || '').trim();
-      const papi = String(f.pa_pi || '').trim().toUpperCase();
-      const lokal = String(f.lokasi_diniyyah || '').trim();
-
-      if (tingkat && kls && bag) {
-        const key = `${kls} ${bag} ${tingkat} ${papi}`.trim();
-        if (!mapKelas[key]) {
-          mapKelas[key] = buatObjekKelasKosong(key, tingkat, kls, bag, papi, lokal || '-');
-        } else if (lokal) {
-          mapKelas[key].lokal = lokal;
-        }
-
-        if (f.id_mustahiq) {
-          const namaM = String(f.id_mustahiq).trim();
-          const profilM = asatidzMap.get(namaM.toUpperCase());
-          mapKelas[key].mustahiqNama = namaM;
-          if (profilM) {
-            mapKelas[key].mustahiqKG = String(profilM.nia || '-').trim() || '-';
-            mapKelas[key].mustahiqJah = String(profilM.jah_asatidz || '-').trim() || '-';
-            if ((!mapKelas[key].lokal || mapKelas[key].lokal === '-') && profilM.lokasi_diniyyah) {
-              mapKelas[key].lokal = String(profilM.lokasi_diniyyah).trim();
-            }
-          }
-        }
-      }
-    });
-
-    // 2B. Sinkronisasi Mustahiq dari Asatidz
-    asatidzList.forEach((a) => {
-      const tingkat = String(a.tingkat_asatidz || '').trim().toUpperCase();
-      const bag = String(a.din_bag_asatidz || '').trim().toUpperCase();
-      const kls = String(a.din_kls_asatidz || '').trim();
-      const papi = String(a.pa_pi || '').trim().toUpperCase();
-      const namaGuru = String(a.nama_asatidz || '').trim();
-      const niaGuru = String(a.nia || '').trim();
-      const jahRaw = String(a.jah_asatidz || '').trim();
-      const jahLower = jahRaw.toLowerCase();
-      const lokal = String(a.lokasi_diniyyah || '').trim();
-
-      if (tingkat && kls && bag) {
-        const key = `${kls} ${bag} ${tingkat} ${papi}`.trim();
-        if (!mapKelas[key]) {
-          mapKelas[key] = buatObjekKelasKosong(key, tingkat, kls, bag, papi, lokal || '-');
-        }
-
-        const isMustahiq =
-          jahLower.includes('mustahiq') ||
-          jahLower.includes('ms & koor') ||
-          jahLower.includes("isti'dad") ||
-          jahLower === 'ist';
-
-        if (isMustahiq && namaGuru) {
-          mapKelas[key].mustahiqNama = namaGuru;
-          mapKelas[key].mustahiqKG = niaGuru || '-';
-          mapKelas[key].mustahiqJah = jahRaw || '-';
-          if (lokal && (!mapKelas[key].lokal || mapKelas[key].lokal === '-')) {
-            mapKelas[key].lokal = lokal;
-          }
-        }
-      }
-    });
-
-    // 3. Petakan jadwal seluruh asatidz ke slot kelas
-    Object.values(jadwalMap).forEach((teacherRow) => {
-      const namaGuru = String(teacherRow.nama_asatidz || '').trim();
-      if (!namaGuru) return;
-      const profil = asatidzMap.get(namaGuru.toUpperCase());
-      const niaGuru = profil ? String(profil.nia || '').trim() : '-';
-      const jahGuru = profil ? String(profil.jah_asatidz || '').trim() : '-';
-
-      LIST_HARI.forEach((hari) => {
-        const hariKey = hari.toLowerCase() as 'sabtu' | 'ahad' | 'senin' | 'selasa' | 'rabu' | 'kamis';
-        const valJadwal = teacherRow[hariKey] || '';
-        if (!String(valJadwal).trim()) return;
-
-        const lines = String(valJadwal)
-          .split(/\r?\n|;;/)
-          .map((s) => s.trim())
-          .filter(Boolean);
-
-        lines.forEach((line) => {
-          const p = line.split('|').map((s) => s.trim());
-          const jamStr = p[0] || '';
-          const fan = p[1] && p[1] !== '-' ? p[1].trim() : '';
-          const rawLok = p[2] && p[2] !== '-' ? p[2].trim() : '';
-
-          const matchJam = jamStr.match(/\d+/);
-          const jamNum = matchJam ? (parseInt(matchJam[0], 10) as 1 | 2) : 0;
-          if (jamNum !== 1 && jamNum !== 2) return;
-
-          let klsMurni = rawLok;
-          const matchKurung = rawLok.match(/^(.*?)\s*\(([^()]*)\)$/);
-          if (matchKurung) {
-            const isiKurung = matchKurung[2].trim().toUpperCase();
-            if (isiKurung !== 'PA' && isiKurung !== 'PI' && isiKurung !== 'UG') {
-              klsMurni = matchKurung[1].trim();
-            }
-          }
-          const klsMurniNorm = normalisasiNamaKelas(klsMurni);
-
-          Object.keys(mapKelas).forEach((kKey) => {
-            const itemKls = mapKelas[kKey];
-            const genderTag = itemKls.papi ? ` (${itemKls.papi})` : '';
-            const formatFull = `${itemKls.kls} ${itemKls.bag} ${itemKls.tingkat}${genderTag}`.trim();
-            const formatFullNorm = normalisasiNamaKelas(formatFull);
-
-            if (klsMurniNorm === formatFullNorm) {
-              if (mapKelas[kKey].jadwal[hari][jamNum].length === 0) {
-                const fanTampil = ambilNamaFanSingkat(fan, itemKls.tingkat, itemKls.kls);
-                mapKelas[kKey].jadwal[hari][jamNum].push({
-                  kg: niaGuru || '-',
-                  fan: fanTampil || fan || '-',
-                  fanAsli: fan,
-                  guru: namaGuru,
-                  jah: jahGuru,
-                  lokasiGabungan: rawLok,
-                });
-              }
-            }
-          });
-        });
-      });
-    });
-
-    // 4. Urutkan kelas resmi (ULA di atas -> WUSTHO -> ULYA -> ISTI'DAD)
-    return Object.values(mapKelas).sort((a, b) => {
-      const ordA = URUTAN_TINGKAT_KBM[a.tingkat] ?? 99;
-      const ordB = URUTAN_TINGKAT_KBM[b.tingkat] ?? 99;
-      if (ordA !== ordB) return ordA - ordB;
-      if (a.papi !== b.papi) return a.papi.localeCompare(b.papi);
-      if (a.kls !== b.kls) return a.kls.localeCompare(b.kls, undefined, { numeric: true });
-      return a.bag.localeCompare(b.bag);
-    });
-  }, [formasiList, asatidzList, jadwalMap]);
+  useEffect(() => {
+    rebuildMasterStrukturKelas(formasiList, asatidzList, fanConfig);
+  }, [formasiList, asatidzList, jadwalMap, fanConfig, rebuildMasterStrukturKelas]);
 
   // Filtered List
   const listTampil = useMemo(() => {
@@ -252,7 +93,7 @@ export default function JadwalKbmPage() {
       if (fltGender && k.papi !== fltGender) return false;
 
       const namaKelasMurni = `${k.kls} ${k.bag} ${k.tingkat}`.trim();
-      const isUg = isKelasUnggulan(namaKelasMurni);
+      const isUg = Boolean(k.isUnggulan || isKelasUnggulan(namaKelasMurni, formasiList));
       if (switchMode === 'reguler' && isUg) return false;
       if (switchMode === 'unggulan' && !isUg) return false;
 
@@ -272,7 +113,7 @@ export default function JadwalKbmPage() {
 
       return true;
     });
-  }, [masterStrukturKelasKBM, fltTingkat, fltGender, fltSearch, switchMode]);
+  }, [masterStrukturKelasKBM, fltTingkat, fltGender, fltSearch, switchMode, formasiList]);
 
   // Total terisi statistics
   const statSlot = useMemo(() => {
@@ -325,6 +166,70 @@ export default function JadwalKbmPage() {
       },
       { x: e.clientX, y: e.clientY }
     );
+  };
+
+  const handleTouchStartKG = (e: React.TouchEvent) => {
+    if (e.touches && e.touches.length === 1) {
+      touchStateRef.current.startX = e.touches[0].clientX;
+      touchStateRef.current.startY = e.touches[0].clientY;
+      touchStateRef.current.isScrolling = false;
+    }
+  };
+
+  const handleTouchMoveKG = (e: React.TouchEvent) => {
+    if (e.touches && e.touches.length === 1) {
+      const dx = Math.abs(e.touches[0].clientX - touchStateRef.current.startX);
+      const dy = Math.abs(e.touches[0].clientY - touchStateRef.current.startY);
+      if (dx > 8 || dy > 8) {
+        touchStateRef.current.isScrolling = true;
+      }
+    }
+  };
+
+  const handleTouchEndKG = (
+    e: React.TouchEvent<HTMLTableCellElement>,
+    k: KelasKbmItem,
+    hari: string,
+    jam: number,
+    sesi: SesiSlot | undefined
+  ) => {
+    if (touchStateRef.current.isScrolling) {
+      touchStateRef.current.lastTapTime = 0;
+      touchStateRef.current.lastTapKey = '';
+      return;
+    }
+
+    const tapKey = `${k.key}_${hari}_${jam}`;
+    const now = Date.now();
+    const diff = now - touchStateRef.current.lastTapTime;
+
+    if (touchStateRef.current.lastTapKey === tapKey && diff > 0 && diff < 350) {
+      e.preventDefault();
+      e.stopPropagation();
+      const touch = e.changedTouches ? e.changedTouches[0] : null;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clientX = touch ? touch.clientX : rect.left + rect.width / 2;
+      const clientY = touch ? touch.clientY : rect.top + rect.height / 2;
+
+      openContextMenuKG(
+        {
+          kelasKey: k.key,
+          classObj: k,
+          hari,
+          jam,
+          guru: sesi?.guru || '',
+          kg: sesi?.kg || '',
+          fan: sesi?.fan || '',
+        },
+        { x: clientX, y: clientY }
+      );
+
+      touchStateRef.current.lastTapTime = 0;
+      touchStateRef.current.lastTapKey = '';
+    } else {
+      touchStateRef.current.lastTapTime = now;
+      touchStateRef.current.lastTapKey = tapKey;
+    }
   };
 
   // Export Excel
@@ -386,7 +291,11 @@ export default function JadwalKbmPage() {
   };
 
   const handlePrint = () => {
+    document.body.classList.add('printing-jadwal-kbm');
     window.print();
+    setTimeout(() => {
+      document.body.classList.remove('printing-jadwal-kbm');
+    }, 600);
   };
 
   return (
@@ -622,7 +531,9 @@ export default function JadwalKbmPage() {
               ) : (
                 listTampil.map((k, idx) => {
                   const noStr = idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`;
-                  const isUg = isKelasUnggulan(`${k.kls} ${k.bag} ${k.tingkat}`);
+                  const isUg = Boolean(
+                    k.isUnggulan || isKelasUnggulan(`${k.kls} ${k.bag} ${k.tingkat}`, formasiList)
+                  );
 
                   let badgeClass = 'badge-tingkat-ula';
                   if (k.tingkat === 'WUSTHO') badgeClass = 'badge-tingkat-wustho';
@@ -686,7 +597,7 @@ export default function JadwalKbmPage() {
                           );
 
                           const cutClass = isCutCell
-                            ? 'bg-amber-100 border-2 border-dashed border-amber-500 animate-pulse text-amber-900 font-bold'
+                            ? 'cell-kg-cut-active bg-amber-100 border-2 border-dashed border-amber-500 animate-pulse text-amber-900 font-bold'
                             : '';
 
                           return (
@@ -695,6 +606,9 @@ export default function JadwalKbmPage() {
                                 className={`cell-kg cell-kg-clickable cursor-context-menu select-none transition-colors ${cutClass}`}
                                 onContextMenu={(e) => handleCellContextMenu(e, k, hari, 1, sesi)}
                                 onDoubleClick={(e) => handleCellContextMenu(e, k, hari, 1, sesi)}
+                                onTouchStart={handleTouchStartKG}
+                                onTouchMove={handleTouchMoveKG}
+                                onTouchEnd={(e) => handleTouchEndKG(e, k, hari, 1, sesi)}
                                 title={
                                   sesi
                                     ? `Asatidz: ${sesi.guru} (${sesi.kg})\nMapel: ${sesi.fan}\n(Klik kanan / dobel klik untuk opsi)`
@@ -745,7 +659,7 @@ export default function JadwalKbmPage() {
                           );
 
                           const cutClass = isCutCell
-                            ? 'bg-amber-100 border-2 border-dashed border-amber-500 animate-pulse text-amber-900 font-bold'
+                            ? 'cell-kg-cut-active bg-amber-100 border-2 border-dashed border-amber-500 animate-pulse text-amber-900 font-bold'
                             : '';
 
                           return (
@@ -754,6 +668,9 @@ export default function JadwalKbmPage() {
                                 className={`cell-kg cell-kg-clickable cursor-context-menu select-none transition-colors ${cutClass}`}
                                 onContextMenu={(e) => handleCellContextMenu(e, k, hari, 2, sesi)}
                                 onDoubleClick={(e) => handleCellContextMenu(e, k, hari, 2, sesi)}
+                                onTouchStart={handleTouchStartKG}
+                                onTouchMove={handleTouchMoveKG}
+                                onTouchEnd={(e) => handleTouchEndKG(e, k, hari, 2, sesi)}
                                 title={
                                   sesi
                                     ? `Asatidz: ${sesi.guru} (${sesi.kg})\nMapel: ${sesi.fan}\n(Klik kanan / dobel klik untuk opsi)`
@@ -794,6 +711,9 @@ export default function JadwalKbmPage() {
 
       {/* Modal Input & Edit Jadwal Kelas KBM */}
       <ModalInputJadwalKelas masterStrukturKelas={masterStrukturKelasKBM} />
+
+      {/* Modal Aksi Klik Kanan KG (Ganti Hari / Jam / Kelas / Edit 1 Slot) */}
+      <ModalAksiKlikKananKG masterStrukturKelas={masterStrukturKelasKBM} />
 
       {/* Modal Detail Profil Asatidz */}
       <ModalDetailAsatidz />

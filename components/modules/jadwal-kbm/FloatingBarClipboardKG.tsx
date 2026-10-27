@@ -2,11 +2,13 @@
 
 import React, { useEffect } from 'react';
 import { useJadwalStore } from '@/stores/useJadwalStore';
+import { useFanStore } from '@/stores/useFanStore';
 import { Scissors, XCircle } from 'lucide-react';
 import { ambilNamaFanSingkat } from '@/lib/utils/jadwalHelper';
 
 export default function FloatingBarClipboardKG() {
   const { stateClipboardKG, batalkanModePindahKG } = useJadwalStore();
+  const { fanConfig } = useFanStore();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -21,7 +23,12 @@ export default function FloatingBarClipboardKG() {
   if (!stateClipboardKG) return null;
 
   const k = stateClipboardKG.classObj;
-  const fanTampil = ambilNamaFanSingkat(stateClipboardKG.fan, k?.tingkat || '', k?.kls || '');
+  const fanTampil = ambilNamaFanSingkat(
+    stateClipboardKG.fan,
+    k?.tingkat || '',
+    k?.kls || '',
+    fanConfig
+  );
   const labelKelas = k ? `${k.kls} ${k.bag} ${k.tingkat} (${k.papi})` : stateClipboardKG.kelasKey;
 
   return (

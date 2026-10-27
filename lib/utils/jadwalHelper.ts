@@ -1,9 +1,9 @@
-import { LIST_HARI, HariKbm, ParsedSlotJadwal, TeacherJadwalRow, KelasKbmItem } from '@/types/jadwal';
+import { LIST_HARI, HariKbm, ParsedSlotJadwal, TeacherJadwalRow, KelasKbmItem, SesiSlot } from '@/types/jadwal';
 import { ParsedSlotHariKBM } from '@/types/hari-kbm';
 import { Formasi } from '@/types/formasi';
 import { Asatidz } from '@/types/asatidz';
-import { FanConfigMap } from '@/types/fan';
-import { parseFanItemString } from './fanHelper';
+import { FanConfigMap, FanPelajaranDetail } from '@/types/fan';
+import { parseFanItemString, isKelasUnggulan, cekKategoriJahAsatidz } from './fanHelper';
 
 export const HARI_KEYS_LOWER = ['sabtu', 'ahad', 'senin', 'selasa', 'rabu', 'kamis'] as const;
 
@@ -636,4 +636,564 @@ export function hitungDistribusiJam12Tingkat(
   });
 
   return counts;
+}
+
+/**
+ * Mengambil objek jadwal seorang guru dari jadwalMap secara case-insensitive
+ */
+export function getJadwalGuruFromMap(
+  nama: string | null | undefined,
+  jadwalMap: Record<string, TeacherJadwalRow>
+): TeacherJadwalRow {
+  const clean = String(nama || '').trim();
+  const keyUpper = clean.toUpperCase();
+  if (jadwalMap && jadwalMap[keyUpper]) {
+    return {
+      ...jadwalMap[keyUpper],
+      nama_asatidz: jadwalMap[keyUpper].nama_asatidz || clean,
+    };
+  }
+  if (jadwalMap && keyUpper) {
+    const matchedKey = Object.keys(jadwalMap).find(
+      (k) => k.trim().toUpperCase() === keyUpper
+    );
+    if (matchedKey && jadwalMap[matchedKey]) {
+      return {
+        ...jadwalMap[matchedKey],
+        nama_asatidz: jadwalMap[matchedKey].nama_asatidz || clean,
+      };
+    }
+  }
+  return {
+    nama_asatidz: clean,
+    mengajar: '',
+    sabtu: '',
+    ahad: '',
+    senin: '',
+    selasa: '',
+    rabu: '',
+    kamis: '',
+    totalJam: '0',
+  };
+}
+
+/**
+ * Membangun struktur matriks kelas KBM terpusat (`masterStrukturKelasKBM`)
+ * yang dikonsumsi oleh Jadwal KBM, Hari KBM, Absensi Asatidz, dan Absen Cepat
+ */
+export function buildMasterStrukturKelasKBM(
+  formasiList: Formasi[],
+  asatidzList: Asatidz[],
+  jadwalMap: Record<string, TeacherJadwalRow>,
+  fanConfig?: FanConfigMap
+): KelasKbmItem[] {
+  const mapKelas = new Map<string, KelasKbmItem>();
+
+  const buatJadwalKosong = (): Record<string, Record<1 | 2, SesiSlot[]>> => {
+    const j: Record<string, Record<1 | 2, SesiSlot[]>> = {};
+    LIST_HARI.forEach((h) => {
+      j[h] = { 1: [], 2: [] };
+    });
+    return j;
+  };
+
+  const mapAsatidzByUpper = new Map<string, Asatidz>();
+  (asatidzList || []).forEach((a) => {
+    const n = (a.nama_asatidz || '').trim();
+    if (n) mapAsatidzByUpper.set(n.toUpperCase(), a);
+  });
+
+  // 1. Pindai dari master Formasi Kelas
+  (formasiList || []).forEach((f) => {
+    const tingkat = (f.tingkat || '').trim().toUpperCase();
+    const kls = (f.din_kls || '').trim();
+    const bag = (f.din_bag || '').trim().toUpperCase();
+    const papi = (f.pa_pi || '').trim().toUpperCase();
+    if (!tingkat || !kls || !bag) return;
+
+    const key = `${kls} ${bag} ${tingkat} (${papi || '-'})`;
+    const namaKelasMurni = `${kls} ${bag} ${tingkat}`.trim();
+    const isUg = isKelasUnggulan(namaKelasMurni, formasiList);
+    const namaMustahiqFormasi = (f.id_mustahiq || '').trim();
+    const profilMustahiq = namaMustahiqFormasi
+      ? mapAsatidzByUpper.get(namaMustahiqFormasi.toUpperCase())
+      : undefined;
+
+    if (!mapKelas.has(key)) {
+      mapKelas.set(key, {
+        key,
+        tingkat,
+        kls,
+        bag,
+        papi,
+        mustahiqNama: namaMustahiqFormasi || '-',
+        mustahiqKG: profilMustahiq?.nia || '-',
+        mustahiqJah: profilMustahiq?.jah_asatidz || 'Mustahiq',
+        lokal: f.lokasi_diniyyah || profilMustahiq?.lokasi_diniyyah || '-',
+        isUnggulan: isUg,
+        jadwal: buatJadwalKosong(),
+      });
+    }
+  });
+
+  // 2. Pindai dari master Asatidz untuk mengisi/melengkapi Mustahiq & Lokal
+  (asatidzList || []).forEach((a) => {
+    const tingkat = (a.tingkat_asatidz || '').trim().toUpperCase();
+    const kls = (a.din_kls_asatidz || '').trim();
+    const bag = (a.din_bag_asatidz || '').trim().toUpperCase();
+    const papi = (a.pa_pi || '').trim().toUpperCase();
+    const nama = (a.nama_asatidz || '').trim();
+    const nia = (a.nia || '').trim();
+    const jah = (a.jah_asatidz || '').trim();
+    const lokDin = (a.lokasi_diniyyah || '').trim();
+
+    if (tingkat && kls && bag) {
+      const key = `${kls} ${bag} ${tingkat} (${papi || '-'})`;
+      const namaKelasMurni = `${kls} ${bag} ${tingkat}`.trim();
+      if (!mapKelas.has(key)) {
+        mapKelas.set(key, {
+          key,
+          tingkat,
+          kls,
+          bag,
+          papi,
+          mustahiqNama: '-',
+          mustahiqKG: '-',
+          mustahiqJah: '',
+          lokal: lokDin || '-',
+          isUnggulan: isKelasUnggulan(namaKelasMurni, formasiList),
+          jadwal: buatJadwalKosong(),
+        });
+      }
+
+      const item = mapKelas.get(key)!;
+      const jahLower = jah.toLowerCase();
+      const isMustahiq =
+        jahLower.includes('mustahiq') ||
+        jahLower.includes('ms & koor') ||
+        jahLower.includes("isti'dad") ||
+        jahLower === 'ist';
+
+      if (isMustahiq && (item.mustahiqNama === '-' || !item.mustahiqNama)) {
+        item.mustahiqNama = nama;
+        item.mustahiqKG = nia || '-';
+        item.mustahiqJah = jah;
+        if (lokDin && lokDin !== '-') item.lokal = lokDin;
+      } else if (item.lokal === '-' && lokDin && lokDin !== '-') {
+        item.lokal = lokDin;
+      }
+    }
+  });
+
+  // 3. Gabungkan daftar seluruh guru dari asatidzList + jadwalMap (case-insensitive)
+  const semuaKunciGuruUpper = new Set<string>(Array.from(mapAsatidzByUpper.keys()));
+  Object.keys(jadwalMap || {}).forEach((k) => {
+    const clean = k.trim().toUpperCase();
+    if (clean) semuaKunciGuruUpper.add(clean);
+  });
+
+  // 4. Petakan seluruh slot Jam 1 & Jam 2 ke dalam kelas terkait
+  const allKelasItems = Array.from(mapKelas.values());
+  semuaKunciGuruUpper.forEach((keyUpper) => {
+    const guruMaster = mapAsatidzByUpper.get(keyUpper);
+    const jdw = getJadwalGuruFromMap(guruMaster?.nama_asatidz || keyUpper, jadwalMap);
+    const namaGuru = (guruMaster?.nama_asatidz || jdw.nama_asatidz || keyUpper).trim();
+    if (!namaGuru) return;
+
+    const kgGuru = guruMaster?.nia || '-';
+    const jahGuru = guruMaster?.jah_asatidz || '';
+
+    LIST_HARI.forEach((hari) => {
+      const hKey = hari.toLowerCase();
+      const rawCell = jdw[hKey];
+      if (!rawCell) return;
+
+      const slots = parseJadwalCell_Client(rawCell);
+      slots.forEach((s) => {
+        if (s.jam !== 1 && s.jam !== 2) return;
+        const lokNorm = normalisasiNamaKelas(s.lokasi);
+        if (!lokNorm) return;
+
+        for (let idx = 0; idx < allKelasItems.length; idx++) {
+          const itemKls = allKelasItems[idx];
+          const kNorm1 = normalisasiNamaKelas(`${itemKls.kls} ${itemKls.bag} ${itemKls.tingkat}`);
+          const kNorm2 = normalisasiNamaKelas(
+            `${itemKls.kls} ${itemKls.bag} ${itemKls.tingkat} (${itemKls.papi})`
+          );
+
+          if (
+            lokNorm === kNorm1 ||
+            lokNorm === kNorm2 ||
+            lokNorm.startsWith(kNorm1 + ' ') ||
+            lokNorm.startsWith(kNorm2 + ' ')
+          ) {
+            const fanShort = ambilNamaFanSingkat(s.fan, itemKls.tingkat, itemKls.kls, fanConfig);
+            const targetArr = itemKls.jadwal[hari][s.jam as 1 | 2];
+            if (
+              !targetArr.some(
+                (existing: SesiSlot) => existing.guru.toUpperCase() === namaGuru.toUpperCase()
+              )
+            ) {
+              targetArr.push({
+                kg: kgGuru,
+                fan: fanShort,
+                fanAsli: s.fan,
+                guru: namaGuru,
+                jah: jahGuru,
+                lokasiGabungan: s.lokasi,
+              });
+            }
+            break;
+          }
+        }
+      });
+    });
+  });
+
+  const arr = Array.from(mapKelas.values());
+  arr.sort((a, b) => {
+    const tA = URUTAN_TINGKAT_KBM[a.tingkat] || 99;
+    const tB = URUTAN_TINGKAT_KBM[b.tingkat] || 99;
+    if (tA !== tB) return tA - tB;
+
+    const kA = parseInt(a.kls, 10) || 0;
+    const kB = parseInt(b.kls, 10) || 0;
+    if (kA !== kB) return kA - kB;
+
+    return a.bag.localeCompare(b.bag);
+  });
+
+  return arr;
+}
+
+/**
+ * Mengecek apakah sebuah Fan berstatus pengajar === 'MS' pada kelasKey yang diberikan
+ */
+export function cekFanMSuntukKelas(
+  primaryFanKey: string,
+  fallbackFanKey: string,
+  valFan: string,
+  fanDetail?: FanPelajaranDetail
+): boolean {
+  if (!valFan || !fanDetail || !fanDetail.item) return false;
+  const valLower = String(valFan).trim().toLowerCase();
+  if (!valLower) return false;
+
+  const cariDiKey = (key: string): boolean => {
+    if (!key || !fanDetail.item) return false;
+    let ditemukan = false;
+    Object.keys(fanDetail.item).forEach((iKey) => {
+      if (ditemukan) return;
+      if (iKey.indexOf(key + '||') !== 0) return;
+      const rawItem = iKey.substring((key + '||').length);
+      const parsed = parseFanItemString(rawItem);
+      const fanName = parsed.fan && parsed.fan !== '-' ? parsed.fan : parsed.mapel;
+      const cocok =
+        rawItem.toLowerCase() === valLower ||
+        (fanName && fanName.toLowerCase() === valLower) ||
+        (parsed.mapel && parsed.mapel.toLowerCase() === valLower);
+      if (cocok) {
+        const det = fanDetail.item![iKey];
+        if (det && det.pengajar === 'MS') ditemukan = true;
+      }
+    });
+    return ditemukan;
+  };
+
+  return cariDiKey(primaryFanKey) || cariDiKey(fallbackFanKey);
+}
+
+/**
+ * Mengambil informasi batas jam maksimal mingguan suatu Fan dari `fanDetail`
+ */
+export function dapatkanBatasJamFan(
+  kelasKey: string,
+  fanInput: string,
+  fanConfig?: FanConfigMap,
+  fanDetail?: FanPelajaranDetail
+): { rawItem: string; maxJam: number | null } | null {
+  if (!fanInput || !String(fanInput).trim()) return null;
+  const fanInputClean = String(fanInput).replace(/[()]/g, '').trim().toLowerCase();
+  const listConfig = (fanConfig && fanConfig[kelasKey]) || [];
+
+  const targetRawItem = listConfig.find((item) => {
+    const rawClean = String(item).replace(/[()]/g, '').trim().toLowerCase();
+    const parsed = parseFanItemString(item);
+    return (
+      rawClean === fanInputClean ||
+      parsed.fan.toLowerCase() === fanInputClean ||
+      parsed.mapel.toLowerCase() === fanInputClean ||
+      rawClean.includes(fanInputClean) ||
+      fanInputClean.includes(parsed.mapel.toLowerCase())
+    );
+  });
+
+  if (!targetRawItem) return null;
+
+  const itemKey = `${kelasKey}||${targetRawItem}`;
+  const itemDetail = fanDetail?.item?.[itemKey];
+  const maxJam =
+    itemDetail && itemDetail.jam !== undefined && itemDetail.jam !== ''
+      ? parseInt(String(itemDetail.jam), 10)
+      : null;
+
+  return {
+    rawItem: targetRawItem,
+    maxJam: maxJam === null || isNaN(maxJam) ? null : maxJam,
+  };
+}
+
+/**
+ * Mendapatkan kunci kelas efektif untuk `fanConfig` & `fanDetail`
+ */
+export function dapatkanKelasKeyFanDariObj(
+  k: KelasKbmItem,
+  formasiList?: Formasi[],
+  fanConfig?: FanConfigMap
+): { effectiveKey: string; primaryKey: string; fallbackKey: string; isUg: boolean } {
+  const namaKelasMurni = `${k.kls} ${k.bag} ${k.tingkat}`.trim();
+  const isUg = Boolean(k.isUnggulan || (formasiList && isKelasUnggulan(namaKelasMurni, formasiList)));
+  const keyUg = `${namaKelasMurni} (Ug)`;
+  const keyReg = `${k.kls} ${k.tingkat}`;
+  if (isUg && fanConfig && Array.isArray(fanConfig[keyUg]) && fanConfig[keyUg].length > 0) {
+    return { effectiveKey: keyUg, primaryKey: keyUg, fallbackKey: keyReg, isUg: true };
+  }
+  return { effectiveKey: keyReg, primaryKey: isUg ? keyUg : keyReg, fallbackKey: keyReg, isUg };
+}
+
+/**
+ * Mencari rawItem di `fanConfig[kelasKey]` yang cocok dengan string fan
+ */
+export function cariRawItemFanPadaKelasKey(
+  kelasKey: string,
+  fanInput: string,
+  fanConfig?: FanConfigMap
+): string | null {
+  if (!kelasKey || !fanInput || fanInput === '-') return null;
+  const list = (fanConfig && fanConfig[kelasKey]) || [];
+  const fStr = String(fanInput).trim();
+  const fLower = fStr.toLowerCase();
+  const fClean = fStr.replace(/[()]/g, '').trim().toLowerCase();
+  const pInput = parseFanItemString(fStr);
+  const inFan = pInput.fan && pInput.fan !== '-' ? pInput.fan.toLowerCase() : '';
+  const inMapel = pInput.mapel && pInput.mapel !== '-' ? pInput.mapel.toLowerCase() : '';
+
+  return (
+    list.find((raw) => {
+      const rStr = String(raw || '').trim();
+      const rLower = rStr.toLowerCase();
+      const rClean = rStr.replace(/[()]/g, '').trim().toLowerCase();
+      const p = parseFanItemString(rStr);
+      const pFan = p.fan && p.fan !== '-' ? p.fan.toLowerCase() : '';
+      const pMapel = p.mapel && p.mapel !== '-' ? p.mapel.toLowerCase() : '';
+
+      return (
+        rLower === fLower ||
+        rClean === fClean ||
+        (pFan && (pFan === fLower || pFan === inFan)) ||
+        (pMapel && (pMapel === fLower || pMapel === inMapel))
+      );
+    }) || null
+  );
+}
+
+/**
+ * Mengecek bentrok fisik seorang Asatidz pada Hari & Jam di `masterStrukturKelasKBM`
+ */
+export function cekBentrokFisikHariJamKBM(
+  namaGuru: string,
+  hari: string,
+  jam: number,
+  masterStrukturKelasKBM: KelasKbmItem[],
+  excludeSlots: Array<{ kelasKey: string; hari: string; jam: number }> = []
+): string | null {
+  if (!namaGuru || namaGuru === '-') return null;
+  const guruUpper = String(namaGuru).trim().toUpperCase();
+  const jamNum = parseInt(String(jam), 10) as 1 | 2;
+
+  for (let i = 0; i < (masterStrukturKelasKBM || []).length; i++) {
+    const kOther = masterStrukturKelasKBM[i];
+    const isExcluded = excludeSlots.some(
+      (ex) => ex.kelasKey === kOther.key && ex.hari === hari && parseInt(String(ex.jam), 10) === jamNum
+    );
+    if (isExcluded) continue;
+
+    const sesiList = (kOther.jadwal && kOther.jadwal[hari] && kOther.jadwal[hari][jamNum]) || [];
+    for (const s of sesiList) {
+      if (s.guru && String(s.guru).trim().toUpperCase() === guruUpper) {
+        return `${kOther.kls} ${kOther.bag} ${kOther.tingkat} (${kOther.papi})`;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Menghitung label pengajar ('MS', 'MB', atau 'MS, MB') dari daftar nama Asatidz
+ */
+export function hitungLabelPengajarDariListAsatidz(
+  listAsatidz: string[],
+  asatidzList: Asatidz[],
+  existingLabel = ''
+): string {
+  let hasMS = String(existingLabel || '').includes('MS');
+  let hasMB = String(existingLabel || '').includes('MB');
+
+  (listAsatidz || []).forEach((nama) => {
+    const row = (asatidzList || []).find(
+      (a) => String(a.nama_asatidz || '').trim().toUpperCase() === String(nama || '').trim().toUpperCase()
+    );
+    if (row) {
+      const kat = cekKategoriJahAsatidz(row.jah_asatidz);
+      if (kat.isMS) hasMS = true;
+      if (kat.isMB) hasMB = true;
+    }
+  });
+
+  if (hasMS && hasMB) return 'MS, MB';
+  if (hasMS) return 'MS';
+  if (hasMB) return 'MB';
+  return existingLabel || 'MB';
+}
+
+export interface CacheRelasiFanJadwalKelas {
+  kelasKey: string;
+  primaryFanKey: string;
+  fallbackFanKey: string;
+  isUg: boolean;
+  listFanKelas: Array<{
+    fan: string;
+    mapel: string;
+    rawItem: string;
+    asatidz: string[];
+  }>;
+  listSemuaFan: string[];
+  mapFanKeAsatidz: Record<string, string[]>;
+  mapAsatidzKeFan: Record<string, string[]>;
+  setSemuaAsatidz: string[];
+  mapBusyAll: Record<string, Record<string, string>>;
+}
+
+/**
+ * Membangun cache Fan kelas, relasi dua arah Fan <-> Asatidz, dan peta guru sibuk
+ * untuk Modal Input Jadwal Kelas & Modal Aksi Klik Kanan KG
+ */
+export function siapkanCacheRelasiFanJadwalKelas(
+  k: KelasKbmItem,
+  formasiList: Formasi[],
+  fanConfig: FanConfigMap,
+  fanDetail: FanPelajaranDetail,
+  masterStrukturKelasKBM: KelasKbmItem[]
+): CacheRelasiFanJadwalKelas {
+  const namaKelasMurni = `${k.kls} ${k.bag} ${k.tingkat}`.trim();
+  const isUg = Boolean(k.isUnggulan || isKelasUnggulan(namaKelasMurni, formasiList));
+  const primaryFanKey = isUg ? `${namaKelasMurni} (Ug)` : `${k.kls} ${k.tingkat}`;
+  const fallbackFanKey = `${k.kls} ${k.tingkat}`;
+
+  const listFanKelas: CacheRelasiFanJadwalKelas['listFanKelas'] = [];
+  const listSemuaFan: string[] = [];
+  const mapFanKeAsatidz: Record<string, string[]> = {};
+  const mapAsatidzKeFan: Record<string, string[]> = {};
+  const setSemuaAsatidz = new Set<string>();
+
+  const ekstrakFanDariKey = (targetKey: string) => {
+    if (!fanDetail || !fanDetail.item) return;
+    Object.keys(fanDetail.item).forEach((iKey) => {
+      if (iKey.startsWith(targetKey + '||')) {
+        const itemDetail = fanDetail.item![iKey];
+        const rawItem = iKey.substring(targetKey.length + 2);
+        const parsed = parseFanItemString(rawItem);
+        const fanName = parsed.fan && parsed.fan !== '-' ? parsed.fan : parsed.mapel || rawItem;
+        const gurus = Array.isArray(itemDetail.asatidz) ? itemDetail.asatidz : [];
+
+        if (!listFanKelas.some((f) => f.fan === fanName || f.rawItem === rawItem)) {
+          listFanKelas.push({
+            fan: fanName,
+            mapel: parsed.mapel || '',
+            rawItem,
+            asatidz: gurus,
+          });
+          if (!listSemuaFan.includes(fanName)) {
+            listSemuaFan.push(fanName);
+          }
+
+          gurus.forEach((g) => {
+            const gNama = String(g || '').trim();
+            if (gNama) {
+              setSemuaAsatidz.add(gNama);
+              const gUpper = gNama.toUpperCase();
+              if (!mapAsatidzKeFan[gUpper]) mapAsatidzKeFan[gUpper] = [];
+              if (!mapAsatidzKeFan[gUpper].includes(fanName)) {
+                mapAsatidzKeFan[gUpper].push(fanName);
+              }
+            }
+          });
+
+          const fLower = fanName.toLowerCase();
+          mapFanKeAsatidz[fLower] = gurus;
+          if (parsed.mapel) mapFanKeAsatidz[parsed.mapel.toLowerCase()] = gurus;
+          mapFanKeAsatidz[rawItem.toLowerCase()] = gurus;
+        }
+      }
+    });
+  };
+
+  ekstrakFanDariKey(primaryFanKey);
+  if (isUg) ekstrakFanDariKey(fallbackFanKey);
+
+  const configFans =
+    (fanConfig && fanConfig[primaryFanKey]) ||
+    (isUg && fanConfig ? fanConfig[fallbackFanKey] : null) ||
+    [];
+
+  configFans.forEach((rawItem) => {
+    const parsed = parseFanItemString(rawItem);
+    const fanName = parsed.fan && parsed.fan !== '-' ? parsed.fan : parsed.mapel || rawItem;
+    if (!listSemuaFan.includes(fanName)) {
+      listSemuaFan.push(fanName);
+      listFanKelas.push({
+        fan: fanName,
+        mapel: parsed.mapel || '',
+        rawItem,
+        asatidz: [],
+      });
+    }
+  });
+
+  const mapBusyAll: Record<string, Record<string, string>> = {};
+  LIST_HARI.forEach((h) => {
+    mapBusyAll[`${h}_1`] = {};
+    mapBusyAll[`${h}_2`] = {};
+  });
+
+  (masterStrukturKelasKBM || []).forEach((kOther) => {
+    if (kOther.key === k.key) return;
+    const labelKls = `${kOther.kls} ${kOther.bag || ''} ${kOther.tingkat} (${kOther.papi})`
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    LIST_HARI.forEach((h) => {
+      ([1, 2] as const).forEach((j) => {
+        const sesiList = (kOther.jadwal && kOther.jadwal[h] && kOther.jadwal[h][j]) || [];
+        sesiList.forEach((s) => {
+          if (s.guru && s.guru !== '-') {
+            mapBusyAll[`${h}_${j}`][s.guru.trim().toUpperCase()] = labelKls;
+          }
+        });
+      });
+    });
+  });
+
+  return {
+    kelasKey: k.key,
+    primaryFanKey,
+    fallbackFanKey,
+    isUg,
+    listFanKelas,
+    listSemuaFan,
+    mapFanKeAsatidz,
+    mapAsatidzKeFan,
+    setSemuaAsatidz: Array.from(setSemuaAsatidz),
+    mapBusyAll,
+  };
 }

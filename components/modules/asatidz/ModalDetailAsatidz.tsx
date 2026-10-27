@@ -5,6 +5,12 @@ import Dialog from '@/components/ui/Dialog';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
+import { useJadwalStore, LIST_HARI } from '@/stores/useJadwalStore';
+import {
+  formatTampilanKelas,
+  getJadwalGuruFromMap,
+  parseJadwalCell_Client,
+} from '@/lib/utils/jadwalHelper';
 import {
   User,
   Home,
@@ -15,6 +21,7 @@ import {
   Users,
   ZoomIn,
   BookOpen,
+  Calendar,
 } from 'lucide-react';
 
 export default function ModalDetailAsatidz() {
@@ -29,13 +36,23 @@ export default function ModalDetailAsatidz() {
 
   const { santriList, fetchSantri } = useSantriStore();
   const { setoranList, fetchSetoranData } = useMuhafadzohStore();
+  const { jadwalMap, activeHari, fetchJadwal } = useJadwalStore();
 
   useEffect(() => {
     if (isDetailModalOpen) {
       if (santriList.length === 0) fetchSantri();
       if (setoranList.length === 0) fetchSetoranData();
+      if (Object.keys(jadwalMap).length === 0) fetchJadwal();
     }
-  }, [isDetailModalOpen, santriList.length, setoranList.length, fetchSantri, fetchSetoranData]);
+  }, [
+    isDetailModalOpen,
+    santriList.length,
+    setoranList.length,
+    jadwalMap,
+    fetchSantri,
+    fetchSetoranData,
+    fetchJadwal,
+  ]);
 
   const santriBinaan = useMemo(() => {
     if (!selectedAsatidz) return [];
@@ -77,6 +94,13 @@ export default function ModalDetailAsatidz() {
   };
 
   const kelasGabung = `${selectedAsatidz.din_kls_asatidz || ''}${selectedAsatidz.din_bag_asatidz || ''} ${selectedAsatidz.tingkat_asatidz || ''}`.trim();
+  const jdwObj = getJadwalGuruFromMap(selectedAsatidz.nama_asatidz, jadwalMap);
+  const kelasMengajarArr = jdwObj.mengajar
+    ? formatTampilanKelas(jdwObj.mengajar)
+        .split(',')
+        .map((k) => k.trim())
+        .filter(Boolean)
+    : [];
 
   return (
     <Dialog
@@ -238,6 +262,82 @@ export default function ModalDetailAsatidz() {
                 <p className="text-slate-400 text-[11px]">Provinsi</p>
                 <p className="font-semibold text-slate-700">{selectedAsatidz.provinsi || '-'}</p>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Kartu Jadwal & Kelas Mengajar Mingguan (Sabtu s/d Kamis) */}
+        <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-3 shadow-2xs">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-emerald-600" />
+              <span>Jadwal &amp; Kelas Mengajar</span>
+            </h3>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white">
+              {jdwObj.totalJam || '0'} Jam Mengajar
+            </span>
+          </div>
+
+          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+            <div className="text-[11px] font-bold text-slate-500 mb-1.5">Kelas Mengajar:</div>
+            <div className="flex flex-wrap gap-1.5">
+              {kelasMengajarArr.length === 0 ? (
+                <span className="text-slate-400 italic text-xs">Belum ada kelas yang dipilih</span>
+              ) : (
+                kelasMengajarArr.map((kls, idx) => (
+                  <span
+                    key={`${kls}_${idx}`}
+                    className="px-2 py-0.5 rounded bg-white text-slate-800 border border-slate-200 text-xs font-semibold shadow-2xs"
+                  >
+                    {kls}
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+            <div className="text-[11px] font-bold text-slate-500 mb-1.5">
+              Rincian Jadwal Mengajar (Sabtu s/d Kamis):
+            </div>
+            <div className="divide-y divide-slate-200/70">
+              {LIST_HARI.map((h) => {
+                const hVal = jdwObj[h.toLowerCase()] || '';
+                const slots = parseJadwalCell_Client(formatTampilanKelas(hVal));
+                const isHariAktif = h === activeHari;
+
+                return (
+                  <div
+                    key={h}
+                    className={`py-2 flex items-start gap-2.5 text-xs ${
+                      isHariAktif ? 'bg-emerald-50/70 px-2 rounded-lg' : ''
+                    }`}
+                  >
+                    <span className="px-2 py-0.5 rounded bg-emerald-100/80 text-emerald-800 border border-emerald-200 font-bold text-[11px] min-w-[64px] text-center shrink-0">
+                      {h}
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5 flex-1">
+                      {slots.length === 0 ? (
+                        <span className="text-slate-400 italic text-[11px]">Tidak ada jadwal</span>
+                      ) : (
+                        slots.map((s, sIdx) => {
+                          const fan = s.fan && s.fan !== '-' ? s.fan : '';
+                          const lok = s.lokasi && s.lokasi !== '-' ? `(${s.lokasi})` : '';
+                          const info = [fan, lok].filter(Boolean).join(' ') || '-';
+                          return (
+                            <span
+                              key={`${h}_${sIdx}`}
+                              className="inline-block px-2 py-0.5 rounded bg-white text-slate-800 border border-slate-200 text-[11px] shadow-2xs"
+                            >
+                              <b className="text-emerald-700">Jam {s.jam}:</b> {info}
+                            </span>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -4,6 +4,8 @@ import React, { useMemo } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { useJadwalStore } from '@/stores/useJadwalStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
+import { useFormasiStore } from '@/stores/useFormasiStore';
+import { useFanStore } from '@/stores/useFanStore';
 import { LIST_HARI, KelasKbmItem } from '@/types/jadwal';
 import { normalisasiNamaKelas } from '@/lib/utils/jadwalHelper';
 import {
@@ -25,9 +27,12 @@ export default function ModalDetailKelasKBM({ masterStrukturKelas }: ModalDetail
     selectedDetailKelasKey,
     openModalInputJadwal,
     hapusJadwalJamKelas,
+    rebuildMasterStrukturKelas,
   } = useJadwalStore();
 
   const { asatidzList } = useAsatidzStore();
+  const { formasiList } = useFormasiStore();
+  const { fanConfig } = useFanStore();
 
   const currentClass = useMemo(() => {
     if (!selectedDetailKelasKey) return null;
@@ -86,6 +91,9 @@ export default function ModalDetailKelasKBM({ masterStrukturKelas }: ModalDetail
       )
     ) {
       await hapusJadwalJamKelas(currentClass.key, currentClass, jam, asatidzList);
+      if (formasiList.length > 0) {
+        rebuildMasterStrukturKelas(formasiList, asatidzList, fanConfig);
+      }
     }
   };
 

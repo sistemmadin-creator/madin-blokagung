@@ -29,6 +29,7 @@ import { getSesiKey } from '@/lib/utils/absensiHelper';
 import {
   bandingkanBlokHariKBM,
   formatLabelBlokHariKBM,
+  buildMasterStrukturKelasKBM,
 } from '@/lib/utils/jadwalHelper';
 import ModalDetailAbsenCepat from '@/components/modules/absen-cepat/ModalDetailAbsenCepat';
 import ModalNotifAbsenBlok from '@/components/modules/absen-cepat/ModalNotifAbsenBlok';
@@ -108,12 +109,19 @@ export default function AbsenCepatPage() {
   ]);
 
   useEffect(() => {
-    if (asatidzList.length > 0) {
+    if (asatidzList.length > 0 || Object.keys(jadwalMap).length > 0) {
+      const masterStrukturKelas = buildMasterStrukturKelasKBM(
+        formasiList,
+        asatidzList,
+        jadwalMap,
+        fanConfig
+      );
       syncSesiHariIni(
         asatidzList,
         jadwalMap,
         formasiList,
-        fanConfig
+        fanConfig,
+        masterStrukturKelas
       );
     }
   }, [

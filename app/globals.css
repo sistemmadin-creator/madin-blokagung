@@ -134,6 +134,12 @@
   background-color: #e0f2fe;
   color: #0284c7;
 }
+.cell-kg-cut-active {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+  outline: 2px dashed #d97706 !important;
+  outline-offset: -2px;
+}
 .cell-klik-kelas {
   cursor: pointer !important;
   transition: background-color 0.2s ease;
@@ -318,6 +324,24 @@
   body.printing-rekap-resmi .tabel-cetak-resmi td {
     border: 1px solid #1e293b !important;
     padding: 4px 6px !important;
+    color: #000000 !important;
+  }
+
+  /* Aturan Cetak Khusus Jadwal KBM Per Kelas & Hari KBM */
+  body.printing-jadwal-kbm .tabel-kbm-resmi,
+  body.printing-hari-kbm .tabel-kbm-resmi {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 7.5pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body.printing-jadwal-kbm .tabel-kbm-resmi th,
+  body.printing-jadwal-kbm .tabel-kbm-resmi td,
+  body.printing-hari-kbm .tabel-kbm-resmi th,
+  body.printing-hari-kbm .tabel-kbm-resmi td {
+    border: 1px solid #1e293b !important;
+    padding: 3px 4px !important;
     color: #000000 !important;
   }
 }

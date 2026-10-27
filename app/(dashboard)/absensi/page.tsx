@@ -52,6 +52,7 @@ import {
 import {
   bandingkanBlokHariKBM,
   formatLabelBlokHariKBM,
+  buildMasterStrukturKelasKBM,
 } from '@/lib/utils/jadwalHelper';
 import ModalAturLibur from '@/components/modules/absensi/ModalAturLibur';
 import ModalListStatusKPI from '@/components/modules/absensi/ModalListStatusKPI';
@@ -188,12 +189,19 @@ export default function AbsensiAsatidzPage() {
 
   // Sinkronisasi ekstraksi jadwal setiap kali master data atau tanggal berubah
   useEffect(() => {
-    if (asatidzList.length > 0) {
+    if (asatidzList.length > 0 || Object.keys(jadwalMap).length > 0) {
+      const masterStrukturKelas = buildMasterStrukturKelasKBM(
+        formasiList,
+        asatidzList,
+        jadwalMap,
+        fanConfig
+      );
       syncSesiHariIni(
         asatidzList,
         jadwalMap,
         formasiList,
-        fanConfig
+        fanConfig,
+        masterStrukturKelas
       );
     }
   }, [
