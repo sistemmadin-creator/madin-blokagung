@@ -274,4 +274,79 @@ describe('Pemisahan Fan MS & Sinkronisasi Pengajar Fan', () => {
     expect(shorofEntry?.kelas).toBe('3 C ULA');
     expect(shorofEntry?.kitab).toContain('Tasrif Istilah');
   });
+
+  it('7. Toleran spasi ganda: asatidz dengan spasi ganda tetap terpetakan ke jadwalMap', () => {
+    const fanConfig: FanConfigMap = {
+      '1 ULA': ['(Fiqih) Safinatun Najah'],
+    };
+    const fanDetail: FanPelajaranDetail = { item: {}, kelas: {} };
+    const mockJadwalMap: Record<string, TeacherJadwalRow> = {
+      'AHMAD  ZAINI': {
+        nama_asatidz: 'AHMAD  ZAINI',
+        senin: 'Jam 1 | Fiqih | 1 A ULA (PA) (R.1)',
+      },
+    };
+    const mockAsatidzLocal: Asatidz[] = [
+      {
+        id: 'az',
+        nia: 'A01',
+        nama_asatidz: 'AHMAD ZAINI', // Single space di master asatidz
+        jah_asatidz: 'Mustahiq',
+        tingkat_asatidz: 'ULA',
+        din_kls_asatidz: '1',
+        din_bag_asatidz: 'A',
+        pa_pi: 'PA',
+      },
+    ];
+
+    const unifiedMap = buildUnifiedTeacherMap(
+      mockAsatidzLocal,
+      fanDetail,
+      fanConfig,
+      mockJadwalMap,
+      mockFormasi
+    );
+
+    // Lookup baik dengan single space maupun raw double space harus berhasil
+    expect(unifiedMap['AHMAD ZAINI']).toBeDefined();
+    expect(unifiedMap['AHMAD ZAINI'].length).toBe(1);
+    expect(unifiedMap['AHMAD ZAINI'][0].fan).toBe('Fiqih');
+    expect(unifiedMap['AHMAD  ZAINI']).toBeDefined();
+  });
+
+  it('8. Normalisasi tingkat IST vs ISTI\'DAD menyetarakan penamaan jenjang', () => {
+    const fanConfig: FanConfigMap = {
+      '1 IST': ['(Pegon) Pegon Dasar'],
+    };
+    const fanDetail: FanPelajaranDetail = { item: {}, kelas: {} };
+    const mockJadwalMap: Record<string, TeacherJadwalRow> = {
+      'GURU IST': {
+        nama_asatidz: 'GURU IST',
+        ahad: 'Jam 1 | Pegon | 1 A IST (PA) (R.2)',
+      },
+    };
+    const mockAsatidzLocal: Asatidz[] = [
+      {
+        id: 'gi',
+        nia: 'A02',
+        nama_asatidz: 'GURU IST',
+        jah_asatidz: 'Mustahiq',
+        tingkat_asatidz: 'ISTI\'DAD',
+        din_kls_asatidz: '1',
+        din_bag_asatidz: 'A',
+        pa_pi: 'PA',
+      },
+    ];
+
+    const unifiedMap = buildUnifiedTeacherMap(
+      mockAsatidzLocal,
+      fanDetail,
+      fanConfig,
+      mockJadwalMap,
+      mockFormasi
+    );
+
+    expect(unifiedMap['GURU IST']).toBeDefined();
+    expect(unifiedMap['GURU IST'][0].tingkat).toBe("ISTI'DAD");
+  });
 });

@@ -185,8 +185,10 @@ export default function AbsenCepatPage() {
         }
         if (search.trim()) {
           const q = search.trim().toLowerCase();
+          const qClean = q.replace(/\s+/g, '');
           const hay = `${s.nama} ${s.nia} ${s.kelasMengajar} ${s.fan} ${s.lokasi} ${s.blok}`.toLowerCase();
-          if (!hay.includes(q)) return false;
+          const hayClean = hay.replace(/\s+/g, '');
+          if (!hay.includes(q) && !hayClean.includes(qClean)) return false;
         }
         return true;
       })

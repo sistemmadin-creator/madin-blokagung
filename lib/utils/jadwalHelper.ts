@@ -740,12 +740,12 @@ export function hitungDistribusiJam12Tingkat(
       if (jamNum === 1 || jamNum === 2) {
         counts.totalJml++;
         const lok = formatTampilanKelas(p[2] || '');
-        const match = lok.match(/(\d+)\s+[A-Za-z0-9]+\s+(ULA|WUSTHO|WUSTHA|ULYA)/i);
+        const match = lok.match(/(\d+)\s+[A-Za-z0-9']+\s+(ULA|WUSTHO|WUSTHA|ULYA|ISTI'DAD|IST)/i);
 
         if (match) {
           const kls = parseInt(match[1], 10);
           const tkt = match[2].toUpperCase();
-          if (tkt === 'ULA' && counts.ula[kls] !== undefined) counts.ula[kls]++;
+          if ((tkt === 'ULA' || tkt === "ISTI'DAD" || tkt === 'IST') && counts.ula[kls] !== undefined) counts.ula[kls]++;
           else if ((tkt === 'WUSTHO' || tkt === 'WUSTHA') && counts.wst[kls] !== undefined) counts.wst[kls]++;
           else if (tkt === 'ULYA' && counts.ulya[kls] !== undefined) counts.ulya[kls]++;
         } else {
@@ -771,7 +771,8 @@ export function getJadwalGuruFromMap(
   jadwalMap: Record<string, TeacherJadwalRow>
 ): TeacherJadwalRow {
   const clean = String(nama || '').trim();
-  const keyUpper = clean.toUpperCase();
+  const cleanNorm = clean.replace(/\s+/g, ' ');
+  const keyUpper = cleanNorm.toUpperCase();
   if (jadwalMap && jadwalMap[keyUpper]) {
     return {
       ...jadwalMap[keyUpper],
@@ -780,7 +781,7 @@ export function getJadwalGuruFromMap(
   }
   if (jadwalMap && keyUpper) {
     const matchedKey = Object.keys(jadwalMap).find(
-      (k) => k.trim().toUpperCase() === keyUpper
+      (k) => k.trim().replace(/\s+/g, ' ').toUpperCase() === keyUpper
     );
     if (matchedKey && jadwalMap[matchedKey]) {
       return {

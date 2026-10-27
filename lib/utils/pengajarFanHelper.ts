@@ -14,6 +14,7 @@ import {
   ekstrakKelasMurniDariLokasi,
   ambilNamaFanSingkat,
   HARI_KEYS_LOWER,
+  getJadwalGuruFromMap,
 } from './jadwalHelper';
 
 export interface FanEntryRow {
@@ -23,6 +24,24 @@ export interface FanEntryRow {
   klsNum: number;
   isUg: boolean;
   kitab: string[];
+}
+
+/**
+ * Normalisasi nama asatidz (trim, collapse multiple spaces, uppercase)
+ * untuk pencocokan key dictionary yang konsisten.
+ */
+export function normNameKey(name: string | null | undefined): string {
+  return String(name || '').trim().replace(/\s+/g, ' ').toUpperCase();
+}
+
+/**
+ * Normalisasi jenjang tingkat agar setara (misal IST vs ISTI'DAD, WUSTHA vs WUSTHO)
+ */
+export function normalizeTingkatName(tingkat: string | null | undefined): string {
+  const upper = String(tingkat || '').trim().toUpperCase();
+  if (upper === 'IST' || upper === "ISTI'DAD" || upper.includes('ISTI')) return "ISTI'DAD";
+  if (upper === 'WUSTHA' || upper === 'WUSTHO') return 'WUSTHO';
+  return upper;
 }
 
 /**
@@ -40,23 +59,28 @@ export function buildUnifiedTeacherMap(
 ): Record<string, FanEntryRow[]> {
   const tempPeta: Record<string, Record<string, FanEntryRow>> = {};
 
-  // Inisialisasi entri untuk semua asatidz
+  // Inisialisasi entri untuk semua asatidz menggunakan canonical normalized key
   (asatidzList || []).forEach((a) => {
-    const n = String(a.nama_asatidz || '').trim().toUpperCase();
+    const n = normNameKey(a.nama_asatidz);
     if (n) tempPeta[n] = {};
   });
 
   // Himpunan asatidz yang bertugas sebagai Mustahiq di kelas Unggulan
   const unggulanMustahiqMap = new Map<string, { tingkat: string; klsNum: number; bag: string }>();
   (asatidzList || []).forEach((a) => {
-    const n = String(a.nama_asatidz || '').trim().toUpperCase();
-    const tkt = String(a.tingkat_asatidz || '').trim().toUpperCase();
+    const n = normNameKey(a.nama_asatidz);
+    const rawTkt = String(a.tingkat_asatidz || '').trim();
+    const tkt = normalizeTingkatName(rawTkt);
     const kls = String(a.din_kls_asatidz || '').trim();
     const bag = String(a.din_bag_asatidz || '').trim().toUpperCase();
     if (!n || !tkt || !kls || !bag) return;
 
     const { isMS } = cekKategoriJahAsatidz(a.jah_asatidz);
-    if (isMS && isKelasUnggulan(`${kls} ${bag} ${tkt}`, formasiList)) {
+    if (
+      isMS &&
+      (isKelasUnggulan(`${kls} ${bag} ${rawTkt}`, formasiList) ||
+        isKelasUnggulan(`${kls} ${bag} ${tkt}`, formasiList))
+    ) {
       unggulanMustahiqMap.set(n, { tingkat: tkt, klsNum: parseInt(kls, 10) || 0, bag });
     }
   });
@@ -82,17 +106,23 @@ export function buildUnifiedTeacherMap(
     const kelasBersih = kelasKey.replace(/\s*\(Ug\)\s*$/i, '').trim();
     const kelasLabel = isUg ? `${kelasBersih} Ug` : kelasBersih;
     const parts = kelasBersih.split(/\s+/);
-    const tingkat = String(parts[parts.length - 1] || '').toUpperCase();
+    const tingkat = normalizeTingkatName(parts[parts.length - 1]);
     const klsNum = parseInt(parts[0], 10) || 0;
 
     guru.forEach((g) => {
-      const key = String(g || '').trim().toUpperCase();
-      if (!key || !tempPeta[key]) return;
+      const key = normNameKey(g);
+      if (!key) return;
+      if (!tempPeta[key]) tempPeta[key] = {};
 
       // PENCEGAHAN BOCOR: Jika guru ini adalah Mustahiq kelas Unggulan untuk jenjang ini,
       // jangan masukkan entri dari kelas reguler ke dirinya!
       const ugInfo = unggulanMustahiqMap.get(key);
-      if (ugInfo && !isUg && ugInfo.tingkat === tingkat && ugInfo.klsNum === klsNum) {
+      if (
+        ugInfo &&
+        !isUg &&
+        normalizeTingkatName(ugInfo.tingkat) === normalizeTingkatName(tingkat) &&
+        ugInfo.klsNum === klsNum
+      ) {
         return;
       }
 
@@ -118,12 +148,13 @@ export function buildUnifiedTeacherMap(
   });
 
   // 2. Ekstraksi dari Jadwal KBM (jadwalMap)
-  Object.keys(jadwalMap || {}).forEach((guruKey) => {
-    const row = jadwalMap[guruKey];
-    if (!row) return;
+  // Menjamin pencocokan toleran spasi ganda via getJadwalGuruFromMap
+  const processedTeachers = new Set<string>();
 
-    const namaAsatidz = String(row.nama_asatidz || guruKey).trim().toUpperCase();
-    if (!namaAsatidz || !tempPeta[namaAsatidz]) return;
+  const processJadwalRow = (teacherName: string, row: TeacherJadwalRow) => {
+    const key = normNameKey(teacherName);
+    if (!key) return;
+    if (!tempPeta[key]) tempPeta[key] = {};
 
     HARI_KEYS_LOWER.forEach((hKey) => {
       const cellVal = row[hKey];
@@ -141,7 +172,7 @@ export function buildUnifiedTeacherMap(
         if (parts.length < 2) return;
 
         const klsNum = parseInt(parts[0], 10) || 0;
-        const tingkat = String(parts[parts.length - 1] || '').toUpperCase();
+        const tingkat = normalizeTingkatName(parts[parts.length - 1]);
         const isUg = isKelasUnggulan(kelasBersih, formasiList);
         const kelasLabel = isUg ? `${kelasBersih} Ug` : kelasBersih;
 
@@ -155,14 +186,19 @@ export function buildUnifiedTeacherMap(
 
         // PENCEGAHAN BOCOR: Jika guru ini adalah Mustahiq kelas Unggulan untuk jenjang ini,
         // jangan masukkan kelas reguler ke dirinya!
-        const ugInfo = unggulanMustahiqMap.get(namaAsatidz);
-        if (ugInfo && !isUg && ugInfo.tingkat === tingkat && ugInfo.klsNum === klsNum) {
+        const ugInfo = unggulanMustahiqMap.get(key);
+        if (
+          ugInfo &&
+          !isUg &&
+          normalizeTingkatName(ugInfo.tingkat) === normalizeTingkatName(tingkat) &&
+          ugInfo.klsNum === klsNum
+        ) {
           return;
         }
 
         const ek = `${namaFan.toLowerCase()}|${kelasLabel.toLowerCase()}`;
-        if (!tempPeta[namaAsatidz][ek]) {
-          tempPeta[namaAsatidz][ek] = {
+        if (!tempPeta[key][ek]) {
+          tempPeta[key][ek] = {
             fan: namaFan,
             kelas: kelasLabel,
             tingkat,
@@ -175,12 +211,33 @@ export function buildUnifiedTeacherMap(
         if (
           parsed.mapel &&
           parsed.mapel !== '-' &&
-          !tempPeta[namaAsatidz][ek].kitab.includes(parsed.mapel)
+          !tempPeta[key][ek].kitab.includes(parsed.mapel)
         ) {
-          tempPeta[namaAsatidz][ek].kitab.push(parsed.mapel);
+          tempPeta[key][ek].kitab.push(parsed.mapel);
         }
       });
     });
+  };
+
+  // 2a. Ekstraksi untuk seluruh asatidz dari master asatidzList
+  (asatidzList || []).forEach((a) => {
+    const row = getJadwalGuruFromMap(a.nama_asatidz, jadwalMap);
+    if (row) {
+      processJadwalRow(a.nama_asatidz, row);
+      processedTeachers.add(normNameKey(a.nama_asatidz));
+      if (row.nama_asatidz) processedTeachers.add(normNameKey(row.nama_asatidz));
+    }
+  });
+
+  // 2b. Ekstraksi fallback untuk guru di jadwalMap yang belum ada di master asatidzList
+  Object.keys(jadwalMap || {}).forEach((guruKey) => {
+    const row = jadwalMap[guruKey];
+    if (!row) return;
+    const rawNama = row.nama_asatidz || guruKey;
+    if (!processedTeachers.has(normNameKey(rawNama))) {
+      processJadwalRow(rawNama, row);
+      processedTeachers.add(normNameKey(rawNama));
+    }
   });
 
   // 3. Subsumpsi Cerdas (Smart Subsumption) & Pengurutan Hasil per Asatidz
@@ -197,7 +254,7 @@ export function buildUnifiedTeacherMap(
       const cleanKelas = e.kelas.replace(/\s*Ug$/i, '').trim();
       const parts = cleanKelas.split(/\s+/);
       if (parts.length >= 3) {
-        specificFanGroups.add(`${e.fan.toLowerCase()}|${e.tingkat.toUpperCase()}|${e.klsNum}`);
+        specificFanGroups.add(`${e.fan.toLowerCase()}|${normalizeTingkatName(e.tingkat)}|${e.klsNum}`);
       }
     });
 
@@ -206,7 +263,7 @@ export function buildUnifiedTeacherMap(
       const cleanKelas = e.kelas.replace(/\s*Ug$/i, '').trim();
       const parts = cleanKelas.split(/\s+/);
       if (parts.length < 3) {
-        const groupKey = `${e.fan.toLowerCase()}|${e.tingkat.toUpperCase()}|${e.klsNum}`;
+        const groupKey = `${e.fan.toLowerCase()}|${normalizeTingkatName(e.tingkat)}|${e.klsNum}`;
         if (specificFanGroups.has(groupKey)) {
           // Gabungkan informasi kitab ke entri spesifik terkait
           rawList.forEach((spec) => {
@@ -214,7 +271,7 @@ export function buildUnifiedTeacherMap(
             if (
               specClean.split(/\s+/).length >= 3 &&
               spec.fan.toLowerCase() === e.fan.toLowerCase() &&
-              spec.tingkat.toUpperCase() === e.tingkat.toUpperCase() &&
+              normalizeTingkatName(spec.tingkat) === normalizeTingkatName(e.tingkat) &&
               spec.klsNum === e.klsNum
             ) {
               e.kitab.forEach((ktb) => {
@@ -228,16 +285,53 @@ export function buildUnifiedTeacherMap(
       return true;
     });
 
-    finalPeta[k] = filteredList.sort(
+    const sortedList = filteredList.sort(
       (a, b) =>
-        (URUTAN_TINGKAT[a.tingkat] || 99) - (URUTAN_TINGKAT[b.tingkat] || 99) ||
+        (URUTAN_TINGKAT[a.tingkat] || URUTAN_TINGKAT[normalizeTingkatName(a.tingkat)] || 99) -
+          (URUTAN_TINGKAT[b.tingkat] || URUTAN_TINGKAT[normalizeTingkatName(b.tingkat)] || 99) ||
         a.klsNum - b.klsNum ||
         a.kelas.localeCompare(b.kelas, undefined, { numeric: true }) ||
         a.fan.localeCompare(b.fan)
     );
+
+    finalPeta[k] = sortedList;
   });
 
-  return finalPeta;
+  // Dual-Key Aliasing: Menjamin lookup dengan nama original maupun casing/spasi asatidzList & jadwalMap berhasil 100%
+  (asatidzList || []).forEach((a) => {
+    const rawUpper = String(a.nama_asatidz || '').trim().toUpperCase();
+    const canon = normNameKey(a.nama_asatidz);
+    if (canon && finalPeta[canon] && !finalPeta[rawUpper]) {
+      finalPeta[rawUpper] = finalPeta[canon];
+    }
+  });
+
+  Object.keys(jadwalMap || {}).forEach((guruKey) => {
+    const rawUpper = String(guruKey || '').trim().toUpperCase();
+    const canon = normNameKey(guruKey);
+    if (canon && finalPeta[canon] && !finalPeta[rawUpper]) {
+      finalPeta[rawUpper] = finalPeta[canon];
+    }
+    const row = jadwalMap[guruKey];
+    if (row && row.nama_asatidz) {
+      const rowUpper = String(row.nama_asatidz || '').trim().toUpperCase();
+      if (canon && finalPeta[canon] && !finalPeta[rowUpper]) {
+        finalPeta[rowUpper] = finalPeta[canon];
+      }
+    }
+  });
+
+  // Proxy wrapper untuk fallback toleran sembarang variasi spasi & huruf besar/kecil
+  return new Proxy(finalPeta, {
+    get(target, prop) {
+      if (typeof prop === 'string') {
+        if (target[prop] !== undefined) return target[prop];
+        const c = normNameKey(prop);
+        if (target[c] !== undefined) return target[c];
+      }
+      return Reflect.get(target, prop);
+    },
+  });
 }
 
 /**
@@ -281,10 +375,20 @@ export function buildSyncJadwalToFanPayload(
         if (parts.length < 2) return;
 
         const klsNum = parts[0];
-        const tingkat = parts[parts.length - 1]?.toUpperCase();
+        const rawTkt = parts[parts.length - 1]?.toUpperCase();
+        const tingkat = normalizeTingkatName(rawTkt);
         const isUg = isKelasUnggulan(kelasBersih, formasiList);
 
-        const targetKelasKey = isUg ? `${kelasBersih} (Ug)` : `${klsNum} ${tingkat}`;
+        let targetKelasKey = isUg ? `${kelasBersih} (Ug)` : `${klsNum} ${tingkat}`;
+        if (!isUg && !cfg[targetKelasKey]) {
+          // Fallback toleran jika config memakai format IST vs ISTI'DAD
+          if (tingkat === "ISTI'DAD" && cfg[`${klsNum} IST`]) {
+            targetKelasKey = `${klsNum} IST`;
+          } else if (rawTkt === 'IST' && cfg[`${klsNum} ISTI'DAD`]) {
+            targetKelasKey = `${klsNum} ISTI'DAD`;
+          }
+        }
+
         if (!cfg[targetKelasKey]) {
           cfg[targetKelasKey] = [];
         }
@@ -320,7 +424,8 @@ export function buildSyncJadwalToFanPayload(
           det.item![itemKey].asatidz = [];
         }
 
-        if (!det.item![itemKey].asatidz!.some((g) => g.trim().toUpperCase() === namaGuru.toUpperCase())) {
+        const targetTeacherNorm = normNameKey(namaGuru);
+        if (!det.item![itemKey].asatidz!.some((g) => normNameKey(g) === targetTeacherNorm)) {
           det.item![itemKey].asatidz!.push(namaGuru);
           changesCount++;
         }

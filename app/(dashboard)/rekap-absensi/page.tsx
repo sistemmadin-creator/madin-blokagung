@@ -40,6 +40,7 @@ import {
   formatTampilanKelas,
   formatLabelBlokHariKBM,
   bandingkanBlokHariKBM,
+  getJadwalGuruFromMap,
 } from '@/lib/utils/jadwalHelper';
 import ModalGeneratorWA from '@/components/modules/rekap-absensi/ModalGeneratorWA';
 import ModalDrilldownRekap, {
@@ -321,14 +322,7 @@ export default function RekapAbsensiPage() {
   const allRekapRows: RekapAsatidzRow[] = useMemo(() => {
     if (!startDate || !endDate) return [];
 
-    // Bangun peta cepat jadwal berdasarkan nama asatidz uppercase
-    const mapJadwalUpper: Record<string, TeacherJadwalRow> = {};
-    Object.entries(jadwalMap || {}).forEach(([k, val]) => {
-      mapJadwalUpper[k.trim().toUpperCase()] = val;
-      if (val && val.nama_asatidz) {
-        mapJadwalUpper[String(val.nama_asatidz).trim().toUpperCase()] = val;
-      }
-    });
+    const normKey = (n: string) => n.trim().replace(/\s+/g, ' ').toUpperCase();
 
     // 1. Peta jumlah sesi per guru per hari (Sabtu..Kamis)
     const schedulePerGuruHari: Record<string, Record<string, number>> = {};
@@ -336,7 +330,7 @@ export default function RekapAbsensiPage() {
     (asatidzList || []).forEach((a) => {
       const nama = String(a.nama_asatidz || '').trim();
       if (!nama) return;
-      const key = nama.toUpperCase();
+      const key = normKey(nama);
       schedulePerGuruHari[key] = {
         Sabtu: 0,
         Ahad: 0,
@@ -346,7 +340,7 @@ export default function RekapAbsensiPage() {
         Kamis: 0,
       };
 
-      const jdwObj = mapJadwalUpper[key];
+      const jdwObj = getJadwalGuruFromMap(nama, jadwalMap);
       const jahLower = String(a.jah_asatidz || '').trim().toLowerCase();
       const dinKls = String(a.din_kls_asatidz || '').trim();
       const dinBag = String(a.din_bag_asatidz || '').trim();
@@ -436,7 +430,7 @@ export default function RekapAbsensiPage() {
     (asatidzList || []).forEach((a) => {
       const nama = String(a.nama_asatidz || '').trim();
       if (!nama) return;
-      const key = nama.toUpperCase();
+      const key = normKey(nama);
       const sch = schedulePerGuruHari[key] || {};
 
       let totalTerjadwal = 0;
@@ -469,7 +463,7 @@ export default function RekapAbsensiPage() {
     riwayatFiltered.forEach((r) => {
       const nama = String(r.nama || '').trim();
       if (!nama || nama === '-') return;
-      const key = nama.toUpperCase();
+      const key = normKey(nama);
 
       if (!mapAsatidz[key]) {
         mapAsatidz[key] = {
@@ -581,21 +575,30 @@ export default function RekapAbsensiPage() {
           return false;
         }
       }
-      if (
-        filterTingkat &&
-        String(o.tingkat || '').trim().toUpperCase() !==
-          filterTingkat.toUpperCase()
-      ) {
-        return false;
+      if (filterTingkat) {
+        const tNorm = filterTingkat.toUpperCase();
+        const itemTNorm = String(o.tingkat || '').trim().toUpperCase();
+        const isIstTarget = tNorm === "ISTI'DAD" || tNorm === 'IST';
+        const isIstItem = itemTNorm === "ISTI'DAD" || itemTNorm === 'IST';
+        if (isIstTarget) {
+          if (!isIstItem) return false;
+        } else if (itemTNorm !== tNorm) {
+          return false;
+        }
       }
       if (filterJah && String(o.jah || '').trim() !== filterJah) {
         return false;
       }
       if (filterNama.trim()) {
         const q = filterNama.trim().toLowerCase();
+        const qClean = q.replace(/\s+/g, '');
+        const namaClean = o.nama.toLowerCase().replace(/\s+/g, '');
+        const niaClean = String(o.nia || '').toLowerCase().replace(/\s+/g, '');
         if (
           !o.nama.toLowerCase().includes(q) &&
-          !String(o.nia || '').toLowerCase().includes(q)
+          !String(o.nia || '').toLowerCase().includes(q) &&
+          !namaClean.includes(qClean) &&
+          !niaClean.includes(qClean)
         ) {
           return false;
         }
@@ -644,8 +647,10 @@ export default function RekapAbsensiPage() {
       ? criteriaFilteredRows
       : criteriaFilteredRows.filter((o) => {
           const q = tableSearch.trim().toLowerCase();
+          const qClean = q.replace(/\s+/g, '');
           const hay = `${o.nama} ${o.nia} ${formatLabelBlokRekap(o.blok)} ${o.jah} ${o.predikat}`.toLowerCase();
-          return hay.includes(q);
+          const hayClean = hay.replace(/\s+/g, '');
+          return hay.includes(q) || hayClean.includes(qClean);
         });
 
     return [...searched].sort((a, b) => {
@@ -1324,13 +1329,13 @@ export default function RekapAbsensiPage() {
 
         {/* Tabel 14 Kolom */}
         <div className="overflow-x-auto border-y border-slate-200">
-          <table className="w-full text-xs border-collapse">
+          <table className="w-full min-w-[1050px] text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50 text-slate-700 font-extrabold uppercase text-[10px] border-b border-slate-200 select-none">
-                <th className="py-3 px-2.5 text-center w-10">NO</th>
+                <th className="py-3 px-2.5 text-center w-10 sticky left-0 z-20 bg-slate-50">NO</th>
                 <th
                   onClick={() => handleSortColumn('nama')}
-                  className="py-3 px-3 text-left cursor-pointer hover:bg-slate-100 whitespace-nowrap"
+                  className="py-3 px-3 text-left cursor-pointer hover:bg-slate-100 whitespace-nowrap sticky left-10 z-20 bg-slate-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]"
                 >
                   ASATIDZ {renderSortIcon('nama')}
                 </th>
@@ -1430,10 +1435,10 @@ export default function RekapAbsensiPage() {
                       className="hover:bg-slate-50 transition-colors cursor-pointer"
                       title="Klik untuk melihat rincian kehadiran harian"
                     >
-                      <td className="py-3 px-2.5 text-center text-slate-600">
+                      <td className="py-3 px-2.5 text-center text-slate-600 sticky left-0 z-10 bg-white">
                         {rowNo}
                       </td>
-                      <td className="py-3 px-3 font-extrabold text-slate-800 whitespace-nowrap">
+                      <td className="py-3 px-3 font-extrabold text-slate-800 whitespace-nowrap sticky left-10 z-10 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                         {o.nama}
                       </td>
                       <td className="py-3 px-2.5 text-center text-slate-600">

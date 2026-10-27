@@ -5,7 +5,7 @@ import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useJadwalStore } from '@/stores/useJadwalStore';
 import { useFanStore } from '@/stores/useFanStore';
 import { sortAsatidzByKodeNatural } from '@/lib/utils/fanHelper';
-import { getStatusJam1Dan2Hari, hitungDistribusiJam12Tingkat } from '@/lib/utils/jadwalHelper';
+import { getStatusJam1Dan2Hari, hitungDistribusiJam12Tingkat, getJadwalGuruFromMap } from '@/lib/utils/jadwalHelper';
 import ModalGrupAsal from '@/components/modules/fan/ModalGrupAsal';
 import ModalDetailAsatidz from '@/components/modules/asatidz/ModalDetailAsatidz';
 import ModalDetailSelJadwal from '@/components/modules/jadwal-kbm/ModalDetailSelJadwal';
@@ -88,15 +88,18 @@ export default function DaftarPendidikPage() {
     // 3. Terapkan filter pencarian
     const q = search.trim().toLowerCase();
     if (!q) return groups;
+    const qClean = q.replace(/\s+/g, '');
 
     return groups
       .map((grp) => {
-        const grupCocok = grp.namaGrup.toLowerCase().includes(q);
+        const grupCocok =
+          grp.namaGrup.toLowerCase().includes(q) ||
+          grp.namaGrup.toLowerCase().replace(/\s+/g, '').includes(qClean);
         const listCocok = grupCocok
           ? grp.asatidzList
           : grp.asatidzList.filter((a) => {
               const fullText = `${a.nia || ''} ${a.nama_asatidz} ${a.jah_asatidz || ''} ${a.nis || ''}`.toLowerCase();
-              return fullText.includes(q);
+              return fullText.includes(q) || fullText.replace(/\s+/g, '').includes(qClean);
             });
         return { namaGrup: grp.namaGrup, asatidzList: listCocok };
       })
@@ -144,8 +147,7 @@ export default function DaftarPendidikPage() {
         const kode = a.nia || '-';
         const nama = a.nama_asatidz;
         const jah = a.jah_asatidz || '-';
-        const teacherKey = nama.trim().toUpperCase();
-        const jdw = jadwalMap[teacherKey] || null;
+        const jdw = getJadwalGuruFromMap(nama, jadwalMap);
 
         const sbt = getStatusJam1Dan2Hari(jdw?.sabtu);
         const ahd = getStatusJam1Dan2Hari(jdw?.ahad);
@@ -303,12 +305,12 @@ export default function DaftarPendidikPage() {
         </div>
 
         <div className="table-responsive overflow-x-auto">
-          <table className="tabel-daftar-pendidik w-full border-collapse border border-slate-300 text-center">
+          <table className="tabel-daftar-pendidik min-w-[1100px] w-full border-collapse border border-slate-300 text-center">
             <thead>
               {/* Baris Header 1 */}
               <tr className="bg-slate-100 text-slate-800 font-bold text-xs uppercase">
-                <th rowSpan={3} className="border border-slate-300 px-2 py-2" style={{ width: 45 }}>KODE</th>
-                <th rowSpan={3} className="border border-slate-300 px-3 py-2 text-left" style={{ minWidth: 180 }}>NAMA</th>
+                <th rowSpan={3} className="border border-slate-300 px-2 py-2 sticky left-0 z-20 bg-slate-100" style={{ width: 45 }}>KODE</th>
+                <th rowSpan={3} className="border border-slate-300 px-3 py-2 text-left sticky left-[45px] z-20 bg-slate-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" style={{ minWidth: 180 }}>NAMA</th>
                 <th rowSpan={3} className="border border-slate-300 px-2 py-2" style={{ width: 60 }}>ASAL</th>
                 <th rowSpan={3} className="border border-slate-300 px-2 py-2" style={{ width: 90 }}>JAH</th>
                 <th colSpan={12} className="border border-slate-300 px-2 py-1.5 bg-slate-200/80">HARI &amp; JAM</th>
@@ -367,8 +369,7 @@ export default function DaftarPendidikPage() {
                     const kode = a.nia || '-';
                     const nama = a.nama_asatidz;
                     const jah = a.jah_asatidz || '-';
-                    const teacherKey = nama.trim().toUpperCase();
-                    const jdw = jadwalMap[teacherKey] || null;
+                    const jdw = getJadwalGuruFromMap(nama, jadwalMap);
 
                     const sbt = getStatusJam1Dan2Hari(jdw?.sabtu);
                     const ahd = getStatusJam1Dan2Hari(jdw?.ahad);
@@ -397,13 +398,13 @@ export default function DaftarPendidikPage() {
                     return (
                       <tr key={a.id || `${a.nia}-${nama}`} className="hover:bg-slate-50/60 transition">
                         {/* KODE */}
-                        <td className="border border-slate-300 text-center py-1 px-1 font-mono font-bold text-xs text-slate-900 bg-slate-50/40">
+                        <td className="border border-slate-300 text-center py-1 px-1 font-mono font-bold text-xs text-slate-900 bg-slate-50 sticky left-0 z-10">
                           {kode}
                         </td>
 
                         {/* NAMA (Clickable) */}
                         <td
-                          className="border border-slate-300 text-left py-1 px-2.5 font-semibold text-xs text-slate-900 hover:text-emerald-700 hover:underline cursor-pointer transition"
+                          className="border border-slate-300 text-left py-1 px-2.5 font-semibold text-xs text-slate-900 hover:text-emerald-700 hover:underline cursor-pointer transition bg-white sticky left-[45px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]"
                           onClick={() => openDetailModal(a)}
                           title={`Klik untuk lihat profil & santri binaan ${nama}`}
                         >

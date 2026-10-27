@@ -217,4 +217,31 @@ test.describe('Fan Pelajaran & Pengajar Fan Migration Full Verification', () => 
     await expect(row.getByText(/1 A WUSTHO Ug/i).first()).toBeVisible();
     await expect(row.getByText(/Fiqih/i).first()).toBeVisible();
   });
+
+  test('8.0 Pengajar Fan: Sticky Columns Freeze & Pencarian Toleran Spasi Ganda', async ({ page }) => {
+    await page.goto('/fan/pengajar');
+
+    // 1. Verifikasi tabel memiliki min-w-[850px]
+    const table = page.locator('table.tabel-pengajar-fan');
+    await expect(table).toBeVisible();
+    await expect(table).toHaveClass(/min-w-\[850px\]/);
+
+    // 2. Verifikasi sticky horizontal freeze pada th KODE dan NAMA
+    const thKode = page.locator('th', { hasText: 'KODE' });
+    const thNama = page.locator('th', { hasText: 'NAMA' });
+    await expect(thKode).toHaveClass(/sticky/);
+    await expect(thKode).toHaveClass(/left-0/);
+    await expect(thNama).toHaveClass(/sticky/);
+    await expect(thNama).toHaveClass(/left-\[60px\]/);
+
+    // 3. Verifikasi pencarian toleran spasi berlebih
+    const searchInput = page.getByPlaceholder('Cari Kode / Nama / Fan / Jah...');
+    await searchInput.fill('  RIZQI   MAULANA   ');
+    const row = page.locator('tr', { hasText: 'RIZQI MAULANA ACHMAD' });
+    await expect(row).toBeVisible();
+
+    // 4. Verifikasi tombol reset membersihkan pencarian
+    await page.getByRole('button', { name: /Reset/i }).click();
+    await expect(searchInput).toHaveValue('');
+  });
 });

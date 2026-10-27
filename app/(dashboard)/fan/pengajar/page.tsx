@@ -7,13 +7,12 @@ import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useJadwalStore } from '@/stores/useJadwalStore';
 import {
   sortAsatidzByKodeNatural,
-  parseFanItemString,
-  URUTAN_TINGKAT,
-  getItemsKonfigFanKelas,
 } from '@/lib/utils/fanHelper';
 import {
   buildUnifiedTeacherMap,
   buildSyncJadwalToFanPayload,
+  normNameKey,
+  normalizeTingkatName,
 } from '@/lib/utils/pengajarFanHelper';
 import * as XLSX from 'xlsx';
 import ModalGrupAsal from '@/components/modules/fan/ModalGrupAsal';
@@ -113,12 +112,13 @@ export default function PengajarFanPage() {
     (masterGrupAsal || []).forEach((g) => {
       let list: Asatidz[] = [];
       (g.anggota || []).forEach((nama) => {
+        const target = normNameKey(nama);
         const found = asatidzList.find(
-          (a) => a.nama_asatidz.trim().toUpperCase() === String(nama || '').trim().toUpperCase()
+          (a) => normNameKey(a.nama_asatidz) === target
         );
         if (found) {
           list.push(found);
-          asatidzAssigned.add(found.nama_asatidz.trim().toUpperCase());
+          asatidzAssigned.add(normNameKey(found.nama_asatidz));
         }
       });
       list = sortAsatidzByKodeNatural(list);
@@ -129,38 +129,49 @@ export default function PengajarFanPage() {
 
     // 2. Non-Grup (Asatidz yang belum masuk grup apapun)
     let nonGrup = asatidzList.filter(
-      (a) => !asatidzAssigned.has(a.nama_asatidz.trim().toUpperCase())
+      (a) => !asatidzAssigned.has(normNameKey(a.nama_asatidz))
     );
     nonGrup = sortAsatidzByKodeNatural(nonGrup);
     if (nonGrup.length > 0) {
       kelompok.push({ namaGrup: '', asatidzList: nonGrup });
     }
 
-    // 3. Mapping data baris dan filter
-    const kw = search.trim().toLowerCase();
-    const fTkt = filterTingkat.toUpperCase().trim();
+    // 3. Mapping data baris dan filter toleran spasi
+    const qClean = search.trim().replace(/\s+/g, ' ').toLowerCase();
+    const fTkt = normalizeTingkatName(filterTingkat);
     const fJah = filterJah.trim();
 
     return kelompok
       .map((grp) => {
-        const grupCocok = !!kw && grp.namaGrup.toLowerCase().includes(kw);
+        const grupCocok =
+          !!qClean &&
+          grp.namaGrup.toLowerCase().replace(/\s+/g, ' ').includes(qClean);
         const rows = grp.asatidzList
           .map((a) => {
             const kode = a.nia || '-';
             const nama = a.nama_asatidz;
             const jah = a.jah_asatidz || '-';
-            let entries = teacherMap[nama.toUpperCase()] || [];
-            if (fTkt) entries = entries.filter((e) => e.tingkat === fTkt);
+            let entries =
+              teacherMap[normNameKey(nama)] ||
+              teacherMap[nama.toUpperCase()] ||
+              [];
+            if (fTkt) {
+              entries = entries.filter(
+                (e) => normalizeTingkatName(e.tingkat) === fTkt
+              );
+            }
             return { asatidz: a, kode, nama, jah, entries };
           })
           .filter((o) => {
             if (fJah && o.jah !== fJah) return false;
             if (fTkt && o.entries.length === 0) return false;
-            if (!kw || grupCocok) return true;
-            const teks = `${o.kode} ${o.nama} ${o.jah} ${o.entries
-              .map((e) => `${e.fan}${e.kelas}`)
-              .join(' ')}`.toLowerCase();
-            return teks.includes(kw);
+            if (!qClean || grupCocok) return true;
+            const hayClean = `${o.kode} ${o.nama} ${o.jah} ${grp.namaGrup} ${o.entries
+              .map((e) => `${e.fan} ${e.kelas} ${e.kitab.join(' ')}`)
+              .join(' ')}`
+              .replace(/\s+/g, ' ')
+              .toLowerCase();
+            return hayClean.includes(qClean);
           });
 
         return {
@@ -429,11 +440,11 @@ export default function PengajarFanPage() {
         </div>
 
         <div className="overflow-x-auto border border-slate-300 rounded-lg">
-          <table className="w-full text-xs border-collapse text-left border border-slate-300">
+          <table className="w-full min-w-[850px] text-xs border-collapse text-left border border-slate-300 tabel-pengajar-fan">
             <thead>
               <tr className="bg-slate-100 text-slate-800 border-b border-slate-300 font-bold text-center">
-                <th className="py-2.5 px-2 border-r border-slate-300 w-[60px]">KODE</th>
-                <th className="py-2.5 px-3 border-r border-slate-300 min-w-[200px] text-left">NAMA</th>
+                <th className="py-2.5 px-2 border-r border-slate-300 w-[60px] sticky left-0 bg-slate-100 z-10">KODE</th>
+                <th className="py-2.5 px-3 border-r border-slate-300 min-w-[200px] text-left sticky left-[60px] bg-slate-100 z-10">NAMA</th>
                 <th className="py-2.5 px-2 border-r border-slate-300 w-[110px]">ASAL</th>
                 <th className="py-2.5 px-2 border-r border-slate-300 w-[90px]">JAH</th>
                 <th className="py-2.5 px-3 border-r border-slate-300 text-left">MENGAJAR FAN</th>
@@ -455,17 +466,17 @@ export default function PengajarFanPage() {
                   return grp.rows.map((o, idxInGroup) => (
                     <tr
                       key={`${grp.namaGrup}-${o.nama}`}
-                      className="border-b border-slate-200 hover:bg-slate-50/70 transition-colors"
+                      className="group border-b border-slate-200 hover:bg-slate-50/70 transition-colors"
                     >
-                      {/* KODE (NIA) */}
-                      <td className="font-mono text-center font-bold py-2 px-2 border-r border-slate-200 text-slate-700">
+                      {/* KODE (NIA) - Sticky horizontal left 0 */}
+                      <td className="font-mono text-center font-bold py-2 px-2 border-r border-slate-200 text-slate-700 sticky left-0 bg-white group-hover:bg-slate-50 transition-colors z-10">
                         {o.kode}
                       </td>
 
-                      {/* NAMA (Clickable opens Asatidz Profile Modal) */}
+                      {/* NAMA (Clickable opens Asatidz Profile Modal) - Sticky horizontal left 60px */}
                       <td
                         onClick={() => openDetailModal(o.asatidz)}
-                        className="py-2 px-3 border-r border-slate-200 font-bold text-slate-800 hover:text-emerald-700 hover:underline cursor-pointer"
+                        className="py-2 px-3 border-r border-slate-200 font-bold text-slate-800 hover:text-emerald-700 hover:underline cursor-pointer sticky left-[60px] bg-white group-hover:bg-slate-50 transition-colors z-10"
                         title={`Klik untuk lihat profil ${o.nama}`}
                       >
                         {o.nama}

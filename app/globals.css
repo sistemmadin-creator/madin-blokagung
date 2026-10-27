@@ -192,11 +192,21 @@
   vertical-align: middle !important;
   text-align: center;
 }
+.tabel-daftar-pendidik th.sticky,
+.tabel-daftar-pendidik td.sticky {
+  box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.08);
+}
 .tabel-daftar-pendidik thead th {
   background-color: #e2e8f0 !important;
   color: #0f172a !important;
   font-weight: 700;
   text-transform: uppercase;
+}
+
+/* Sticky horizontal freeze shadow untuk Tabel Pengajar Fan */
+.tabel-pengajar-fan th:nth-child(2),
+.tabel-pengajar-fan td:nth-child(2) {
+  box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.08);
 }
 
 /* KPI Cards untuk Absensi */
@@ -354,6 +364,20 @@
     border: 1px solid #1e293b !important;
     padding: 4px 6px !important;
     color: #000000 !important;
+  }
+
+  /* Aturan Cetak Daftar Pendidik */
+  .no-print-pendidik {
+    display: none !important;
+  }
+  .tabel-daftar-pendidik th.sticky,
+  .tabel-daftar-pendidik td.sticky,
+  .tabel-pengajar-fan th.sticky,
+  .tabel-pengajar-fan td.sticky,
+  .tabel-pengajar-fan th:nth-child(2),
+  .tabel-pengajar-fan td:nth-child(2) {
+    position: static !important;
+    box-shadow: none !important;
   }
 
   /* Aturan Cetak Khusus Jadwal KBM Per Kelas & Hari KBM */

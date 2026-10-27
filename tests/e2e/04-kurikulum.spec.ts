@@ -20,7 +20,7 @@ test.describe('Modul 03: Kurikulum & Akademik', () => {
     await expect(page.getByRole('heading', { name: /Generator Formasi Rombel Otomatis/i })).toBeVisible();
 
     // Close generator
-    const closeBtn = page.getByRole('button', { name: /Batal/i });
+    const closeBtn = page.getByRole('button', { name: 'Batal', exact: true });
     await closeBtn.click();
     await expect(page.getByRole('heading', { name: /Generator Formasi Rombel Otomatis/i })).toBeHidden();
   });
@@ -97,11 +97,16 @@ test.describe('Modul 03: Kurikulum & Akademik', () => {
     await expect(page.getByRole('button', { name: /Print \/ Cetak Dokumen/i })).toBeVisible();
     await expect(page.getByPlaceholder(/Cari Kode \/ Nama/i)).toBeVisible();
 
-    // Verify 25-column table headers
+    // Verify 25-column table headers and sticky freeze
     const table = page.locator('table.tabel-daftar-pendidik');
     await expect(table).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: 'KODE', exact: true })).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: 'NAMA', exact: true })).toBeVisible();
+    await expect(table).toHaveClass(/min-w-\[1100px\]/);
+    const headerKode = table.getByRole('columnheader', { name: 'KODE', exact: true });
+    await expect(headerKode).toBeVisible();
+    await expect(headerKode).toHaveClass(/sticky/);
+    const headerNama = table.getByRole('columnheader', { name: 'NAMA', exact: true });
+    await expect(headerNama).toBeVisible();
+    await expect(headerNama).toHaveClass(/sticky/);
     await expect(table.getByRole('columnheader', { name: 'ASAL', exact: true })).toBeVisible();
     await expect(table.getByRole('columnheader', { name: 'JAH', exact: true })).toBeVisible();
     await expect(table.getByRole('columnheader', { name: 'HARI & JAM', exact: true })).toBeVisible();
@@ -115,5 +120,29 @@ test.describe('Modul 03: Kurikulum & Akademik', () => {
     await expect(modalGrup.getByText(/Pengaturan Grup Asal/i)).toBeVisible();
     await modalGrup.getByRole('button', { name: 'Tutup', exact: true }).or(modalGrup.locator('button[aria-label="Tutup dialog"]')).first().click();
     await expect(modalGrup).toBeHidden();
+
+    // Test pencarian toleran spasi
+    const searchInput = page.getByPlaceholder(/Cari Kode \/ Nama/i);
+    await searchInput.fill('Fikrul');
+    await page.waitForTimeout(400);
+    await expect(table.locator('tbody tr')).not.toHaveCount(0);
+    await searchInput.clear();
+
+    // Tunggu data tabel terisi
+    await expect(table.locator('tbody tr td').first()).toBeVisible({ timeout: 15_000 });
+
+    // Test klik sel slot jam jadwal ('X')
+    const firstCellX = table.locator('tbody td', { hasText: 'X' }).first();
+    if (await firstCellX.isVisible({ timeout: 10_000 }).catch(() => false)) {
+      await firstCellX.click();
+      const modalDetailSel = page.getByRole('dialog');
+      await expect(modalDetailSel).toBeVisible({ timeout: 10_000 });
+      // Tutup modal detail sel jika terbuka
+      const btnTutup = modalDetailSel.getByRole('button', { name: 'Tutup', exact: true });
+      if (await btnTutup.isVisible()) {
+        await btnTutup.click();
+        await expect(modalDetailSel).toBeHidden();
+      }
+    }
   });
 });

@@ -369,17 +369,24 @@ export default function AbsensiAsatidzPage() {
       if (riwayatStatus !== 'ALL' && item.status !== riwayatStatus) return false;
       if (riwayatNama.trim()) {
         const qNama = riwayatNama.trim().toLowerCase();
+        const qNamaClean = qNama.replace(/\s+/g, '');
+        const namaClean = item.nama.toLowerCase().replace(/\s+/g, '');
+        const niaClean = item.nia.toLowerCase().replace(/\s+/g, '');
         if (
           !item.nama.toLowerCase().includes(qNama) &&
-          !item.nia.toLowerCase().includes(qNama)
+          !item.nia.toLowerCase().includes(qNama) &&
+          !namaClean.includes(qNamaClean) &&
+          !niaClean.includes(qNamaClean)
         ) {
           return false;
         }
       }
       if (riwayatQuickSearch.trim()) {
         const q = riwayatQuickSearch.trim().toLowerCase();
+        const qClean = q.replace(/\s+/g, '');
         const hay = `${item.nama} ${item.nia} ${item.kelasMengajar} ${item.fan} ${item.blok} ${item.status} ${item.keterangan}`.toLowerCase();
-        if (!hay.includes(q)) return false;
+        const hayClean = hay.replace(/\s+/g, '');
+        if (!hay.includes(q) && !hayClean.includes(qClean)) return false;
       }
       return true;
     });
@@ -803,8 +810,10 @@ export default function AbsensiAsatidzPage() {
                   }
                   if (filter.search.trim()) {
                     const q = filter.search.trim().toLowerCase();
+                    const qClean = q.replace(/\s+/g, '');
                     const hay = `${s.nama} ${s.nia} ${s.kelasMengajar} ${s.fan} ${s.lokasi} ${s.blok}`.toLowerCase();
-                    if (!hay.includes(q)) return false;
+                    const hayClean = hay.replace(/\s+/g, '');
+                    if (!hay.includes(q) && !hayClean.includes(qClean)) return false;
                   }
                   return true;
                 })

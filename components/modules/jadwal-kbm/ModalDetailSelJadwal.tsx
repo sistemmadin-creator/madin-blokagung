@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { useJadwalStore, LIST_HARI } from '@/stores/useJadwalStore';
-import { parseJadwalCell_Client, formatTampilanKelas } from '@/lib/utils/jadwalHelper';
+import { parseJadwalCell_Client, formatTampilanKelas, getJadwalGuruFromMap } from '@/lib/utils/jadwalHelper';
 import { CalendarCheck, User, BookOpen, Layers, MapPin, Calendar } from 'lucide-react';
 
 interface ModalDetailSelJadwalProps {
@@ -22,8 +22,7 @@ export default function ModalDetailSelJadwal({ isOpen, onClose, session }: Modal
   const details = useMemo(() => {
     if (!session || !session.nama) return null;
 
-    const teacherKey = session.nama.trim().toUpperCase();
-    const jdw = jadwalMap[teacherKey] || null;
+    const jdw = getJadwalGuruFromMap(session.nama, jadwalMap);
     const hariKey = session.hari.toLowerCase() as 'sabtu' | 'ahad' | 'senin' | 'selasa' | 'rabu' | 'kamis';
     const cellVal = jdw ? jdw[hariKey] || '' : '';
 

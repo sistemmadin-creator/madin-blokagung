@@ -20,6 +20,7 @@ import {
   cariLokasiKelasHariKBM,
   dapatkanBlokDariSesiMengajar,
   bandingkanBlokHariKBM,
+  getJadwalGuruFromMap,
 } from './jadwalHelper';
 import { isKelasUnggulan, URUTAN_TINGKAT } from './fanHelper';
 
@@ -270,15 +271,6 @@ export function ekstraksiSesiJadwalHariIni(
 
   const hariKey = hari.toLowerCase() as keyof TeacherJadwalRow;
 
-  // Bangun peta cepat jadwal berdasarkan nama asatidz uppercase
-  const mapJadwalUpper: Record<string, TeacherJadwalRow> = {};
-  Object.entries(jadwalMap || {}).forEach(([k, val]) => {
-    mapJadwalUpper[k.trim().toUpperCase()] = val;
-    if (val && val.nama_asatidz) {
-      mapJadwalUpper[String(val.nama_asatidz).trim().toUpperCase()] = val;
-    }
-  });
-
   (asatidzList || []).forEach((a) => {
     const nama = String(a.nama_asatidz || '').trim();
     if (!nama) return;
@@ -292,7 +284,7 @@ export function ekstraksiSesiJadwalHariIni(
     const lokDinMaster = String(a.lokasi_diniyyah || '').trim();
     const lokTakMaster = String(a.lokasi_takror || '').trim();
 
-    const jdwObj = mapJadwalUpper[nama.toUpperCase()];
+    const jdwObj = getJadwalGuruFromMap(nama, jadwalMap);
     const rawCell = jdwObj ? String(jdwObj[hariKey] || '') : '';
     const cellStr = formatTampilanKelas(rawCell);
 
@@ -354,6 +346,11 @@ export function ekstraksiSesiJadwalHariIni(
       if (matchKlsInfo) {
         klsSlot = matchKlsInfo[1];
         tktSlot = matchKlsInfo[2].toUpperCase();
+      }
+      if (tktSlot === "ISTI'DAD" || tktSlot === "IST") {
+        if (fanConfig && !fanConfig[`${klsSlot} ${tktSlot}`] && fanConfig[`${klsSlot} ULA`]) {
+          tktSlot = 'ULA';
+        }
       }
 
       let fanSingkat = '-';
