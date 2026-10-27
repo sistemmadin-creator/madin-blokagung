@@ -40,6 +40,9 @@ import { Asatidz } from '@/types/asatidz';
 import { Formasi } from '@/types/formasi';
 import { FanConfigMap } from '@/types/fan';
 import { useFanStore } from '@/stores/useFanStore';
+import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
+import { useFormasiStore } from '@/stores/useFormasiStore';
+import { useAsatidzStore } from '@/stores/useAsatidzStore';
 
 export const KEY_DB_JADWAL_ASATIDZ = 'JADWAL_MENGAJAR_ASATIDZ';
 export const LS_JADWAL_ASATIDZ = 'MADIN_JADWAL_MENGAJAR_ASATIDZ';
@@ -97,7 +100,8 @@ interface JadwalState {
   // Core Data Mutations
   simpanBatchJadwalAsatidz: (
     mapPerubahan: Record<string, TeacherJadwalRow>,
-    logDesc?: string
+    logDesc?: string,
+    skipHistory?: boolean
   ) => Promise<boolean>;
 
   simpanJadwalDariKelas: (
@@ -304,17 +308,32 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
     set({ stateClipboardKG: null, isContextMenuOpen: false });
   },
 
-  simpanBatchJadwalAsatidz: async (mapPerubahan, logDesc = '') => {
+  simpanBatchJadwalAsatidz: async (mapPerubahan, logDesc = '', skipHistory = false) => {
     const currentMap = { ...get().jadwalMap };
+
+    // Simpan snapshot sebelum dan sesudah untuk undo & redo
+    const prevTeachers: Record<string, TeacherJadwalRow> = {};
+    const nextTeachers: Record<string, TeacherJadwalRow> = {};
 
     Object.keys(mapPerubahan).forEach((k) => {
       const keyUpper = String(k || '').trim().toUpperCase();
       if (!keyUpper) return;
-      currentMap[keyUpper] = {
-        ...currentMap[keyUpper],
-        ...mapPerubahan[k],
-        nama_asatidz: mapPerubahan[k].nama_asatidz || keyUpper,
-      };
+
+      if (currentMap[keyUpper]) {
+        prevTeachers[keyUpper] = JSON.parse(JSON.stringify(currentMap[keyUpper]));
+      } else {
+        prevTeachers[keyUpper] = { nama_asatidz: keyUpper } as TeacherJadwalRow;
+      }
+
+      nextTeachers[keyUpper] = JSON.parse(
+        JSON.stringify({
+          ...currentMap[keyUpper],
+          ...mapPerubahan[k],
+          nama_asatidz: mapPerubahan[k].nama_asatidz || keyUpper,
+        })
+      );
+
+      currentMap[keyUpper] = nextTeachers[keyUpper];
     });
 
     set({ jadwalMap: currentMap });
@@ -331,6 +350,33 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
       if (logDesc) {
         await logActivity('UPDATE JADWAL KBM', logDesc);
       }
+
+      // Rekam aksi ke useUndoRedoStore jika bukan panggilan dari Undo/Redo
+      if (!skipHistory && Object.keys(prevTeachers).length > 0) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'jadwal',
+          title: logDesc || 'Perubahan Jadwal KBM',
+          undo: async () => {
+            const res = await get().simpanBatchJadwalAsatidz(prevTeachers, `[UNDO] ${logDesc}`, true);
+            const formasi = useFormasiStore.getState().formasiList;
+            const asatidz = useAsatidzStore.getState().asatidzList;
+            if (formasi && formasi.length > 0) {
+              get().rebuildMasterStrukturKelas(formasi, asatidz);
+            }
+            return res;
+          },
+          redo: async () => {
+            const res = await get().simpanBatchJadwalAsatidz(nextTeachers, `[REDO] ${logDesc}`, true);
+            const formasi = useFormasiStore.getState().formasiList;
+            const asatidz = useAsatidzStore.getState().asatidzList;
+            if (formasi && formasi.length > 0) {
+              get().rebuildMasterStrukturKelas(formasi, asatidz);
+            }
+            return res;
+          },
+        });
+      }
+
       return true;
     } catch (err: any) {
       console.error('Simpan batch jadwal error:', err.message);
@@ -1251,3 +1297,7 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
     return get().updateJadwalSlot(hari, jam, kelas, '', '');
   },
 }));
+
+if (typeof window !== 'undefined') {
+  (window as any).useJadwalStore = useJadwalStore;
+}

@@ -4,6 +4,8 @@ import React from 'react';
 import Navbar from '@/components/layout/Navbar';
 import SidebarDesktop from '@/components/layout/SidebarDesktop';
 import BottomNavMobile from '@/components/layout/BottomNavMobile';
+import UndoRedoGlobalHandler from '@/components/common/UndoRedoGlobalHandler';
+import FloatingUndoToast from '@/components/common/FloatingUndoToast';
 import { useAppStore } from '@/stores/useAppStore';
 
 export default function DashboardLayout({
@@ -15,6 +17,7 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800">
+      <UndoRedoGlobalHandler />
       <Navbar />
       <SidebarDesktop />
       <main
@@ -27,6 +30,7 @@ export default function DashboardLayout({
         </div>
       </main>
       <BottomNavMobile />
+      <FloatingUndoToast />
     </div>
   );
 }

@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, ChevronDown, Settings, LogOut, ShieldCheck, User } from 'lucide-react';
+import { Menu, ChevronDown, Settings, LogOut, ShieldCheck, User, Undo2, Redo2 } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
+import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
 
 export default function Navbar() {
   const { isSidebarCollapsed, toggleSidebar } = useAppStore();
+  const { undoStack, redoStack, undo, redo, isExecuting } = useUndoRedoStore();
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -65,8 +67,65 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Kanan: Menu Profil Pill Sesuai Gambar 1 */}
-        <div className="relative" ref={dropdownRef}>
+        {/* Kanan: Undo/Redo & Menu Profil */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Tombol Undo & Redo (Maksimal 5 Langkah) */}
+          <div className="flex items-center bg-slate-100/90 border border-slate-200/80 rounded-full p-1 shadow-xs">
+            <button
+              type="button"
+              onClick={() => undo()}
+              disabled={undoStack.length === 0 || isExecuting}
+              title={
+                undoStack.length > 0
+                  ? `Batalkan (Ctrl+Z): ${undoStack[undoStack.length - 1].title}`
+                  : 'Undo (Ctrl+Z): Belum ada riwayat perubahan'
+              }
+              aria-label="Batalkan perubahan (Undo)"
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all select-none ${
+                undoStack.length > 0 && !isExecuting
+                  ? 'text-slate-700 hover:text-emerald-700 hover:bg-white active:scale-95 cursor-pointer shadow-xs'
+                  : 'text-slate-400 opacity-40 cursor-not-allowed'
+              }`}
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Undo</span>
+              {undoStack.length > 0 && (
+                <span className="inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[10px] font-bold bg-emerald-600 text-white leading-none">
+                  {undoStack.length}
+                </span>
+              )}
+            </button>
+
+            <div className="w-[1px] h-3.5 bg-slate-300 mx-0.5" />
+
+            <button
+              type="button"
+              onClick={() => redo()}
+              disabled={redoStack.length === 0 || isExecuting}
+              title={
+                redoStack.length > 0
+                  ? `Ulangi (Ctrl+Y): ${redoStack[redoStack.length - 1].title}`
+                  : 'Redo (Ctrl+Y): Belum ada riwayat untuk diulang'
+              }
+              aria-label="Ulangi perubahan (Redo)"
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all select-none ${
+                redoStack.length > 0 && !isExecuting
+                  ? 'text-slate-700 hover:text-emerald-700 hover:bg-white active:scale-95 cursor-pointer shadow-xs'
+                  : 'text-slate-400 opacity-40 cursor-not-allowed'
+              }`}
+            >
+              <Redo2 className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Redo</span>
+              {redoStack.length > 0 && (
+                <span className="inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[10px] font-bold bg-slate-700 text-white leading-none">
+                  {redoStack.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Menu Profil Pill */}
+          <div className="relative" ref={dropdownRef}>
           <button
             type="button"
             onClick={() => setDropdownOpen((prev) => !prev)}
@@ -132,6 +191,7 @@ export default function Navbar() {
             </div>
           )}
         </div>
+      </div>
       </header>
 
       {/* Modals Pengaturan & Audit */}
