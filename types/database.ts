@@ -72,6 +72,37 @@ export interface SetoranRecord {
   created_at?: string;
 }
 
+export interface NotificationLogRecord {
+  id?: string;
+  recipient_type: 'santri' | 'asatidz' | 'wali' | 'grup' | 'mustahiq';
+  recipient_target: string;
+  category: 'absensi' | 'hafalan' | 'badal' | 'kbm' | 'pengumuman';
+  message: string;
+  channel: 'whatsapp' | 'telegram' | 'sms';
+  status: 'draft' | 'sent' | 'delivered' | 'failed';
+  metadata?: Record<string, any>;
+  created_at?: string;
+}
+
+export interface OfflineSyncLogRecord {
+  id?: string;
+  client_id: string;
+  synced_count: number;
+  failed_count: number;
+  details?: any[];
+  created_at?: string;
+}
+
+export interface ScheduleSolverProposalRecord {
+  id?: string;
+  title: string;
+  status: 'draft' | 'applied' | 'rejected' | 'archived';
+  proposed_slots: JadwalSlotRecord[];
+  conflicts_detected: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -126,6 +157,21 @@ export interface Database {
         Row: SetoranRecord;
         Insert: Partial<SetoranRecord>;
         Update: Partial<SetoranRecord>;
+      };
+      notification_logs: {
+        Row: NotificationLogRecord;
+        Insert: Partial<NotificationLogRecord>;
+        Update: Partial<NotificationLogRecord>;
+      };
+      offline_sync_logs: {
+        Row: OfflineSyncLogRecord;
+        Insert: Partial<OfflineSyncLogRecord>;
+        Update: Partial<OfflineSyncLogRecord>;
+      };
+      schedule_solver_proposals: {
+        Row: ScheduleSolverProposalRecord;
+        Insert: Partial<ScheduleSolverProposalRecord>;
+        Update: Partial<ScheduleSolverProposalRecord>;
       };
     };
   };

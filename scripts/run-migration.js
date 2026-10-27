@@ -69,14 +69,21 @@ async function run() {
   const tJadwal = await supabase.from('jadwal_kbm_slots').select('*').limit(1);
   const tAbsensi = await supabase.from('absensi_records').select('*').limit(1);
   const tSetoran = await supabase.from('setoran_hafalan_records').select('*').limit(1);
+  const tNotif = await supabase.from('notification_logs').select('*').limit(1);
+  const tSync = await supabase.from('offline_sync_logs').select('*').limit(1);
+  const tSolver = await supabase.from('schedule_solver_proposals').select('*').limit(1);
+
+  console.log(' - jadwal_kbm_slots:', !tJadwal.error ? 'SIAP' : 'BELUM TERSEDIA');
+  console.log(' - absensi_records:', !tAbsensi.error ? 'SIAP' : 'BELUM TERSEDIA');
+  console.log(' - setoran_hafalan_records:', !tSetoran.error ? 'SIAP' : 'BELUM TERSEDIA');
+  console.log(' - notification_logs (Fase 3):', !tNotif.error ? 'SIAP' : 'OPSIONAL / BELUM DIJALANKAN');
+  console.log(' - offline_sync_logs (Fase 2):', !tSync.error ? 'SIAP' : 'OPSIONAL / BELUM DIJALANKAN');
+  console.log(' - schedule_solver_proposals (Fase 3):', !tSolver.error ? 'SIAP' : 'OPSIONAL / BELUM DIJALANKAN');
 
   if (tJadwal.error || tAbsensi.error || tSetoran.error) {
-    console.error('Tabel belum siap di Supabase. Jalankan file SQL migrasi terlebih dahulu.');
+    console.error('Tabel utama Fase 1 belum siap di Supabase. Jalankan file SQL migrasi terlebih dahulu.');
     process.exit(1);
   }
-  console.log(' - jadwal_kbm_slots: SIAP');
-  console.log(' - absensi_records: SIAP');
-  console.log(' - setoran_hafalan_records: SIAP');
 
   // 2. Ambil snapshot data dari app_settings
   console.log('\n[2/4] Mengambil snapshot data eksisting dari app_settings...');

@@ -8,6 +8,7 @@ import UndoRedoGlobalHandler from '@/components/common/UndoRedoGlobalHandler';
 import FloatingUndoToast from '@/components/common/FloatingUndoToast';
 import UndoConflictModal from '@/components/common/UndoConflictModal';
 import RealtimeSyncListener from '@/components/common/RealtimeSyncListener';
+import OfflineStatusIndicator from '@/components/common/OfflineStatusIndicator';
 import { useAppStore } from '@/stores/useAppStore';
 
 export default function DashboardLayout({
@@ -35,6 +36,7 @@ export default function DashboardLayout({
       <FloatingUndoToast />
       <UndoConflictModal />
       <RealtimeSyncListener />
+      <OfflineStatusIndicator />
     </div>
   );
 }
