@@ -344,6 +344,134 @@
     padding: 3px 4px !important;
     color: #000000 !important;
   }
+
+  /* Aturan Cetak Massal Piagam (@media print) */
+  body.printing-piagam.print-landscape {
+    @page {
+      size: A4 landscape;
+      margin: 0;
+    }
+  }
+
+  body.printing-piagam.print-portrait {
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+  }
+
+  body.printing-piagam {
+    background: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.printing-piagam * {
+    visibility: hidden;
+  }
+
+  body.printing-piagam #piagamPrintContainer,
+  body.printing-piagam #piagamPrintContainer * {
+    visibility: visible;
+  }
+
+  body.printing-piagam #piagamPrintContainer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    display: block;
+    overflow: visible;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  body.printing-piagam .piagam-canvas {
+    box-shadow: none !important;
+    transform: scale(1) !important;
+    page-break-after: always;
+    break-after: page;
+    position: relative !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.printing-piagam .piagam-element {
+    outline: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Kanvas Utama Piagam & Syahadah */
+.piagam-canvas {
+  background-color: #ffffff;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.12);
+  transform-origin: top center;
+  overflow: hidden;
+  user-select: none;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+  transition: width 0.3s ease, height 0.3s ease;
+}
+
+.piagam-canvas.piagam-landscape {
+  width: 297mm;
+  height: 210mm;
+  min-width: 297mm;
+  min-height: 210mm;
+}
+
+.piagam-canvas.piagam-portrait {
+  width: 210mm;
+  height: 297mm;
+  min-width: 210mm;
+  min-height: 297mm;
+}
+
+.piagam-bg-print {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.piagam-element {
+  position: absolute;
+  white-space: pre-wrap;
+  width: auto;
+  max-width: 92%;
+  z-index: 2;
+  line-height: 1.35;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: outline 0.15s ease, background-color 0.15s ease;
+}
+
+.piagam-element:hover {
+  outline: 1.5px dashed rgba(15, 118, 110, 0.5);
+  background-color: rgba(15, 118, 110, 0.04);
+}
+
+.piagam-element.piagam-element-active {
+  outline: 2px solid #0f766e !important;
+  background-color: rgba(15, 118, 110, 0.08) !important;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.2);
 }
 
 /* Highlight Baris Tuntas / Khatam */

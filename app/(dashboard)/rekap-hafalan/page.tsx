@@ -163,6 +163,8 @@ export default function RekapHafalanPage() {
 
           requiredList.forEach((item) => {
             const itemNorm = norm(item);
+            const cleanStr = (s: string) => norm(s).replace(/[^A-Z0-9]/g, '');
+            const itemClean = cleanStr(item);
             let completed = false;
             let tgl = '';
 
@@ -171,7 +173,13 @@ export default function RekapHafalanPage() {
               tgl = santriSetoran.get(itemNorm)!;
             } else {
               Array.from(santriSetoran.entries()).some(([k, v]) => {
-                if (k.includes(itemNorm) || itemNorm.includes(k)) {
+                const kClean = cleanStr(k);
+                if (
+                  k.includes(itemNorm) ||
+                  itemNorm.includes(k) ||
+                  kClean === itemClean ||
+                  (kClean.length > 3 && itemClean.length > 3 && (kClean.includes(itemClean) || itemClean.includes(kClean)))
+                ) {
                   completed = true;
                   tgl = v;
                   return true;

@@ -112,8 +112,8 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
     // Verify Kelas 1 - Tingkat WUSTHO table rendered
     await expect(page.getByRole('heading', { name: /Kelas 1 - Tingkat WUSTHO/i })).toBeVisible();
     await expect(page.getByText('ANDIKO DWI SAPUTRA')).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Al-Fiyyah 350' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Al-Fiyyah 500' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /fiy+ah 350/i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /fiy+ah 500/i })).toBeVisible();
     await expect(page.getByText('1 / 2')).toBeVisible();
   });
 
@@ -122,13 +122,49 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
 
     await expect(page.getByRole('heading', { name: /Cetak Piagam/i }).first()).toBeVisible();
 
-    // Certificate preview element must be present
-    await expect(page.getByText(/MADRASAH DINIYYAH AL AMIRIYYAH BLOKAGUNG/i)).toBeVisible();
-
-    // Coordinate panel
+    // Coordinate panel & Settings
     await expect(page.getByRole('heading', { name: /Pengaturan Piagam/i }).first()).toBeVisible();
 
-    // Print button
+    // Print & Reset buttons
     await expect(page.getByRole('button', { name: /Print Piagam/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Reset Kanvas/i })).toBeVisible();
+
+    // Template selector & Simpan
+    await expect(page.getByRole('combobox').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Simpan/i })).toBeVisible();
+
+    // Orientasi buttons
+    await expect(page.getByRole('button', { name: /Landscape/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Portrait/i })).toBeVisible();
+
+    // Background tabs
+    await expect(page.getByRole('button', { name: /Google Drive/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Upload File/i })).toBeVisible();
+
+    // Quick Tags
+    await expect(page.getByRole('button', { name: '+ Nama', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '+ No. Induk', exact: true })).toBeVisible();
+
+    // Tambah Blok Teks button
+    await expect(page.getByRole('button', { name: /Tambah Blok Teks/i })).toBeVisible();
+
+    // Buka Modal Penerima Piagam Massal
+    const btnMailing = page.getByRole('button', { name: /Klik untuk Memilih Santri/i });
+    await expect(btnMailing).toBeVisible();
+    await btnMailing.click();
+
+    // Verifikasi modal terbuka
+    await expect(page.getByRole('heading', { name: /Pilih Penerima Piagam/i })).toBeVisible();
+    await expect(page.getByPlaceholder('Ketik/Pilih Asatidz...')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Centang Yang Tampil' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Batal Centang' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Batal', exact: true })).toBeVisible();
+
+    // Tutup modal
+    await page.getByRole('button', { name: 'Batal', exact: true }).click();
+    await expect(page.getByRole('heading', { name: /Pilih Penerima Piagam/i })).not.toBeVisible();
+
+    // Certificate preview element on canvas
+    await expect(page.getByText(/MADRASAH DINIYYAH AL AMIRIYYAH BLOKAGUNG/i)).toBeVisible();
   });
 });
