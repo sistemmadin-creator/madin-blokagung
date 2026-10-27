@@ -310,6 +310,8 @@ interface AbsensiState {
     targetLiburMap: Record<string, HariLiburInfo>,
     logDesc?: string
   ) => Promise<boolean>;
+  handleRealtimeAbsensi: (newValue: any) => void;
+  handleRealtimeLibur: (newValue: any) => void;
 }
 
 const initialDate = getDefaultTanggalAbsensi();
@@ -749,6 +751,33 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
           module: 'absensi',
           title: `Simpan Absensi ${selectedDate} (${jamKe})`,
           undo: async () => {
+            // Cek konflik di server: apakah bucket ini telah diubah lagi oleh orang lain?
+            try {
+              const { data: dbData } = await supabase
+                .from('app_settings')
+                .select('value')
+                .eq('key', KEY_DB_ABSENSI)
+                .maybeSingle();
+
+              if (dbData?.value) {
+                const parsed = typeof dbData.value === 'string' ? JSON.parse(dbData.value) : dbData.value;
+                const serverBucket = parsed?.[bucketKey];
+                if (serverBucket && serverBucket.waktuUpdate !== newBucket.waktuUpdate) {
+                  const proceed = await useUndoRedoStore.getState().requestConflictResolution({
+                    title: 'Peringatan Konflik Absensi KBM',
+                    entityName: `${selectedDate} (${jamKe})`,
+                    message: `Sesi absensi ini telah diperbarui oleh ${serverBucket.diinputOleh || 'admin lain'} pada ${serverBucket.waktuUpdate}.`,
+                    currentServerState: `Diperbarui oleh: ${serverBucket.diinputOleh || 'Admin'} (${serverBucket.waktuUpdate})`,
+                    proposedUndoState: prevBucket
+                      ? `Kembalikan ke status sebelum aksi (${prevBucket.waktuUpdate})`
+                      : 'Hapus data rekaman sesi ini',
+                  });
+
+                  if (!proceed) return false;
+                }
+              }
+            } catch {}
+
             return await get().restoreAbsensiBucket(
               bucketKey,
               prevBucket,
@@ -1118,15 +1147,14 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       );
 
       if (!skipHistory) {
-        const prevLiburInfo = prevLibur[date] ? JSON.parse(JSON.stringify(prevLibur[date])) : null;
         useUndoRedoStore.getState().recordAction({
           module: 'absensi',
           title: info ? `Set Libur: ${date} (${info.kategori})` : `Hapus Libur: ${date}`,
           undo: async () => {
-            return await get().setHariLibur(date, prevLiburInfo, actorName, true);
+            return await get().restoreLiburMap(prevLibur, `[UNDO] Libur ${date}`);
           },
           redo: async () => {
-            return await get().setHariLibur(date, info, actorName, true);
+            return await get().restoreLiburMap(current, `[REDO] Libur ${date}`);
           },
         });
       }
@@ -1252,6 +1280,51 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
     } catch (err: any) {
       console.error('Restore libur error:', err.message);
       return false;
+    }
+  },
+
+  handleRealtimeAbsensi: (newValue) => {
+    try {
+      const parsed = typeof newValue === 'string' ? JSON.parse(newValue) : newValue;
+      if (parsed && typeof parsed === 'object') {
+        const { selectedDate, sesiHariIni, forceUnlockedJams } = get();
+        const nextSavedRecords = buildSavedRecordsForDate(selectedDate, parsed);
+        const nextAbsensiMapByDate = buildLegacyAbsensiMapByDate(parsed);
+        const { savedJams, unlockedJams } = computeJamLocks(
+          selectedDate,
+          sesiHariIni,
+          nextSavedRecords,
+          forceUnlockedJams
+        );
+
+        set({
+          rawBucketMap: parsed,
+          savedRecords: nextSavedRecords,
+          absensiMapByDate: nextAbsensiMapByDate,
+          savedJams,
+          unlockedJams,
+        });
+
+        try {
+          localStorage.setItem(LS_CACHE_ABSENSI, JSON.stringify(parsed));
+        } catch {}
+      }
+    } catch (err) {
+      console.error('Handle realtime absensi error:', err);
+    }
+  },
+
+  handleRealtimeLibur: (newValue) => {
+    try {
+      const parsed = typeof newValue === 'string' ? JSON.parse(newValue) : newValue;
+      if (parsed && typeof parsed === 'object') {
+        set({ liburMapByDate: parsed });
+        try {
+          localStorage.setItem(LS_CACHE_LIBUR, JSON.stringify(parsed));
+        } catch {}
+      }
+    } catch (err) {
+      console.error('Handle realtime libur error:', err);
     }
   },
 }));

@@ -62,6 +62,7 @@ interface SantriState {
   deleteSantri: (no_induk: string, skipHistory?: boolean) => Promise<boolean>;
   deleteSelectedSantri: (skipHistory?: boolean) => Promise<boolean>;
   deleteAllSantri: () => Promise<boolean>;
+  handleRealtimeSantri: (payload: { eventType: string; new?: any; old?: any }) => void;
 }
 
 export const useSantriStore = create<SantriState>((set, get) => ({
@@ -200,7 +201,7 @@ export const useSantriStore = create<SantriState>((set, get) => ({
               undo: async () => {
                 const { data: existRow } = await supabase
                   .from('santri')
-                  .select('no_induk')
+                  .select('*')
                   .eq('no_induk', data.no_induk)
                   .maybeSingle();
 
@@ -208,6 +209,33 @@ export const useSantriStore = create<SantriState>((set, get) => ({
                   console.warn(`[UNDO SANTRI] Gagal: Santri ${data.no_induk} tidak ditemukan.`);
                   await get().fetchSantri();
                   return false;
+                }
+
+                // Deteksi konflik OCC: jika field yang kita ubah di nextDelta ternyata sudah diubah lagi oleh orang lain di server
+                const conflictingKeys = Object.keys(nextDelta).filter(
+                  (k) => (existRow as any)[k] !== (nextDelta as any)[k]
+                );
+
+                if (conflictingKeys.length > 0) {
+                  const serverValuesStr = conflictingKeys
+                    .map((k) => `${k}: "${(existRow as any)[k]}"`)
+                    .join(', ');
+                  const undoValuesStr = conflictingKeys
+                    .map((k) => `${k}: "${(prevDelta as any)[k]}"`)
+                    .join(', ');
+
+                  const proceed = await useUndoRedoStore.getState().requestConflictResolution({
+                    title: 'Peringatan Konflik Data Santri',
+                    entityName: `${existRow.nama || data.nama} (No. Induk: ${data.no_induk})`,
+                    message: `Kolom [${conflictingKeys.join(', ')}] telah diubah oleh pengguna lain di server sejak aksi Anda disimpan.`,
+                    currentServerState: serverValuesStr,
+                    proposedUndoState: undoValuesStr,
+                  });
+
+                  if (!proceed) {
+                    await get().fetchSantri();
+                    return false;
+                  }
                 }
 
                 await supabase.from('santri').update(prevDelta).eq('no_induk', data.no_induk);
@@ -383,6 +411,28 @@ export const useSantriStore = create<SantriState>((set, get) => ({
       console.error('Delete all error:', err.message);
       alert('Gagal mengosongkan database santri: ' + err.message);
       return false;
+    }
+  },
+
+  handleRealtimeSantri: (payload) => {
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+    const currentList = get().santriList;
+
+    if (eventType === 'INSERT' && newRecord) {
+      const exists = currentList.some((s) => s.no_induk === newRecord.no_induk);
+      if (!exists) {
+        set({ santriList: [newRecord, ...currentList] });
+      }
+    } else if (eventType === 'UPDATE' && newRecord) {
+      const updatedList = currentList.map((s) =>
+        s.no_induk === newRecord.no_induk ? { ...s, ...newRecord } : s
+      );
+      set({ santriList: updatedList });
+    } else if (eventType === 'DELETE' && oldRecord) {
+      const filteredList = currentList.filter(
+        (s) => s.no_induk !== oldRecord.no_induk
+      );
+      set({ santriList: filteredList });
     }
   },
 }));

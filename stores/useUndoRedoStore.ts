@@ -17,11 +17,22 @@ export interface HistoryNotification {
   timestamp: number;
 }
 
+export interface UndoConflictPrompt {
+  title: string;
+  message: string;
+  entityName?: string;
+  currentServerState?: string;
+  proposedUndoState?: string;
+  onForce: () => void;
+  onCancel: () => void;
+}
+
 interface UndoRedoState {
   undoStack: UndoRedoAction[];
   redoStack: UndoRedoAction[];
   isExecuting: boolean;
   notification: HistoryNotification | null;
+  activeConflict: UndoConflictPrompt | null;
 
   // Actions
   recordAction: (action: Omit<UndoRedoAction, 'id' | 'timestamp'>) => void;
@@ -29,6 +40,10 @@ interface UndoRedoState {
   redo: () => Promise<boolean>;
   clearHistory: () => void;
   dismissNotification: () => void;
+  requestConflictResolution: (
+    prompt: Omit<UndoConflictPrompt, 'onForce' | 'onCancel'>
+  ) => Promise<boolean>;
+  closeConflict: () => void;
 }
 
 export const useUndoRedoStore = create<UndoRedoState>((set, get) => ({
@@ -36,6 +51,34 @@ export const useUndoRedoStore = create<UndoRedoState>((set, get) => ({
   redoStack: [],
   isExecuting: false,
   notification: null,
+  activeConflict: null,
+
+  requestConflictResolution: (prompt) => {
+    return new Promise<boolean>((resolve) => {
+      set({
+        activeConflict: {
+          ...prompt,
+          onForce: () => {
+            set({ activeConflict: null });
+            resolve(true);
+          },
+          onCancel: () => {
+            set({ activeConflict: null });
+            resolve(false);
+          },
+        },
+      });
+    });
+  },
+
+  closeConflict: () => {
+    const { activeConflict } = get();
+    if (activeConflict?.onCancel) {
+      activeConflict.onCancel();
+    } else {
+      set({ activeConflict: null });
+    }
+  },
 
   recordAction: (action) => {
     const newAction: UndoRedoAction = {
@@ -69,7 +112,11 @@ export const useUndoRedoStore = create<UndoRedoState>((set, get) => ({
 
     set({ isExecuting: true });
     try {
-      await actionToUndo.undo();
+      const result = await actionToUndo.undo();
+      if (result === false) {
+        set({ isExecuting: false });
+        return false;
+      }
 
       set((state) => {
         const trimmedRedo = state.redoStack.slice(-(MAX_HISTORY_STEPS - 1));
@@ -109,7 +156,11 @@ export const useUndoRedoStore = create<UndoRedoState>((set, get) => ({
 
     set({ isExecuting: true });
     try {
-      await actionToRedo.redo();
+      const result = await actionToRedo.redo();
+      if (result === false) {
+        set({ isExecuting: false });
+        return false;
+      }
 
       set((state) => {
         const trimmedUndo = state.undoStack.slice(-(MAX_HISTORY_STEPS - 1));
@@ -140,7 +191,7 @@ export const useUndoRedoStore = create<UndoRedoState>((set, get) => ({
   },
 
   clearHistory: () => {
-    set({ undoStack: [], redoStack: [], notification: null });
+    set({ undoStack: [], redoStack: [], notification: null, activeConflict: null });
   },
 
   dismissNotification: () => {

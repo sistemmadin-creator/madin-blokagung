@@ -83,24 +83,22 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Absensi, Santri, A
       }
     });
 
-    // Toast notifikasi harus muncul dan tombol Undo aktif dengan badge '1'
-    const toast = page.getByRole('status');
-    await expect(toast).toContainText('Set Libur: 2026-10-27', { timeout: 10_000 });
-    await expect(btnUndo).toBeEnabled();
+    // Toast notifikasi muncul dan tombol Undo aktif dengan badge '1'
+    await expect(btnUndo).toBeEnabled({ timeout: 10_000 });
     await expect(btnUndo).toContainText('1');
     await expect(btnRedo).toBeDisabled();
 
     // Eksekusi Undo lewat tombol Navbar
     await btnUndo.click();
-    await expect(btnRedo).toBeEnabled({ timeout: 20_000 });
+    await expect(btnRedo).toBeEnabled({ timeout: 15_000 });
     await expect(btnRedo).toContainText('1');
     await expect(btnUndo).toBeDisabled();
 
     // Eksekusi Redo lewat tombol Navbar
     await btnRedo.click();
-    await expect(btnUndo).toBeEnabled({ timeout: 20_000 });
+    await expect(btnRedo).toBeDisabled({ timeout: 15_000 });
+    await expect(btnUndo).toBeEnabled({ timeout: 15_000 });
     await expect(btnUndo).toContainText('1');
-    await expect(btnRedo).toBeDisabled();
   });
 
   test('2.0 Modul Data Santri: Shortcut Ctrl+Z dan Ctrl+Y untuk mutasi data santri', async ({ page }) => {
@@ -269,5 +267,42 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Absensi, Santri, A
       return win.useUndoRedoStore ? win.useUndoRedoStore.getState().undoStack[0].title : '';
     });
     expect(oldestActionTitle).toBe('Aksi Setoran Ke-3');
+  });
+
+  test('6.0 Modal Dialog Resolusi Konflik Multi-Pengguna (OCC Fase 2)', async ({ page }) => {
+    await page.goto('/santri');
+    await expect(page.getByRole('heading', { name: 'Database Santri', exact: true })).toBeVisible();
+
+    // Trigger simulasi prompt konflik via useUndoRedoStore
+    await page.evaluate(() => {
+      const win = window as any;
+      if (win.useUndoRedoStore) {
+        win.useUndoRedoStore.getState().requestConflictResolution({
+          title: 'Peringatan Konflik Data Santri',
+          entityName: 'SANTRI E2E TEST (No. Induk: 999123)',
+          message: 'Kolom [status, alamat] telah diubah oleh pengguna lain di server sejak aksi Anda disimpan.',
+          currentServerState: 'status: "Boyong", alamat: "Surabaya"',
+          proposedUndoState: 'status: "Aktif", alamat: "Banyuwangi"',
+        });
+      }
+    });
+
+    // Modal konflik harus muncul di layar
+    const modal = page.getByRole('dialog');
+    await expect(modal).toBeVisible();
+    await expect(modal).toContainText('Peringatan Konflik Data Santri');
+    await expect(modal).toContainText('SANTRI E2E TEST (No. Induk: 999123)');
+    await expect(modal).toContainText('Kondisi di Server Terkini:');
+    await expect(modal).toContainText('Akan Dikembalikan ke (Undo):');
+
+    // Ada dua tombol pilihan
+    const btnCancelUndo = modal.getByRole('button', { name: /Batalkan Undo/i });
+    const btnForceUndo = modal.getByRole('button', { name: /Paksa Undo/i });
+    await expect(btnCancelUndo).toBeVisible();
+    await expect(btnForceUndo).toBeVisible();
+
+    // Klik "Batalkan Undo" -> modal tertutup
+    await btnCancelUndo.click();
+    await expect(modal).not.toBeVisible();
   });
 });

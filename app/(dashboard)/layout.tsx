@@ -6,6 +6,8 @@ import SidebarDesktop from '@/components/layout/SidebarDesktop';
 import BottomNavMobile from '@/components/layout/BottomNavMobile';
 import UndoRedoGlobalHandler from '@/components/common/UndoRedoGlobalHandler';
 import FloatingUndoToast from '@/components/common/FloatingUndoToast';
+import UndoConflictModal from '@/components/common/UndoConflictModal';
+import RealtimeSyncListener from '@/components/common/RealtimeSyncListener';
 import { useAppStore } from '@/stores/useAppStore';
 
 export default function DashboardLayout({
@@ -31,6 +33,8 @@ export default function DashboardLayout({
       </main>
       <BottomNavMobile />
       <FloatingUndoToast />
+      <UndoConflictModal />
+      <RealtimeSyncListener />
     </div>
   );
 }

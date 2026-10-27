@@ -173,6 +173,7 @@ interface JadwalState {
     asatidz: string
   ) => Promise<boolean>;
   deleteJadwalSlot: (hari: HariKbm, jam: 1 | 2 | 3 | 4, kelas: string) => Promise<boolean>;
+  handleRealtimeJadwal: (newValue: any) => void;
 }
 
 export const useJadwalStore = create<JadwalState>((set, get) => ({
@@ -379,6 +380,41 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
           module: 'jadwal',
           title: logDesc || 'Perubahan Jadwal KBM',
           undo: async () => {
+            // Cek apakah ada jadwal guru yang disentuh ternyata sudah dimodifikasi orang lain di server
+            try {
+              const { data: dbData } = await supabase
+                .from('app_settings')
+                .select('value')
+                .eq('key', KEY_DB_JADWAL_ASATIDZ)
+                .maybeSingle();
+
+              if (dbData?.value) {
+                const parsed = typeof dbData.value === 'string' ? JSON.parse(dbData.value) : dbData.value;
+                if (parsed && typeof parsed === 'object') {
+                  const conflictingGuru = Object.keys(nextTeachers).filter((g) => {
+                    const serverRow = parsed[g];
+                    const myRow = nextTeachers[g];
+                    if (!serverRow || !myRow) return false;
+                    return ['sabtu', 'ahad', 'senin', 'selasa', 'rabu', 'kamis'].some(
+                      (h) => (serverRow[h] || '') !== (myRow[h] || '')
+                    );
+                  });
+
+                  if (conflictingGuru.length > 0) {
+                    const proceed = await useUndoRedoStore.getState().requestConflictResolution({
+                      title: 'Peringatan Konflik Jadwal KBM',
+                      entityName: `Guru: ${conflictingGuru.slice(0, 3).join(', ')}${conflictingGuru.length > 3 ? '...' : ''}`,
+                      message: `Jadwal mengajar untuk ${conflictingGuru.length} guru telah dimodifikasi oleh admin lain di server sejak aksi Anda disimpan.`,
+                      currentServerState: `${conflictingGuru.length} guru memiliki jadwal baru di server`,
+                      proposedUndoState: `Kembalikan slot mengajar ${conflictingGuru.length} guru ke waktu sebelum aksi Anda`,
+                    });
+
+                    if (!proceed) return false;
+                  }
+                }
+              }
+            } catch {}
+
             const res = await get().simpanBatchJadwalAsatidz(prevTeachers, `[UNDO] ${logDesc}`, true);
             const formasi = useFormasiStore.getState().formasiList;
             const asatidz = useAsatidzStore.getState().asatidzList;
@@ -1317,6 +1353,25 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
 
   deleteJadwalSlot: async (hari, jam, kelas) => {
     return get().updateJadwalSlot(hari, jam, kelas, '', '');
+  },
+
+  handleRealtimeJadwal: (newValue) => {
+    try {
+      const parsed = typeof newValue === 'string' ? JSON.parse(newValue) : newValue;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        set({ jadwalMap: parsed });
+        try {
+          localStorage.setItem(LS_JADWAL_ASATIDZ, JSON.stringify(parsed));
+        } catch {}
+        const formasi = useFormasiStore.getState().formasiList;
+        const asatidz = useAsatidzStore.getState().asatidzList;
+        if (formasi && formasi.length > 0) {
+          get().rebuildMasterStrukturKelas(formasi, asatidz);
+        }
+      }
+    } catch (err) {
+      console.error('Handle realtime jadwal error:', err);
+    }
   },
 }));
 

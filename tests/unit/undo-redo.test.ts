@@ -6,6 +6,7 @@ import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { calculateFieldDelta } from '@/lib/utils/deltaHelper';
+import { patchAppSettingsJson } from '@/lib/utils/atomicSettingPatcher';
 
 // In-memory mock databases
 let mockSantriDb: any[] = [];
@@ -681,5 +682,263 @@ describe('Konkurensi & Multi-User Safety (Fase 1: Delta Inversion & Granular Sco
     const remainingList = useMuhafadzohStore.getState().setoranList;
     expect(remainingList.length).toBe(1);
     expect(remainingList[0].nama).toBe('Santri B');
+  });
+});
+
+describe('Optimistic Concurrency Control (OCC) & Conflict Resolution Dialog (Fase 2)', () => {
+  beforeEach(() => {
+    useUndoRedoStore.getState().clearHistory();
+    mockSantriDb = [];
+    mockAsatidzDb = [];
+    mockAppSettingsDb = {};
+    useSantriStore.setState({ santriList: [] });
+    useAsatidzStore.setState({ asatidzList: [] });
+  });
+
+  it('mekanisme requestConflictResolution bekerja dan mengembalikan true pada onForce serta false pada onCancel', async () => {
+    const store = useUndoRedoStore.getState();
+
+    // 1. Uji opsi onForce
+    const promiseForce = store.requestConflictResolution({
+      title: 'Uji Konflik Force',
+      message: 'Ada perubahan data',
+      entityName: 'Santri X',
+    });
+
+    expect(useUndoRedoStore.getState().activeConflict).not.toBeNull();
+    expect(useUndoRedoStore.getState().activeConflict?.title).toBe('Uji Konflik Force');
+
+    // Pengguna memilih Paksa Undo
+    useUndoRedoStore.getState().activeConflict?.onForce();
+    const resultForce = await promiseForce;
+    expect(resultForce).toBe(true);
+    expect(useUndoRedoStore.getState().activeConflict).toBeNull();
+
+    // 2. Uji opsi onCancel / closeConflict
+    const promiseCancel = store.requestConflictResolution({
+      title: 'Uji Konflik Cancel',
+      message: 'Ada perubahan data',
+    });
+
+    expect(useUndoRedoStore.getState().activeConflict).not.toBeNull();
+    useUndoRedoStore.getState().closeConflict();
+    const resultCancel = await promiseCancel;
+    expect(resultCancel).toBe(false);
+    expect(useUndoRedoStore.getState().activeConflict).toBeNull();
+  });
+
+  it('Santri Store OCC: Munculkan modal konflik saat field yang diedit telah diubah lagi oleh user lain', async () => {
+    const santriStore = useSantriStore.getState();
+
+    const awal: any = {
+      no_induk: 'S201',
+      nama: 'Budi',
+      status: 'Aktif',
+    };
+    mockSantriDb = [{ ...awal }];
+    useSantriStore.setState({ santriList: [{ ...awal }] });
+
+    // 1. User A mengedit status: Aktif -> Boyong
+    await santriStore.saveSantri({ ...awal, status: 'Boyong' }, true, 'S201');
+    expect(mockSantriDb[0].status).toBe('Boyong');
+
+    // 2. User B mengubah status di server menjadi: Non-Aktif
+    mockSantriDb[0].status = 'Non-Aktif';
+
+    // 3. User A menekan Undo -> memicu deteksi konflik
+    const undoPromise = useUndoRedoStore.getState().undo();
+
+    // Tunggu microtask agar requestConflictResolution aktif
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const conflict = useUndoRedoStore.getState().activeConflict;
+    expect(conflict).not.toBeNull();
+    expect(conflict?.title).toBe('Peringatan Konflik Data Santri');
+    expect(conflict?.message).toContain('status');
+
+    // 4. Simulasi User A memilih "Batalkan Undo" (mempertahankan status User B)
+    conflict?.onCancel();
+    const undoSuccess = await undoPromise;
+
+    expect(undoSuccess).toBe(false);
+    // Nilai di server tetap 'Non-Aktif' (tidak ditimpa ke 'Aktif')
+    expect(mockSantriDb[0].status).toBe('Non-Aktif');
+  });
+
+  it('Santri Store OCC: Jika pengguna memilih Paksa Undo, perubahan server ditimpa sesuai delta', async () => {
+    const santriStore = useSantriStore.getState();
+
+    const awal: any = {
+      no_induk: 'S202',
+      nama: 'Citra',
+      status: 'Aktif',
+    };
+    mockSantriDb = [{ ...awal }];
+    useSantriStore.setState({ santriList: [{ ...awal }] });
+
+    // User A mengedit status: Aktif -> Boyong
+    await santriStore.saveSantri({ ...awal, status: 'Boyong' }, true, 'S202');
+
+    // User B mengubah status di server menjadi: Skorsing
+    mockSantriDb[0].status = 'Skorsing';
+
+    // User A menekan Undo
+    const undoPromise = useUndoRedoStore.getState().undo();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const conflict = useUndoRedoStore.getState().activeConflict;
+    expect(conflict).not.toBeNull();
+
+    // User A memilih "Paksa Undo"
+    conflict?.onForce();
+    const undoSuccess = await undoPromise;
+
+    expect(undoSuccess).toBe(true);
+    // Nilai di server dipaksa kembali ke nilai sebelum aksi User A ('Aktif')
+    expect(mockSantriDb[0].status).toBe('Aktif');
+  });
+});
+
+describe('Realtime Sync Handlers (Fase 3: Auto-Sync State antar Browser)', () => {
+  beforeEach(() => {
+    useSantriStore.setState({ santriList: [] });
+    useAsatidzStore.setState({ asatidzList: [] });
+    useJadwalStore.setState({ jadwalMap: {} });
+    useAbsensiStore.setState({ rawBucketMap: {}, liburMapByDate: {} });
+    useMuhafadzohStore.setState({ setoranList: [] });
+  });
+
+  it('handleRealtimeSantri memproses event INSERT, UPDATE, dan DELETE secara reaktif', () => {
+    const santriStore = useSantriStore.getState();
+
+    // 1. INSERT event
+    santriStore.handleRealtimeSantri({
+      eventType: 'INSERT',
+      new: { no_induk: 'S301', nama: 'Santri Baru Realtime', status: 'Aktif' },
+    });
+    expect(useSantriStore.getState().santriList.length).toBe(1);
+    expect(useSantriStore.getState().santriList[0].no_induk).toBe('S301');
+
+    // 2. UPDATE event
+    santriStore.handleRealtimeSantri({
+      eventType: 'UPDATE',
+      new: { no_induk: 'S301', nama: 'Santri Baru Realtime', status: 'Boyong' },
+    });
+    expect((useSantriStore.getState().santriList[0] as any).status).toBe('Boyong');
+
+    // 3. DELETE event
+    santriStore.handleRealtimeSantri({
+      eventType: 'DELETE',
+      old: { no_induk: 'S301' },
+    });
+    expect(useSantriStore.getState().santriList.length).toBe(0);
+  });
+
+  it('handleRealtimeAsatidz memproses event INSERT, UPDATE, dan DELETE secara reaktif', () => {
+    const asatidzStore = useAsatidzStore.getState();
+
+    // 1. INSERT event
+    asatidzStore.handleRealtimeAsatidz({
+      eventType: 'INSERT',
+      new: { nia: 'A301', nama_asatidz: 'Ust. Realtime' },
+    });
+    expect(useAsatidzStore.getState().asatidzList.length).toBe(1);
+
+    // 2. UPDATE event
+    asatidzStore.handleRealtimeAsatidz({
+      eventType: 'UPDATE',
+      new: { nia: 'A301', nama_asatidz: 'Ust. Realtime Updated' },
+    });
+    expect(useAsatidzStore.getState().asatidzList[0].nama_asatidz).toBe('Ust. Realtime Updated');
+
+    // 3. DELETE event
+    asatidzStore.handleRealtimeAsatidz({
+      eventType: 'DELETE',
+      old: { nia: 'A301' },
+    });
+    expect(useAsatidzStore.getState().asatidzList.length).toBe(0);
+  });
+
+  it('handleRealtimeJadwal menyinkronkan map jadwal dari server', () => {
+    const jadwalStore = useJadwalStore.getState();
+    const mockJadwal = {
+      'UST. ZAID': {
+        nama_asatidz: 'UST. ZAID',
+        senin: '1 A ULA',
+        totalJam: 2,
+      },
+    };
+
+    jadwalStore.handleRealtimeJadwal(mockJadwal);
+    expect(useJadwalStore.getState().jadwalMap['UST. ZAID']?.senin).toBe('1 A ULA');
+  });
+
+  it('handleRealtimeAbsensi dan handleRealtimeLibur menyinkronkan data presensi & kalender libur', () => {
+    const absensiStore = useAbsensiStore.getState();
+
+    // Sync Absensi
+    const rawBucket = {
+      '2026-10-27|Jam 1': {
+        tanggal: '2026-10-27',
+        jamKe: 'Jam 1',
+        data: [],
+      },
+    };
+    absensiStore.handleRealtimeAbsensi(rawBucket);
+    expect(useAbsensiStore.getState().rawBucketMap['2026-10-27|Jam 1']).toBeDefined();
+
+    // Sync Libur
+    const liburMap = {
+      '2026-10-28': {
+        tanggal: '2026-10-28',
+        kategori: 'Libur',
+        keterangan: 'Hari Santri',
+      },
+    };
+    absensiStore.handleRealtimeLibur(liburMap);
+    expect(useAbsensiStore.getState().liburMapByDate['2026-10-28']?.keterangan).toBe('Hari Santri');
+  });
+
+  it('handleRealtimeMuhafadzoh menyinkronkan list setoran hafalan', () => {
+    const muhafadzohStore = useMuhafadzohStore.getState();
+    const rawRows = [
+      ['SET-01', '2026-10-27', 'S101', 'Ahmad', 'Juz 1', 'Wajib', 'Ust. Zaid', 'Lulus', '', ''],
+    ];
+
+    muhafadzohStore.handleRealtimeMuhafadzoh(rawRows);
+    expect(useMuhafadzohStore.getState().setoranList.length).toBe(1);
+    expect(useMuhafadzohStore.getState().setoranList[0].nama).toBe('Ahmad');
+  });
+});
+
+describe('Atomic Setting Patcher & Modular Concurrency (Fase 4)', () => {
+  beforeEach(() => {
+    mockAppSettingsDb = {};
+  });
+
+  it('patchAppSettingsJson berhasil memodifikasi key dan menyimpannya ke Supabase', async () => {
+    mockAppSettingsDb['TEST_SETTING'] = { count: 5 };
+
+    const result = await patchAppSettingsJson<{ count: number }>(
+      'TEST_SETTING',
+      (current) => ({ count: current.count + 1 }),
+      { count: 0 }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.data?.count).toBe(6);
+    expect(mockAppSettingsDb['TEST_SETTING']?.count).toBe(6);
+  });
+
+  it('patchAppSettingsJson menggunakan fallback default jika key belum ada di database', async () => {
+    const result = await patchAppSettingsJson<Record<string, string>>(
+      'NEW_KEY',
+      (current) => ({ ...current, status: 'aktif' }),
+      {}
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.data?.status).toBe('aktif');
+    expect(mockAppSettingsDb['NEW_KEY']?.status).toBe('aktif');
   });
 });

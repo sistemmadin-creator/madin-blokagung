@@ -78,6 +78,7 @@ interface AsatidzState {
   ) => Promise<boolean>;
   deleteAsatidz: (nia: string, skipHistory?: boolean) => Promise<boolean>;
   deleteSelectedAsatidz: (skipHistory?: boolean) => Promise<boolean>;
+  handleRealtimeAsatidz: (payload: { eventType: string; new?: any; old?: any }) => void;
 }
 
 export const useAsatidzStore = create<AsatidzState>((set, get) => ({
@@ -260,7 +261,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
               undo: async () => {
                 const { data: existRow } = await supabase
                   .from('asatidz')
-                  .select('nia')
+                  .select('*')
                   .eq('nia', data.nia)
                   .maybeSingle();
 
@@ -268,6 +269,33 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
                   console.warn(`[UNDO ASATIDZ] Gagal: Asatidz ${data.nia} tidak ditemukan.`);
                   await get().fetchAsatidz();
                   return false;
+                }
+
+                // Deteksi konflik OCC: jika field yang kita ubah di nextDelta ternyata sudah diubah lagi oleh orang lain di server
+                const conflictingKeys = Object.keys(nextDelta).filter(
+                  (k) => (existRow as any)[k] !== (nextDelta as any)[k]
+                );
+
+                if (conflictingKeys.length > 0) {
+                  const serverValuesStr = conflictingKeys
+                    .map((k) => `${k}: "${(existRow as any)[k]}"`)
+                    .join(', ');
+                  const undoValuesStr = conflictingKeys
+                    .map((k) => `${k}: "${(prevDelta as any)[k]}"`)
+                    .join(', ');
+
+                  const proceed = await useUndoRedoStore.getState().requestConflictResolution({
+                    title: 'Peringatan Konflik Data Asatidz',
+                    entityName: `${existRow.nama_asatidz || data.nama_asatidz} (NIA: ${data.nia})`,
+                    message: `Kolom [${conflictingKeys.join(', ')}] telah diubah oleh pengguna lain di server sejak aksi Anda disimpan.`,
+                    currentServerState: serverValuesStr,
+                    proposedUndoState: undoValuesStr,
+                  });
+
+                  if (!proceed) {
+                    await get().fetchAsatidz();
+                    return false;
+                  }
                 }
 
                 await supabase.from('asatidz').update(prevDelta).eq('nia', data.nia);
@@ -435,6 +463,28 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
       console.error('Delete bulk asatidz error:', err.message);
       alert('Gagal menghapus asatidz terpilih: ' + err.message);
       return false;
+    }
+  },
+
+  handleRealtimeAsatidz: (payload) => {
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+    const currentList = get().asatidzList;
+
+    if (eventType === 'INSERT' && newRecord) {
+      const exists = currentList.some((a) => a.nia === newRecord.nia);
+      if (!exists) {
+        set({ asatidzList: [newRecord, ...currentList] });
+      }
+    } else if (eventType === 'UPDATE' && newRecord) {
+      const updatedList = currentList.map((a) =>
+        a.nia === newRecord.nia ? { ...a, ...newRecord } : a
+      );
+      set({ asatidzList: updatedList });
+    } else if (eventType === 'DELETE' && oldRecord) {
+      const filteredList = currentList.filter(
+        (a) => a.nia !== oldRecord.nia
+      );
+      set({ asatidzList: filteredList });
     }
   },
 }));

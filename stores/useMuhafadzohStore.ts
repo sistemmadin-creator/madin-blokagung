@@ -51,6 +51,7 @@ interface MuhafadzohState {
     rec: SetoranHafalan | null,
     oldKey?: { noInduk: string; tglSetor: string; hafalan: string } | null
   ) => void;
+  handleRealtimeMuhafadzoh: (newValue: any) => void;
 }
 
 export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
@@ -501,6 +502,29 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
     } catch (err: any) {
       alert('Gagal menyimpan target hafalan: ' + err.message);
       return false;
+    }
+  },
+
+  handleRealtimeMuhafadzoh: (newValue) => {
+    try {
+      let list: SetoranHafalan[] | null = null;
+      let rawArray: any = newValue;
+      if (typeof rawArray === 'string') {
+        try {
+          rawArray = JSON.parse(rawArray);
+        } catch {}
+      }
+      if (Array.isArray(rawArray)) {
+        list = rawArray.map((item: any) =>
+          Array.isArray(item) ? convertRawToSetoran(item) : item
+        );
+        set({ setoranList: list });
+        try {
+          localStorage.setItem(LS_RIWAYAT_MUHAFADZOH, JSON.stringify(rawArray));
+        } catch {}
+      }
+    } catch (err) {
+      console.error('Handle realtime muhafadzoh error:', err);
     }
   },
 }));
