@@ -115,3 +115,155 @@ describe('Jadwal Conflict Detection Logic', () => {
     expect(conflicts[0]).toContain('Kelas 1A memiliki 2 guru');
   });
 });
+
+import {
+  parseInfoKelasNorm,
+  isInfoKelasCocok,
+  isSlotMilikKelas,
+  removeSlotFromGuruObj,
+  buildMasterStrukturKelasKBM,
+  ekstrakKelasMurniDariLokasi,
+} from '@/lib/utils/jadwalHelper';
+import { Formasi } from '@/types/formasi';
+import { Asatidz } from '@/types/asatidz';
+import { TeacherJadwalRow } from '@/types/jadwal';
+
+describe('Gender-Aware Class Matching & Schedule Isolation (PA vs PI)', () => {
+  it('ekstrakKelasMurniDariLokasi strips trailing room name but retains gender tag', () => {
+    expect(ekstrakKelasMurniDariLokasi('1 A ULA (PI) (Asrama Al-Barokah)')).toBe('1 A ULA (PI)');
+    expect(ekstrakKelasMurniDariLokasi('1 A ULA (PA) (Gedung Utama)')).toBe('1 A ULA (PA)');
+    expect(ekstrakKelasMurniDariLokasi('1 A ULA (Ug) (Ruang 3)')).toBe('1 A ULA (Ug)');
+    expect(ekstrakKelasMurniDariLokasi('1 A ULA')).toBe('1 A ULA');
+  });
+
+  it('parseInfoKelasNorm separates base name and gender token', () => {
+    const pi = parseInfoKelasNorm('1 A ULA (PI)');
+    expect(pi.norm).toBe('1 A ULA PI');
+    expect(pi.gender).toBe('PI');
+    expect(pi.base).toBe('1 A ULA');
+
+    const pa = parseInfoKelasNorm('1 A ULA (PA)');
+    expect(pa.norm).toBe('1 A ULA PA');
+    expect(pa.gender).toBe('PA');
+    expect(pa.base).toBe('1 A ULA');
+
+    const noGender = parseInfoKelasNorm('1 A ULA');
+    expect(noGender.norm).toBe('1 A ULA');
+    expect(noGender.gender).toBe('');
+    expect(noGender.base).toBe('1 A ULA');
+  });
+
+  it('isInfoKelasCocok strictly isolates PA from PI slots', () => {
+    const slotPI = parseInfoKelasNorm('1 A ULA (PI) (Asrama Al-Barokah)');
+    const targetPA = parseInfoKelasNorm('1 A ULA (PA)');
+    const targetPI = parseInfoKelasNorm('1 A ULA (PI)');
+
+    // Slot PI must NEVER match class PA
+    expect(isInfoKelasCocok(slotPI, targetPA)).toBe(false);
+    expect(isSlotMilikKelas('1 A ULA (PI)', '1 A ULA (PA)')).toBe(false);
+
+    // Slot PI matches class PI
+    expect(isInfoKelasCocok(slotPI, targetPI)).toBe(true);
+    expect(isSlotMilikKelas('1 A ULA (PI) (Asrama Al-Barokah)', '1 A ULA (PI)')).toBe(true);
+
+    // Slot PA must NEVER match class PI
+    expect(isSlotMilikKelas('1 A ULA (PA)', '1 A ULA (PI)')).toBe(false);
+  });
+
+  it('isInfoKelasCocok resolves legacy untagged slots using teacher gender', () => {
+    const slotLegacy = parseInfoKelasNorm('1 A ULA');
+    const targetPI = parseInfoKelasNorm('1 A ULA (PI)');
+    const targetPA = parseInfoKelasNorm('1 A ULA (PA)');
+
+    // Untagged slot matches PI only if teacher is PI
+    expect(isInfoKelasCocok(slotLegacy, targetPI, 'PI')).toBe(true);
+    expect(isInfoKelasCocok(slotLegacy, targetPI, 'PA')).toBe(false);
+
+    // Untagged slot matches PA only if teacher is PA
+    expect(isInfoKelasCocok(slotLegacy, targetPA, 'PA')).toBe(true);
+    expect(isInfoKelasCocok(slotLegacy, targetPA, 'PI')).toBe(false);
+  });
+
+  it('removeSlotFromGuruObj deletes only the targeted gender slot', () => {
+    const guruRow: TeacherJadwalRow = {
+      nama_asatidz: 'USTADZAH KUNI',
+      sabtu: 'Jam 1 | Fiqih | 1 A ULA (PI) (Al-Barokah)\nJam 2 | Fiqih | 1 A ULA (PA)',
+    };
+
+    // Remove only PI slot
+    removeSlotFromGuruObj(guruRow, 'sabtu', 1, '1 A ULA (PI)', 'PI');
+
+    expect(guruRow.sabtu).not.toContain('1 A ULA (PI)');
+    expect(guruRow.sabtu).toContain('Jam 2 | Fiqih | 1 A ULA (PA)');
+
+    // Attempting to remove PA with target PI should not affect PA slot
+    removeSlotFromGuruObj(guruRow, 'sabtu', 2, '1 A ULA (PI)', 'PI');
+    expect(guruRow.sabtu).toContain('Jam 2 | Fiqih | 1 A ULA (PA)');
+  });
+
+  it('buildMasterStrukturKelasKBM assigns slot to Putri class without Putra collision', () => {
+    const formasiList: Formasi[] = [
+      {
+        id: '1',
+        tingkat: 'ULA',
+        din_kls: '1',
+        din_bag: 'A',
+        pa_pi: 'PA',
+        lokasi_diniyyah: 'Ruang PA 01',
+        kapasitas_maksimal: 40,
+      },
+      {
+        id: '2',
+        tingkat: 'ULA',
+        din_kls: '1',
+        din_bag: 'A',
+        pa_pi: 'PI',
+        lokasi_diniyyah: 'Ruang PI 01',
+        kapasitas_maksimal: 40,
+      },
+    ];
+
+    const asatidzList: Asatidz[] = [
+      {
+        id: '10',
+        nia: '10',
+        nama_asatidz: "KUNI NAFI'AH",
+        pa_pi: 'PI',
+      },
+      {
+        id: '20',
+        nia: '20',
+        nama_asatidz: 'AHMAD ZAINI',
+        pa_pi: 'PA',
+      },
+    ];
+
+    const jadwalMap: Record<string, TeacherJadwalRow> = {
+      "KUNI NAFI'AH": {
+        nama_asatidz: "KUNI NAFI'AH",
+        sabtu: "Jam 1 | Mabadi' Fiqih Juz 1 | 1 A ULA (PI) (Ruang PI 01)",
+        totalJam: 1,
+      },
+    };
+
+    const struktur = buildMasterStrukturKelasKBM(formasiList, asatidzList, jadwalMap);
+
+    expect(struktur).toHaveLength(2);
+
+    const kelasPA = struktur.find((k) => k.papi === 'PA');
+    const kelasPI = struktur.find((k) => k.papi === 'PI');
+
+    expect(kelasPA).toBeDefined();
+    expect(kelasPI).toBeDefined();
+
+    // PA class must have NO schedule on Sabtu Jam 1
+    const sesiSabtuJam1PA = kelasPA!.jadwal['Sabtu']?.[1] || [];
+    expect(sesiSabtuJam1PA).toHaveLength(0);
+
+    // PI class must receive Kuni Nafi'ah schedule
+    const sesiSabtuJam1PI = kelasPI!.jadwal['Sabtu']?.[1] || [];
+    expect(sesiSabtuJam1PI).toHaveLength(1);
+    expect(sesiSabtuJam1PI[0].guru).toBe("KUNI NAFI'AH");
+    expect(sesiSabtuJam1PI[0].fanAsli).toBe("Mabadi' Fiqih Juz 1");
+  });
+});

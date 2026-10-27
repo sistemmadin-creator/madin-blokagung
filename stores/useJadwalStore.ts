@@ -17,6 +17,10 @@ import {
   HARI_KEYS_LOWER,
   deteksiHariIniKBM,
   normalisasiNamaKelas,
+  namaKelasLengkapDariObj,
+  parseInfoKelasNorm,
+  buatPetaGenderGuru,
+  isInfoKelasCocok,
   removeSlotFromGuruObj,
   addSlotToGuruObj,
   syncGuruMengajarAndTotalObj,
@@ -336,11 +340,9 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
 
   simpanJadwalDariKelas: async (kelasKey, k, jam1Entries, jam2Entries, asatidzList, formasiList) => {
     const currentMap = get().jadwalMap;
-    const genderTag = k.papi ? `(${k.papi})` : '';
-    const namaKelasLengkap = `${k.kls} ${k.bag} ${k.tingkat} ${genderTag}`.trim();
-    const klsTanpaGender = `${k.kls} ${k.bag} ${k.tingkat}`.trim();
-    const klsNormUtama = normalisasiNamaKelas(namaKelasLengkap);
-    const klsNormTanpaGen = normalisasiNamaKelas(klsTanpaGender);
+    const namaKelasLengkap = namaKelasLengkapDariObj(k);
+    const targetInfo = parseInfoKelasNorm(namaKelasLengkap);
+    const genderGuruMap = buatPetaGenderGuru(asatidzList);
 
     const mapPerubahan: Record<string, TeacherJadwalRow> = {};
 
@@ -364,6 +366,7 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
     };
 
     // 1. Kumpulkan seluruh guru yang sebelumnya mengajar di kelas ini untuk jam 1 dan jam 2
+    //    (peka gender: guru kelas "1 A ULA (PA)" tidak ikut terjaring saat menyimpan "1 A ULA (PI)")
     const guruLamaSet = new Set<string>();
     LIST_HARI.forEach((hari) => {
       [1, 2].forEach((j) => {
@@ -377,33 +380,29 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
     Object.keys(currentMap).forEach((namaKey) => {
       const jObj = currentMap[namaKey];
       if (!jObj) return;
+      const namaGuru = jObj.nama_asatidz || namaKey;
+      const gGuru = genderGuruMap[String(namaGuru).trim().toUpperCase()] || '';
       LIST_HARI.forEach((hari) => {
         const hKey = hari.toLowerCase();
         const slots = parseJadwalCell_Client(jObj[hKey] || '');
-        const hasSlotInClass = slots.some((s) => {
-          if (s.jam !== 1 && s.jam !== 2) return false;
-          const sLokNorm = normalisasiNamaKelas(s.lokasi);
-          return (
-            sLokNorm === klsNormUtama ||
-            sLokNorm.startsWith(klsNormUtama) ||
-            (klsNormTanpaGen && (sLokNorm === klsNormTanpaGen || sLokNorm.startsWith(klsNormTanpaGen)))
-          );
-        });
+        const hasSlotInClass = slots.some(
+          (s) =>
+            (s.jam === 1 || s.jam === 2) &&
+            isInfoKelasCocok(parseInfoKelasNorm(s.lokasi), targetInfo, gGuru)
+        );
         if (hasSlotInClass) {
-          guruLamaSet.add(jObj.nama_asatidz || namaKey);
+          guruLamaSet.add(namaGuru);
         }
       });
     });
 
-    // Hapus seluruh slot kelas ini dari guru lama
+    // Hapus seluruh slot kelas ini (hanya kelas dengan gender yang sama) dari guru lama
     guruLamaSet.forEach((namaGuru) => {
       const obj = ambilJdwMutasi(namaGuru);
+      const gGuru = genderGuruMap[String(namaGuru).trim().toUpperCase()] || '';
       LIST_HARI.forEach((hari) => {
         [1, 2].forEach((jamNum) => {
-          removeSlotFromGuruObj(obj, hari, jamNum, klsNormUtama);
-          if (klsNormTanpaGen) {
-            removeSlotFromGuruObj(obj, hari, jamNum, klsNormTanpaGen);
-          }
+          removeSlotFromGuruObj(obj, hari, jamNum, namaKelasLengkap, gGuru);
         });
       });
     });
@@ -501,11 +500,9 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
 
   hapusJadwalJamKelas: async (kelasKey, k, targetJam, asatidzList) => {
     const currentMap = get().jadwalMap;
-    const genderTag = k.papi ? `(${k.papi})` : '';
-    const namaKelasLengkap = `${k.kls} ${k.bag} ${k.tingkat} ${genderTag}`.trim();
-    const klsTanpaGender = `${k.kls} ${k.bag} ${k.tingkat}`.trim();
-    const klsNormUtama = normalisasiNamaKelas(namaKelasLengkap);
-    const klsNormTanpaGen = normalisasiNamaKelas(klsTanpaGender);
+    const namaKelasLengkap = namaKelasLengkapDariObj(k);
+    const targetInfo = parseInfoKelasNorm(namaKelasLengkap);
+    const petaGenderGuru = buatPetaGenderGuru(asatidzList);
 
     const asatidzAffected = new Set<string>();
     LIST_HARI.forEach((hari) => {
@@ -517,16 +514,12 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
 
     Object.keys(currentMap).forEach((keyUpper) => {
       const jdw = getJadwalGuruFromMap(keyUpper, currentMap);
+      const gGender = petaGenderGuru[String(jdw.nama_asatidz || keyUpper).trim().toUpperCase()];
       for (const hari of LIST_HARI) {
         const slots = parseJadwalCell_Client(jdw[hari.toLowerCase()]);
         const match = slots.some((s) => {
           if (s.jam !== targetJam) return false;
-          const sLokNorm = normalisasiNamaKelas(s.lokasi);
-          return (
-            sLokNorm === klsNormUtama ||
-            sLokNorm.startsWith(klsNormUtama) ||
-            (klsNormTanpaGen && (sLokNorm === klsNormTanpaGen || sLokNorm.startsWith(klsNormTanpaGen)))
-          );
+          return isInfoKelasCocok(parseInfoKelasNorm(s.lokasi), targetInfo, gGender);
         });
         if (match) {
           asatidzAffected.add(jdw.nama_asatidz || keyUpper);
@@ -542,6 +535,7 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
     asatidzAffected.forEach((namaGuru) => {
       const gUpper = namaGuru.trim().toUpperCase();
       const existing = getJadwalGuruFromMap(namaGuru, currentMap);
+      const gGender = petaGenderGuru[gUpper];
       const mutasi: TeacherJadwalRow = {
         nama_asatidz: existing.nama_asatidz || namaGuru.trim(),
         mengajar: existing.mengajar || '',
@@ -555,10 +549,7 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
       };
 
       LIST_HARI.forEach((hari) => {
-        removeSlotFromGuruObj(mutasi, hari, targetJam, klsNormUtama);
-        if (klsNormTanpaGen) {
-          removeSlotFromGuruObj(mutasi, hari, targetJam, klsNormTanpaGen);
-        }
+        removeSlotFromGuruObj(mutasi, hari, targetJam, namaKelasLengkap, gGender);
       });
 
       syncGuruMengajarAndTotalObj(mutasi, asatidzList);
@@ -979,34 +970,28 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
       return mapPerubahan[gUpper];
     };
 
+    const petaGenderGuru = buatPetaGenderGuru(asatidzList);
+
     const srcK = src.classObj;
-    const srcGenderTag = srcK.papi ? `(${srcK.papi})` : '';
-    const srcKlsFull = `${srcK.kls} ${srcK.bag} ${srcK.tingkat} ${srcGenderTag}`.trim();
-    const srcKlsTanpaGen = `${srcK.kls} ${srcK.bag} ${srcK.tingkat}`.trim();
-    const srcNormUtama = normalisasiNamaKelas(srcKlsFull);
-    const srcNormTanpaGen = normalisasiNamaKelas(srcKlsTanpaGen);
+    const srcKlsFull = namaKelasLengkapDariObj(srcK);
     const srcLokasi = srcK.lokal && srcK.lokal !== '-' ? srcK.lokal : '';
     const srcFormatLokasi = srcLokasi ? `${srcKlsFull} (${srcLokasi})` : srcKlsFull;
 
     const tgtK = targetClassObj;
-    const tgtGenderTag = tgtK.papi ? `(${tgtK.papi})` : '';
-    const tgtKlsFull = `${tgtK.kls} ${tgtK.bag} ${tgtK.tingkat} ${tgtGenderTag}`.trim();
-    const tgtKlsTanpaGen = `${tgtK.kls} ${tgtK.bag} ${tgtK.tingkat}`.trim();
-    const tgtNormUtama = normalisasiNamaKelas(tgtKlsFull);
-    const tgtNormTanpaGen = normalisasiNamaKelas(tgtKlsTanpaGen);
+    const tgtKlsFull = namaKelasLengkapDariObj(tgtK);
     const tgtLokasi = tgtK.lokal && tgtK.lokal !== '-' ? tgtK.lokal : '';
     const tgtFormatLokasi = tgtLokasi ? `${tgtKlsFull} (${tgtLokasi})` : tgtKlsFull;
 
     // 1. Hapus slot lama dari guru asal dan guru tujuan
     if (src.guru) {
       const gOldSrc = ambilMutasi(src.guru);
-      removeSlotFromGuruObj(gOldSrc, src.hari, src.jam, srcNormUtama);
-      if (srcNormTanpaGen) removeSlotFromGuruObj(gOldSrc, src.hari, src.jam, srcNormTanpaGen);
+      const gOldSrcGender = petaGenderGuru[String(src.guru).trim().toUpperCase()];
+      removeSlotFromGuruObj(gOldSrc, src.hari, src.jam, srcKlsFull, gOldSrcGender);
     }
     if (targetGuru) {
       const gOldTgt = ambilMutasi(targetGuru);
-      removeSlotFromGuruObj(gOldTgt, targetHari, targetJam, tgtNormUtama);
-      if (tgtNormTanpaGen) removeSlotFromGuruObj(gOldTgt, targetHari, targetJam, tgtNormTanpaGen);
+      const gOldTgtGender = petaGenderGuru[String(targetGuru).trim().toUpperCase()];
+      removeSlotFromGuruObj(gOldTgt, targetHari, targetJam, tgtKlsFull, gOldTgtGender);
     }
 
     // 2. Tambahkan slot baru sesuai srcAfter dan tgtAfter
@@ -1044,17 +1029,17 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
 
     const { actionType } = payload;
     const srcClass = ctx.classObj;
-    const srcGenderTag = srcClass.papi ? `(${srcClass.papi})` : '';
-    const srcKelasMurni = `${srcClass.kls} ${srcClass.bag} ${srcClass.tingkat} ${srcGenderTag}`.trim();
-    const srcKlsTanpaGen = `${srcClass.kls} ${srcClass.bag} ${srcClass.tingkat}`.trim();
-    const srcLokasiGabungan = `${srcKelasMurni} (${srcClass.lokal || '-'})`;
-    const srcKelasMurniNorm = normalisasiNamaKelas(srcKelasMurni);
-    const srcKlsTanpaGenNorm = normalisasiNamaKelas(srcKlsTanpaGen);
+    const srcKelasMurni = namaKelasLengkapDariObj(srcClass);
+    const srcLokasiGabungan =
+      srcClass.lokal && srcClass.lokal !== '-' ? `${srcKelasMurni} (${srcClass.lokal})` : srcKelasMurni;
 
     const srcHari = ctx.hari;
     const srcJam = ctx.jam;
     const srcGuru = ctx.guru;
     const srcFan = ctx.fan || '-';
+
+    const petaGenderGuru = buatPetaGenderGuru(asatidzList);
+    const srcGuruGender = petaGenderGuru[String(srcGuru || '').trim().toUpperCase()];
 
     const currentMap = get().jadwalMap;
     const mapPerubahan: Record<string, TeacherJadwalRow> = {};
@@ -1120,8 +1105,7 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
 
       if (srcGuru) {
         const gOld = ambilObjGuruWork(srcGuru);
-        removeSlotFromGuruObj(gOld, srcHari, srcJam, srcKelasMurniNorm);
-        if (srcKlsTanpaGenNorm) removeSlotFromGuruObj(gOld, srcHari, srcJam, srcKlsTanpaGenNorm);
+        removeSlotFromGuruObj(gOld, srcHari, srcJam, srcKelasMurni, srcGuruGender);
       }
 
       if (guruBaru) {
@@ -1141,12 +1125,11 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
         return { ok: false, errorMsg: 'Kelas tujuan tidak ditemukan.' };
       }
 
-      const tgtGenderTag = targetKlsObj.papi ? `(${targetKlsObj.papi})` : '';
-      const tgtKelasMurni = `${targetKlsObj.kls} ${targetKlsObj.bag} ${targetKlsObj.tingkat} ${tgtGenderTag}`.trim();
-      const tgtKlsTanpaGen = `${targetKlsObj.kls} ${targetKlsObj.bag} ${targetKlsObj.tingkat}`.trim();
-      const tgtLokasiGabungan = `${tgtKelasMurni} (${targetKlsObj.lokal || '-'})`;
-      const tgtKelasMurniNorm = normalisasiNamaKelas(tgtKelasMurni);
-      const tgtKlsTanpaGenNorm = normalisasiNamaKelas(tgtKlsTanpaGen);
+      const tgtKelasMurni = namaKelasLengkapDariObj(targetKlsObj);
+      const tgtLokasiGabungan =
+        targetKlsObj.lokal && targetKlsObj.lokal !== '-'
+          ? `${tgtKelasMurni} (${targetKlsObj.lokal})`
+          : tgtKelasMurni;
 
       const sesiTarget = targetKlsObj.jadwal[targetHari]?.[targetJam] || [];
       const targetGuru =
@@ -1194,15 +1177,14 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
 
       if (srcGuru) {
         const gSrc = ambilObjGuruWork(srcGuru);
-        removeSlotFromGuruObj(gSrc, srcHari, srcJam, srcKelasMurniNorm);
-        if (srcKlsTanpaGenNorm) removeSlotFromGuruObj(gSrc, srcHari, srcJam, srcKlsTanpaGenNorm);
+        removeSlotFromGuruObj(gSrc, srcHari, srcJam, srcKelasMurni, srcGuruGender);
         addSlotToGuruObj(gSrc, targetHari, targetJam, srcFan, tgtLokasiGabungan);
       }
 
       if (targetGuru) {
         const gTgt = ambilObjGuruWork(targetGuru);
-        removeSlotFromGuruObj(gTgt, targetHari, targetJam, tgtKelasMurniNorm);
-        if (tgtKlsTanpaGenNorm) removeSlotFromGuruObj(gTgt, targetHari, targetJam, tgtKlsTanpaGenNorm);
+        const tgtGuruGender = petaGenderGuru[String(targetGuru).trim().toUpperCase()];
+        removeSlotFromGuruObj(gTgt, targetHari, targetJam, tgtKelasMurni, tgtGuruGender);
         addSlotToGuruObj(gTgt, srcHari, srcJam, targetFan, srcLokasiGabungan);
       }
     }

@@ -39,6 +39,126 @@ export function formatTampilanKelas(str: string | null | undefined): string {
 }
 
 /**
+ * Info kelas hasil normalisasi untuk pencocokan yang peka gender (PA / PI).
+ * - norm   : nama kelas ternormalisasi, tanpa nama gedung di kurung terakhir ("1 A ULA PI")
+ * - gender : 'PA' | 'PI' | '' bila tag gender tidak ditulis
+ * - base   : nama kelas ternormalisasi tanpa token gender ("1 A ULA")
+ */
+export interface InfoKelasNorm {
+  norm: string;
+  gender: '' | 'PA' | 'PI';
+  base: string;
+}
+
+/**
+ * Membuang nama gedung / ruang pada kurung paling akhir, tetapi mempertahankan tag (PA), (PI), (Ug).
+ * Contoh: "1 A ULA (PI) (Asrama Al-Barokah)" -> "1 A ULA (PI)"
+ */
+export function ekstrakKelasMurniDariLokasi(raw: string | null | undefined): string {
+  let s = String(raw || '').trim();
+  for (let i = 0; i < 5; i++) {
+    const m = s.match(/^(.*?)\s*\(([^()]*)\)$/);
+    if (!m) break;
+    const isi = m[2].trim().toUpperCase();
+    if (isi === 'PA' || isi === 'PI' || isi === 'UG') break;
+    s = m[1].trim();
+  }
+  return s;
+}
+
+/**
+ * Menyusun nama kelas lengkap dari objek kelas: "1 A ULA (PI)" (tanpa tag bila gender kosong)
+ */
+export function namaKelasLengkapDariObj(k: {
+  kls: string;
+  bag: string;
+  tingkat: string;
+  papi?: string;
+}): string {
+  const papi = String(k.papi || '').trim().toUpperCase();
+  const gTag = papi === 'PA' || papi === 'PI' ? ` (${papi})` : '';
+  return `${k.kls} ${k.bag} ${k.tingkat}${gTag}`.trim();
+}
+
+/**
+ * Mengurai teks kelas / lokasi slot menjadi InfoKelasNorm.
+ * Token gender dibaca pada posisi setelah "KLS BAG TINGKAT" (indeks 3 atau 4).
+ */
+export function parseInfoKelasNorm(raw: string | null | undefined): InfoKelasNorm {
+  const murni = ekstrakKelasMurniDariLokasi(formatTampilanKelas(String(raw || '')));
+  const norm = normalisasiNamaKelas(murni);
+  if (!norm) return { norm: '', gender: '', base: '' };
+  const tokens = norm.split(' ');
+  let gender: '' | 'PA' | 'PI' = '';
+  let genderIdx = -1;
+  for (let i = 3; i <= 4 && i < tokens.length; i++) {
+    if (tokens[i] === 'PA' || tokens[i] === 'PI') {
+      gender = tokens[i] as 'PA' | 'PI';
+      genderIdx = i;
+      break;
+    }
+  }
+  const base = genderIdx >= 0 ? tokens.filter((_, i) => i !== genderIdx).join(' ') : norm;
+  return { norm, gender, base };
+}
+
+/**
+ * Inti pencocokan slot -> kelas yang peka gender.
+ * Aturan:
+ * 1. Slot PA tidak pernah cocok dengan kelas PI, dan sebaliknya.
+ * 2. Kecocokan eksak, atau slot diawali nama kelas target + spasi (sisa teks = keterangan ruang)
+ *    hanya berlaku bila gender slot dan target sama.
+ * 3. Slot lama tanpa tag gender hanya cocok ke kelas bergender bila gender guru sama
+ *    (atau gender guru tidak diketahui).
+ */
+export function isInfoKelasCocok(
+  slot: InfoKelasNorm,
+  target: InfoKelasNorm,
+  guruGender?: string
+): boolean {
+  if (!slot.norm || !target.norm) return false;
+  if (slot.gender && target.gender && slot.gender !== target.gender) return false;
+  if (slot.norm === target.norm) return true;
+
+  if (slot.gender === target.gender && slot.norm.startsWith(target.norm + ' ')) {
+    return true;
+  }
+
+  if (!slot.gender && target.gender) {
+    if (slot.norm === target.base || slot.norm.startsWith(target.base + ' ')) {
+      const g = String(guruGender || '').trim().toUpperCase();
+      return !g || g === target.gender;
+    }
+  }
+  return false;
+}
+
+/**
+ * Mengecek apakah teks lokasi sebuah slot jadwal adalah milik kelas target (peka gender PA / PI).
+ * Contoh: isSlotMilikKelas("1 A ULA (PI) (Asrama X)", "1 A ULA (PA)") === false
+ */
+export function isSlotMilikKelas(
+  sLokasi: string | null | undefined,
+  targetKelas: string,
+  guruGender?: string
+): boolean {
+  return isInfoKelasCocok(parseInfoKelasNorm(sLokasi), parseInfoKelasNorm(targetKelas), guruGender);
+}
+
+/**
+ * Peta NAMA GURU (uppercase) -> gender ('PA' | 'PI') dari master Asatidz
+ */
+export function buatPetaGenderGuru(asatidzList?: Asatidz[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  (asatidzList || []).forEach((a) => {
+    const n = String(a.nama_asatidz || '').trim().toUpperCase();
+    const g = String(a.pa_pi || '').trim().toUpperCase();
+    if (n && (g === 'PA' || g === 'PI')) map[n] = g;
+  });
+  return map;
+}
+
+/**
  * Memecah sel jadwal guru ("Jam 1 | Fiqih | 1 A ULA (PA) (Gedung)") menjadi array objek slot
  */
 export function parseJadwalCell_Client(cellStr: string | null | undefined): ParsedSlotJadwal[] {
@@ -442,24 +562,29 @@ export function parseSlotHariKBM(
 }
 
 /**
- * Menghapus 1 slot jadwal milik kelas tertentu pada hari & jam tertentu dari objek jadwal guru
+ * Menghapus 1 slot jadwal milik kelas tertentu pada hari & jam tertentu dari objek jadwal guru.
+ * Pencocokan peka gender: menghapus slot kelas "1 A ULA (PI)" tidak ikut menghapus slot "1 A ULA (PA)".
+ * @param kelasTarget nama kelas lengkap (boleh mentah atau ternormalisasi), contoh "1 A ULA (PI)"
+ * @param guruGender gender guru pemilik jadwal, dipakai untuk slot lama tanpa tag gender
  */
 export function removeSlotFromGuruObj(
   jdwObj: TeacherJadwalRow,
   hari: string,
   jam: number,
-  kelasMurniNorm: string
+  kelasTarget: string,
+  guruGender?: string
 ): void {
   const dayIdx = LIST_HARI.findIndex((h) => h.toLowerCase() === String(hari || '').toLowerCase());
   if (dayIdx === -1) return;
   const hKey = HARI_KEYS_LOWER[dayIdx];
   const targetJam = parseInt(String(jam), 10);
+  const targetInfo = parseInfoKelasNorm(kelasTarget);
+  if (!targetInfo.norm) return;
 
   let slots = parseJadwalCell_Client(jdwObj[hKey]);
   slots = slots.filter((s) => {
     if (s.jam !== targetJam) return true;
-    const sLokNorm = normalisasiNamaKelas(s.lokasi);
-    return sLokNorm !== kelasMurniNorm && !sLokNorm.startsWith(kelasMurniNorm);
+    return !isInfoKelasCocok(parseInfoKelasNorm(s.lokasi), targetInfo, guruGender);
   });
   jdwObj[hKey] = stringifyJadwalCell_Client(slots);
 }
@@ -792,8 +917,9 @@ export function buildMasterStrukturKelasKBM(
     if (clean) semuaKunciGuruUpper.add(clean);
   });
 
-  // 4. Petakan seluruh slot Jam 1 & Jam 2 ke dalam kelas terkait
+  // 4. Petakan seluruh slot Jam 1 & Jam 2 ke dalam kelas terkait (peka gender PA / PI)
   const allKelasItems = Array.from(mapKelas.values());
+  const infoKelasList = allKelasItems.map((k) => parseInfoKelasNorm(namaKelasLengkapDariObj(k)));
   semuaKunciGuruUpper.forEach((keyUpper) => {
     const guruMaster = mapAsatidzByUpper.get(keyUpper);
     const jdw = getJadwalGuruFromMap(guruMaster?.nama_asatidz || keyUpper, jadwalMap);
@@ -802,6 +928,7 @@ export function buildMasterStrukturKelasKBM(
 
     const kgGuru = guruMaster?.nia || '-';
     const jahGuru = guruMaster?.jah_asatidz || '';
+    const genderGuru = String(guruMaster?.pa_pi || '').trim().toUpperCase();
 
     LIST_HARI.forEach((hari) => {
       const hKey = hari.toLowerCase();
@@ -811,40 +938,30 @@ export function buildMasterStrukturKelasKBM(
       const slots = parseJadwalCell_Client(rawCell);
       slots.forEach((s) => {
         if (s.jam !== 1 && s.jam !== 2) return;
-        const lokNorm = normalisasiNamaKelas(s.lokasi);
-        if (!lokNorm) return;
+        const slotInfo = parseInfoKelasNorm(s.lokasi);
+        if (!slotInfo.norm) return;
 
         for (let idx = 0; idx < allKelasItems.length; idx++) {
-          const itemKls = allKelasItems[idx];
-          const kNorm1 = normalisasiNamaKelas(`${itemKls.kls} ${itemKls.bag} ${itemKls.tingkat}`);
-          const kNorm2 = normalisasiNamaKelas(
-            `${itemKls.kls} ${itemKls.bag} ${itemKls.tingkat} (${itemKls.papi})`
-          );
+          if (!isInfoKelasCocok(slotInfo, infoKelasList[idx], genderGuru)) continue;
 
+          const itemKls = allKelasItems[idx];
+          const fanShort = ambilNamaFanSingkat(s.fan, itemKls.tingkat, itemKls.kls, fanConfig);
+          const targetArr = itemKls.jadwal[hari][s.jam as 1 | 2];
           if (
-            lokNorm === kNorm1 ||
-            lokNorm === kNorm2 ||
-            lokNorm.startsWith(kNorm1 + ' ') ||
-            lokNorm.startsWith(kNorm2 + ' ')
+            !targetArr.some(
+              (existing: SesiSlot) => existing.guru.toUpperCase() === namaGuru.toUpperCase()
+            )
           ) {
-            const fanShort = ambilNamaFanSingkat(s.fan, itemKls.tingkat, itemKls.kls, fanConfig);
-            const targetArr = itemKls.jadwal[hari][s.jam as 1 | 2];
-            if (
-              !targetArr.some(
-                (existing: SesiSlot) => existing.guru.toUpperCase() === namaGuru.toUpperCase()
-              )
-            ) {
-              targetArr.push({
-                kg: kgGuru,
-                fan: fanShort,
-                fanAsli: s.fan,
-                guru: namaGuru,
-                jah: jahGuru,
-                lokasiGabungan: s.lokasi,
-              });
-            }
-            break;
+            targetArr.push({
+              kg: kgGuru,
+              fan: fanShort,
+              fanAsli: s.fan,
+              guru: namaGuru,
+              jah: jahGuru,
+              lokasiGabungan: s.lokasi,
+            });
           }
+          break;
         }
       });
     });

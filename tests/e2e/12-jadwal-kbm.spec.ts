@@ -143,10 +143,10 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
     await cellKg.click({ button: 'right' });
 
     // Menu konteks harus muncul
-    const btnIsi = page.getByRole('button', { name: /Isi \/ Ganti Jadwal Kelas|Isi Slot Ini/i });
+    const btnIsi = page.getByRole('button', { name: /Isi \/ Ganti Slot Ini|Isi Slot Ini/i });
     await expect(btnIsi).toBeVisible();
 
-    const btnCut = page.getByRole('button', { name: /Pindah Ke \(Cut\)/i });
+    const btnCut = page.getByRole('button', { name: /^Pindah Ke/i });
     if (await btnCut.isVisible()) {
       // Klik Pindah Ke (Cut)
       await btnCut.click();
@@ -242,5 +242,23 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
       const btnTutup = page.getByRole('button', { name: 'Tutup', exact: true });
       await btnTutup.click();
     }
+  });
+
+  test('8.0 Jadwal KBM Per Kelas: Isolasi Gender PA vs PI pada Matriks Kelas', async ({ page }) => {
+    await page.goto('/jadwal-kbm');
+
+    const table = page.locator('#tableJadwalKBM');
+    await expect(table).toBeVisible();
+
+    // Memverifikasi baris kelas PA dan PI terpisah secara tepat
+    const row01 = table.locator('tbody tr').filter({ has: page.locator('td', { hasText: /^01$/ }) });
+    const row02 = table.locator('tbody tr').filter({ has: page.locator('td', { hasText: /^02$/ }) });
+
+    await expect(row01).toBeVisible();
+    await expect(row02).toBeVisible();
+
+    // Cek kolom gender masing-masing baris
+    await expect(row01.locator('td', { hasText: /^PA$/ })).toBeVisible();
+    await expect(row02.locator('td', { hasText: /^PI$/ })).toBeVisible();
   });
 });

@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import {
   ambilNamaFanSingkat,
+  namaKelasLengkapDariObj,
   removeSlotFromGuruObj,
   syncGuruMengajarAndTotalObj,
   getJadwalGuruFromMap,
@@ -337,12 +338,11 @@ export default function ContextMenuKG() {
       const guruUpper = guru.trim().toUpperCase();
       const existing = getJadwalGuruFromMap(guru, jadwalMap);
       const updated = { ...existing };
-      const formatKelas = normalisasiNamaKelas(`${k.kls} ${k.bag} ${k.tingkat} (${k.papi})`);
-      const formatKelasTanpaGen = normalisasiNamaKelas(`${k.kls} ${k.bag} ${k.tingkat}`);
-      removeSlotFromGuruObj(updated, hari, jam, formatKelas);
-      if (formatKelasTanpaGen) {
-        removeSlotFromGuruObj(updated, hari, jam, formatKelasTanpaGen);
-      }
+      const formatKelas = namaKelasLengkapDariObj(k);
+      const guruObj = asatidzList.find(
+        (a) => a.nama_asatidz?.trim().toUpperCase() === guruUpper
+      );
+      removeSlotFromGuruObj(updated, hari, jam, formatKelas, guruObj?.pa_pi);
       syncGuruMengajarAndTotalObj(updated, asatidzList);
 
       await simpanBatchJadwalAsatidz(
