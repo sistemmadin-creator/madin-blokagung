@@ -7,7 +7,7 @@ export interface FormasiKelas {
   din_bag: string;
   pa_pi: 'PA' | 'PI';
   is_unggulan?: boolean;
-  kapasitas_maksimal: number;
+  kapasitas_maksimal?: number;
   id_mustahiq?: string;
   domisili?: string;
   lokasi_takror?: string;
@@ -15,6 +15,7 @@ export interface FormasiKelas {
   blok?: string;
   foto_takror?: string;
   foto_diniyyah?: string;
+  tahun_ajaran?: string;
   created_at?: string;
 }
 

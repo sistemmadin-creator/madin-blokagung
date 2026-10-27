@@ -534,6 +534,8 @@ export default function JadwalKbmPage() {
                   const isUg = Boolean(
                     k.isUnggulan || isKelasUnggulan(`${k.kls} ${k.bag} ${k.tingkat}`, formasiList)
                   );
+                  const isPutri = k.papi === 'PI' || String(k.papi || '').trim().toUpperCase() === 'PUTRI';
+                  const rowGenderClass = isPutri ? 'row-jadwal-pi' : 'row-jadwal-pa';
 
                   let badgeClass = 'badge-tingkat-ula';
                   if (k.tingkat === 'WUSTHO') badgeClass = 'badge-tingkat-wustho';
@@ -543,7 +545,7 @@ export default function JadwalKbmPage() {
                   return (
                     <React.Fragment key={k.key}>
                       {/* Baris Jam 1 */}
-                      <tr>
+                      <tr className={rowGenderClass}>
                         <td
                           rowSpan={2}
                           className="text-center font-bold cell-klik-kelas cursor-pointer hover:bg-emerald-50/50"
@@ -584,7 +586,7 @@ export default function JadwalKbmPage() {
                         <td rowSpan={2} className="text-center">
                           <span className={badgeClass}>{k.tingkat}</span>
                         </td>
-                        <td className="text-center font-bold bg-slate-100">1</td>
+                        <td className={`text-center font-bold cell-jam ${isPutri ? 'bg-[#fde9d2] text-amber-950' : 'bg-slate-100 text-slate-800'}`}>1</td>
 
                         {/* 6 Hari Sesi Jam 1 */}
                         {LIST_HARI.map((hari) => {
@@ -645,8 +647,8 @@ export default function JadwalKbmPage() {
                       </tr>
 
                       {/* Baris Jam 2 */}
-                      <tr>
-                        <td className="text-center font-bold bg-slate-100">2</td>
+                      <tr className={rowGenderClass}>
+                        <td className={`text-center font-bold cell-jam ${isPutri ? 'bg-[#fde9d2] text-amber-950' : 'bg-slate-100 text-slate-800'}`}>2</td>
 
                         {/* 6 Hari Sesi Jam 2 */}
                         {LIST_HARI.map((hari) => {

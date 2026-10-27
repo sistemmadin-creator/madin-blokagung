@@ -309,7 +309,18 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
     await expect(row02.locator('td', { hasText: /^PA$/ })).toBeVisible();
 
     // Baris kelas Putri (PI) juga ada di tabel setelah kelompok kelas Putra
-    const rowPI = table.locator('tbody tr', { hasText: 'PI' }).first();
+    const rowPI = table.locator('tbody tr.row-jadwal-pi').first();
     await expect(rowPI).toBeVisible();
+
+    // Verifikasi stabilo tabel:
+    // Baris Putra (PA) tidak distabilo (.row-jadwal-pa)
+    await expect(row01).toHaveClass(/row-jadwal-pa/);
+
+    // Baris Putri (PI) distabilo warna cream muda (#fff6eb = rgb(255, 246, 235))
+    await expect(rowPI).toHaveClass(/row-jadwal-pi/);
+    const piBgColor = await rowPI.locator('td').first().evaluate((el) => {
+      return window.getComputedStyle(el).backgroundColor;
+    });
+    expect(piBgColor).toBe('rgb(255, 246, 235)');
   });
 });

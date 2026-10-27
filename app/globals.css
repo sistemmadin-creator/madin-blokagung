@@ -149,6 +149,31 @@
   color: #0f766e !important;
 }
 
+/* Stabilo Khusus Baris Kelas Putri (PI) vs Putra (PA) pada Matriks Jadwal KBM */
+.tabel-kbm-resmi tr.row-jadwal-pa td {
+  background-color: #ffffff;
+}
+.tabel-kbm-resmi tr.row-jadwal-pi td {
+  background-color: #fff6eb !important;
+}
+.tabel-kbm-resmi tr.row-jadwal-pi:hover td {
+  background-color: #ffeedb !important;
+}
+.tabel-kbm-resmi tr.row-jadwal-pi .cell-jam {
+  background-color: #fde9d2 !important;
+}
+.tabel-kbm-resmi tr.row-jadwal-pi .cell-kg {
+  background-color: #fff1e0 !important;
+}
+.tabel-kbm-resmi tr.row-jadwal-pi .cell-kg:hover {
+  background-color: #fed7aa !important;
+  color: #9a3412 !important;
+}
+.tabel-kbm-resmi tr.row-jadwal-pi .cell-klik-kelas:hover {
+  background-color: #fed7aa !important;
+  color: #9a3412 !important;
+}
+
 /* Matriks Tabel Daftar Pendidik */
 .tabel-daftar-pendidik {
   border-collapse: collapse !important;
@@ -343,6 +368,22 @@
     border: 1px solid #1e293b !important;
     padding: 3px 4px !important;
     color: #000000 !important;
+  }
+
+  /* Mempertahankan stabilo cream muda kelas Putri saat dicetak / PDF */
+  body.printing-jadwal-kbm .tabel-kbm-resmi tr.row-jadwal-pi td,
+  body.printing-hari-kbm .tabel-kbm-resmi tr.row-jadwal-pi td {
+    background-color: #fff6eb !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body.printing-jadwal-kbm .tabel-kbm-resmi tr.row-jadwal-pi .cell-jam,
+  body.printing-hari-kbm .tabel-kbm-resmi tr.row-jadwal-pi .cell-jam {
+    background-color: #fde9d2 !important;
+  }
+  body.printing-jadwal-kbm .tabel-kbm-resmi tr.row-jadwal-pi .cell-kg,
+  body.printing-hari-kbm .tabel-kbm-resmi tr.row-jadwal-pi .cell-kg {
+    background-color: #fff1e0 !important;
   }
 
   /* Aturan Cetak Massal Piagam (@media print) */
