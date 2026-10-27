@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { JadwalAsatidzRow } from '@/types/jadwal';
+import { bandingkanUrutanKelasKBM } from '@/lib/utils/jadwalHelper';
 
 describe('Jadwal Conflict Detection Logic', () => {
   function checkScheduleConflicts(jadwalList: JadwalAsatidzRow[]) {
@@ -265,5 +266,44 @@ describe('Gender-Aware Class Matching & Schedule Isolation (PA vs PI)', () => {
     expect(sesiSabtuJam1PI).toHaveLength(1);
     expect(sesiSabtuJam1PI[0].guru).toBe("KUNI NAFI'AH");
     expect(sesiSabtuJam1PI[0].fanAsli).toBe("Mabadi' Fiqih Juz 1");
+  });
+
+  describe('Urutan Default Baris Tabel Jadwal KBM (4-Tier Sort)', () => {
+    it('mengurutkan kelas sesuai hierarki: Tingkat -> Angka Kelas -> Putra(PA) -> Putri(PI) -> Bagian', () => {
+      const rawClasses = [
+        { tingkat: 'ULA', kls: '2', bag: 'B', papi: 'PI', key: '2 B ULA PI' },
+        { tingkat: 'ULA', kls: '1', bag: 'B', papi: 'PA', key: '1 B ULA PA' },
+        { tingkat: 'ULA', kls: '2', bag: 'A', papi: 'PA', key: '2 A ULA PA' },
+        { tingkat: 'ULA', kls: '1', bag: 'A', papi: 'PI', key: '1 A ULA PI' },
+        { tingkat: 'ULA', kls: '1', bag: 'C', papi: 'PA', key: '1 C ULA PA' },
+        { tingkat: 'ULA', kls: '1', bag: 'A', papi: 'PA', key: '1 A ULA PA' },
+        { tingkat: 'ULA', kls: '2', bag: 'B', papi: 'PA', key: '2 B ULA PA' },
+        { tingkat: 'ULA', kls: '3', bag: 'A', papi: 'PI', key: '3 A ULA PI' },
+        { tingkat: 'ULA', kls: '1', bag: 'B', papi: 'PI', key: '1 B ULA PI' },
+        { tingkat: 'ULA', kls: '4', bag: 'A', papi: 'PA', key: '4 A ULA PA' },
+        { tingkat: 'ULA', kls: '2', bag: 'A', papi: 'PI', key: '2 A ULA PI' },
+        { tingkat: 'ULA', kls: '3', bag: 'A', papi: 'PA', key: '3 A ULA PA' },
+        { tingkat: 'ULA', kls: '4', bag: 'A', papi: 'PI', key: '4 A ULA PI' },
+      ];
+
+      rawClasses.sort(bandingkanUrutanKelasKBM);
+
+      const sortedKeys = rawClasses.map((c) => c.key);
+      expect(sortedKeys).toEqual([
+        '1 A ULA PA',
+        '1 B ULA PA',
+        '1 C ULA PA',
+        '1 A ULA PI',
+        '1 B ULA PI',
+        '2 A ULA PA',
+        '2 B ULA PA',
+        '2 A ULA PI',
+        '2 B ULA PI',
+        '3 A ULA PA',
+        '3 A ULA PI',
+        '4 A ULA PA',
+        '4 A ULA PI',
+      ]);
+    });
   });
 });

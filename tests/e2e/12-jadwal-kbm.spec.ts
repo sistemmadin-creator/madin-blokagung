@@ -74,12 +74,55 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
     await expect(firstRowTingkat).toBeVisible();
   });
 
+  test('2.1 Urutan Default Baris Tabel: Kelas 1 Putra sebelum Kelas 1 Putri sebelum Kelas 2', async ({ page }) => {
+    await page.goto('/jadwal-kbm');
+    const table = page.locator('#tableJadwalKBM');
+    await expect(table).toBeVisible({ timeout: 15_000 });
+    // Tunggu hingga baris data pertama selesai dirender
+    await expect(table.locator('tbody tr td.cell-klik-kelas').first()).toBeVisible({ timeout: 15_000 });
+
+    const classRows = await page.evaluate(() => {
+      const rows = Array.from(document.querySelectorAll('#tbodyJadwalKBM tr'));
+      const data: Array<{ kls: string; papi: string; tingkat: string }> = [];
+      rows.forEach((r) => {
+        const cells = r.querySelectorAll('td');
+        if (cells.length > 5 && cells[0].hasAttribute('rowspan')) {
+          const kls = cells[1]?.textContent?.trim() || '';
+          const papi = cells[2]?.textContent?.trim() || '';
+          const tingkat = cells[3]?.textContent?.trim() || '';
+          data.push({ kls, papi, tingkat });
+        }
+      });
+      return data;
+    });
+
+    expect(classRows.length).toBeGreaterThan(0);
+    expect(classRows[0].kls).toContain('1 A');
+    expect(classRows[0].papi).toBe('PA');
+    expect(classRows[0].tingkat).toBe('ULA');
+
+    const idxFirst1PA = classRows.findIndex((c) => c.kls.startsWith('1') && c.papi === 'PA');
+    const idxFirst1PI = classRows.findIndex((c) => c.kls.startsWith('1') && c.papi === 'PI');
+    const idxFirst2PA = classRows.findIndex((c) => c.kls.startsWith('2') && c.papi === 'PA');
+    const idxFirst2PI = classRows.findIndex((c) => c.kls.startsWith('2') && c.papi === 'PI');
+
+    if (idxFirst1PA !== -1 && idxFirst1PI !== -1) {
+      expect(idxFirst1PA).toBeLessThan(idxFirst1PI);
+    }
+    if (idxFirst1PI !== -1 && idxFirst2PA !== -1) {
+      expect(idxFirst1PI).toBeLessThan(idxFirst2PA);
+    }
+    if (idxFirst2PA !== -1 && idxFirst2PI !== -1) {
+      expect(idxFirst2PA).toBeLessThan(idxFirst2PI);
+    }
+  });
+
   test('3.0 Jadwal KBM Per Kelas: Modal Detail Kelas KBM', async ({ page }) => {
     await page.goto('/jadwal-kbm');
 
     // Klik nomor kelas atau nama kelas pertama di tabel
     const cellKls = page.locator('tbody tr td.cell-klik-kelas').first();
-    await expect(cellKls).toBeVisible();
+    await expect(cellKls).toBeVisible({ timeout: 15_000 });
     await cellKls.click();
 
     // Modal Detail Kelas KBM terbuka
@@ -104,7 +147,7 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
 
     // Klik tombol pensil di sel kelas
     const btnPencil = page.locator('tbody tr td button[title="Edit Jadwal Kelas Ini"]').first();
-    await expect(btnPencil).toBeVisible();
+    await expect(btnPencil).toBeVisible({ timeout: 15_000 });
     await btnPencil.click();
 
     // Modal Input & Edit Jadwal Kelas terbuka
@@ -137,7 +180,7 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
     if ((await cellKg.count()) === 0) {
       cellKg = page.locator('tbody tr td.cell-kg-clickable').first();
     }
-    await expect(cellKg).toBeVisible();
+    await expect(cellKg).toBeVisible({ timeout: 15_000 });
 
     // Klik kanan pada sel KG
     await cellKg.click({ button: 'right' });
@@ -251,17 +294,22 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
     await page.goto('/jadwal-kbm');
 
     const table = page.locator('#tableJadwalKBM');
-    await expect(table).toBeVisible();
+    await expect(table).toBeVisible({ timeout: 15_000 });
+    await expect(table.locator('tbody tr td.cell-klik-kelas').first()).toBeVisible({ timeout: 15_000 });
 
-    // Memverifikasi baris kelas PA dan PI terpisah secara tepat
+    // Memverifikasi baris kelas PA (dimulai 1A PA, 1B PA) dan kelas PI terpisah secara tepat
     const row01 = table.locator('tbody tr').filter({ hasText: '01' }).first();
     const row02 = table.locator('tbody tr').filter({ hasText: '02' }).first();
 
-    await expect(row01).toBeVisible();
-    await expect(row02).toBeVisible();
+    await expect(row01).toBeVisible({ timeout: 15_000 });
+    await expect(row02).toBeVisible({ timeout: 15_000 });
 
-    // Cek kolom gender masing-masing baris
+    // Baris 01 dan 02 adalah seluruh kelas Putra (PA) berurutan (1A PA, 1B PA)
     await expect(row01.locator('td', { hasText: /^PA$/ })).toBeVisible();
-    await expect(row02.locator('td', { hasText: /^PI$/ })).toBeVisible();
+    await expect(row02.locator('td', { hasText: /^PA$/ })).toBeVisible();
+
+    // Baris kelas Putri (PI) juga ada di tabel setelah kelompok kelas Putra
+    const rowPI = table.locator('tbody tr', { hasText: 'PI' }).first();
+    await expect(rowPI).toBeVisible();
   });
 });

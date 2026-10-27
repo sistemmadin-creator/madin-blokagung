@@ -806,6 +806,42 @@ export function getJadwalGuruFromMap(
  * Membangun struktur matriks kelas KBM terpusat (`masterStrukturKelasKBM`)
  * yang dikonsumsi oleh Jadwal KBM, Hari KBM, Absensi Asatidz, dan Absen Cepat
  */
+/**
+ * Fungsi pembanding urutan default baris tabel Jadwal KBM Per Kelas (4-Tier Sort Comparator):
+ * 1. Tingkat Diniyyah (ULA -> WUSTHO -> ULYA -> ISTI'DAD)
+ * 2. Angka Kelas Diniyyah (1 -> 2 -> 3 -> 4)
+ * 3. Gender (Putra/PA seluruhnya lebih dulu daripada Putri/PI untuk kelas yang sama)
+ * 4. Abjad Bagian Kelas (A -> B -> C -> D -> E -> F ...)
+ */
+export function bandingkanUrutanKelasKBM(
+  a: { tingkat: string; kls: string; bag: string; papi?: string },
+  b: { tingkat: string; kls: string; bag: string; papi?: string }
+): number {
+  // 1. Tingkat Diniyyah
+  const tA = URUTAN_TINGKAT_KBM[a.tingkat] || 99;
+  const tB = URUTAN_TINGKAT_KBM[b.tingkat] || 99;
+  if (tA !== tB) return tA - tB;
+
+  // 2. Angka Kelas Diniyyah
+  const kA = parseInt(a.kls, 10) || 0;
+  const kB = parseInt(b.kls, 10) || 0;
+  if (kA !== kB) return kA - kB;
+
+  // 3. Gender (Putra/PA peringkat 1 sebelum Putri/PI peringkat 2)
+  const getGenderRank = (papi?: string) => {
+    const g = String(papi || '').trim().toUpperCase();
+    if (g === 'PA' || g === 'PUTRA') return 1;
+    if (g === 'PI' || g === 'PUTRI') return 2;
+    return 3;
+  };
+  const gA = getGenderRank(a.papi);
+  const gB = getGenderRank(b.papi);
+  if (gA !== gB) return gA - gB;
+
+  // 4. Huruf Bagian Kelas
+  return a.bag.localeCompare(b.bag, undefined, { numeric: true, sensitivity: 'base' });
+}
+
 export function buildMasterStrukturKelasKBM(
   formasiList: Formasi[],
   asatidzList: Asatidz[],
@@ -968,17 +1004,7 @@ export function buildMasterStrukturKelasKBM(
   });
 
   const arr = Array.from(mapKelas.values());
-  arr.sort((a, b) => {
-    const tA = URUTAN_TINGKAT_KBM[a.tingkat] || 99;
-    const tB = URUTAN_TINGKAT_KBM[b.tingkat] || 99;
-    if (tA !== tB) return tA - tB;
-
-    const kA = parseInt(a.kls, 10) || 0;
-    const kB = parseInt(b.kls, 10) || 0;
-    if (kA !== kB) return kA - kB;
-
-    return a.bag.localeCompare(b.bag);
-  });
+  arr.sort(bandingkanUrutanKelasKBM);
 
   return arr;
 }
