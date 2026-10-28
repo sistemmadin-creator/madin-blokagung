@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import { 
   BookOpen, 
   MapPin, 
@@ -12,7 +11,7 @@ export default function FooterProfil() {
   return (
     <footer id="kontak" className="bg-emerald-950 text-white border-t border-emerald-900/60 pt-16 pb-12 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 pb-12 border-b border-emerald-900/80">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8 pb-12 border-b border-emerald-900/80">
           {/* Kolom 1: Profil & Identitas Madrasah (Lebar 2 Kolom) */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
@@ -29,21 +28,9 @@ export default function FooterProfil() {
               </div>
             </div>
 
-            <p className="text-xs sm:text-sm text-emerald-200/80 leading-relaxed max-w-sm">
-              Lembaga pendidikan keagamaan Islam klasikal berskala besar di Pondok Pesantren Darussalam Blokagung yang mengasuh ± 5.400 santri dengan khazanah kitab kuning salafiyah.
+            <p className="text-xs sm:text-sm text-emerald-200/80 leading-relaxed max-w-md">
+              Lembaga pendidikan keagamaan Islam klasikal berskala besar di Pondok Pesantren Darussalam Blokagung yang membina ± 5.400 santri dalam khazanah kitab kuning salafiyah dengan disiplin dan keteladanan akhlak mulia.
             </p>
-
-            <div className="pt-2 text-xs text-emerald-300/80 space-y-1">
-              <p>
-                <span className="font-semibold text-amber-300">No. Statistik:</span> 413351210273
-              </p>
-              <p>
-                <span className="font-semibold text-amber-300">SK Madin:</span> KD. 13.10/PP.00.7/171/2007
-              </p>
-              <p className="text-emerald-400/80">
-                Yayasan PP. Darussalam (Akte Notaris No. 31/1978)
-              </p>
-            </div>
           </div>
 
           {/* Kolom 2: Navigasi Informasi Publik */}
@@ -85,46 +72,7 @@ export default function FooterProfil() {
             </ul>
           </div>
 
-          {/* Kolom 3: Layanan Sistem Internal */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-bold text-amber-300 uppercase tracking-wider font-sans">
-              Sistem KBM
-            </h4>
-            <ul className="space-y-2 text-xs sm:text-sm text-emerald-200/80">
-              <li>
-                <Link href="/jadwal-kbm" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
-                  <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Jadwal KBM 161 Kelas</span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/absen-cepat" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
-                  <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Absen Cepat Santri</span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/fan/pengajar" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
-                  <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Pengajar Fan Pelajaran</span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/asatidz" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
-                  <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Direktori Asatidz (A/B/C)</span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/formasi" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
-                  <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Formasi Lokal Santri</span>
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Kolom 4: Alamat & Kontak Kantor */}
+          {/* Kolom 3: Alamat & Kontak Kantor */}
           <div className="space-y-3">
             <h4 className="text-sm font-bold text-amber-300 uppercase tracking-wider font-sans">
               Kantor Madrasah

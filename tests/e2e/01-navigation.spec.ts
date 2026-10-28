@@ -1,17 +1,11 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Navigation & System Shell', () => {
-  test('root path / renders SPA Profil Madrasah and navigates to system', async ({ page }) => {
+  test('root path / renders SPA Profil Madrasah cleanly', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveURL('/');
     await expect(page.getByRole('heading', { name: /Madrasah Diniyyah Al-Amiriyyah/i })).toBeVisible();
-
-    // Click primary CTA to enter KBM System
-    const ctaBtn = page.getByRole('link', { name: /Masuk Sistem KBM|Buka Sistem Akademik KBM/i }).first();
-    await expect(ctaBtn).toBeVisible();
-    await ctaBtn.click();
-    await page.waitForURL('**/jadwal-kbm');
-    await expect(page).toHaveURL(/\/jadwal-kbm/);
+    await expect(page.getByRole('link', { name: /Pelajari Kurikulum & Khazanah Kitab/i })).toBeVisible();
   });
 
   test('sidebar displays brand identity and navigation menu items', async ({ page }) => {

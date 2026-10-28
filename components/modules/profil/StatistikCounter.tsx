@@ -8,8 +8,7 @@ import {
   Calendar, 
   BookCheck, 
   Sparkles, 
-  ShieldCheck,
-  CheckCircle2,
+  CheckCircle2, 
   TrendingUp
 } from 'lucide-react';
 
@@ -189,26 +188,6 @@ export default function StatistikCounter() {
                 </div>
               );
             })}
-          </div>
-        </div>
-
-        {/* Legalitas & SK Madrasah */}
-        <div className="mt-12 p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-          <div className="flex items-center gap-3.5">
-            <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <h5 className="text-sm font-bold text-slate-900 dark:text-white">
-                Legalitas & Pengakuan Resmi Lembaga
-              </h5>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Nomor Statistik: <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">413351210273</span> | SK Kemenag: <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">KD. 13.10/PP.00.7/171/2007</span>
-              </p>
-            </div>
-          </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
-            Yayasan PP. Darussalam (Akte Notaris No. 31/1978)
           </div>
         </div>
       </div>

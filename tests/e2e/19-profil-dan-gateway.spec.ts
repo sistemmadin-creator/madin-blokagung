@@ -1,33 +1,38 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('19 - SPA Profil Madrasah & Gateway KBM', () => {
+test.describe('19 - SPA Profil Madrasah (Clean Public Profile)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
   });
 
-  test('1.0: Beranda Profil: Navbar, Brand MADINA 1951 M, Hadits & Dawuh Pendiri', async ({ page }) => {
+  test('1.0: Beranda Profil: Navbar Bersih, Brand MADINA 1951 M, Hadits, Dawuh Pendiri & CTA Kurikulum', async ({ page }) => {
     // 1. Navbar brand
     await expect(page.locator('header').getByText('MADINA')).toBeVisible();
     await expect(page.locator('header').getByText('1951 M')).toBeVisible();
 
-    // 2. Hero Section
+    // 2. Tombol Masuk Sistem KBM di navbar telah dihilangkan
+    await expect(page.locator('header').getByRole('link', { name: /Masuk Sistem KBM/i })).toHaveCount(0);
+
+    // 3. Hero Section
     await expect(page.getByRole('heading', { name: /Madrasah Diniyyah Al-Amiriyyah/i })).toBeVisible();
     await expect(page.getByText('Pusat Tafaqquh Fiddin & Kaderisasi Ulama Berakhlak Mulia')).toBeVisible();
 
-    // 3. Hadits Nabi SAW
+    // 4. Pill badge panjang di atas Hadits telah dihilangkan
+    await expect(page.getByText('Pondok Pesantren Darussalam Blokagung – Banyuwangi • Sejak 1951 M')).toHaveCount(0);
+
+    // 5. Hadits Nabi SAW
     await expect(page.getByText('إِنَّمَا بُعِثْتُ لِأُتَمِّمَ مَكَارِمَ الْأَخْلَاقِ')).toBeVisible();
     await expect(page.getByText(/HR\. Imam Al-Baihaqi/i)).toBeVisible();
 
-    // 4. Dawuh Almaghfurlah KH. Mukhtar Syafa'at
+    // 6. Dawuh Almaghfurlah KH. Mukhtar Syafa'at
     await expect(page.getByText(/Openono perkoro seng ono/i)).toBeVisible();
 
-    // 5. Hero Action Buttons
-    await expect(page.getByRole('link', { name: /Buka Sistem Akademik KBM/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /Pelajari Kurikulum & Kitab/i })).toBeVisible();
+    // 7. Hero Action Button terpusat ke Kurikulum
+    await expect(page.getByRole('link', { name: /Pelajari Kurikulum & Khazanah Kitab/i })).toBeVisible();
   });
 
-  test('2.0: Statistik Lembaga 4 Metrik & 3 Pilar Program Pendidikan', async ({ page }) => {
+  test('2.0: Statistik Lembaga 4 Metrik & 3 Pilar Program Pendidikan (Tanpa Kotak Legalitas)', async ({ page }) => {
     const section = page.locator('#statistik');
     await expect(section).toBeVisible();
 
@@ -42,9 +47,8 @@ test.describe('19 - SPA Profil Madrasah & Gateway KBM', () => {
     await expect(page.getByRole('heading', { name: 'Kelas Unggulan' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Program Akselerasi & IHFAD' })).toBeVisible();
 
-    // Legalitas SK Kemenag & Nomor Statistik
-    await expect(section.getByText('413351210273', { exact: true })).toBeVisible();
-    await expect(section.getByText('KD. 13.10/PP.00.7/171/2007', { exact: true })).toBeVisible();
+    // Kotak Legalitas di bawah statistik telah dihilangkan
+    await expect(page.getByText('Legalitas & Pengakuan Resmi Lembaga')).toHaveCount(0);
   });
 
   test('3.0: Khazanah Kitab Kuning Interaktif & Tab Jenjang (Isti\'dad s/d Ulya)', async ({ page }) => {
@@ -95,30 +99,23 @@ test.describe('19 - SPA Profil Madrasah & Gateway KBM', () => {
     await expect(page.getByText('Bel tanda masuk & pencegatan Tim Oprak-Oprak (TOP)')).toBeVisible();
   });
 
-  test('5.0: Gateway Jadwal KBM (Mockup Gambar 1) & Alur Bolak-Balik Sistem-Profil (Round-trip)', async ({ page }) => {
-    const gatewaySection = page.locator('#gateway');
-    await expect(gatewaySection).toBeVisible();
+  test('5.0: Profil Bersih Tanpa Banner Gateway & Sidebar Sistem Memiliki Tautan Balik', async ({ page }) => {
+    // 1. Verifikasi Section Gateway telah dihilangkan dari halaman profil
+    await expect(page.locator('#gateway')).toHaveCount(0);
+    await expect(page.getByText('Pusat Kendali Akademik & Sistem KBM MADINA')).toHaveCount(0);
 
-    // Verifikasi Mockup Snapshot Gambar 1
-    await expect(gatewaySection.getByText('Pusat Kendali Akademik & Sistem KBM MADINA')).toBeVisible();
-    await expect(gatewaySection.getByText(/Jadwal Aktif 1446-1447 H/i)).toBeVisible();
-    await expect(gatewaySection.getByText(/1 A ULA \(Pa\)/i)).toBeVisible();
-    await expect(gatewaySection.getByText(/2 A WUSTHO Ug/i)).toBeVisible();
+    // 2. Verifikasi Kolom "Sistem KBM" di footer telah dihilangkan
+    await expect(page.locator('footer').getByText('Sistem KBM')).toHaveCount(0);
 
-    // 1. Klik Tombol Masuk Sistem KBM dari Profil
-    const masukBtn = gatewaySection.getByRole('link', { name: /Buka Jadwal KBM Per Kelas/i });
-    await expect(masukBtn).toBeVisible();
-    await masukBtn.click();
-
-    // 2. Tiba di Sistem Akademik Internal (/jadwal-kbm)
-    await page.waitForURL('**/jadwal-kbm');
+    // 3. Masuk ke halaman Sistem KBM secara langsung
+    await page.goto('/jadwal-kbm');
     await expect(page).toHaveURL(/\/jadwal-kbm/);
 
-    // 3. Verifikasi Tautan Balik di Sidebar Desktop
+    // 4. Verifikasi Tautan Balik di Sidebar Desktop
     const sidebarBackLink = page.getByRole('complementary').getByRole('link', { name: /Profil Madrasah/i });
     await expect(sidebarBackLink).toBeVisible();
 
-    // 4. Klik Tautan Balik untuk Kembali ke Profil Madrasah
+    // 5. Klik Tautan Balik untuk Kembali ke Profil Madrasah
     await sidebarBackLink.click();
     await page.waitForURL('/');
     await expect(page).toHaveURL('/');

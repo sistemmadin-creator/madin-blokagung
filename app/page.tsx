@@ -5,7 +5,6 @@ import {
   HeroSection,
   StatistikCounter,
   KurikulumKitabSection,
-  JadwalKbmGatewaySection,
   FooterProfil,
 } from '@/components/modules/profil';
 
@@ -30,9 +29,6 @@ export default function RootPage() {
 
         {/* 3. Khazanah Kitab Kuning Interaktif & Waktu KBM */}
         <KurikulumKitabSection />
-
-        {/* 4. Gateway Menuju Sistem Akademik KBM (Mockup Gambar 1) */}
-        <JadwalKbmGatewaySection />
       </main>
 
       {/* Public Footer & Contacts */}

@@ -1,10 +1,7 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import { 
-  ArrowRight, 
-  BookOpen, 
   Compass, 
   ChevronDown
 } from 'lucide-react';
@@ -32,14 +29,6 @@ export default function HeroSection() {
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        {/* Badges / Pill Identitas */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-800/60 border border-emerald-400/30 text-emerald-200 text-xs sm:text-sm font-medium backdrop-blur-sm shadow-inner mb-6 sm:mb-8 animate-fade-in">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-          <span>Pondok Pesantren Darussalam Blokagung – Banyuwangi</span>
-          <span className="hidden sm:inline text-emerald-400">•</span>
-          <span className="hidden sm:inline text-amber-300 font-semibold">Sejak 1951 M</span>
-        </div>
-
         {/* Hadits Nabi SAW */}
         <div className="max-w-3xl mx-auto mb-8 sm:mb-10 px-4 py-4 rounded-2xl bg-emerald-900/40 border border-amber-400/20 backdrop-blur-sm shadow-xl">
           <p 
@@ -81,25 +70,14 @@ export default function HeroSection() {
           </p>
         </div>
 
-        {/* Dua Tombol CTA Utama */}
-        <div className="mt-10 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5">
-          {/* Primary CTA: Langsung masuk ke Sistem KBM */}
-          <Link
-            href="/jadwal-kbm"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl text-base font-bold text-emerald-950 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-300 hover:from-amber-200 hover:to-amber-300 shadow-lg shadow-amber-500/25 hover:shadow-xl hover:shadow-amber-500/35 hover:scale-[1.02] active:scale-[0.98] transition-all border border-amber-200"
-          >
-            <BookOpen className="w-5 h-5 text-emerald-950" />
-            <span>Buka Sistem Akademik KBM</span>
-            <ArrowRight className="w-5 h-5 text-emerald-950" />
-          </Link>
-
-          {/* Secondary CTA: Telusuri Kurikulum & Profil */}
+        {/* Tombol CTA: Telusuri Kurikulum & Profil */}
+        <div className="mt-10 sm:mt-12 flex items-center justify-center">
           <a
             href="#kurikulum"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-4 rounded-xl text-base font-semibold text-emerald-100 bg-emerald-900/60 hover:bg-emerald-800/70 border border-emerald-500/40 hover:border-emerald-400/60 backdrop-blur-sm transition-all"
+            className="inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl text-base font-bold text-emerald-950 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-300 hover:from-amber-200 hover:to-amber-300 shadow-lg shadow-amber-500/25 hover:shadow-xl hover:shadow-amber-500/35 hover:scale-[1.02] active:scale-[0.98] transition-all border border-amber-200"
           >
-            <Compass className="w-5 h-5 text-amber-300" />
-            <span>Pelajari Kurikulum & Kitab</span>
+            <Compass className="w-5 h-5 text-emerald-950" />
+            <span>Pelajari Kurikulum & Khazanah Kitab</span>
           </a>
         </div>
 
