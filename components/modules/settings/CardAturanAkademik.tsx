@@ -161,7 +161,7 @@ export default function CardAturanAkademik() {
           {/* Sesi Malam */}
           <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800">Sesi Utama (Malam Ba'da Isya)</span>
+              <span className="text-xs font-bold text-slate-800">Sesi Utama (Malam Ba&apos;da Isya)</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
                 Wajib Semua Kelas
               </span>
@@ -193,7 +193,7 @@ export default function CardAturanAkademik() {
           {/* Sesi Sore */}
           <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800">Sesi Khusus (Sore Ba'da Ashar)</span>
+              <span className="text-xs font-bold text-slate-800">Sesi Khusus (Sore Ba&apos;da Ashar)</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">
                 Sorogan &amp; Nadzom
               </span>
@@ -247,7 +247,7 @@ export default function CardAturanAkademik() {
                 className="w-full px-3 py-1.5 rounded-lg border border-cyan-200 bg-white font-semibold text-slate-800"
               />
               <span className="text-[10px] text-slate-500 mt-1 block">
-                Presensi &gt; {toleransiMenit} menit otomatis tercatat sebagai "Terlambat".
+                Presensi &gt; {toleransiMenit} menit otomatis tercatat sebagai &quot;Terlambat&quot;.
               </span>
             </div>
 
@@ -295,7 +295,7 @@ export default function CardAturanAkademik() {
             Manajemen Hari Libur &amp; Event Khusus Madin
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Daftarkan hari libur pondok, ikhtibar/ujian cawu, atau agenda ma'had agar presensi KBM dinonaktifkan otomatis.
+            Daftarkan hari libur pondok, ikhtibar/ujian cawu, atau agenda ma&apos;had agar presensi KBM dinonaktifkan otomatis.
           </p>
         </div>
 

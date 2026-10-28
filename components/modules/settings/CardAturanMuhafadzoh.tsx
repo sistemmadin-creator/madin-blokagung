@@ -229,7 +229,7 @@ export default function CardAturanMuhafadzoh() {
           <div className="flex items-center gap-2">
             <Award className="w-4 h-4 text-rose-700" />
             <span className="text-xs font-bold text-rose-900">
-              Ambang Batas Minimum Penerbitan Piagam Tasmi'
+              Ambang Batas Minimum Penerbitan Piagam Tasmi&apos;
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -242,7 +242,7 @@ export default function CardAturanMuhafadzoh() {
               className="w-24 px-3 py-1.5 rounded-lg border border-rose-200 bg-white font-bold text-xs text-slate-800"
             />
             <span className="text-xs text-slate-500">
-              Bait tasmi' minimum dalam 1 majlis setoran agar piagam berhak dicetak.
+              Bait tasmi&apos; minimum dalam 1 majlis setoran agar piagam berhak dicetak.
             </span>
           </div>
         </div>

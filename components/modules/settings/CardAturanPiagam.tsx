@@ -7,13 +7,9 @@ import {
   Layout,
   Save,
   CheckCircle2,
-  Image as ImageIcon,
   UserCheck,
-  FileText,
-  ExternalLink,
 } from 'lucide-react';
 import { usePiagamStore } from '@/stores/usePiagamStore';
-import { PiagamOrientation } from '@/types/piagam';
 
 const FONT_OPTIONS = [
   { value: 'Amiri', label: 'Amiri (Tradisional Naskhi Arab)' },
@@ -25,8 +21,6 @@ const FONT_OPTIONS = [
 
 export default function CardAturanPiagam() {
   const {
-    templates,
-    activeTemplateName,
     orientation,
     setOrientation,
     saveTemplate,

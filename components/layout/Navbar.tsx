@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, ChevronDown, Settings, LogOut, ShieldCheck, User, Undo2, Redo2, BookOpen, Sliders, LayoutList } from 'lucide-react';
+import { Menu, ChevronDown, LogOut, ShieldCheck, User, Undo2, Redo2, BookOpen, Sliders, LayoutList } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';

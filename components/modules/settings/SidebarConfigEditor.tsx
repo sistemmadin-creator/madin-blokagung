@@ -9,16 +9,13 @@ import {
   Edit2,
   Sparkles,
   Info,
-  Cloud,
   CloudUpload,
   Eye,
   EyeOff,
   ChevronDown,
   ChevronUp,
   FolderInput,
-  Layers,
   Loader2,
-  AlertCircle,
 } from 'lucide-react';
 import { useSidebarConfigStore } from '@/stores/useSidebarConfigStore';
 import { ConfigMenuGroup, ConfigMenuItem, ConfigSubMenuItem } from '@/types/sidebar-config';
@@ -561,7 +558,7 @@ export default function SidebarConfigEditor() {
                   {expandedSubMenuId === item.id && item.children && (
                     <div className="mt-3 ml-6 pl-4 border-l-2 border-amber-300 space-y-2 animate-fade-in">
                       <div className="text-[11px] font-bold text-amber-900 uppercase tracking-wide">
-                        Kelola Sub-Menu dari "{item.title}":
+                        Kelola Sub-Menu dari &quot;{item.title}&quot;:
                       </div>
 
                       <div className="space-y-1.5">

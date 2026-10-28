@@ -11,10 +11,6 @@ import {
   BookOpen,
   Award,
   ChevronRight,
-  Sparkles,
-  ExternalLink,
-  CheckCircle2,
-  Lock,
 } from 'lucide-react';
 import SidebarConfigEditor from '@/components/modules/settings/SidebarConfigEditor';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
@@ -35,7 +31,7 @@ function PengaturanContent() {
   const [showAuditModal, setShowAuditModal] = useState(false);
 
   useEffect(() => {
-    if (tabParam && tabParam !== activeTab) {
+    if (tabParam) {
       setActiveTab(tabParam);
     }
   }, [tabParam]);
@@ -202,7 +198,7 @@ function PengaturanContent() {
                 </div>
                 <h3 className="font-bold text-slate-900 text-base">Aturan KBM &amp; Hari Libur</h3>
                 <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                  Konfigurasi hari aktif sekolah (Sabtu s/d Kamis), jam sesi KBM (malam ba'da Isya / sore ba'da Ashar), dan toleransi telat asatidz.
+                  Konfigurasi hari aktif sekolah (Sabtu s/d Kamis), jam sesi KBM (malam ba&apos;da Isya / sore ba&apos;da Ashar), dan toleransi telat asatidz.
                 </p>
               </div>
               <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
