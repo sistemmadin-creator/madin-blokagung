@@ -244,4 +244,32 @@ test.describe('Fan Pelajaran & Pengajar Fan Migration Full Verification', () => 
     await page.getByRole('button', { name: /Reset/i }).click();
     await expect(searchInput).toHaveValue('');
   });
+
+  test('9.0 Pengajar Fan: Legenda Status Jadwal & Pembeda Visual Lencana (Solid Terjadwal vs Transparan/Draft)', async ({ page }) => {
+    await page.goto('/fan/pengajar');
+
+    // Tunggu hingga data selesai dimuat (tombol Segarkan Data aktif)
+    const btnRefresh = page.getByRole('button', { name: /Segarkan Data/i });
+    await expect(btnRefresh).toBeEnabled({ timeout: 20000 });
+
+    // 1. Verifikasi Legenda Status Jadwal
+    await expect(page.getByText('Terjadwal KBM (Reguler)')).toBeVisible();
+    await expect(page.getByText('Terjadwal KBM (Unggulan)')).toBeVisible();
+    await expect(page.getByText('Belum Terjadwal di KBM (Rancangan/Draft)')).toBeVisible();
+
+    // 2. Verifikasi Lencana Fan Terjadwal (data-scheduled="true")
+    const scheduledBadge = page.locator('span[data-scheduled="true"]').first();
+    await expect(scheduledBadge).toBeVisible({ timeout: 15000 });
+    const scheduledTitle = await scheduledBadge.getAttribute('title');
+    expect(scheduledTitle).toContain('Terjadwal di KBM');
+
+    // 3. Verifikasi Lencana Fan Draft (data-scheduled="false")
+    const draftBadge = page.locator('span[data-scheduled="false"]').first();
+    await expect(draftBadge).toBeVisible({ timeout: 15000 });
+    await expect(draftBadge).toHaveClass(/border-dashed/);
+    await expect(draftBadge).toHaveClass(/bg-slate-100/);
+    await expect(draftBadge.getByText('Draft')).toBeVisible();
+    const draftTitle = await draftBadge.getAttribute('title');
+    expect(draftTitle).toContain('Belum masuk Jadwal KBM');
+  });
 });

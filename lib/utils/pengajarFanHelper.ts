@@ -24,6 +24,7 @@ export interface FanEntryRow {
   klsNum: number;
   isUg: boolean;
   kitab: string[];
+  isInJadwal: boolean;
 }
 
 /**
@@ -135,6 +136,7 @@ export function buildUnifiedTeacherMap(
           klsNum,
           isUg,
           kitab: [],
+          isInJadwal: false,
         };
       }
       if (
@@ -205,7 +207,10 @@ export function buildUnifiedTeacherMap(
             klsNum,
             isUg,
             kitab: [],
+            isInJadwal: true,
           };
+        } else {
+          tempPeta[key][ek].isInJadwal = true;
         }
 
         if (
@@ -277,6 +282,9 @@ export function buildUnifiedTeacherMap(
               e.kitab.forEach((ktb) => {
                 if (!spec.kitab.includes(ktb)) spec.kitab.push(ktb);
               });
+              if (e.isInJadwal) {
+                spec.isInJadwal = true;
+              }
             }
           });
           return false; // Eliminasi entri generik yang redundant

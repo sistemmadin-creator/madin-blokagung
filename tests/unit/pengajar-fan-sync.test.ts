@@ -349,4 +349,58 @@ describe('Pemisahan Fan MS & Sinkronisasi Pengajar Fan', () => {
     expect(unifiedMap['GURU IST']).toBeDefined();
     expect(unifiedMap['GURU IST'][0].tingkat).toBe("ISTI'DAD");
   });
+
+  it('9. Deteksi status isInJadwal membedakan fan draft kurikulum vs fan aktif di jadwal KBM', () => {
+    const fanConfig: FanConfigMap = {
+      '1 ULA': ['(Fiqih) Mabadi Fiqih', '(Tauhid) Aqidatul Awam'],
+    };
+    const fanDetail: FanPelajaranDetail = {
+      item: {
+        '1 ULA||(Fiqih) Mabadi Fiqih': {
+          asatidz: ['USTADZ A'],
+        },
+        '1 ULA||(Tauhid) Aqidatul Awam': {
+          asatidz: ['USTADZ A'],
+        },
+      },
+      kelas: {},
+    };
+    // Hanya Fiqih yang sudah dimasukkan ke Jadwal KBM (1 A ULA)
+    const mockJadwalMap: Record<string, TeacherJadwalRow> = {
+      'USTADZ A': {
+        nama_asatidz: 'USTADZ A',
+        ahad: 'Jam 1 | Fiqih | 1 A ULA (PA) (R.1)',
+      },
+    };
+    const mockAsatidzLocal: Asatidz[] = [
+      {
+        id: 'ua',
+        nia: 'A99',
+        nama_asatidz: 'USTADZ A',
+        jah_asatidz: 'Asatidz',
+      },
+    ];
+
+    const unifiedMap = buildUnifiedTeacherMap(
+      mockAsatidzLocal,
+      fanDetail,
+      fanConfig,
+      mockJadwalMap,
+      mockFormasi
+    );
+
+    const entries = unifiedMap['USTADZ A'];
+    expect(entries).toBeDefined();
+    expect(entries.length).toBe(2);
+
+    // Fiqih sudah ada di Jadwal KBM (diserap ke 1 A ULA) -> isInJadwal: true
+    const fiqihEntry = entries.find((e) => e.fan.toLowerCase() === 'fiqih');
+    expect(fiqihEntry).toBeDefined();
+    expect(fiqihEntry?.isInJadwal).toBe(true);
+
+    // Tauhid hanya ada di Fan Pelajaran (kurikulum) belum ada di jadwal KBM -> isInJadwal: false
+    const tauhidEntry = entries.find((e) => e.fan.toLowerCase() === 'tauhid');
+    expect(tauhidEntry).toBeDefined();
+    expect(tauhidEntry?.isInJadwal).toBe(false);
+  });
 });

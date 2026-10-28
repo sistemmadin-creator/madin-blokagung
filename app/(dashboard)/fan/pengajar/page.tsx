@@ -200,7 +200,9 @@ export default function PengajarFanPage() {
     groupedAsatidzList.forEach((grp) => {
       const asal = grp.namaGrup || '-';
       grp.rows.forEach((o) => {
-        const fanText = o.entries.map((e) => `${e.fan} (${e.kelas})`).join('; ');
+        const fanText = o.entries
+          .map((e) => `${e.fan} (${e.kelas})${e.isInJadwal ? '' : ' [Draft]'}`)
+          .join('; ');
         rows.push([no++, o.kode, o.nama, asal, o.jah, fanText, o.entries.length]);
       });
     });
@@ -385,6 +387,20 @@ export default function PengajarFanPage() {
           <h4 className="text-xs font-bold text-slate-500 m-0 mt-0.5">
             MADRASAH DINIYYAH AL AMIRIYYAH
           </h4>
+          <div className="flex items-center justify-center gap-4 mt-2 text-[11px] text-slate-600 print:hidden flex-wrap">
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+              <span>Terjadwal KBM (Reguler)</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+              <span>Terjadwal KBM (Unggulan)</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              <span className="w-2.5 h-2.5 rounded-full border border-dashed border-slate-400 bg-slate-200/70 inline-block"></span>
+              <span className="text-slate-500">Belum Terjadwal di KBM (Rancangan/Draft)</span>
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto border border-slate-300 rounded-lg">
@@ -459,23 +475,40 @@ export default function PengajarFanPage() {
                           </span>
                         ) : (
                           <div className="flex flex-wrap gap-1.5">
-                            {o.entries.map((e, eIdx) => (
-                              <span
-                                key={eIdx}
-                                title={e.kitab.length ? e.kitab.join(', ') : e.fan}
-                                className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-semibold ${
-                                  e.isUg
-                                    ? 'bg-amber-50 text-amber-900 border border-amber-300'
-                                    : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                }`}
-                              >
-                                {e.isUg && <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />}
-                                <span>{e.fan}</span>
-                                <span className="text-[10px] opacity-75 font-normal">
-                                  ({e.kelas})
+                            {o.entries.map((e, eIdx) => {
+                              const isScheduled = e.isInJadwal;
+                              const tooltipText = isScheduled
+                                ? `Terjadwal di KBM${e.kitab.length ? ` • Kitab: ${e.kitab.join(', ')}` : ''}`
+                                : `Belum masuk Jadwal KBM (Rancangan Kurikulum)${e.kitab.length ? ` • Kitab: ${e.kitab.join(', ')}` : ''}`;
+
+                              return (
+                                <span
+                                  key={eIdx}
+                                  title={tooltipText}
+                                  data-scheduled={isScheduled ? 'true' : 'false'}
+                                  className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-semibold transition-all ${
+                                    isScheduled
+                                      ? e.isUg
+                                        ? 'bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs'
+                                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs'
+                                      : 'bg-slate-100/70 text-slate-500 border border-dashed border-slate-300 opacity-75 hover:opacity-100 hover:border-slate-400'
+                                  }`}
+                                >
+                                  {isScheduled && e.isUg && (
+                                    <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500 shrink-0" />
+                                  )}
+                                  <span>{e.fan}</span>
+                                  <span className="text-[10px] opacity-75 font-normal">
+                                    ({e.kelas})
+                                  </span>
+                                  {!isScheduled && (
+                                    <span className="text-[9px] uppercase tracking-wider px-1 py-0.2 rounded bg-slate-200/80 text-slate-500 font-bold ml-0.5">
+                                      Draft
+                                    </span>
+                                  )}
                                 </span>
-                              </span>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </td>
