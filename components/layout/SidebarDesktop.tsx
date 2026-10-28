@@ -20,7 +20,8 @@ import {
   BookMarked,
   BookOpen,
   ArrowUpRight,
-  Newspaper
+  Newspaper,
+  LayoutDashboard
 } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 
@@ -34,6 +35,7 @@ interface MenuItem {
   title: string;
   href?: string;
   icon: React.ReactNode;
+  badge?: string;
   children?: SubMenuItem[];
 }
 
@@ -43,6 +45,17 @@ interface MenuGroup {
 }
 
 const menuGroups: MenuGroup[] = [
+  {
+    group: 'Beranda',
+    items: [
+      {
+        title: 'Dashboard',
+        href: '/dashboard',
+        icon: <LayoutDashboard className="w-5 h-5 flex-shrink-0" />,
+        badge: 'Live',
+      },
+    ],
+  },
   {
     group: 'Utama',
     items: [
@@ -261,6 +274,11 @@ export default function SidebarDesktop() {
                   <span className="flex-shrink-0">{item.icon}</span>
                   {!isSidebarCollapsed && (
                     <span className="truncate whitespace-nowrap">{item.title}</span>
+                  )}
+                  {!isSidebarCollapsed && item.badge && (
+                    <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 uppercase tracking-wider">
+                      {item.badge}
+                    </span>
                   )}
                 </Link>
               );

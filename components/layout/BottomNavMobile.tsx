@@ -18,7 +18,8 @@ import {
   BarChart2,
   Zap,
   ShieldCheck,
-  Newspaper
+  Newspaper,
+  LayoutDashboard
 } from 'lucide-react';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
@@ -49,6 +50,16 @@ export default function BottomNavMobile() {
           <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             Menu Utama
           </div>
+          <Link
+            href="/dashboard"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800"
+          >
+            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+              <LayoutDashboard className="w-4 h-4" />
+            </div>
+            <span>Dashboard Eksekutif</span>
+          </Link>
           <Link
             href="/santri"
             onClick={() => setActiveMenu(null)}
