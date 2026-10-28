@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { 
-  BookOpen, 
   MapPin, 
   ChevronRight
 } from 'lucide-react';
@@ -15,8 +14,12 @@ export default function FooterProfil() {
           {/* Kolom 1: Profil & Identitas Madrasah (Lebar 2 Kolom) */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-emerald-950 shadow-md">
-                <BookOpen className="w-5 h-5 font-bold" />
+              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center p-1 shadow-md border border-slate-200/20">
+                <img
+                  src="/logo-madin.png"
+                  alt="Logo Madin Blokagung"
+                  className="w-8 h-8 object-contain"
+                />
               </div>
               <div>
                 <h3 className="text-xl font-bold font-serif text-white tracking-tight">

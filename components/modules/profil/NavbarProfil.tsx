@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { 
-  BookOpen, 
   Menu, 
   X
 } from 'lucide-react';
@@ -26,8 +25,12 @@ export default function NavbarProfil() {
         <div className="flex items-center justify-between h-18 py-3">
           {/* Logo & Identitas Madrasah */}
           <Link href="#hero" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-950 flex items-center justify-center shadow-md shadow-emerald-900/20 group-hover:scale-105 transition-transform border border-amber-400/30">
-              <BookOpen className="w-5 h-5 text-amber-300" />
+            <div className="w-10 h-10 rounded-xl bg-white shadow-xs border border-slate-200/90 flex items-center justify-center p-1 group-hover:scale-105 transition-transform">
+              <img
+                src="/logo-madin.png"
+                alt="Logo Madin Blokagung"
+                className="w-8 h-8 object-contain"
+              />
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">

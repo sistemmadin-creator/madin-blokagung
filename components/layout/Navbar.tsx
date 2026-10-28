@@ -54,11 +54,11 @@ export default function Navbar() {
           <div className="flex items-center gap-2.5">
             <div className="w-[38px] h-[38px] rounded-full bg-white shadow-xs border border-slate-200 flex items-center justify-center p-1">
               <img
-                src="https://drive.google.com/thumbnail?id=1Fkm2_aiu-me47Fm1weDrpHMCHZBThzrD&sz=w200"
+                src="/logo-madin.png"
                 alt="Logo Madin Blokagung"
                 className="w-7 h-7 object-contain"
                 onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
+                  (e.target as HTMLImageElement).src = 'https://drive.google.com/thumbnail?id=1Fkm2_aiu-me47Fm1weDrpHMCHZBThzrD&sz=w200';
                 }}
               />
             </div>

@@ -7,7 +7,8 @@ test.describe('19 - SPA Profil Madrasah (Clean Public Profile)', () => {
   });
 
   test('1.0: Beranda Profil: Navbar Bersih, Brand MADINA 1951 M, Hadits, Dawuh Pendiri & CTA Kurikulum', async ({ page }) => {
-    // 1. Navbar brand
+    // 1. Navbar brand & Logo Resmi Madin Blokagung
+    await expect(page.locator('header').getByAltText('Logo Madin Blokagung')).toBeVisible();
     await expect(page.locator('header').getByText('MADINA')).toBeVisible();
     await expect(page.locator('header').getByText('1951 M')).toBeVisible();
 

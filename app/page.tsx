@@ -11,6 +11,11 @@ import {
 export const metadata: Metadata = {
   title: 'Portal Resmi MADINA Blokagung - Madrasah Diniyyah Al-Amiriyyah',
   description: 'Pusat Tafaqquh Fiddin & Kaderisasi Ulama Berakhlak Mulia Pondok Pesantren Darussalam Blokagung Banyuwangi. Mengelola ± 5.400 santri, 161 rombel, dan khazanah kitab kuning salafiyah.',
+  icons: {
+    icon: '/logo-madin.png',
+    shortcut: '/logo-madin.png',
+    apple: '/logo-madin.png',
+  },
 };
 
 export default function RootPage() {

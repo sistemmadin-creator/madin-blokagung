@@ -16,6 +16,11 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "Madin Al Amiriyyah Blokagung - Sistem Database & Presensi KBM",
   description: "Sistem Informasi Terpadu Database Santri, Dewan Asatidz, Kurikulum, Formasi Kelas, Presensi KBM 4 Jam, dan Muhafadzoh Pondok Pesantren Darussalam Blokagung",
+  icons: {
+    icon: '/logo-madin.png',
+    shortcut: '/logo-madin.png',
+    apple: '/logo-madin.png',
+  },
 };
 
 export default function RootLayout({
