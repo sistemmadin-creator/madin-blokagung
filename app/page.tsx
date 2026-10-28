@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import {
   NavbarProfil,
   HeroSection,
+  BeritaShowcaseSection,
   StatistikCounter,
   KurikulumKitabSection,
   FooterProfil,
@@ -29,10 +30,13 @@ export default function RootPage() {
         {/* 1. Hero Section (Visi, Hadits, Identitas, Dawuh Masyayikh, CTAs) */}
         <HeroSection />
 
-        {/* 2. Statistik Lembaga & 3 Pilar Program Pendidikan */}
+        {/* 2. Berita Warta Madina Editorial ala Lirboyo.net (Di atas Selayang Pandang) */}
+        <BeritaShowcaseSection />
+
+        {/* 3. Statistik Lembaga & 3 Pilar Program Pendidikan (Selayang Pandang) */}
         <StatistikCounter />
 
-        {/* 3. Khazanah Kitab Kuning Interaktif & Waktu KBM */}
+        {/* 4. Khazanah Kitab Kuning Interaktif & Waktu KBM */}
         <KurikulumKitabSection />
       </main>
 

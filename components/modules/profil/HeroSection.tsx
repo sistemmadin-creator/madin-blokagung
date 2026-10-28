@@ -81,12 +81,12 @@ export default function HeroSection() {
           </a>
         </div>
 
-        {/* Scroll Indicator */}
+        {/* Scroll Indicator Menuju Warta Berita & Selayang Pandang */}
         <div className="mt-14 sm:mt-16 flex justify-center">
           <a 
-            href="#statistik" 
+            href="#berita" 
             className="inline-flex flex-col items-center gap-1 text-emerald-300/70 hover:text-amber-300 transition-colors text-xs"
-            aria-label="Scroll ke bagian statistik"
+            aria-label="Scroll ke warta berita dan selayang pandang"
           >
             <span>Selayang Pandang</span>
             <ChevronDown className="w-4 h-4 animate-bounce" />

@@ -17,7 +17,8 @@ import {
   Grid,
   BarChart2,
   Zap,
-  ShieldCheck
+  ShieldCheck,
+  Newspaper
 } from 'lucide-react';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
@@ -67,6 +68,16 @@ export default function BottomNavMobile() {
               <Users className="w-4 h-4" />
             </div>
             <span>Data Asatidz</span>
+          </Link>
+          <Link
+            href="/kelola-berita"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 text-sm font-semibold text-amber-900 border-t border-slate-100"
+          >
+            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+              <Newspaper className="w-4 h-4" />
+            </div>
+            <span>Kelola Berita</span>
           </Link>
         </div>
       )}

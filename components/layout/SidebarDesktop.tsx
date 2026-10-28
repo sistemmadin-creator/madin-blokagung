@@ -19,7 +19,8 @@ import {
   ChevronDown,
   BookMarked,
   BookOpen,
-  ArrowUpRight
+  ArrowUpRight,
+  Newspaper
 } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 
@@ -97,6 +98,12 @@ const menuGroups: MenuGroup[] = [
       { title: 'Absensi Asatidz', href: '/absensi', icon: <ClipboardCheck className="w-5 h-5 flex-shrink-0" /> },
       { title: 'Absen Cepat', href: '/absen-cepat', icon: <Zap className="w-5 h-5 flex-shrink-0" /> },
       { title: 'Rekap Absensi', href: '/rekap-absensi', icon: <BarChart2 className="w-5 h-5 flex-shrink-0" /> },
+    ],
+  },
+  {
+    group: 'PKM. Publikasi & Warta',
+    items: [
+      { title: 'Kelola Berita', href: '/kelola-berita', icon: <Newspaper className="w-5 h-5 flex-shrink-0" /> },
     ],
   },
 ];

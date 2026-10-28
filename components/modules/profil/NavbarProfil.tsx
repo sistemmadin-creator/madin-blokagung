@@ -11,12 +11,13 @@ export default function NavbarProfil() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { label: 'Beranda', href: '#hero' },
-    { label: 'Statistik', href: '#statistik' },
-    { label: '3 Pilar Program', href: '#program' },
-    { label: 'Kurikulum Kitab', href: '#kurikulum' },
-    { label: 'Waktu KBM', href: '#waktu-kbm' },
-    { label: 'Kontak', href: '#kontak' },
+    { label: 'Beranda', href: '/#hero' },
+    { label: 'Warta Berita', href: '/#berita' },
+    { label: 'Statistik', href: '/#statistik' },
+    { label: '3 Pilar Program', href: '/#program' },
+    { label: 'Kurikulum Kitab', href: '/#kurikulum' },
+    { label: 'Waktu KBM', href: '/#waktu-kbm' },
+    { label: 'Kontak', href: '/#kontak' },
   ];
 
   return (
