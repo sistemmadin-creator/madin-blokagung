@@ -68,6 +68,9 @@ export function buildUnifiedTeacherMap(
 
   // Himpunan asatidz yang bertugas sebagai Mustahiq di kelas Unggulan
   const unggulanMustahiqMap = new Map<string, { tingkat: string; klsNum: number; bag: string }>();
+  // Himpunan asatidz yang bertugas sebagai Mustahiq di kelas Reguler
+  const regulerMustahiqMap = new Map<string, { tingkat: string; klsNum: number; bag: string }>();
+
   (asatidzList || []).forEach((a) => {
     const n = normNameKey(a.nama_asatidz);
     const rawTkt = String(a.tingkat_asatidz || '').trim();
@@ -77,12 +80,15 @@ export function buildUnifiedTeacherMap(
     if (!n || !tkt || !kls || !bag) return;
 
     const { isMS } = cekKategoriJahAsatidz(a.jah_asatidz);
-    if (
-      isMS &&
-      (isKelasUnggulan(`${kls} ${bag} ${rawTkt}`, formasiList) ||
-        isKelasUnggulan(`${kls} ${bag} ${tkt}`, formasiList))
-    ) {
-      unggulanMustahiqMap.set(n, { tingkat: tkt, klsNum: parseInt(kls, 10) || 0, bag });
+    if (isMS) {
+      if (
+        isKelasUnggulan(`${kls} ${bag} ${rawTkt}`, formasiList) ||
+        isKelasUnggulan(`${kls} ${bag} ${tkt}`, formasiList)
+      ) {
+        unggulanMustahiqMap.set(n, { tingkat: tkt, klsNum: parseInt(kls, 10) || 0, bag });
+      } else {
+        regulerMustahiqMap.set(n, { tingkat: tkt, klsNum: parseInt(kls, 10) || 0, bag });
+      }
     }
   });
 
@@ -125,6 +131,18 @@ export function buildUnifiedTeacherMap(
         ugInfo.klsNum === klsNum
       ) {
         return;
+      }
+
+      // PENCEGAHAN BOCOR 2: Jika guru ini adalah Mustahiq kelas Reguler,
+      // jangan masukkan entri dari kelas Unggulan yang berbeda jenjang/kelas ke dirinya!
+      const regInfo = regulerMustahiqMap.get(key);
+      if (regInfo && isUg) {
+        if (
+          normalizeTingkatName(regInfo.tingkat) !== normalizeTingkatName(tingkat) ||
+          regInfo.klsNum !== klsNum
+        ) {
+          return;
+        }
       }
 
       const ek = `${namaFan.toLowerCase()}|${kelasLabel.toLowerCase()}`;
@@ -196,6 +214,18 @@ export function buildUnifiedTeacherMap(
           ugInfo.klsNum === klsNum
         ) {
           return;
+        }
+
+        // PENCEGAHAN BOCOR 2: Jika guru ini adalah Mustahiq kelas Reguler,
+        // jangan masukkan entri dari kelas Unggulan yang berbeda jenjang/kelas ke dirinya!
+        const regInfo = regulerMustahiqMap.get(key);
+        if (regInfo && isUg) {
+          if (
+            normalizeTingkatName(regInfo.tingkat) !== normalizeTingkatName(tingkat) ||
+            regInfo.klsNum !== klsNum
+          ) {
+            return;
+          }
         }
 
         const ek = `${namaFan.toLowerCase()}|${kelasLabel.toLowerCase()}`;

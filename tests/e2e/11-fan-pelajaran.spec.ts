@@ -272,4 +272,37 @@ test.describe('Fan Pelajaran & Pengajar Fan Migration Full Verification', () => 
     const draftTitle = await draftBadge.getAttribute('title');
     expect(draftTitle).toContain('Belum masuk Jadwal KBM');
   });
+
+  test('10.0 Pengajar Fan: Validasi Pasca-Rekonsiliasi Mustahiq (Husnia Asma Nazihah & Shidqil Adiliyah)', async ({ page }) => {
+    await page.goto('/fan/pengajar');
+
+    // Tunggu hingga data selesai dimuat
+    const btnRefresh = page.getByRole('button', { name: /Segarkan Data/i });
+    await expect(btnRefresh).toBeEnabled({ timeout: 20000 });
+
+    const searchInput = page.getByPlaceholder('Cari Kode / Nama / Fan / Jah...');
+
+    // 1. Verifikasi HUSNIA ASMA NAZIHAH
+    await searchInput.fill('HUSNIA ASMA NAZIHAH');
+    const husniaRow = page.locator('tr', { hasText: 'HUSNIA ASMA NAZIHAH' });
+    await expect(husniaRow).toBeVisible();
+
+    // Fan yang diampu harus 1 K WUSTHO, dan TIDAK boleh bocor 2 A WUSTHO Ug atau lencana Draft
+    await expect(husniaRow.getByText(/1 K WUSTHO/i).first()).toBeVisible();
+    await expect(husniaRow.getByText(/2 A WUSTHO/i)).not.toBeVisible();
+    await expect(husniaRow.getByText(/Draft/i)).not.toBeVisible();
+
+    // 2. Verifikasi SHIDQIL ADILIYAH (Mustahiqoh 2 A WUSTHO Ug)
+    await searchInput.fill('SHIDQIL ADILIYAH');
+    const shidqilRow = page.locator('tr', { hasText: 'SHIDQIL ADILIYAH' });
+    await expect(shidqilRow).toBeVisible();
+
+    // Harus memuat kelas 2 A WUSTHO Ug dan tidak memuat 2 C WUSTHO
+    await expect(shidqilRow.getByText(/2 A WUSTHO Ug/i).first()).toBeVisible();
+    await expect(shidqilRow.getByText(/2 C WUSTHO/i)).not.toBeVisible();
+
+    // 3. Reset pencarian
+    await page.getByRole('button', { name: /Reset/i }).click();
+    await expect(searchInput).toHaveValue('');
+  });
 });
