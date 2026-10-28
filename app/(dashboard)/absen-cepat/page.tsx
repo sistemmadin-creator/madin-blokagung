@@ -14,6 +14,7 @@ import {
   Check,
   CheckCircle2,
   CalendarOff,
+  Users,
 } from 'lucide-react';
 import { useAbsensiStore } from '@/stores/useAbsensiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
@@ -34,6 +35,7 @@ import {
 import ModalDetailAbsenCepat from '@/components/modules/absen-cepat/ModalDetailAbsenCepat';
 import ModalNotifAbsenBlok from '@/components/modules/absen-cepat/ModalNotifAbsenBlok';
 import ModalGeneratorWA from '@/components/modules/rekap-absensi/ModalGeneratorWA';
+import ModalPresensiMassal from '@/components/modules/absen-cepat/ModalPresensiMassal';
 
 type SortOptionCepat = 'kelas_asc' | 'blok_asc' | 'nama_asc';
 
@@ -72,6 +74,7 @@ export default function AbsenCepatPage() {
   const [detailSesi, setDetailSesi] = useState<SesiJadwalHarian | null>(null);
   const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
   const [isWAOpen, setIsWAOpen] = useState<boolean>(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState<boolean>(false);
 
   // Toast State
   const [toastMsg, setToastMsg] = useState<{
@@ -569,6 +572,16 @@ export default function AbsenCepatPage() {
               </div>
             )}
 
+            {/* Tombol Penetapan Presensi Massal (Inspirasi LPTQ) */}
+            <button
+              type="button"
+              onClick={() => setIsBulkModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-800 hover:bg-emerald-900 text-white shadow-xs transition-colors"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Presensi Massal</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setIsWAOpen(true)}
@@ -831,6 +844,30 @@ export default function AbsenCepatPage() {
         isOpen={isWAOpen}
         onClose={() => setIsWAOpen(false)}
         initialJam={selectedJam}
+      />
+
+      <ModalPresensiMassal
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        tanggal={selectedDate}
+        initialJam={selectedJam}
+        sesiHariIni={sesiHariIni}
+        getSesiStatusData={getSesiStatusData}
+        daftarBlok={daftarBlokUnik}
+        onApplyBulk={(jam, sKeys, status) => {
+          terapkanStatusMassal(jam, sKeys, status);
+          showToast(
+            'success',
+            `Status "${status}" diterapkan ke ${sKeys.length} asatidz Jam Ke-${jam}.`
+          );
+        }}
+        onQuickChangeSingle={(sesi, updates) => {
+          setSesiStatusData(sesi, updates);
+          showToast(
+            'success',
+            `Status "${updates.status}" diterapkan untuk ${sesi.nama}.`
+          );
+        }}
       />
     </div>
   );

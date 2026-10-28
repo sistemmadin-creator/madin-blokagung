@@ -120,4 +120,75 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
     await expect(page.getByRole('button', { name: /Export Excel/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Cetak/i })).toBeVisible();
   });
+
+  test('5.0 Absen Cepat: Modal Penetapan Presensi Massal (Inspirasi LPTQ)', async ({ page }) => {
+    await page.goto('/absen-cepat');
+
+    await expect(page.getByRole('heading', { name: 'Absen Cepat', exact: true })).toBeVisible();
+
+    // Tunggu hingga data sesi KBM termuat
+    await expect(page.getByText(/dari [1-9]\d* Sesi/i).first()).toBeVisible({ timeout: 20000 });
+
+    // 1. Verifikasi Tombol Presensi Massal di Toolbar Jam Aktif
+    const btnBulk = page.getByRole('button', { name: /Presensi Massal/i });
+    await expect(btnBulk).toBeVisible();
+    await btnBulk.click();
+
+    // 2. Verifikasi Dialog Modal Penetapan Presensi Massal
+    const modal = page.getByRole('dialog');
+    await expect(modal.getByRole('heading', { name: 'Penetapan Presensi Massal' })).toBeVisible();
+    await expect(
+      modal.getByText('Pilih asatidz untuk menetapkan atau mengubah status presensi sekaligus')
+    ).toBeVisible();
+
+    // 3. Verifikasi Tombol Target Status (H = Hadir, I = Izin, S = Sakit, A = Alfa, L = Tugas)
+    await expect(modal.getByRole('button', { name: /H = Hadir/i })).toBeVisible();
+    const btnTargetIzin = modal.getByRole('button', { name: /I = Izin/i });
+    await expect(btnTargetIzin).toBeVisible();
+    await expect(modal.getByRole('button', { name: /S = Sakit/i })).toBeVisible();
+    await expect(modal.getByRole('button', { name: /A = Alfa/i })).toBeVisible();
+    await expect(modal.getByRole('button', { name: /L = Tugas/i })).toBeVisible();
+
+    // Beralih ke Target Izin
+    await btnTargetIzin.click();
+
+    // 4. Verifikasi Pencarian Asatidz di dalam Modal
+    const searchInput = modal.getByPlaceholder(/Cari asatidz \/ kelas \/ fan/i);
+    await expect(searchInput).toBeVisible();
+    await searchInput.fill('Fikrul');
+    // Jika ada Fikrul, harus tampil
+    const matchCount = await modal.getByText(/Fikrul/i).count();
+    if (matchCount > 0) {
+      await expect(modal.getByText(/Fikrul/i).first()).toBeVisible();
+    }
+    await searchInput.fill('');
+
+    // 5. Verifikasi Tombol Pilih Semua
+    const btnSelectAll = modal.getByRole('button', { name: /Pilih Semua/i });
+    await expect(btnSelectAll).toBeVisible();
+    await expect(modal.getByRole('button', { name: /Pilih Semua \([1-9]\d*\)/i })).toBeVisible({ timeout: 15000 });
+    await btnSelectAll.click();
+
+    // Tombol eksekusi harus aktif dengan teks IZIN (N)
+    const btnApply = modal.locator('button', { hasText: /Terapkan IZIN/i });
+    await expect(btnApply).toBeVisible();
+    await expect(btnApply).toBeEnabled();
+
+    // Batalkan pilihan semua
+    await btnSelectAll.click();
+    await expect(modal.getByText(/Terpilih: 0 dari/i)).toBeVisible();
+    await expect(btnApply).toBeDisabled();
+
+    // 6. Uji Pilih 1 Baris Tabel
+    const firstRow = modal.locator('tbody tr').first();
+    if (await firstRow.isVisible()) {
+      await firstRow.click();
+      await expect(modal.getByText(/Terpilih: 1 dari/i)).toBeVisible();
+      await expect(btnApply).toBeEnabled();
+    }
+
+    // 7. Tutup Dialog (Batal)
+    await modal.getByRole('button', { name: 'Batal', exact: true }).click();
+    await expect(modal).not.toBeVisible();
+  });
 });
