@@ -9,138 +9,90 @@ import {
   Calendar,
   CalendarDays,
   Building2,
+  BookMarked,
   GraduationCap,
   Grid,
   BarChart2,
   Award,
   ClipboardCheck,
   Zap,
-  ChevronLeft,
   ChevronDown,
-  BookMarked,
+  ChevronLeft,
   BookOpen,
   ArrowUpRight,
   Newspaper,
-  LayoutDashboard
+  LayoutDashboard,
+  Settings,
+  Sliders,
+  LayoutList,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
+import { useSidebarConfigStore, DEFAULT_SIDEBAR_GROUPS } from '@/stores/useSidebarConfigStore';
+import { ConfigMenuItem, ConfigMenuGroup, ConfigSubMenuItem } from '@/types/sidebar-config';
 
-interface SubMenuItem {
-  title: string;
-  href: string;
-  icon?: React.ReactNode;
-}
+// Registry of Lucide icons for dynamic rendering
+const ICON_REGISTRY: Record<string, React.ReactNode> = {
+  LayoutDashboard: <LayoutDashboard className="w-5 h-5 flex-shrink-0" />,
+  Users: <Users className="w-5 h-5 flex-shrink-0" />,
+  UserCheck: <UserCheck className="w-5 h-5 flex-shrink-0" />,
+  Calendar: <Calendar className="w-5 h-5 flex-shrink-0" />,
+  CalendarDays: <CalendarDays className="w-5 h-5 flex-shrink-0" />,
+  Building2: <Building2 className="w-5 h-5 flex-shrink-0" />,
+  BookMarked: <BookMarked className="w-5 h-5 flex-shrink-0" />,
+  GraduationCap: <GraduationCap className="w-5 h-5 flex-shrink-0" />,
+  Grid: <Grid className="w-5 h-5 flex-shrink-0" />,
+  BarChart2: <BarChart2 className="w-5 h-5 flex-shrink-0" />,
+  Award: <Award className="w-5 h-5 flex-shrink-0" />,
+  ClipboardCheck: <ClipboardCheck className="w-5 h-5 flex-shrink-0" />,
+  Zap: <Zap className="w-5 h-5 flex-shrink-0" />,
+  Newspaper: <Newspaper className="w-5 h-5 flex-shrink-0" />,
+  Settings: <Settings className="w-5 h-5 flex-shrink-0" />,
+  Sliders: <Sliders className="w-5 h-5 flex-shrink-0" />,
+  LayoutList: <LayoutList className="w-5 h-5 flex-shrink-0" />,
+  ShieldCheck: <ShieldCheck className="w-5 h-5 flex-shrink-0" />,
+  BookOpen: <BookOpen className="w-5 h-5 flex-shrink-0" />,
+};
 
-interface MenuItem {
-  title: string;
-  href?: string;
-  icon: React.ReactNode;
-  badge?: string;
-  children?: SubMenuItem[];
-}
-
-interface MenuGroup {
-  group: string;
-  items: MenuItem[];
-}
-
-const menuGroups: MenuGroup[] = [
-  {
-    group: 'Beranda',
-    items: [
-      {
-        title: 'Dashboard',
-        href: '/dashboard',
-        icon: <LayoutDashboard className="w-5 h-5 flex-shrink-0" />,
-        badge: 'Live',
-      },
-    ],
-  },
-  {
-    group: 'Utama',
-    items: [
-      { title: 'Data Santri', href: '/santri', icon: <Users className="w-5 h-5 flex-shrink-0" /> },
-      { title: 'Data Asatidz', href: '/asatidz', icon: <UserCheck className="w-5 h-5 flex-shrink-0" /> },
-    ],
-  },
-  {
-    group: 'PKM. Kurikulum',
-    items: [
-      {
-        title: 'Jadwal KBM',
-        href: '/jadwal-kbm',
-        icon: <Calendar className="w-5 h-5 flex-shrink-0" />,
-        children: [
-          { title: 'Jadwal KBM Per Kelas', href: '/jadwal-kbm', icon: <Calendar className="w-4 h-4 text-cyan-300" /> },
-          { title: 'Hari KBM', href: '/hari-kbm', icon: <CalendarDays className="w-4 h-4 text-amber-300" /> },
-        ],
-      },
-      {
-        title: 'Formasi Kelas',
-        href: '/formasi',
-        icon: <Building2 className="w-5 h-5 flex-shrink-0" />,
-        children: [
-          { title: 'Semua Kelas (Master)', href: '/formasi' },
-          { title: 'Kelas Putra', href: '/formasi/pa' },
-          { title: 'Kelas Putri', href: '/formasi/pi' },
-        ],
-      },
-      {
-        title: 'Fan Pelajaran',
-        href: '/fan/pelajaran',
-        icon: <BookMarked className="w-5 h-5 flex-shrink-0" />,
-        children: [
-          { title: 'Daftar Fan Pelajaran', href: '/fan/pelajaran' },
-          { title: 'Pengajar Fan', href: '/fan/pengajar' },
-        ],
-      },
-      { title: 'Daftar Pendidik', href: '/daftar-pendidik', icon: <GraduationCap className="w-5 h-5 flex-shrink-0" /> },
-    ],
-  },
-  {
-    group: 'PKM. Muhafadzoh',
-    items: [
-      { title: 'Setoran', href: '/setoran', icon: <Grid className="w-5 h-5 flex-shrink-0" /> },
-      { title: 'Rekap Hafalan', href: '/rekap-hafalan', icon: <BarChart2 className="w-5 h-5 flex-shrink-0" /> },
-      { title: 'Cetak Piagam', href: '/piagam', icon: <Award className="w-5 h-5 flex-shrink-0" /> },
-    ],
-  },
-  {
-    group: 'PKM. Kesiswaan',
-    items: [
-      { title: 'Absensi Asatidz', href: '/absensi', icon: <ClipboardCheck className="w-5 h-5 flex-shrink-0" /> },
-      { title: 'Absen Cepat', href: '/absen-cepat', icon: <Zap className="w-5 h-5 flex-shrink-0" /> },
-      { title: 'Rekap Absensi', href: '/rekap-absensi', icon: <BarChart2 className="w-5 h-5 flex-shrink-0" /> },
-    ],
-  },
-  {
-    group: 'PKM. Publikasi & Warta',
-    items: [
-      { title: 'Kelola Berita', href: '/kelola-berita', icon: <Newspaper className="w-5 h-5 flex-shrink-0" /> },
-    ],
-  },
-];
+const SUB_ICON_REGISTRY: Record<string, React.ReactNode> = {
+  Calendar: <Calendar className="w-4 h-4 text-cyan-300" />,
+  CalendarDays: <CalendarDays className="w-4 h-4 text-amber-300" />,
+  Sliders: <Sliders className="w-4 h-4 text-emerald-300" />,
+  LayoutList: <LayoutList className="w-4 h-4 text-amber-300" />,
+  BookOpen: <BookOpen className="w-4 h-4 text-rose-300" />,
+  ShieldCheck: <ShieldCheck className="w-4 h-4 text-teal-300" />,
+};
 
 export default function SidebarDesktop() {
   const pathname = usePathname();
   const { isSidebarCollapsed, toggleSidebarCollapse } = useAppStore();
+  const { groups } = useSidebarConfigStore();
+  const [mounted, setMounted] = useState(false);
+
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
     'Jadwal KBM': true,
+    'Pengaturan': true,
   });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const activeGroups = mounted ? groups : DEFAULT_SIDEBAR_GROUPS;
 
   // Automatically keep parent submenu open if current path is a child
   useEffect(() => {
-    menuGroups.forEach((grp) => {
-      grp.items.forEach((item) => {
+    activeGroups.forEach((grp: ConfigMenuGroup) => {
+      grp.items.forEach((item: ConfigMenuItem) => {
         if (item.children) {
-          const isChildActive = item.children.some((sub) => sub.href === pathname);
+          const isChildActive = item.children.some((sub: ConfigSubMenuItem) => sub.href === pathname);
           if (isChildActive) {
             setOpenSubmenus((prev) => ({ ...prev, [item.title]: true }));
           }
         }
       });
     });
-  }, [pathname]);
+  }, [pathname, activeGroups]);
 
   const toggleSubmenu = (title: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -154,7 +106,7 @@ export default function SidebarDesktop() {
         isSidebarCollapsed ? 'w-[88px]' : 'w-[260px]'
       }`}
     >
-      {/* Header Sidebar & Tombol Toggle Bulat Melayang Sesuai Gambar 1 */}
+      {/* Header Sidebar & Tombol Toggle Bulat Melayang */}
       <div className="h-[70px] relative flex items-center px-5 flex-shrink-0 border-b border-white/10">
         {!isSidebarCollapsed && (
           <div className="font-bold text-white text-base tracking-tight truncate">
@@ -179,112 +131,122 @@ export default function SidebarDesktop() {
 
       {/* Navigasi Menu Berkelompok */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-3 space-y-4">
-        {menuGroups.map((grp) => (
-          <div key={grp.group} className="space-y-1">
-            {/* Judul Grup */}
-            {!isSidebarCollapsed ? (
-              <div className="text-[10px] font-bold tracking-wider text-white/45 uppercase px-3 pt-2 pb-1">
-                {grp.group}
-              </div>
-            ) : (
-              <div className="border-t border-white/10 my-2 mx-2" />
-            )}
+        {activeGroups
+          .filter((grp: ConfigMenuGroup) => !grp.hidden)
+          .map((grp: ConfigMenuGroup) => {
+            const visibleItems = grp.items.filter((item: ConfigMenuItem) => !item.hidden);
+            if (visibleItems.length === 0) return null;
 
-            {grp.items.map((item) => {
-              const hasChildren = item.children && item.children.length > 0;
-              const isSubOpen = openSubmenus[item.title];
-              const isParentActive =
-                pathname === item.href ||
-                (hasChildren && item.children?.some((sub) => sub.href === pathname));
+            return (
+              <div key={grp.id || grp.group} className="space-y-1">
+                {/* Judul Grup */}
+                {!isSidebarCollapsed ? (
+                  <div className="text-[10px] font-bold tracking-wider text-white/45 uppercase px-3 pt-2 pb-1">
+                    {grp.group}
+                  </div>
+                ) : (
+                  <div className="border-t border-white/10 my-2 mx-2" />
+                )}
 
-              if (hasChildren) {
-                return (
-                  <div key={item.title}>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        if (isSidebarCollapsed) {
-                          toggleSidebarCollapse();
-                        } else {
-                          toggleSubmenu(item.title, e);
-                        }
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl cursor-pointer text-sm font-medium transition-all ${
+                {visibleItems.map((item: ConfigMenuItem) => {
+                  const visibleChildren = item.children?.filter((sub: ConfigSubMenuItem) => !sub.hidden);
+                  const hasChildren = visibleChildren && visibleChildren.length > 0;
+                  const isSubOpen = openSubmenus[item.title];
+                  const isParentActive =
+                    pathname === item.href ||
+                    (hasChildren && visibleChildren?.some((sub) => sub.href === pathname));
+                  const iconElement = ICON_REGISTRY[item.iconName] || <Settings className="w-5 h-5 flex-shrink-0" />;
+
+                  if (hasChildren) {
+                    return (
+                      <div key={item.id || item.title}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            if (isSidebarCollapsed) {
+                              toggleSidebarCollapse();
+                            } else {
+                              toggleSubmenu(item.title, e);
+                            }
+                          }}
+                          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl cursor-pointer text-sm font-medium transition-all ${
+                            isParentActive
+                              ? 'bg-white/20 text-white shadow-inner font-semibold'
+                              : 'text-white/85 hover:bg-white/10 hover:text-white'
+                          }`}
+                          title={isSidebarCollapsed ? item.title : undefined}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="flex-shrink-0">{iconElement}</span>
+                            {!isSidebarCollapsed && (
+                              <span className="truncate whitespace-nowrap">{item.title}</span>
+                            )}
+                          </div>
+
+                          {!isSidebarCollapsed && (
+                            <span className="p-1 rounded hover:bg-white/10 transition">
+                              <ChevronDown
+                                className={`w-3.5 h-3.5 text-white/70 transition-transform duration-200 ${
+                                  isSubOpen ? 'rotate-180' : ''
+                                }`}
+                              />
+                            </span>
+                          )}
+                        </button>
+
+                        {/* Sub-menu Anak */}
+                        {!isSidebarCollapsed && isSubOpen && (
+                          <div className="ml-4 mt-1 pl-3 border-l border-white/15 space-y-1">
+                            {visibleChildren?.map((sub: ConfigSubMenuItem) => {
+                              const isSubActive = pathname === sub.href;
+                              const subIconElement = sub.iconName ? (SUB_ICON_REGISTRY[sub.iconName] || ICON_REGISTRY[sub.iconName]) : null;
+                              return (
+                                <Link
+                                  key={sub.id || sub.href}
+                                  href={sub.href}
+                                  className={`flex items-center gap-2 px-3 py-2 text-xs rounded-lg transition-all ${
+                                    isSubActive
+                                      ? 'bg-white/25 text-white font-bold'
+                                      : 'text-white/75 hover:bg-white/10 hover:text-white'
+                                  }`}
+                                >
+                                  {subIconElement && <span>{subIconElement}</span>}
+                                  <span className="truncate">{sub.title}</span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <Link
+                      key={item.id || item.href}
+                      href={item.href || '#'}
+                      className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                         isParentActive
                           ? 'bg-white/20 text-white shadow-inner font-semibold'
                           : 'text-white/85 hover:bg-white/10 hover:text-white'
                       }`}
                       title={isSidebarCollapsed ? item.title : undefined}
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="flex-shrink-0">{item.icon}</span>
-                        {!isSidebarCollapsed && (
-                          <span className="truncate whitespace-nowrap">{item.title}</span>
-                        )}
-                      </div>
-
+                      <span className="flex-shrink-0">{iconElement}</span>
                       {!isSidebarCollapsed && (
-                        <span className="p-1 rounded hover:bg-white/10 transition">
-                          <ChevronDown
-                            className={`w-3.5 h-3.5 text-white/70 transition-transform duration-200 ${
-                              isSubOpen ? 'rotate-180' : ''
-                            }`}
-                          />
+                        <span className="truncate whitespace-nowrap">{item.title}</span>
+                      )}
+                      {!isSidebarCollapsed && item.badge && (
+                        <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 uppercase tracking-wider">
+                          {item.badge}
                         </span>
                       )}
-                    </button>
-
-                    {/* Sub-menu Anak */}
-                    {!isSidebarCollapsed && isSubOpen && (
-                      <div className="ml-4 mt-1 pl-3 border-l border-white/15 space-y-1">
-                        {item.children?.map((sub) => {
-                          const isSubActive = pathname === sub.href;
-                          return (
-                            <Link
-                              key={sub.href}
-                              href={sub.href}
-                              className={`flex items-center gap-2 px-3 py-2 text-xs rounded-lg transition-all ${
-                                isSubActive
-                                  ? 'bg-white/25 text-white font-bold'
-                                  : 'text-white/75 hover:bg-white/10 hover:text-white'
-                              }`}
-                            >
-                              {sub.icon && <span>{sub.icon}</span>}
-                              <span className="truncate">{sub.title}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href || '#'}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    isParentActive
-                      ? 'bg-white/20 text-white shadow-inner font-semibold'
-                      : 'text-white/85 hover:bg-white/10 hover:text-white'
-                  }`}
-                  title={isSidebarCollapsed ? item.title : undefined}
-                >
-                  <span className="flex-shrink-0">{item.icon}</span>
-                  {!isSidebarCollapsed && (
-                    <span className="truncate whitespace-nowrap">{item.title}</span>
-                  )}
-                  {!isSidebarCollapsed && item.badge && (
-                    <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 uppercase tracking-wider">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        ))}
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          })}
       </nav>
 
       {/* Tautan Balik ke Halaman Profil Madrasah */}

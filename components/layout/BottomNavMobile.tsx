@@ -240,8 +240,16 @@ export default function BottomNavMobile() {
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800 text-left"
           >
             <Settings className="w-4 h-4 text-madin-700" />
-            <span>Hierarki Dropdown</span>
+            <span>Pusat Kendali Admin</span>
           </button>
+          <Link
+            href="/pengaturan?tab=sidebar"
+            onClick={() => setActiveMenu(null)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800 text-left"
+          >
+            <Settings className="w-4 h-4 text-amber-600" />
+            <span>Ubah Sidebar &amp; Menu</span>
+          </Link>
           <button
             onClick={() => {
               setActiveMenu(null);
@@ -249,9 +257,17 @@ export default function BottomNavMobile() {
             }}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800 text-left"
           >
-            <ShieldCheck className="w-4 h-4 text-amber-600" />
+            <ShieldCheck className="w-4 h-4 text-teal-600" />
             <span>Log Aktivitas Sistem</span>
           </button>
+          <Link
+            href="/pengaturan"
+            onClick={() => setActiveMenu(null)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800 text-left"
+          >
+            <Settings className="w-4 h-4 text-indigo-600" />
+            <span>Semua Aturan Pengaturan</span>
+          </Link>
           <Link
             href="/"
             onClick={() => setActiveMenu(null)}
