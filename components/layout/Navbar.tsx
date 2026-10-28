@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, ChevronDown, Settings, LogOut, ShieldCheck, User, Undo2, Redo2 } from 'lucide-react';
+import Link from 'next/link';
+import { Menu, ChevronDown, Settings, LogOut, ShieldCheck, User, Undo2, Redo2, BookOpen } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
@@ -178,6 +179,15 @@ export default function Navbar() {
                 <Settings className="w-4 h-4 text-madin-700" />
                 <span>Pusat Kendali Admin</span>
               </button>
+
+              <Link
+                href="/"
+                onClick={() => setDropdownOpen(false)}
+                className="w-full text-left px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 rounded-lg flex items-center gap-2.5 transition"
+              >
+                <BookOpen className="w-4 h-4 text-emerald-700" />
+                <span>Lihat Profil Madrasah (Web)</span>
+              </Link>
 
               <hr className="my-1.5 border-slate-100" />
 

@@ -378,6 +378,7 @@ describe('Pemisahan Fan MS & Sinkronisasi Pengajar Fan', () => {
         nia: 'A99',
         nama_asatidz: 'USTADZ A',
         jah_asatidz: 'Asatidz',
+        pa_pi: 'PA',
       },
     ];
 

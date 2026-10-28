@@ -17,7 +17,9 @@ import {
   Zap,
   ChevronLeft,
   ChevronDown,
-  BookMarked
+  BookMarked,
+  BookOpen,
+  ArrowUpRight
 } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 
@@ -259,6 +261,34 @@ export default function SidebarDesktop() {
           </div>
         ))}
       </nav>
+
+      {/* Tautan Balik ke Halaman Profil Madrasah */}
+      <div className="p-3 border-t border-white/10 flex-shrink-0">
+        {!isSidebarCollapsed ? (
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-amber-300 hover:text-amber-200 transition-all text-xs font-semibold border border-amber-400/25 shadow-sm group"
+            title="Kembali ke Halaman Profil Madrasah"
+          >
+            <BookOpen className="w-4 h-4 text-amber-300 group-hover:scale-110 transition-transform flex-shrink-0" />
+            <div className="flex flex-col truncate">
+              <span className="truncate leading-tight">Profil Madrasah</span>
+              <span className="text-[10px] text-white/60 font-normal leading-tight">Web Resmi Publik</span>
+            </div>
+            <ArrowUpRight className="w-3.5 h-3.5 text-white/60 ml-auto group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform flex-shrink-0" />
+          </Link>
+        ) : (
+          <div className="flex justify-center">
+            <Link
+              href="/"
+              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-amber-300 flex items-center justify-center transition-all border border-amber-400/25 group"
+              title="Kembali ke Halaman Profil Madrasah"
+            >
+              <BookOpen className="w-5 h-5 text-amber-300 group-hover:scale-110 transition-transform" />
+            </Link>
+          </div>
+        )}
+      </div>
     </aside>
   );
 }

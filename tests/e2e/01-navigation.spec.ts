@@ -1,11 +1,17 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Navigation & System Shell', () => {
-  test('root path / redirects automatically to /santri', async ({ page }) => {
+  test('root path / renders SPA Profil Madrasah and navigates to system', async ({ page }) => {
     await page.goto('/');
-    await page.waitForURL('**/santri');
-    await expect(page).toHaveURL(/\/santri/);
-    await expect(page.getByRole('heading', { name: /Database Santri/i })).toBeVisible();
+    await expect(page).toHaveURL('/');
+    await expect(page.getByRole('heading', { name: /Madrasah Diniyyah Al-Amiriyyah/i })).toBeVisible();
+
+    // Click primary CTA to enter KBM System
+    const ctaBtn = page.getByRole('link', { name: /Masuk Sistem KBM|Buka Sistem Akademik KBM/i }).first();
+    await expect(ctaBtn).toBeVisible();
+    await ctaBtn.click();
+    await page.waitForURL('**/jadwal-kbm');
+    await expect(page).toHaveURL(/\/jadwal-kbm/);
   });
 
   test('sidebar displays brand identity and navigation menu items', async ({ page }) => {
@@ -36,6 +42,9 @@ test.describe('Navigation & System Shell', () => {
     for (const title of submenuButtons) {
       await expect(page.getByRole('complementary').getByRole('button', { name: title })).toBeVisible();
     }
+
+    // Back-to-profile link in sidebar footer
+    await expect(page.getByRole('complementary').getByRole('link', { name: /Profil Madrasah/i })).toBeVisible();
   });
 
   test('navbar hierarchy builder modal opens and closes cleanly', async ({ page }) => {

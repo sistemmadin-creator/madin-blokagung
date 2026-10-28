@@ -1,0 +1,161 @@
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+import { 
+  BookOpen, 
+  MapPin, 
+  ChevronRight
+} from 'lucide-react';
+
+export default function FooterProfil() {
+  return (
+    <footer id="kontak" className="bg-emerald-950 text-white border-t border-emerald-900/60 pt-16 pb-12 transition-colors">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 pb-12 border-b border-emerald-900/80">
+          {/* Kolom 1: Profil & Identitas Madrasah (Lebar 2 Kolom) */}
+          <div className="lg:col-span-2 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-emerald-950 shadow-md">
+                <BookOpen className="w-5 h-5 font-bold" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold font-serif text-white tracking-tight">
+                  MADINA Blokagung
+                </h3>
+                <p className="text-xs text-emerald-300 font-medium">
+                  Madrasah Diniyyah Al-Amiriyyah
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm text-emerald-200/80 leading-relaxed max-w-sm">
+              Lembaga pendidikan keagamaan Islam klasikal berskala besar di Pondok Pesantren Darussalam Blokagung yang mengasuh ± 5.400 santri dengan khazanah kitab kuning salafiyah.
+            </p>
+
+            <div className="pt-2 text-xs text-emerald-300/80 space-y-1">
+              <p>
+                <span className="font-semibold text-amber-300">No. Statistik:</span> 413351210273
+              </p>
+              <p>
+                <span className="font-semibold text-amber-300">SK Madin:</span> KD. 13.10/PP.00.7/171/2007
+              </p>
+              <p className="text-emerald-400/80">
+                Yayasan PP. Darussalam (Akte Notaris No. 31/1978)
+              </p>
+            </div>
+          </div>
+
+          {/* Kolom 2: Navigasi Informasi Publik */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-bold text-amber-300 uppercase tracking-wider font-sans">
+              Informasi Publik
+            </h4>
+            <ul className="space-y-2 text-xs sm:text-sm text-emerald-200/80">
+              <li>
+                <a href="#hero" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Beranda</span>
+                </a>
+              </li>
+              <li>
+                <a href="#statistik" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Statistik Lembaga</span>
+                </a>
+              </li>
+              <li>
+                <a href="#program" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>3 Pilar Program</span>
+                </a>
+              </li>
+              <li>
+                <a href="#kurikulum" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Kurikulum Kitab</span>
+                </a>
+              </li>
+              <li>
+                <a href="#waktu-kbm" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Waktu Pembelajaran</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Kolom 3: Layanan Sistem Internal */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-bold text-amber-300 uppercase tracking-wider font-sans">
+              Sistem KBM
+            </h4>
+            <ul className="space-y-2 text-xs sm:text-sm text-emerald-200/80">
+              <li>
+                <Link href="/jadwal-kbm" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Jadwal KBM 161 Kelas</span>
+                </Link>
+              </li>
+              <li>
+                <Link href="/absen-cepat" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Absen Cepat Santri</span>
+                </Link>
+              </li>
+              <li>
+                <Link href="/fan/pengajar" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Pengajar Fan Pelajaran</span>
+                </Link>
+              </li>
+              <li>
+                <Link href="/asatidz" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Direktori Asatidz (A/B/C)</span>
+                </Link>
+              </li>
+              <li>
+                <Link href="/formasi" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Formasi Lokal Santri</span>
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Kolom 4: Alamat & Kontak Kantor */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-bold text-amber-300 uppercase tracking-wider font-sans">
+              Kantor Madrasah
+            </h4>
+            <div className="space-y-2.5 text-xs text-emerald-200/80">
+              <div className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  Jl. PP. Darussalam, Blokagung, Karangdoro, Tegalsari, Banyuwangi, Jawa Timur 68485
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-emerald-900/50 border border-emerald-800/80 text-[11px] text-emerald-100">
+                <span className="font-semibold text-amber-300 block mb-0.5">Kantor Putra:</span>
+                Gedung Madrasah Diniyyah Putra Lantai 1
+                <span className="font-semibold text-amber-300 block mt-2 mb-0.5">Kantor Putri:</span>
+                Gedung Madrasah Diniyyah Putri Lantai 1
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Bar: Copyright & Attribution */}
+        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-emerald-300/70 text-center sm:text-left">
+          <p>
+            &copy; {new Date().getFullYear()} Madrasah Diniyyah Al-Amiriyyah (MADINA) PP. Darussalam Blokagung.
+          </p>
+          <div className="flex items-center gap-1 text-emerald-400/80">
+            <span>Dirawat dengan khidmah untuk pesantren salaf</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}

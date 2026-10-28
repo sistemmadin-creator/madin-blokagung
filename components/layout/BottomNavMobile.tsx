@@ -230,6 +230,14 @@ export default function BottomNavMobile() {
             <ShieldCheck className="w-4 h-4 text-amber-600" />
             <span>Log Aktivitas Sistem</span>
           </button>
+          <Link
+            href="/"
+            onClick={() => setActiveMenu(null)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-sm font-semibold text-emerald-800 text-left border-t border-slate-100"
+          >
+            <BookOpen className="w-4 h-4 text-emerald-700" />
+            <span>Lihat Profil Madrasah</span>
+          </Link>
         </div>
       )}
 
