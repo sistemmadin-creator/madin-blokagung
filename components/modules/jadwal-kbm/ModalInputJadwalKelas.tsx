@@ -154,7 +154,7 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
     const matchTerpakai = rawVal.match(/^\[TERPAKAI di (.+?)\]\s*(.+)$/);
     if (matchTerpakai) {
       alert(
-        `⚠️ TIDAK BISA DIPILIH!\n\n${matchTerpakai[2]} sudah memiliki jadwal mengajar di ${matchTerpakai[1]} pada hari ${hari} Jam ${jam}.`
+        `⚠️ BENTROK JADWAL MENGAJAR!\n\n${matchTerpakai[2]} tidak dapat dipilih pada ${hari} Jam ${jam} karena sudah memiliki jadwal mengajar di ${matchTerpakai[1]}.\n\nSolusi:\n1. Pilih hari lain (Sabtu, Ahad, Senin, Rabu, atau Kamis) untuk ${matchTerpakai[2]} di kelas ini; ATAU\n2. Pindahkan/kosongkan jadwal beliau di ${matchTerpakai[1]} terlebih dahulu.`
       );
       return;
     }
@@ -168,7 +168,7 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
 
     if (busyClass) {
       alert(
-        `⚠️ TIDAK BISA DIPILIH!\n\n${cleanGuru} sudah memiliki jadwal mengajar di ${busyClass} pada hari ${hari} Jam ${jam}.`
+        `⚠️ BENTROK JADWAL MENGAJAR!\n\n${cleanGuru} tidak dapat dipilih pada ${hari} Jam ${jam} karena sudah memiliki jadwal mengajar di ${busyClass}.\n\nSolusi:\n1. Pilih hari lain (Sabtu, Ahad, Senin, Rabu, atau Kamis) untuk ${cleanGuru} di kelas ini; ATAU\n2. Pindahkan/kosongkan jadwal beliau di ${busyClass} terlebih dahulu.`
       );
       return;
     }
@@ -345,6 +345,14 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
       return asatidzList.map((a) => a.nama_asatidz).filter(Boolean);
     })();
 
+    const busyTeachersForThisFan = opsiAsatidz
+      .map((g) => {
+        const gUpper = g.trim().toUpperCase();
+        const busy = mapBusy[gUpper];
+        return busy ? `${g} (di ${busy})` : null;
+      })
+      .filter(Boolean);
+
     const isMSHighlighted = highlightMSCell === `${jam}_${hari}`;
 
     return (
@@ -380,6 +388,11 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
                 : 'border-slate-300 focus:ring-1 focus:ring-blue-500'
             }`}
           />
+          {busyTeachersForThisFan.length > 0 && !entry.asatidz && (
+            <p className="text-[10.5px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 leading-tight">
+              ⚠️ Pengajar bentrok di sesi ini: <b>{busyTeachersForThisFan.join(', ')}</b>
+            </p>
+          )}
           <datalist id={`dl_asatidz_${jam}_${hari}`}>
             {namaMS && (
               <option value={namaMS} label={`⭐ [MUSTAHIQ KELAS] ${namaMS}`}>
@@ -395,10 +408,17 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
                   <option
                     key={`${namaGuru}_${gIdx}`}
                     value={`[TERPAKAI di ${busyClass}] ${namaGuru}`}
+                    label={`⚠️ Sedang Mengajar di ${busyClass} (${hari} Jam ${jam})`}
                   />
                 );
               }
-              return <option key={`${namaGuru}_${gIdx}`} value={namaGuru} />;
+              return (
+                <option
+                  key={`${namaGuru}_${gIdx}`}
+                  value={namaGuru}
+                  label="Pengajar Fan Terdaftar"
+                />
+              );
             })}
           </datalist>
 

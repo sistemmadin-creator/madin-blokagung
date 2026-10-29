@@ -418,12 +418,35 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
       RelationalMigrationService.isTableAvailable('jadwal_kbm_slots').then(async (avail) => {
         if (avail) {
           try {
-            const slots = RelationalMigrationService.parseJadwalMapToSlots(finalMapToSave);
-            for (let i = 0; i < slots.length; i += 100) {
-              const chunk = slots.slice(i, i + 100);
-              await supabase
-                .from('jadwal_kbm_slots' as any)
-                .upsert(chunk, { onConflict: 'nama_asatidz,hari,jam,kelas_lengkap' });
+            // Ambil daftar guru yang dimodifikasi pada batch ini
+            const guruChangedNames = Object.keys(mapPerubahan)
+              .map((k) => (mapPerubahan[k]?.nama_asatidz || k).trim())
+              .filter(Boolean);
+
+            for (const guruNama of guruChangedNames) {
+              const guruUpper = guruNama.toUpperCase();
+
+              // 1. Hapus SEMUA slot lama milik guru ini dari tabel jadwal_kbm_slots secara tuntas
+              const delQuery = supabase.from('jadwal_kbm_slots' as any).delete();
+              if (typeof (delQuery as any).ilike === 'function') {
+                await (delQuery as any).ilike('nama_asatidz', guruNama);
+              } else {
+                await delQuery.eq('nama_asatidz', guruNama);
+              }
+
+              // 2. Parse slot baru guru ini (jika ada) dari finalMapToSave dan simpan
+              const guruData = finalMapToSave[guruUpper] || finalMapToSave[guruNama];
+              if (guruData) {
+                const newSlots = RelationalMigrationService.parseJadwalMapToSlots({
+                  [guruUpper]: guruData,
+                });
+                if (newSlots.length > 0) {
+                  for (let i = 0; i < newSlots.length; i += 100) {
+                    const chunk = newSlots.slice(i, i + 100);
+                    await supabase.from('jadwal_kbm_slots' as any).insert(chunk);
+                  }
+                }
+              }
             }
           } catch (syncErr) {
             console.warn('Dual-write ke jadwal_kbm_slots gagal:', syncErr);
@@ -648,6 +671,22 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
       useFanStore.setState({ fanDetail: updatedFanDetail });
       useFanStore.getState().triggerAutoSaveFanDetail();
     }
+
+    // Hapus seluruh slot kelas ini di jadwal_kbm_slots secara langsung agar bebas dari baris zombie
+    RelationalMigrationService.isTableAvailable('jadwal_kbm_slots').then(async (avail) => {
+      if (avail) {
+        try {
+          const delKls = supabase.from('jadwal_kbm_slots' as any).delete();
+          if (typeof (delKls as any).ilike === 'function') {
+            await (delKls as any).ilike('kelas_lengkap', namaKelasLengkap);
+          } else {
+            await delKls.eq('kelas_lengkap', namaKelasLengkap);
+          }
+        } catch (err) {
+          console.warn('Gagal membersihkan slot kelas di jadwal_kbm_slots:', err);
+        }
+      }
+    });
 
     const success = await get().simpanBatchJadwalAsatidz(
       mapPerubahan,
@@ -1406,6 +1445,33 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
       await supabase
         .from('app_settings')
         .upsert([{ key: KEY_DB_JADWAL_ASATIDZ, value: map }], { onConflict: 'key' });
+
+      RelationalMigrationService.isTableAvailable('jadwal_kbm_slots').then(async (avail) => {
+        if (avail) {
+          try {
+            const delQ = supabase.from('jadwal_kbm_slots' as any).delete().eq('hari', hari).eq('jam', jam);
+            if (typeof (delQ as any).ilike === 'function') {
+              await (delQ as any).ilike('kelas_lengkap', kelas);
+            } else {
+              await delQ.eq('kelas_lengkap', kelas);
+            }
+
+            if (asatidz && asatidz !== '-') {
+              const row = map[asatidz.trim().toUpperCase()];
+              if (row) {
+                const slots = RelationalMigrationService.parseJadwalMapToSlots({ [asatidz]: row });
+                const matchingSlot = slots.find((s) => s.hari === hari && s.jam === jam);
+                if (matchingSlot) {
+                  await supabase.from('jadwal_kbm_slots' as any).insert([matchingSlot]);
+                }
+              }
+            }
+          } catch (syncErr) {
+            console.warn('Sync updateJadwalSlot to jadwal_kbm_slots error:', syncErr);
+          }
+        }
+      });
+
       return true;
     } catch {
       return false;

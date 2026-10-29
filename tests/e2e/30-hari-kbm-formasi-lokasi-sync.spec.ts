@@ -23,7 +23,7 @@ test.describe('Sinkronisasi Lokasi Diniyyah: Formasi Kelas, Hari KBM & Jadwal KB
     await expect(row1B.getByText('Asrama Al-Falah Timur')).toHaveCount(0);
   });
 
-  test('2.0 Hari KBM (/hari-kbm): Kolom Lokasi Diniyyah Sinkron dengan Formasi Kelas', async ({ page }) => {
+  test('2.0 Hari KBM (/hari-kbm): Memastikan Tampilan Hari KBM Bersih dari Zombie Slots 1 A ULA', async ({ page }) => {
     await page.goto('/hari-kbm');
     await expect(page.getByRole('heading', { name: /Hari KBM/i })).toBeVisible({ timeout: 15_000 });
 
@@ -38,15 +38,10 @@ test.describe('Sinkronisasi Lokasi Diniyyah: Formasi Kelas, Hari KBM & Jadwal KB
     await expect(searchInput).toBeVisible();
     await searchInput.fill('FIKRUL UMAM AL HANIF');
 
-    const guruRow = page.locator('#tbodyHariKBM tr', { hasText: 'FIKRUL UMAM AL HANIF' }).first();
-    await expect(guruRow).toBeVisible({ timeout: 10_000 });
-
-    // Verifikasi kelas 1 A ULA (PA) menampilkan Lokasi Diniyyah: "Al Hidayah"
-    await expect(guruRow.getByText('1 A ULA (PA)').first()).toBeVisible();
-    await expect(guruRow.getByText('Al Hidayah').first()).toBeVisible();
-
-    // Pastikan string lama "Asrama Al-Barokah Bawah" TIDAK lagi muncul
-    await expect(guruRow.getByText('Asrama Al-Barokah Bawah')).toHaveCount(0);
+    // Karena jadwal kelas 1 A ULA telah dikosongkan (Zero Zombie Slots), tidak boleh ada slot mengajar zombie
+    const tbody = page.locator('#tbodyHariKBM');
+    await expect(tbody.getByText('1 A ULA (PA)')).toHaveCount(0);
+    await expect(tbody.getByText('Asrama Al-Barokah Bawah')).toHaveCount(0);
   });
 
   test('3.0 Jadwal KBM Per Kelas (/jadwal-kbm): Kolom LOKAL Sinkron dengan Formasi Kelas', async ({ page }) => {
