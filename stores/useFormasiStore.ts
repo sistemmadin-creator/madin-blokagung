@@ -292,21 +292,10 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
       const payload = sanitizeFormasiPayload(data);
 
       if (isEdit && id) {
-        let { error } = await supabase
+        const { error } = await supabase
           .from('formasi_kelas')
           .update(payload)
           .eq('id', id);
-
-        // Fallback anggun jika kolom baru di PostgreSQL belum dieksekusi via migrasi SQL
-        if (error && error.code === 'PGRST204') {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { blok_diniyyah, blok_takror, ...legacyPayload } = payload;
-          const retry = await supabase
-            .from('formasi_kelas')
-            .update(legacyPayload)
-            .eq('id', id);
-          error = retry.error;
-        }
 
         if (error) {
           if (error.code === '23505') throw new Error('Kombinasi Tingkat, Kelas, Bagian, dan Gender duplikat!');
@@ -317,19 +306,9 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
           `Mengubah formasi kelas: ${payload.tingkat} ${payload.din_kls}${payload.din_bag} (${payload.pa_pi})`
         );
       } else {
-        let { error } = await supabase
+        const { error } = await supabase
           .from('formasi_kelas')
           .insert([payload]);
-
-        // Fallback anggun jika kolom baru di PostgreSQL belum dieksekusi via migrasi SQL
-        if (error && error.code === 'PGRST204') {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { blok_diniyyah, blok_takror, ...legacyPayload } = payload;
-          const retry = await supabase
-            .from('formasi_kelas')
-            .insert([legacyPayload]);
-          error = retry.error;
-        }
 
         if (error) {
           if (error.code === '23505') throw new Error('Kombinasi Tingkat, Kelas, Bagian, dan Gender duplikat!');
