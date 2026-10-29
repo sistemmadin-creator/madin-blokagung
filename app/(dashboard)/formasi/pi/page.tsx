@@ -15,13 +15,14 @@ import {
   Camera,
   Star,
   RefreshCw,
+  FolderTree,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ModalInputFormasi from '@/components/modules/formasi/ModalInputFormasi';
 import ModalDetailFormasi from '@/components/modules/formasi/ModalDetailFormasi';
 import ModalGeneratorFormasi from '@/components/modules/formasi/ModalGeneratorFormasi';
 import ModalFotoFormasi from '@/components/modules/formasi/ModalFotoFormasi';
-import ModalPengaturanBlokKelas from '@/components/modules/formasi/ModalPengaturanBlokKelas';
+import ModalHierarkiBlokKBM from '@/components/modules/formasi/ModalHierarkiBlokKBM';
 
 export default function FormasiPiPage() {
   const {
@@ -30,6 +31,10 @@ export default function FormasiPiPage() {
     openDetailModal,
     openFotoModal,
     openBlokModal,
+    isHierarkiModalOpen,
+    hierarkiModalDefaultCategory,
+    openHierarkiModal,
+    closeHierarkiModal,
     quickUploadFoto,
   } = useFormasiStore();
 
@@ -85,6 +90,8 @@ export default function FormasiPiPage() {
         domisili_sync: syncInfo.domisili,
         takror_sync: syncInfo.lokasiTakror,
         diniyyah_sync: syncInfo.lokasiDiniyyah,
+        blok_takror_sync: syncInfo.blokTakror,
+        blok_diniyyah_sync: syncInfo.blokDiniyyah,
         foto_takror_sync: syncInfo.fotoTakror,
         foto_diniyyah_sync: syncInfo.fotoDiniyyah,
       };
@@ -99,7 +106,7 @@ export default function FormasiPiPage() {
       }
       if (search.trim()) {
         const q = search.toLowerCase().trim();
-        const text = `${f.din_kls} ${f.din_bag} ${f.tingkat} ${f.wali_kelas_text} ${f.domisili_sync || ''} ${f.takror_sync || ''} ${f.diniyyah_sync || ''} ${f.blok || ''}`.toLowerCase();
+        const text = `${f.din_kls} ${f.din_bag} ${f.tingkat} ${f.wali_kelas_text} ${f.domisili_sync || ''} ${f.blok_takror || f.blok_takror_sync || ''} ${f.takror_sync || ''} ${f.blok_diniyyah || f.blok_diniyyah_sync || ''} ${f.diniyyah_sync || ''} ${f.blok || ''}`.toLowerCase();
         if (!text.includes(q)) return false;
       }
       return true;
@@ -240,11 +247,12 @@ export default function FormasiPiPage() {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
-              onClick={() => openBlokModal('PI')}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 transition shadow-2xs flex items-center gap-2"
+              onClick={() => openHierarkiModal('diniyyah')}
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 transition shadow-2xs flex items-center gap-2"
+              title="Kelola Hierarki Blok KBM (Diniyyah & Takror)"
             >
-              <Building className="w-4 h-4 text-pink-600" />
-              <span>Atur Blok Kelas Putri</span>
+              <FolderTree className="w-4 h-4 text-[#0f766e]" />
+              <span>Hierarki Blok Kelas Putri</span>
             </button>
 
             <button
@@ -351,23 +359,32 @@ export default function FormasiPiPage() {
                 <th rowSpan={2} className="py-2.5 px-3 border-r border-slate-300 min-w-[200px] align-middle">
                   MUSTAHIQ
                 </th>
-                <th colSpan={2} className="py-1.5 px-3 text-center border-b border-slate-300 font-bold">
-                  LOKAL
+                <th colSpan={2} className="py-1.5 px-3 text-center border-r border-b border-slate-300 font-bold bg-amber-50/70 text-amber-900">
+                  TAKROR
+                </th>
+                <th colSpan={2} className="py-1.5 px-3 text-center border-b border-slate-300 font-bold bg-emerald-50/70 text-emerald-900">
+                  DINIYYAH
                 </th>
               </tr>
               <tr className="bg-slate-100/80 text-slate-700 font-bold border-b border-slate-300 text-center">
-                <th className="py-2 px-3 border-r border-slate-300 min-w-[190px]">
-                  TAKROR
+                <th className="py-2 px-3 border-r border-slate-300 w-28 bg-amber-50/40 text-amber-950">
+                  BLOK
                 </th>
-                <th className="py-2 px-3 min-w-[190px]">
-                  DINIYYAH
+                <th className="py-2 px-3 border-r border-slate-300 min-w-[170px] bg-amber-50/40 text-amber-950">
+                  LOKAL
+                </th>
+                <th className="py-2 px-3 border-r border-slate-300 w-28 bg-emerald-50/40 text-emerald-950">
+                  BLOK
+                </th>
+                <th className="py-2 px-3 min-w-[170px] bg-emerald-50/40 text-emerald-950">
+                  LOKASI
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {sortedList.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400">
+                  <td colSpan={8} className="py-8 text-center text-slate-400">
                     Tidak ada rombel kelas putri yang sesuai dengan filter/pencarian.
                   </td>
                 </tr>
@@ -375,7 +392,10 @@ export default function FormasiPiPage() {
                 sortedList.map((f, idx) => {
                   const namaKelas = `${f.din_kls || ''} ${f.din_bag || ''} ${f.tingkat || ''}`.trim();
                   const domisiliTeks = (f.domisili_sync || f.domisili || '-').replace(/^Blok\s+/i, '');
-                  const blokLabel = f.blok ? `Blok ${f.blok.replace(/^blok\s*/i, '').trim()}` : '';
+                  const blokTakrorVal = f.blok_takror || f.blok_takror_sync || '';
+                  const blokDiniyyahVal = f.blok_diniyyah || f.blok_diniyyah_sync || f.blok || '';
+                  const blokTakrorLabel = blokTakrorVal && blokTakrorVal !== '-' ? `Blok ${blokTakrorVal.replace(/^blok\s*/i, '').trim()}` : '';
+                  const blokDiniyyahLabel = blokDiniyyahVal && blokDiniyyahVal !== '-' ? `Blok ${blokDiniyyahVal.replace(/^blok\s*/i, '').trim()}` : '';
 
                   const hasFotoTakror = Boolean(f.foto_takror_sync || f.foto_takror);
                   const hasFotoDiniyyah = Boolean(f.foto_diniyyah_sync || f.foto_diniyyah);
@@ -432,6 +452,30 @@ export default function FormasiPiPage() {
                         )}
                       </td>
 
+                      {/* BLOK TAKROR */}
+                      <td className="py-2.5 px-3 text-center border-r border-slate-200" onClick={(e) => e.stopPropagation()}>
+                        {blokTakrorLabel ? (
+                          <button
+                            type="button"
+                            onClick={() => openHierarkiModal('takror')}
+                            title="Kelola Hierarki Blok Takror"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-semibold transition"
+                          >
+                            <Building className="w-2.5 h-2.5 text-amber-700" />
+                            <span>{blokTakrorLabel}</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openHierarkiModal('takror')}
+                            title="Buka Hierarki Blok Takror"
+                            className="text-slate-400 hover:text-slate-600 font-mono text-xs"
+                          >
+                            -
+                          </button>
+                        )}
+                      </td>
+
                       {/* LOKAL TAKROR */}
                       <td className="py-2.5 px-3 border-r border-slate-200">
                         <div className="flex flex-col items-start gap-1">
@@ -439,20 +483,6 @@ export default function FormasiPiPage() {
                             {f.takror_sync || f.lokasi_takror || '-'}
                           </span>
                           <div className="flex items-center gap-1.5 flex-wrap print:hidden">
-                            {blokLabel && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openBlokModal('PI', [], f.blok);
-                                }}
-                                title="Klik untuk mengedit grup blok ini"
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[10px] font-medium transition"
-                              >
-                                <Building className="w-2.5 h-2.5" />
-                                <span>{blokLabel}</span>
-                              </button>
-                            )}
                             {hasFotoTakror ? (
                               <button
                                 type="button"
@@ -476,6 +506,30 @@ export default function FormasiPiPage() {
                         </div>
                       </td>
 
+                      {/* BLOK DINIYYAH */}
+                      <td className="py-2.5 px-3 text-center border-r border-slate-200" onClick={(e) => e.stopPropagation()}>
+                        {blokDiniyyahLabel ? (
+                          <button
+                            type="button"
+                            onClick={() => openHierarkiModal('diniyyah')}
+                            title="Kelola Hierarki Blok Diniyyah"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[11px] font-semibold transition"
+                          >
+                            <Building className="w-2.5 h-2.5 text-emerald-700" />
+                            <span>{blokDiniyyahLabel}</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openHierarkiModal('diniyyah')}
+                            title="Buka Hierarki Blok Diniyyah"
+                            className="text-slate-400 hover:text-slate-600 font-mono text-xs"
+                          >
+                            -
+                          </button>
+                        )}
+                      </td>
+
                       {/* LOKASI DINIYYAH */}
                       <td className="py-2.5 px-3">
                         <div className="flex flex-col items-start gap-1">
@@ -483,20 +537,6 @@ export default function FormasiPiPage() {
                             {f.diniyyah_sync || f.lokasi_diniyyah || '-'}
                           </span>
                           <div className="flex items-center gap-1.5 flex-wrap print:hidden">
-                            {blokLabel && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openBlokModal('PI', [], f.blok);
-                                }}
-                                title="Klik untuk mengedit grup blok ini"
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[10px] font-medium transition"
-                              >
-                                <Building className="w-2.5 h-2.5" />
-                                <span>{blokLabel}</span>
-                              </button>
-                            )}
                             {hasFotoDiniyyah ? (
                               <button
                                 type="button"
@@ -590,7 +630,11 @@ export default function FormasiPiPage() {
       <ModalDetailFormasi />
       <ModalGeneratorFormasi gender="PI" />
       <ModalFotoFormasi />
-      <ModalPengaturanBlokKelas fixedGender="PI" />
+      <ModalHierarkiBlokKBM
+        isOpen={isHierarkiModalOpen}
+        onClose={closeHierarkiModal}
+        defaultCategory={hierarkiModalDefaultCategory}
+      />
     </div>
   );
 }

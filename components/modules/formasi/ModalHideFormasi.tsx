@@ -13,9 +13,10 @@ const FORMASI_COLUMNS = [
   { id: 5, name: 'Kapasitas' },
   { id: 6, name: 'Wali Kelas' },
   { id: 7, name: 'Domisili' },
-  { id: 8, name: 'Lokal Takror' },
-  { id: 9, name: 'Lokasi Diniyyah' },
-  { id: 10, name: 'Blok' },
+  { id: 8, name: 'Blok Takror' },
+  { id: 9, name: 'Lokal Takror' },
+  { id: 10, name: 'Blok Diniyyah' },
+  { id: 11, name: 'Lokasi Diniyyah' },
 ];
 
 export default function ModalHideFormasi({

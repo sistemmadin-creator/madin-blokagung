@@ -31,6 +31,8 @@ import {
 import { compareNIANatural } from '@/lib/utils/fanHelper';
 import { GuruAktifHariKBM, KelompokBlokHariKBM } from '@/types/hari-kbm';
 import { Asatidz } from '@/types/asatidz';
+import { HierarkiBlokKBMConfig } from '@/types/formasi';
+import { loadHierarkiKbm } from '@/lib/services/hierarchy-service';
 import ModalDetailKelasKBM from '@/components/modules/jadwal-kbm/ModalDetailKelasKBM';
 import ModalInputJadwalKelas from '@/components/modules/jadwal-kbm/ModalInputJadwalKelas';
 import ModalDetailAsatidz from '@/components/modules/asatidz/ModalDetailAsatidz';
@@ -52,6 +54,9 @@ export default function HariKbmPage() {
   const { formasiList, fetchFormasi } = useFormasiStore();
   const { fanItems, fanConfig, fetchFanData } = useFanStore();
 
+  // Hierarki Blok KBM Config
+  const [hierarkiConfig, setHierarkiConfig] = useState<HierarkiBlokKBMConfig | null>(null);
+
   // Filters
   const [search, setSearch] = useState('');
   const [fltTingkat, setFltTingkat] = useState('');
@@ -59,6 +64,7 @@ export default function HariKbmPage() {
 
   useEffect(() => {
     fetchJadwal();
+    loadHierarkiKbm().then((cfg) => setHierarkiConfig(cfg));
     if (asatidzList.length === 0) fetchAsatidz();
     if (formasiList.length === 0) fetchFormasi();
     if (fanItems.length === 0) fetchFanData();
@@ -144,7 +150,7 @@ export default function HariKbmPage() {
       );
 
       if (slots.length > 0) {
-        const blokTerdeteksi = dapatkanBlokDariSesiMengajar(slots, a, formasiList, asatidzList);
+        const blokTerdeteksi = dapatkanBlokDariSesiMengajar(slots, a, formasiList, asatidzList, hierarkiConfig || undefined);
 
         result.push({
           rawRow: a,
@@ -160,7 +166,7 @@ export default function HariKbmPage() {
     });
 
     return result;
-  }, [activeHari, asatidzList, jadwalMap, masterStrukturKelasKBM, formasiList, fanConfig]);
+  }, [activeHari, asatidzList, jadwalMap, masterStrukturKelasKBM, formasiList, fanConfig, hierarkiConfig]);
 
   // 2. Filter data berdasarkan pencarian, tingkat, dan jam
   const filteredGuruAktif = useMemo(() => {

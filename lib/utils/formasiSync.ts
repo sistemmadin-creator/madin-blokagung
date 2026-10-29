@@ -53,6 +53,8 @@ export function getWaliKelasSyncInfo(f: Partial<FormasiKelas>, listAsatidz: Asat
       : '-');
   const lokasiTakror = f.lokasi_takror || primaryAsatidz?.lokasi_takror || '-';
   const lokasiDiniyyah = f.lokasi_diniyyah || primaryAsatidz?.lokasi_diniyyah || '-';
+  const blokDiniyyah = f.blok_diniyyah || f.blok || '-';
+  const blokTakror = f.blok_takror || '-';
   const fotoTakror = f.foto_takror || '';
   const fotoDiniyyah = f.foto_diniyyah || '';
 
@@ -62,6 +64,8 @@ export function getWaliKelasSyncInfo(f: Partial<FormasiKelas>, listAsatidz: Asat
     domisili,
     lokasiTakror,
     lokasiDiniyyah,
+    blokDiniyyah,
+    blokTakror,
     fotoTakror,
     fotoDiniyyah,
   };

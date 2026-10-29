@@ -12,7 +12,9 @@ export interface FormasiKelas {
   domisili?: string;
   lokasi_takror?: string;
   lokasi_diniyyah?: string;
-  blok?: string;
+  blok?: string; // Legacy: fallback untuk blok_diniyyah
+  blok_diniyyah?: string; // Hierarki: Blok Diniyyah > Lokasi Diniyyah
+  blok_takror?: string; // Hierarki: Blok Takror > Lokasi Takror
   foto_takror?: string;
   foto_diniyyah?: string;
   tahun_ajaran?: string;
@@ -30,6 +32,19 @@ export interface FormasiWithStats extends FormasiKelas {
   domisili_sync?: string;
   takror_sync?: string;
   diniyyah_sync?: string;
+  blok_diniyyah_sync?: string;
+  blok_takror_sync?: string;
   foto_takror_sync?: string;
   foto_diniyyah_sync?: string;
 }
+
+export interface BlokLokasiItem {
+  namaBlok: string;
+  lokasiList: string[];
+}
+
+export interface HierarkiBlokKBMConfig {
+  diniyyah: BlokLokasiItem[];
+  takror: BlokLokasiItem[];
+}
+

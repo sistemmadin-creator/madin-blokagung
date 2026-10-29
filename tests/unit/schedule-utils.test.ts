@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { JadwalAsatidzRow } from '@/types/jadwal';
-import { bandingkanUrutanKelasKBM } from '@/lib/utils/jadwalHelper';
+import { bandingkanUrutanKelasKBM, dapatkanBlokDariSesiMengajar } from '@/lib/utils/jadwalHelper';
+import { Formasi, HierarkiBlokKBMConfig } from '@/types/formasi';
+import { Asatidz } from '@/types/asatidz';
 
 describe('Jadwal Conflict Detection Logic', () => {
   function checkScheduleConflicts(jadwalList: JadwalAsatidzRow[]) {
@@ -125,8 +127,6 @@ import {
   buildMasterStrukturKelasKBM,
   ekstrakKelasMurniDariLokasi,
 } from '@/lib/utils/jadwalHelper';
-import { Formasi } from '@/types/formasi';
-import { Asatidz } from '@/types/asatidz';
 import { TeacherJadwalRow } from '@/types/jadwal';
 
 describe('Gender-Aware Class Matching & Schedule Isolation (PA vs PI)', () => {
@@ -304,6 +304,89 @@ describe('Gender-Aware Class Matching & Schedule Isolation (PA vs PI)', () => {
         '4 A ULA PA',
         '4 A ULA PI',
       ]);
+    });
+  });
+
+  describe('dapatkanBlokDariSesiMengajar - Pemetaan Hierarki Diniyyah Tanpa Kamar Guru', () => {
+    const mockHierarki: HierarkiBlokKBMConfig = {
+      diniyyah: [
+        {
+          namaBlok: 'Blok 1',
+          lokasiList: ['Ruang A-01', 'Ruang A-02'],
+        },
+        {
+          namaBlok: 'Blok Induk',
+          lokasiList: ['Aula Utama', 'Musholla Pusat'],
+        },
+      ],
+      takror: [
+        {
+          namaBlok: 'Blok Takror Asrama',
+          lokasiList: ['Serambi Asrama'],
+        },
+      ],
+    };
+
+    const mockFormasiList: Formasi[] = [
+      {
+        id: 'f1',
+        tingkat: 'ULA',
+        din_kls: '1',
+        din_bag: 'A',
+        pa_pi: 'PA',
+        lokasi_diniyyah: 'Ruang A-01',
+        blok_diniyyah: 'Blok 1',
+      },
+      {
+        id: 'f2',
+        tingkat: 'ULA',
+        din_kls: '1',
+        din_bag: 'B',
+        pa_pi: 'PA',
+        lokasi_diniyyah: 'Aula Utama',
+        // blok_diniyyah sengaja kosong untuk uji pemetaan hierarki dari lokasi
+      },
+    ];
+
+    const mockAsatidzKamarPribadi: Asatidz = {
+      nia: 'A001',
+      nama_asatidz: 'Ustadz Ahmad',
+      blok: 'Kamar Asrama 10', // Kamar asrama pribadi guru (BUKAN blok KBM santri)
+    };
+
+    it('1. mengutamakan blok_diniyyah langsung dari Formasi Kelas', () => {
+      const blok = dapatkanBlokDariSesiMengajar(
+        [{ kelas: '1 A ULA (PA)', lokasi: 'Ruang A-01' }],
+        mockAsatidzKamarPribadi,
+        mockFormasiList,
+        [],
+        mockHierarki
+      );
+      expect(blok).toBe('Blok 1');
+    });
+
+    it('2. memetakan blok dari Hierarki Lokasi Diniyyah saat blok di formasi kosong', () => {
+      const blok = dapatkanBlokDariSesiMengajar(
+        [{ kelas: '1 B ULA (PA)', lokasi: 'Aula Utama' }],
+        mockAsatidzKamarPribadi,
+        mockFormasiList,
+        [],
+        mockHierarki
+      );
+      expect(blok).toBe('Blok Induk');
+    });
+
+    it('3. TIDAK melakukan fallback ke kamar domisili asrama asatidz (hilangkan kerancuan)', () => {
+      // Kelas yang tidak terdaftar di formasi dan tidak ada di hierarki
+      const blok = dapatkanBlokDariSesiMengajar(
+        [{ kelas: 'Kelas Tidak Terdaftar', lokasi: 'Lokasi Asing' }],
+        mockAsatidzKamarPribadi,
+        mockFormasiList,
+        [],
+        mockHierarki
+      );
+      // Harus Belum Diatur, BUKAN 'Kamar Asrama 10'
+      expect(blok).toBe('Belum Diatur');
     });
   });
 });

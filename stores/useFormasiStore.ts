@@ -28,6 +28,8 @@ export const ALLOWED_FORMASI_COLUMNS = [
   'lokasi_takror',
   'lokasi_diniyyah',
   'blok',
+  'blok_diniyyah',
+  'blok_takror',
   'foto_takror',
   'foto_diniyyah',
 ] as const;
@@ -51,7 +53,9 @@ export function sanitizeFormasiPayload(data: Partial<FormasiKelas>): Record<stri
   clean.domisili = data.domisili || '';
   clean.lokasi_takror = data.lokasi_takror || '';
   clean.lokasi_diniyyah = data.lokasi_diniyyah || '';
-  clean.blok = data.blok || '';
+  clean.blok = data.blok || data.blok_diniyyah || '';
+  clean.blok_diniyyah = data.blok_diniyyah || data.blok || '';
+  clean.blok_takror = data.blok_takror || '';
   clean.foto_takror = data.foto_takror || '';
   clean.foto_diniyyah = data.foto_diniyyah || '';
 
@@ -109,6 +113,10 @@ interface FormasiState {
     editGroupName?: string | null
   ) => void;
   closeBlokModal: () => void;
+  isHierarkiModalOpen: boolean;
+  hierarkiModalDefaultCategory: 'diniyyah' | 'takror';
+  openHierarkiModal: (category?: 'diniyyah' | 'takror') => void;
+  closeHierarkiModal: () => void;
 
   setHiddenColumns: (cols: number[]) => void;
   setCustomFilters: (filters: Partial<FormasiState['customFilters']>) => void;
@@ -158,6 +166,8 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
   blokModalPreselectedIds: [],
   blokModalEditGroupName: null,
   savedBlokGroups: [],
+  isHierarkiModalOpen: false,
+  hierarkiModalDefaultCategory: 'diniyyah',
 
   hiddenColumns: [],
   customFilters: {},
@@ -242,8 +252,22 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
   openFotoModal: (data) => set({ isFotoModalOpen: true, fotoModalData: data }),
   closeFotoModal: () => set({ isFotoModalOpen: false, fotoModalData: null }),
 
+  openHierarkiModal: (category = 'diniyyah') =>
+    set({
+      isHierarkiModalOpen: true,
+      hierarkiModalDefaultCategory: category,
+      isBlokModalOpen: true,
+    }),
+  closeHierarkiModal: () =>
+    set({
+      isHierarkiModalOpen: false,
+      isBlokModalOpen: false,
+    }),
+
   openBlokModal: (defaultGender = null, preselectedIds = [], editGroupName = null) =>
     set({
+      isHierarkiModalOpen: true,
+      hierarkiModalDefaultCategory: 'diniyyah',
       isBlokModalOpen: true,
       blokModalDefaultGender: defaultGender || null,
       blokModalPreselectedIds: preselectedIds || [],
@@ -251,6 +275,7 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
     }),
   closeBlokModal: () =>
     set({
+      isHierarkiModalOpen: false,
       isBlokModalOpen: false,
       blokModalDefaultGender: null,
       blokModalPreselectedIds: [],
@@ -267,10 +292,22 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
       const payload = sanitizeFormasiPayload(data);
 
       if (isEdit && id) {
-        const { error } = await supabase
+        let { error } = await supabase
           .from('formasi_kelas')
           .update(payload)
           .eq('id', id);
+
+        // Fallback anggun jika kolom baru di PostgreSQL belum dieksekusi via migrasi SQL
+        if (error && error.code === 'PGRST204') {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { blok_diniyyah, blok_takror, ...legacyPayload } = payload;
+          const retry = await supabase
+            .from('formasi_kelas')
+            .update(legacyPayload)
+            .eq('id', id);
+          error = retry.error;
+        }
+
         if (error) {
           if (error.code === '23505') throw new Error('Kombinasi Tingkat, Kelas, Bagian, dan Gender duplikat!');
           throw error;
@@ -280,9 +317,20 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
           `Mengubah formasi kelas: ${payload.tingkat} ${payload.din_kls}${payload.din_bag} (${payload.pa_pi})`
         );
       } else {
-        const { error } = await supabase
+        let { error } = await supabase
           .from('formasi_kelas')
           .insert([payload]);
+
+        // Fallback anggun jika kolom baru di PostgreSQL belum dieksekusi via migrasi SQL
+        if (error && error.code === 'PGRST204') {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { blok_diniyyah, blok_takror, ...legacyPayload } = payload;
+          const retry = await supabase
+            .from('formasi_kelas')
+            .insert([legacyPayload]);
+          error = retry.error;
+        }
+
         if (error) {
           if (error.code === '23505') throw new Error('Kombinasi Tingkat, Kelas, Bagian, dan Gender duplikat!');
           throw error;

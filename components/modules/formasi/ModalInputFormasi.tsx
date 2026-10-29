@@ -7,7 +7,9 @@ import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { FormasiKelas } from '@/types/formasi';
 import { compressImageFile } from '@/lib/utils/image';
 import { VALID_JAH_WALIKELAS, norm } from '@/lib/utils/formasiSync';
-import { Save, Camera, Trash2, Building, RefreshCw, Star } from 'lucide-react';
+import { Save, Camera, Trash2, Building, RefreshCw, Star, MapPin } from 'lucide-react';
+import { loadHierarkiKbm, findBlokFromLokasi } from '@/lib/services/hierarchy-service';
+import { HierarkiBlokKBMConfig } from '@/types/formasi';
 
 export default function ModalInputFormasi({
   gender,
@@ -36,11 +38,14 @@ export default function ModalInputFormasi({
     domisili: '',
     lokasi_diniyyah: '',
     lokasi_takror: '',
+    blok_diniyyah: '',
+    blok_takror: '',
     blok: '',
     foto_takror: '',
     foto_diniyyah: '',
   });
 
+  const [hierarkiConfig, setHierarkiConfig] = useState<HierarkiBlokKBMConfig | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [compressingTakror, setCompressingTakror] = useState(false);
   const [compressingDiniyyah, setCompressingDiniyyah] = useState(false);
@@ -51,6 +56,12 @@ export default function ModalInputFormasi({
   useEffect(() => {
     if (asatidzList.length === 0) fetchAsatidz();
   }, [fetchAsatidz, asatidzList.length]);
+
+  useEffect(() => {
+    if (isInputModalOpen) {
+      loadHierarkiKbm().then((cfg) => setHierarkiConfig(cfg));
+    }
+  }, [isInputModalOpen]);
 
   useEffect(() => {
     if (editFormasiData) {
@@ -65,6 +76,8 @@ export default function ModalInputFormasi({
         domisili: editFormasiData.domisili || '',
         lokasi_diniyyah: editFormasiData.lokasi_diniyyah || '',
         lokasi_takror: editFormasiData.lokasi_takror || '',
+        blok_diniyyah: editFormasiData.blok_diniyyah || editFormasiData.blok || '',
+        blok_takror: editFormasiData.blok_takror || '',
         blok: editFormasiData.blok || '',
         foto_takror: editFormasiData.foto_takror || '',
         foto_diniyyah: editFormasiData.foto_diniyyah || '',
@@ -81,12 +94,39 @@ export default function ModalInputFormasi({
         domisili: '',
         lokasi_diniyyah: '',
         lokasi_takror: '',
+        blok_diniyyah: '',
+        blok_takror: '',
         blok: '',
         foto_takror: '',
         foto_diniyyah: '',
       });
     }
   }, [editFormasiData, isInputModalOpen, gender, inputModalDefaultGender]);
+
+  // Ekstraksi opsi lokasi dan blok dari hierarki
+  const lokasiTakrorOptions = React.useMemo(() => {
+    if (!hierarkiConfig?.takror) return [];
+    const set = new Set<string>();
+    hierarkiConfig.takror.forEach((b) => b.lokasiList.forEach((l) => set.add(l)));
+    return Array.from(set);
+  }, [hierarkiConfig]);
+
+  const lokasiDiniyyahOptions = React.useMemo(() => {
+    if (!hierarkiConfig?.diniyyah) return [];
+    const set = new Set<string>();
+    hierarkiConfig.diniyyah.forEach((b) => b.lokasiList.forEach((l) => set.add(l)));
+    return Array.from(set);
+  }, [hierarkiConfig]);
+
+  const blokTakrorOptions = React.useMemo(() => {
+    if (!hierarkiConfig?.takror) return [];
+    return hierarkiConfig.takror.map((b) => b.namaBlok);
+  }, [hierarkiConfig]);
+
+  const blokDiniyyahOptions = React.useMemo(() => {
+    if (!hierarkiConfig?.diniyyah) return [];
+    return hierarkiConfig.diniyyah.map((b) => b.namaBlok);
+  }, [hierarkiConfig]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -96,7 +136,27 @@ export default function ModalInputFormasi({
       const checked = (e.target as HTMLInputElement).checked;
       setFormData((prev) => ({ ...prev, [name]: checked }));
     } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      setFormData((prev) => {
+        const next = { ...prev, [name]: value };
+
+        // Autofill Blok Takror jika Lokasi Takror berubah dan cocok dengan hierarki
+        if (name === 'lokasi_takror' && value && hierarkiConfig) {
+          const autoBlok = findBlokFromLokasi('takror', value, hierarkiConfig);
+          if (autoBlok && !prev.blok_takror) {
+            next.blok_takror = autoBlok;
+          }
+        }
+
+        // Autofill Blok Diniyyah jika Lokasi Diniyyah berubah dan cocok dengan hierarki
+        if (name === 'lokasi_diniyyah' && value && hierarkiConfig) {
+          const autoBlok = findBlokFromLokasi('diniyyah', value, hierarkiConfig);
+          if (autoBlok && !prev.blok_diniyyah) {
+            next.blok_diniyyah = autoBlok;
+          }
+        }
+
+        return next;
+      });
     }
   };
 
@@ -158,6 +218,9 @@ export default function ModalInputFormasi({
           Math.max(Number(formData.kapasitas_maksimal) || 80, 1),
           80
         ),
+        blok_diniyyah: formData.blok_diniyyah || '',
+        blok_takror: formData.blok_takror || '',
+        blok: formData.blok_diniyyah || formData.blok_takror || formData.blok || '',
       },
       isEdit,
       editFormasiData?.id
@@ -311,48 +374,226 @@ export default function ModalInputFormasi({
           </div>
         </div>
 
-        {/* Row 4: Lokal Takror, Lokasi Diniyyah, Blok */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Lokal Takror
-            </label>
-            <input
-              type="text"
-              name="lokasi_takror"
-              value={formData.lokasi_takror || ''}
-              onChange={handleChange}
-              placeholder="Contoh: Musholla Al-Falah"
-              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-madin-600 focus:outline-none"
-            />
+        {/* Row 4: Hierarki Blok & Lokasi Ruang (Takror & Diniyyah) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+          {/* Card Takror (Belajar Sore) */}
+          <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/40 space-y-2.5">
+            <div className="flex items-center justify-between pb-1.5 border-b border-amber-200/80">
+              <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                <Building className="w-3.5 h-3.5 text-amber-700" />
+                <span>Hierarki Takror (Sore)</span>
+              </span>
+              <span className="text-[10px] text-amber-800 font-semibold bg-amber-100 px-2 py-0.5 rounded">
+                Blok &gt; Lokasi
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                  Lokasi Ruang Takror
+                </label>
+                <input
+                  type="text"
+                  list="listLokasiTakrorInput"
+                  name="lokasi_takror"
+                  value={formData.lokasi_takror || ''}
+                  onChange={handleChange}
+                  placeholder="Ketik / pilih ruang..."
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                />
+                <datalist id="listLokasiTakrorInput">
+                  {lokasiTakrorOptions.map((loc) => (
+                    <option key={loc} value={loc} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Blok Takror</span>
+                  <span className="text-[10px] text-amber-700 font-normal">Otomatis dari hierarki</span>
+                </label>
+                <input
+                  type="text"
+                  list="listBlokTakrorInput"
+                  name="blok_takror"
+                  value={formData.blok_takror || ''}
+                  onChange={handleChange}
+                  placeholder="Contoh: Blok 1 / Induk"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-amber-300/80 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white font-medium"
+                />
+                <datalist id="listBlokTakrorInput">
+                  {blokTakrorOptions.map((blk) => (
+                    <option key={blk} value={blk} />
+                  ))}
+                </datalist>
+              </div>
+
+              {/* Foto Takror */}
+              <div className="pt-2 border-t border-amber-100">
+                <span className="block text-[11px] font-semibold text-slate-700 mb-1">
+                  Foto Lokal Takror
+                </span>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-12 h-12 rounded-lg border border-slate-300 bg-white flex items-center justify-center overflow-hidden flex-shrink-0 relative">
+                    {formData.foto_takror ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={formData.foto_takror}
+                        alt="Foto Takror"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Building className="w-5 h-5 text-slate-300" />
+                    )}
+                    {compressingTakror && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-[8px]">
+                        Kompres...
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="file"
+                      ref={fileTakrorRef}
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFotoUpload(e, 'takror')}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileTakrorRef.current?.click()}
+                      className="px-2 py-1 text-[11px] font-semibold rounded-md border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 shadow-2xs flex items-center gap-1"
+                    >
+                      <Camera className="w-3 h-3 text-slate-600" />
+                      <span>{formData.foto_takror ? 'Ganti' : 'Pilih Foto'}</span>
+                    </button>
+                    {formData.foto_takror && (
+                      <button
+                        type="button"
+                        onClick={() => handleHapusFoto('takror')}
+                        className="px-2 py-1 text-[11px] font-semibold rounded-md border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 shadow-2xs flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Hapus</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Lokasi Diniyyah
-            </label>
-            <input
-              type="text"
-              name="lokasi_diniyyah"
-              value={formData.lokasi_diniyyah || ''}
-              onChange={handleChange}
-              placeholder="Contoh: Gedung Madin Lt.2 R.04"
-              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-madin-600 focus:outline-none"
-            />
-          </div>
+          {/* Card Diniyyah (KBM Malam) */}
+          <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/40 space-y-2.5">
+            <div className="flex items-center justify-between pb-1.5 border-b border-emerald-200/80">
+              <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                <Building className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Hierarki Diniyyah (Malam)</span>
+              </span>
+              <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-100 px-2 py-0.5 rounded">
+                Blok &gt; Lokasi
+              </span>
+            </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Blok (Mandiri)
-            </label>
-            <input
-              type="text"
-              name="blok"
-              value={formData.blok || ''}
-              onChange={handleChange}
-              placeholder="Contoh: Induk / Blok 4"
-              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-madin-600 focus:outline-none"
-            />
+            <div className="space-y-2">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                  Lokasi Ruang Diniyyah
+                </label>
+                <input
+                  type="text"
+                  list="listLokasiDiniyyahInput"
+                  name="lokasi_diniyyah"
+                  value={formData.lokasi_diniyyah || ''}
+                  onChange={handleChange}
+                  placeholder="Ketik / pilih ruang..."
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white"
+                />
+                <datalist id="listLokasiDiniyyahInput">
+                  {lokasiDiniyyahOptions.map((loc) => (
+                    <option key={loc} value={loc} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Blok Diniyyah</span>
+                  <span className="text-[10px] text-emerald-700 font-normal">Otomatis dari hierarki</span>
+                </label>
+                <input
+                  type="text"
+                  list="listBlokDiniyyahInput"
+                  name="blok_diniyyah"
+                  value={formData.blok_diniyyah || ''}
+                  onChange={handleChange}
+                  placeholder="Contoh: Blok 1 / Induk"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-emerald-300/80 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white font-medium"
+                />
+                <datalist id="listBlokDiniyyahInput">
+                  {blokDiniyyahOptions.map((blk) => (
+                    <option key={blk} value={blk} />
+                  ))}
+                </datalist>
+              </div>
+
+              {/* Foto Diniyyah */}
+              <div className="pt-2 border-t border-emerald-100">
+                <span className="block text-[11px] font-semibold text-slate-700 mb-1">
+                  Foto Lokasi Diniyyah
+                </span>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-12 h-12 rounded-lg border border-slate-300 bg-white flex items-center justify-center overflow-hidden flex-shrink-0 relative">
+                    {formData.foto_diniyyah ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={formData.foto_diniyyah}
+                        alt="Foto Diniyyah"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Building className="w-5 h-5 text-slate-300" />
+                    )}
+                    {compressingDiniyyah && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-[8px]">
+                        Kompres...
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="file"
+                      ref={fileDiniyyahRef}
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFotoUpload(e, 'diniyyah')}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileDiniyyahRef.current?.click()}
+                      className="px-2 py-1 text-[11px] font-semibold rounded-md border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 shadow-2xs flex items-center gap-1"
+                    >
+                      <Camera className="w-3 h-3 text-slate-600" />
+                      <span>{formData.foto_diniyyah ? 'Ganti' : 'Pilih Foto'}</span>
+                    </button>
+                    {formData.foto_diniyyah && (
+                      <button
+                        type="button"
+                        onClick={() => handleHapusFoto('diniyyah')}
+                        className="px-2 py-1 text-[11px] font-semibold rounded-md border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 shadow-2xs flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Hapus</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -371,129 +612,6 @@ export default function ModalInputFormasi({
               Tandai sebagai Kelas Program Unggulan
             </span>
           </label>
-        </div>
-
-        {/* Row 5: Dual Foto Ruangan (Takror & Diniyyah) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-          {/* Foto Takror */}
-          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-            <span className="block text-xs font-bold text-slate-700">
-              Foto Lokal Takror
-            </span>
-
-            <div className="flex items-center gap-3">
-              <div className="w-16 h-16 rounded-lg border border-slate-300 bg-white flex items-center justify-center overflow-hidden flex-shrink-0 relative">
-                {formData.foto_takror ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={formData.foto_takror}
-                    alt="Foto Takror"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <Building className="w-6 h-6 text-slate-300" />
-                )}
-                {compressingTakror && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-[9px]">
-                    Kompres...
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-1.5 flex-1">
-                <input
-                  type="file"
-                  ref={fileTakrorRef}
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleFotoUpload(e, 'takror')}
-                />
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => fileTakrorRef.current?.click()}
-                    className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 shadow-2xs flex items-center gap-1"
-                  >
-                    <Camera className="w-3 h-3 text-slate-600" />
-                    <span>Pilih Foto</span>
-                  </button>
-                  {formData.foto_takror && (
-                    <button
-                      type="button"
-                      onClick={() => handleHapusFoto('takror')}
-                      className="px-2 py-1 text-[11px] font-semibold rounded-md border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 shadow-2xs flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      <span>Hapus</span>
-                    </button>
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-400">
-                  Otomatis dikompresi agar ringan.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Foto Diniyyah */}
-          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-            <span className="block text-xs font-bold text-slate-700">
-              Foto Lokasi Diniyyah
-            </span>
-
-            <div className="flex items-center gap-3">
-              <div className="w-16 h-16 rounded-lg border border-slate-300 bg-white flex items-center justify-center overflow-hidden flex-shrink-0 relative">
-                {formData.foto_diniyyah ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={formData.foto_diniyyah}
-                    alt="Foto Diniyyah"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <Building className="w-6 h-6 text-slate-300" />
-                )}
-                {compressingDiniyyah && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-[9px]">
-                    Kompres...
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-1.5 flex-1">
-                <input
-                  type="file"
-                  ref={fileDiniyyahRef}
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleFotoUpload(e, 'diniyyah')}
-                />
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => fileDiniyyahRef.current?.click()}
-                    className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 shadow-2xs flex items-center gap-1"
-                  >
-                    <Camera className="w-3 h-3 text-slate-600" />
-                    <span>Pilih Foto</span>
-                  </button>
-                  {formData.foto_diniyyah && (
-                    <button
-                      type="button"
-                      onClick={() => handleHapusFoto('diniyyah')}
-                      className="px-2 py-1 text-[11px] font-semibold rounded-md border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 shadow-2xs flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      <span>Hapus</span>
-                    </button>
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-400">
-                  Otomatis dikompresi agar ringan.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Action Buttons */}

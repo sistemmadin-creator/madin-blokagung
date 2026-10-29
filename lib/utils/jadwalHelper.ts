@@ -1,9 +1,10 @@
 import { LIST_HARI, HariKbm, ParsedSlotJadwal, TeacherJadwalRow, KelasKbmItem, SesiSlot } from '@/types/jadwal';
 import { ParsedSlotHariKBM } from '@/types/hari-kbm';
-import { Formasi } from '@/types/formasi';
+import { Formasi, HierarkiBlokKBMConfig } from '@/types/formasi';
 import { Asatidz } from '@/types/asatidz';
 import { FanConfigMap, FanPelajaranDetail } from '@/types/fan';
 import { parseFanItemString, isKelasUnggulan, cekKategoriJahAsatidz } from './fanHelper';
+import { findBlokFromLokasi } from '@/lib/services/hierarchy-service';
 
 export const HARI_KEYS_LOWER = ['sabtu', 'ahad', 'senin', 'selasa', 'rabu', 'kamis'] as const;
 
@@ -353,13 +354,16 @@ export function cariLokasiKelasHariKBM(
 }
 
 /**
- * Menentukan Blok Kelas dari sesi mengajar seorang Asatidz
+ * Menentukan Blok Kelas Diniyyah dari sesi mengajar seorang Asatidz
+ * Murni berdasarkan data Formasi Kelas (blok_diniyyah) dan Hierarki Lokasi Diniyyah,
+ * tanpa fallback ke kamar asrama pribadi guru/mustahiq.
  */
 export function dapatkanBlokDariSesiMengajar(
   slots: Array<{ kelas?: string; lokasi?: string }>,
-  asatidzObj: Asatidz | null | undefined,
-  formasiList: Formasi[],
-  asatidzList: Asatidz[]
+  asatidzObj?: Asatidz | null | undefined,
+  formasiList?: Formasi[],
+  asatidzList?: Asatidz[],
+  hierarkiConfig?: HierarkiBlokKBMConfig
 ): string {
   const firstSlot = Array.isArray(slots) && slots.length > 0 ? slots[0] : null;
 
@@ -367,7 +371,7 @@ export function dapatkanBlokDariSesiMengajar(
     const normKelas = normalisasiNamaKelas(firstSlot.kelas);
     const normLokasi = normalisasiNamaKelas(firstSlot.lokasi);
 
-    // 1. Cek pada master Formasi Kelas berdasarkan kelas atau lokasi
+    // 1. Cek pada master Formasi Kelas berdasarkan nama kelas atau lokasi ruang Diniyyah
     if (Array.isArray(formasiList) && formasiList.length > 0) {
       const matchFormasi = formasiList.find((f) => {
         const fNorm = normalisasiNamaKelas(`${f.din_kls} ${f.din_bag} ${f.tingkat}`);
@@ -380,39 +384,25 @@ export function dapatkanBlokDariSesiMengajar(
       });
 
       if (matchFormasi) {
-        const blokF = String(matchFormasi.blok || '').trim();
-        if (blokF && blokF !== '-') return blokF;
+        // Prioritas utama: blok_diniyyah (atau blok lama bila terisi)
+        const blokD = String(matchFormasi.blok_diniyyah || matchFormasi.blok || '').trim();
+        if (blokD && blokD !== '-') return blokD;
+
+        // Jika blok belum terisi di formasi, petakan lewat hierarki lokasi Diniyyah
+        const targetLokasi = matchFormasi.lokasi_diniyyah || firstSlot.lokasi;
+        if (targetLokasi) {
+          const blokH = findBlokFromLokasi('diniyyah', targetLokasi, hierarkiConfig);
+          if (blokH) return blokH;
+        }
       }
     }
 
-    // 2. Cek blok dari Mustahiq kelas yang diajar
-    if (normKelas && Array.isArray(asatidzList)) {
-      const guruMustahiq = asatidzList.find((a) => {
-        const jah = String(a.jah_asatidz || '').toLowerCase();
-        const isM =
-          jah.includes('mustahiq') ||
-          jah.includes('ms & koor') ||
-          jah.includes("isti'dad") ||
-          jah === 'ist';
-        if (!isM) return false;
-        const kNorm1 = normalisasiNamaKelas(
-          `${a.din_kls_asatidz || ''} ${a.din_bag_asatidz || ''} ${a.tingkat_asatidz || ''}`
-        );
-        const kNorm2 = normalisasiNamaKelas(
-          `${a.din_kls_asatidz || ''} ${a.din_bag_asatidz || ''} ${a.tingkat_asatidz || ''} (${a.pa_pi || ''})`
-        );
-        return kNorm1 === normKelas || kNorm2 === normKelas;
-      });
-
-      if (guruMustahiq && guruMustahiq.blok && String(guruMustahiq.blok).trim() !== '-') {
-        return String(guruMustahiq.blok).trim();
-      }
+    // 2. Jika tidak ada kecocokan formasi langsung, petakan lokasi sesi mengajar via hierarki Diniyyah
+    if (firstSlot.lokasi) {
+      const blokH = findBlokFromLokasi('diniyyah', firstSlot.lokasi, hierarkiConfig);
+      if (blokH) return blokH;
     }
   }
-
-  // 3. Fallback ke blok pribadi asatidz
-  const blokPribadi = String(asatidzObj?.blok || '').trim();
-  if (blokPribadi && blokPribadi !== '-') return blokPribadi;
 
   return 'Belum Diatur';
 }

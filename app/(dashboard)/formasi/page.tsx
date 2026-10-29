@@ -18,6 +18,7 @@ import {
   Star,
   ChevronDown,
   Building,
+  FolderTree,
 } from 'lucide-react';
 import ModalInputFormasi from '@/components/modules/formasi/ModalInputFormasi';
 import ModalDetailFormasi from '@/components/modules/formasi/ModalDetailFormasi';
@@ -25,7 +26,7 @@ import ModalGeneratorFormasi from '@/components/modules/formasi/ModalGeneratorFo
 import ModalFilterFormasi from '@/components/modules/formasi/ModalFilterFormasi';
 import ModalHideFormasi from '@/components/modules/formasi/ModalHideFormasi';
 import ModalFotoFormasi from '@/components/modules/formasi/ModalFotoFormasi';
-import ModalPengaturanBlokKelas from '@/components/modules/formasi/ModalPengaturanBlokKelas';
+import ModalHierarkiBlokKBM from '@/components/modules/formasi/ModalHierarkiBlokKBM';
 
 export default function FormasiMasterPage() {
   const {
@@ -38,6 +39,10 @@ export default function FormasiMasterPage() {
     openHideModal,
     openFotoModal,
     openBlokModal,
+    isHierarkiModalOpen,
+    hierarkiModalDefaultCategory,
+    openHierarkiModal,
+    closeHierarkiModal,
     deleteFormasi,
     bulkDeleteFormasi,
     hiddenColumns,
@@ -84,6 +89,8 @@ export default function FormasiMasterPage() {
         domisili_sync: syncInfo.domisili,
         takror_sync: syncInfo.lokasiTakror,
         diniyyah_sync: syncInfo.lokasiDiniyyah,
+        blok_takror_sync: syncInfo.blokTakror,
+        blok_diniyyah_sync: syncInfo.blokDiniyyah,
         foto_takror_sync: syncInfo.fotoTakror,
         foto_diniyyah_sync: syncInfo.fotoDiniyyah,
       };
@@ -109,14 +116,14 @@ export default function FormasiMasterPage() {
         if (!dom.includes(customFilters.domisili.toLowerCase())) return false;
       }
       if (customFilters.blok) {
-        const blk = (f.blok || '').toLowerCase();
+        const blk = (f.blok_diniyyah || f.blok_diniyyah_sync || f.blok_takror || f.blok_takror_sync || f.blok || '').toLowerCase();
         if (!blk.includes(customFilters.blok.toLowerCase())) return false;
       }
 
       // 2. Keyword Search
       if (search.trim()) {
         const q = search.toLowerCase().trim();
-        const text = `${f.din_kls} ${f.din_bag} ${f.tingkat} ${f.pa_pi} ${f.wali_kelas_text} ${f.domisili_sync || ''} ${f.takror_sync || ''} ${f.diniyyah_sync || ''} ${f.blok || ''}`.toLowerCase();
+        const text = `${f.din_kls} ${f.din_bag} ${f.tingkat} ${f.pa_pi} ${f.wali_kelas_text} ${f.domisili_sync || ''} ${f.blok_takror || f.blok_takror_sync || ''} ${f.takror_sync || ''} ${f.blok_diniyyah || f.blok_diniyyah_sync || ''} ${f.diniyyah_sync || ''} ${f.blok || ''}`.toLowerCase();
         if (!text.includes(q)) return false;
       }
 
@@ -223,12 +230,12 @@ export default function FormasiMasterPage() {
 
           <button
             type="button"
-            onClick={() => openBlokModal('PA', selectedIds)}
-            className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 transition shadow-2xs flex items-center gap-1.5"
-            title="Kelola Pengaturan Blok Kelas Putra & Putri"
+            onClick={() => openHierarkiModal('diniyyah')}
+            className="px-3 py-1.5 text-xs font-bold rounded-lg border border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition shadow-2xs flex items-center gap-1.5"
+            title="Kelola Hierarki Blok KBM (Diniyyah & Takror)"
           >
-            <Building className="w-3.5 h-3.5 text-[#0f766e]" />
-            <span>Atur Blok</span>
+            <FolderTree className="w-3.5 h-3.5 text-[#0f766e]" />
+            <span>Hierarki Blok KBM</span>
           </button>
 
           <button
@@ -381,9 +388,10 @@ export default function FormasiMasterPage() {
                 {!isColHidden(5) && <th className="py-2.5 px-3 text-center">Kapasitas</th>}
                 {!isColHidden(6) && <th className="py-2.5 px-3">Wali Kelas</th>}
                 {!isColHidden(7) && <th className="py-2.5 px-3">Domisili</th>}
-                {!isColHidden(8) && <th className="py-2.5 px-3">Lokal Takror</th>}
-                {!isColHidden(9) && <th className="py-2.5 px-3">Lokasi Diniyyah</th>}
-                {!isColHidden(10) && <th className="py-2.5 px-3">Blok</th>}
+                {!isColHidden(8) && <th className="py-2.5 px-3">Blok Takror</th>}
+                {!isColHidden(9) && <th className="py-2.5 px-3">Lokal Takror</th>}
+                {!isColHidden(10) && <th className="py-2.5 px-3">Blok Diniyyah</th>}
+                {!isColHidden(11) && <th className="py-2.5 px-3">Lokasi Diniyyah</th>}
                 <th className="py-2.5 px-3 text-center w-20">Aksi</th>
               </tr>
             </thead>
@@ -498,8 +506,37 @@ export default function FormasiMasterPage() {
                         </td>
                       )}
 
-                      {/* 8. Lokal Takror */}
+                      {/* 8. Blok Takror */}
                       {!isColHidden(8) && (
+                        <td
+                          className="py-2.5 px-3"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {(f.blok_takror || f.blok_takror_sync) && (f.blok_takror || f.blok_takror_sync) !== '-' ? (
+                            <button
+                              type="button"
+                              onClick={() => openHierarkiModal('takror')}
+                              title="Kelola Hierarki Blok Takror"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-semibold transition"
+                            >
+                              <Building className="w-2.5 h-2.5 text-amber-700" />
+                              <span>{f.blok_takror || f.blok_takror_sync}</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openHierarkiModal('takror')}
+                              title="Buka Hierarki Blok Takror"
+                              className="text-slate-400 hover:text-slate-600 text-[11px] font-medium transition"
+                            >
+                              -
+                            </button>
+                          )}
+                        </td>
+                      )}
+
+                      {/* 9. Lokal Takror */}
+                      {!isColHidden(9) && (
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-1.5">
                             {(f.foto_takror_sync || f.foto_takror) && (
@@ -527,8 +564,37 @@ export default function FormasiMasterPage() {
                         </td>
                       )}
 
-                      {/* 9. Lokasi Diniyyah */}
-                      {!isColHidden(9) && (
+                      {/* 10. Blok Diniyyah */}
+                      {!isColHidden(10) && (
+                        <td
+                          className="py-2.5 px-3"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {(f.blok_diniyyah || f.blok_diniyyah_sync || f.blok) && (f.blok_diniyyah || f.blok_diniyyah_sync || f.blok) !== '-' ? (
+                            <button
+                              type="button"
+                              onClick={() => openHierarkiModal('diniyyah')}
+                              title="Kelola Hierarki Blok Diniyyah"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[11px] font-semibold transition"
+                            >
+                              <Building className="w-2.5 h-2.5 text-emerald-700" />
+                              <span>{f.blok_diniyyah || f.blok_diniyyah_sync || f.blok}</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openHierarkiModal('diniyyah')}
+                              title="Buka Hierarki Blok Diniyyah"
+                              className="text-slate-400 hover:text-slate-600 text-[11px] font-medium transition"
+                            >
+                              -
+                            </button>
+                          )}
+                        </td>
+                      )}
+
+                      {/* 11. Lokasi Diniyyah */}
+                      {!isColHidden(11) && (
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-1.5">
                             {(f.foto_diniyyah_sync || f.foto_diniyyah) && (
@@ -553,35 +619,6 @@ export default function FormasiMasterPage() {
                               {f.diniyyah_sync || f.lokasi_diniyyah || '-'}
                             </span>
                           </div>
-                        </td>
-                      )}
-
-                      {/* 10. Blok */}
-                      {!isColHidden(10) && (
-                        <td
-                          className="py-2.5 px-3"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {f.blok ? (
-                            <button
-                              type="button"
-                              onClick={() => openBlokModal(f.pa_pi, [], f.blok)}
-                              title="Klik untuk mengedit grup blok ini"
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[11px] font-semibold transition"
-                            >
-                              <Building className="w-2.5 h-2.5" />
-                              <span>{f.blok}</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => openBlokModal(f.pa_pi, f.id ? [f.id] : [])}
-                              title="Masukkan kelas ini ke grup blok"
-                              className="text-slate-400 hover:text-slate-700 text-[11px] font-medium transition"
-                            >
-                              -
-                            </button>
-                          )}
                         </td>
                       )}
 
@@ -657,7 +694,11 @@ export default function FormasiMasterPage() {
       <ModalFilterFormasi isOpen={isFilterModalOpen} onClose={closeFilterModal} />
       <ModalHideFormasi isOpen={isHideModalOpen} onClose={closeHideModal} />
       <ModalFotoFormasi />
-      <ModalPengaturanBlokKelas />
+      <ModalHierarkiBlokKBM
+        isOpen={isHierarkiModalOpen}
+        onClose={closeHierarkiModal}
+        defaultCategory={hierarkiModalDefaultCategory}
+      />
     </div>
   );
 }

@@ -139,6 +139,34 @@ describe('Formasi Kelas Payload Sanitization & Kelas Unggulan', () => {
       expect(result.kapasitas_maksimal).toBe(80); // Max 80
       expect(result.din_bag).toBe('C');
     });
+
+    it('harus memproses blok_diniyyah dan blok_takror serta sinkronisasi fallback blok', () => {
+      const dataWithHierarki = sanitizeFormasiPayload({
+        tingkat: 'ULA',
+        din_kls: '1',
+        din_bag: 'A',
+        pa_pi: 'PA',
+        blok_diniyyah: 'Blok Induk',
+        blok_takror: 'Blok 6',
+        lokasi_diniyyah: 'Asrama Al-Barokah Bawah',
+        lokasi_takror: 'Masjid Lt.3 R.10',
+      });
+
+      expect(dataWithHierarki.blok_diniyyah).toBe('Blok Induk');
+      expect(dataWithHierarki.blok_takror).toBe('Blok 6');
+      expect(dataWithHierarki.blok).toBe('Blok Induk'); // Fallback compatibility
+
+      // Uji fallback jika hanya blok yang dikirim
+      const dataLegacy = sanitizeFormasiPayload({
+        tingkat: 'ULA',
+        din_kls: '1',
+        din_bag: 'B',
+        blok: 'Blok 4',
+      });
+      expect(dataLegacy.blok_diniyyah).toBe('Blok 4');
+      expect(dataLegacy.blok).toBe('Blok 4');
+      expect(dataLegacy.blok_takror).toBe('');
+    });
   });
 
   describe('2.0 saveFormasi Store Method', () => {

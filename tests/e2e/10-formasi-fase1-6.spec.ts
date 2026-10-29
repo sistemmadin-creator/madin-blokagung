@@ -98,8 +98,8 @@ test.describe('Formasi Kelas Phase 1-6 Full Verification', () => {
     const targetRow = page.locator('tbody tr', { hasText: '1 A ULA' });
     await expect(targetRow).toBeVisible({ timeout: 15_000 });
 
-    // Klik baris formasi
-    await targetRow.click();
+    // Klik cell KELAS pada baris formasi
+    await targetRow.locator('td').nth(1).click();
 
     // Modal detail muncul
     await expect(page.getByRole('heading', { name: /Detail Formasi Kelas/i })).toBeVisible();

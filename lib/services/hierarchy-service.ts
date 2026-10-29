@@ -604,3 +604,217 @@ export function parseTree2Options(
     bags: Array.from(bagSet),
   };
 }
+
+// ============================================================================
+// HIERARKI BLOK KBM (DINIYYAH & TAKROR)
+// ============================================================================
+
+export interface HierarkiBlokKBM {
+  namaBlok: string;
+  lokasiList: string[];
+}
+
+export interface MasterHierarkiKBM {
+  diniyyah: HierarkiBlokKBM[];
+  takror: HierarkiBlokKBM[];
+}
+
+export const DEFAULT_HIERARKI_KBM: MasterHierarkiKBM = {
+  diniyyah: [
+    {
+      namaBlok: 'Blok Induk',
+      lokasiList: [
+        'Asrama Al-Barokah Bawah',
+        'Asrama Al-Falah Timur',
+        'Asrama Al-Falah Dalam',
+        'Asrama Al-Qohiroh Barat',
+        'Asrama Al-Qohiroh Timur',
+        'Asrama Al-Qohiroh Dalam',
+        'Aula Bir Aly',
+        'Asrama As-Salafiyyah',
+      ],
+    },
+    {
+      namaBlok: 'Blok 6',
+      lokasiList: [
+        'Masjid Lt.3 R.10',
+        'Asrama Al-Hikmah Bawah',
+        'Asrama Al-Hikmah Atas',
+        'Masjid Lt.2',
+        'Asrama Khulusunnajah',
+        'Asrama Al-Mujahidin',
+        'Asrama Al-Khoiriyyah',
+      ],
+    },
+    {
+      namaBlok: 'Blok 4',
+      lokasiList: [
+        'Komplek D R.01',
+        'Komplek D R.02',
+        'Asrama An-Nahdloh',
+        'Asrama Al-Hambran',
+      ],
+    },
+    {
+      namaBlok: 'Blok Putri',
+      lokasiList: [
+        'GP 4 C. 06',
+        'GP 4 C. 07',
+        'GP 4 C. 08',
+        'GP 1 B',
+        'GP 6 B. 03',
+        'GP 6 B. 04',
+        'Gp 5 utara C. 01',
+        'Gp 5 utara C. 02',
+        'Teras Asr. AB',
+      ],
+    },
+  ],
+  takror: [
+    {
+      namaBlok: 'Blok Induk',
+      lokasiList: [
+        'Asrama Al-Barokah Bawah',
+        'Asrama Al-Falah Timur',
+        'Asrama Al-Falah Dalam',
+        'Asrama Al-Qohiroh Barat',
+        'Asrama Al-Qohiroh Timur',
+        'Asrama Al-Qohiroh Dalam',
+      ],
+    },
+    {
+      namaBlok: 'Blok 6',
+      lokasiList: [
+        'Masjid Lt.3 R.10',
+        'Asr. H',
+        'Asrama Al-Hikmah Bawah',
+        'N. 07',
+        'N. 09',
+        'TMB Bag. tengah',
+        'Aula Aziziyyah 3',
+      ],
+    },
+    {
+      namaBlok: 'Blok Putri',
+      lokasiList: [
+        'Teras SQ',
+        'Teras Asr. AB',
+        'N. 01',
+        'N. 02',
+        'N. 04',
+        'N. 05',
+        'X. 09',
+      ],
+    },
+  ],
+};
+
+const LOCAL_STORAGE_KEY_KBM_HIERARCHY = 'madin_kbm_hierarchy_rules';
+
+export async function loadHierarkiKbm(): Promise<MasterHierarkiKBM> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'HIERARKI_LOKASI_KBM')
+      .maybeSingle();
+
+    if (!error && data?.value) {
+      const val = data.value;
+      if (Array.isArray(val.diniyyah) && Array.isArray(val.takror)) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(LOCAL_STORAGE_KEY_KBM_HIERARCHY, JSON.stringify(val));
+        }
+        return val;
+      }
+    }
+  } catch {
+    // Supabase offline/error fallback
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY_KBM_HIERARCHY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.diniyyah) && Array.isArray(parsed.takror)) {
+          return parsed;
+        }
+      }
+    } catch {
+      // LocalStorage error
+    }
+  }
+
+  return DEFAULT_HIERARKI_KBM;
+}
+
+export async function saveHierarkiKbm(data: MasterHierarkiKBM): Promise<void> {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LOCAL_STORAGE_KEY_KBM_HIERARCHY, JSON.stringify(data));
+  }
+
+  try {
+    const supabase = createClient();
+    await supabase.from('app_settings').upsert(
+      [
+        {
+          key: 'HIERARKI_LOKASI_KBM',
+          value: {
+            ...data,
+            updated_at: new Date().toISOString(),
+          },
+        },
+      ],
+      { onConflict: 'key' }
+    );
+  } catch (err) {
+    console.error('Failed to save HIERARKI_LOKASI_KBM to Supabase:', err);
+  }
+}
+
+export function findBlokFromLokasi(
+  arg1: string | null | undefined,
+  arg2: 'diniyyah' | 'takror' | string | null | undefined,
+  masterTree: MasterHierarkiKBM = DEFAULT_HIERARKI_KBM
+): string {
+  let type: 'diniyyah' | 'takror' = 'diniyyah';
+  let lokasi = '';
+
+  if (arg1 === 'diniyyah' || arg1 === 'takror') {
+    type = arg1;
+    lokasi = String(arg2 || '');
+  } else {
+    lokasi = String(arg1 || '');
+    if (arg2 === 'diniyyah' || arg2 === 'takror') {
+      type = arg2;
+    }
+  }
+
+  if (!lokasi || !lokasi.trim() || lokasi.trim() === '-') return '';
+  const clean = lokasi.trim().toLowerCase();
+  const tree = masterTree || DEFAULT_HIERARKI_KBM;
+  const list = type === 'diniyyah' ? tree.diniyyah || [] : tree.takror || [];
+
+  for (const group of list) {
+    for (const r of group.lokasiList) {
+      if (r.trim().toLowerCase() === clean) {
+        return group.namaBlok;
+      }
+    }
+  }
+
+  // Fallback pencocokan parsial
+  for (const group of list) {
+    for (const r of group.lokasiList) {
+      const rLower = r.trim().toLowerCase();
+      if (clean.includes(rLower) || rLower.includes(clean)) {
+        return group.namaBlok;
+      }
+    }
+  }
+
+  return '';
+}
+

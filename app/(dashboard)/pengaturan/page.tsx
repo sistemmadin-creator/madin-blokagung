@@ -11,10 +11,12 @@ import {
   BookOpen,
   Award,
   ChevronRight,
+  FolderTree,
 } from 'lucide-react';
 import SidebarConfigEditor from '@/components/modules/settings/SidebarConfigEditor';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
+import ModalHierarkiBlokKBM from '@/components/modules/formasi/ModalHierarkiBlokKBM';
 import CardAturanAkademik from '@/components/modules/settings/CardAturanAkademik';
 import CardAturanMuhafadzoh from '@/components/modules/settings/CardAturanMuhafadzoh';
 import CardAturanPiagam from '@/components/modules/settings/CardAturanPiagam';
@@ -29,6 +31,7 @@ function PengaturanContent() {
   const [activeTab, setActiveTab] = useState<TabKey>(tabParam);
   const [showHierarchyModal, setShowHierarchyModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
+  const [showHierarkiKbmModal, setShowHierarkiKbmModal] = useState(false);
 
   useEffect(() => {
     if (tabParam) {
@@ -69,6 +72,15 @@ function PengaturanContent() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            type="button"
+            data-testid="btn-open-hierarki-kbm-modal"
+            onClick={() => setShowHierarkiKbmModal(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold shadow-xs transition active:scale-95"
+          >
+            <FolderTree className="w-4 h-4 text-emerald-700" />
+            <span>Hierarki Blok KBM</span>
+          </button>
           <button
             type="button"
             data-testid="btn-open-hierarchy-modal"
@@ -291,11 +303,57 @@ function PengaturanContent() {
             </button>
           </div>
 
-          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 flex items-center gap-3">
-            <Sliders className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-            <span>
-              Modal hierarki dapat diakses langsung dari tombol di atas atau melalui dropdown navigasi profil navbar di pojok kanan atas.
-            </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <div className="p-5 rounded-xl border border-slate-200 bg-white shadow-2xs hover:border-emerald-300 transition flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                    <FolderTree className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-sm">Hierarki Blok KBM (Diniyyah &amp; Takror)</h3>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Kelola struktur zona wilayah KBM Diniyyah (Blok Diniyyah &gt; Lokasi) dan Belajar Takror (Blok Takror &gt; Lokasi).
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-emerald-700">app_settings (HIERARKI_LOKASI_KBM)</span>
+                <button
+                  type="button"
+                  data-testid="btn-open-hierarki-kbm-control"
+                  onClick={() => setShowHierarkiKbmModal(true)}
+                  className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+                >
+                  <FolderTree className="w-3.5 h-3.5" />
+                  <span>Atur Hierarki KBM</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-xl border border-slate-200 bg-white shadow-2xs hover:border-emerald-300 transition flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                    <Sliders className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-sm">Pohon Tingkat, Unit &amp; Kamar</h3>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Pembangun hierarki Tree 1 (Kamar Pondok) dan Tree 2 (Sekolah Formal &amp; Unit Madrasah).
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-emerald-700">app_settings (APP_SETTINGS)</span>
+                <button
+                  type="button"
+                  onClick={() => setShowHierarchyModal(true)}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+                >
+                  <Sliders className="w-3.5 h-3.5" />
+                  <span>Editor Tree 1 &amp; 2</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -350,6 +408,11 @@ function PengaturanContent() {
       )}
 
       {/* Modals */}
+      <ModalHierarkiBlokKBM
+        isOpen={showHierarkiKbmModal}
+        onClose={() => setShowHierarkiKbmModal(false)}
+      />
+
       <ModalHierarchyBuilder
         isOpen={showHierarchyModal}
         onClose={() => setShowHierarchyModal(false)}

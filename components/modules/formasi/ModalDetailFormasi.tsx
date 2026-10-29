@@ -174,8 +174,13 @@ export default function ModalDetailFormasi() {
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Blok Gedung:</span>
-                <span className="font-semibold text-slate-700">{f.blok || '-'}</span>
+                <span className="text-slate-500">Blok Diniyyah:</span>
+                <span className="font-semibold text-emerald-800">{f.blok_diniyyah || f.blok_diniyyah_sync || f.blok || '-'}</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Blok Takror:</span>
+                <span className="font-semibold text-amber-800">{f.blok_takror || f.blok_takror_sync || '-'}</span>
               </div>
             </div>
 
