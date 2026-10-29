@@ -156,12 +156,6 @@ export default function ModalDetailAsatidz() {
                 NIA: {selectedAsatidz.nia}
               </span>
 
-              {selectedAsatidz.nis && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-mono text-slate-600 bg-slate-200 border border-slate-300">
-                  NIS: {selectedAsatidz.nis}
-                </span>
-              )}
-
               {selectedAsatidz.jah_asatidz && (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300">
                   {selectedAsatidz.jah_asatidz}

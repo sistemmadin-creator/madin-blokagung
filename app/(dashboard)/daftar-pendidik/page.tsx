@@ -98,7 +98,7 @@ export default function DaftarPendidikPage() {
         const listCocok = grupCocok
           ? grp.asatidzList
           : grp.asatidzList.filter((a) => {
-              const fullText = `${a.nia || ''} ${a.nama_asatidz} ${a.jah_asatidz || ''} ${a.nis || ''}`.toLowerCase();
+              const fullText = `${a.nia || ''} ${a.nama_asatidz} ${a.jah_asatidz || ''}`.toLowerCase();
               return fullText.includes(q) || fullText.replace(/\s+/g, '').includes(qClean);
             });
         return { namaGrup: grp.namaGrup, asatidzList: listCocok };

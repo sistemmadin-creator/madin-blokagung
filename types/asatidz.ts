@@ -36,7 +36,6 @@ export interface AsatidzColumnConfig {
 export const ASATIDZ_TABLE_COLUMNS: AsatidzColumnConfig[] = [
   { key: 'no', label: 'NO', locked: true, defaultVisible: true },
   { key: 'foto', label: 'FOTO', defaultVisible: true },
-  { key: 'nis', label: 'NIS', defaultVisible: true },
   { key: 'nia', label: 'NIA', defaultVisible: true },
   { key: 'pa_pi', label: 'PA/PI', defaultVisible: true },
   { key: 'kelas_diniyyah', label: 'KELAS DINIYYAH', defaultVisible: true },

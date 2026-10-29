@@ -403,25 +403,10 @@ export default function ModalInputAsatidz() {
 
               {/* Form Input Identitas */}
               <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* NIS */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    NIS <span className="text-slate-400 text-[10px]">(eks-santri)</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="nis"
-                    value={formData.nis || ''}
-                    onChange={handleChange}
-                    placeholder="Opsional"
-                    className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-600 font-mono"
-                  />
-                </div>
-
                 {/* NIA dengan Prefix Selector */}
-                <div>
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    NIA (Nomor Induk) <span className="text-rose-500">*</span>
+                    NIA (Nomor Induk Asatidz) <span className="text-rose-500">*</span>
                   </label>
                   <div className="flex gap-1.5">
                     <select

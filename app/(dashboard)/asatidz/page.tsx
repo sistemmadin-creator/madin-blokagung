@@ -105,7 +105,6 @@ export default function AsatidzPage() {
         (a) =>
           (a.nama_asatidz && a.nama_asatidz.toLowerCase().includes(q)) ||
           (a.nia && a.nia.toLowerCase().includes(q)) ||
-          (a.nis && a.nis.toLowerCase().includes(q)) ||
           (a.kamar && a.kamar.toLowerCase().includes(q)) ||
           (a.asrama && a.asrama.toLowerCase().includes(q)) ||
           (a.blok && a.blok.toLowerCase().includes(q)) ||
@@ -164,7 +163,6 @@ export default function AsatidzPage() {
   const handleExport = () => {
     const exportRows = filteredData.map((a, idx) => ({
       No: idx + 1,
-      NIS: a.nis || '-',
       NIA: a.nia,
       'Nama Lengkap': a.nama_asatidz,
       'PA/PI': a.pa_pi,
@@ -409,11 +407,6 @@ export default function AsatidzPage() {
                   <th className="p-3 w-14 text-center whitespace-nowrap">FOTO</th>
                 )}
 
-                {/* NIS */}
-                {!hiddenColumns.includes('nis') && (
-                  <th className="p-3 text-center whitespace-nowrap">NIS</th>
-                )}
-
                 {/* NIA */}
                 {!hiddenColumns.includes('nia') && (
                   <th
@@ -594,13 +587,6 @@ export default function AsatidzPage() {
                               <User className="w-4 h-4" />
                             </div>
                           )}
-                        </td>
-                      )}
-
-                      {/* NIS */}
-                      {!hiddenColumns.includes('nis') && (
-                        <td className="p-3 text-center font-mono text-slate-500 whitespace-nowrap">
-                          {a.nis || '-'}
                         </td>
                       )}
 

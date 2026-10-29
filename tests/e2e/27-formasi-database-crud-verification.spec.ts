@@ -50,12 +50,12 @@ test.describe('Verifikasi E2E: Database CRUD Formasi Kelas & Sinkronisasi Rombel
     await page.goto('/formasi');
 
     const searchInput = page.getByPlaceholder(/Ketik pencarian/i);
-    await searchInput.fill('1 A ULA PA');
+    await searchInput.fill('1 C ULA PA');
 
-    // Pastikan baris ULA 1 A PA menampilkan Blok Diniyyah "Blok Putra Induk"
-    await expect(page.getByRole('button', { name: 'Blok Putra Induk' }).first()).toBeVisible({ timeout: 15_000 });
+    // Pastikan baris ULA 1 C PA menampilkan Blok Diniyyah "Blok Induk" yang telah dinormalisasi
+    await expect(page.getByRole('button', { name: 'Blok Induk' }).first()).toBeVisible({ timeout: 15_000 });
     // Pastikan Lokasi Diniyyah tampil
-    await expect(page.getByText('Asrama Al-Barokah Bawah').first()).toBeVisible();
+    await expect(page.getByText('Asrama Al-Falah Dalam').first()).toBeVisible();
   });
 
   test('3.0 Modul Absensi (/absensi): Memuat Data Blok Tanpa Error Kolom Legacy', async ({ page }) => {
