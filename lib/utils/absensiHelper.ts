@@ -308,34 +308,32 @@ export function ekstraksiSesiJadwalHariIni(
           const upperKurung = isiKurungAkhir.toUpperCase();
           if (upperKurung === 'PA' || upperKurung === 'PI' || upperKurung === 'UG') {
             kelasMengajar = formatTampilanKelas(rawLok);
-            lokasiRuang =
-              cariLokasiKelasHariKBM(kelasMengajar, masterStrukturKelasKBM, formasiList) ||
-              (jamNum === 4 ? lokTakMaster || lokDinMaster : lokDinMaster) ||
-              '-';
           } else {
             kelasMengajar = formatTampilanKelas(match[1].trim());
-            lokasiRuang =
-              isiKurungAkhir && isiKurungAkhir !== '-'
-                ? isiKurungAkhir
-                : cariLokasiKelasHariKBM(kelasMengajar, masterStrukturKelasKBM, formasiList) ||
-                  (jamNum === 4 ? lokTakMaster || lokDinMaster : lokDinMaster) ||
-                  '-';
+          }
+
+          // 1. Prioritas Utama: Lokasi resmi dari Formasi Kelas
+          const masterLokasi = cariLokasiKelasHariKBM(kelasMengajar, masterStrukturKelasKBM, formasiList);
+          if (masterLokasi && masterLokasi !== '-') {
+            lokasiRuang = masterLokasi;
+          } else if (masterLokasi === '-') {
+            lokasiRuang = '-';
+          } else if (upperKurung !== 'PA' && upperKurung !== 'PI' && upperKurung !== 'UG' && isiKurungAkhir && isiKurungAkhir !== '-') {
+            lokasiRuang = isiKurungAkhir;
+          } else {
+            lokasiRuang = '-';
           }
         } else {
           kelasMengajar = formatTampilanKelas(rawLok);
-          lokasiRuang =
-            cariLokasiKelasHariKBM(kelasMengajar, masterStrukturKelasKBM, formasiList) ||
-            (jamNum === 4 ? lokTakMaster || lokDinMaster : lokDinMaster) ||
-            '-';
+          const masterLokasi = cariLokasiKelasHariKBM(kelasMengajar, masterStrukturKelasKBM, formasiList);
+          lokasiRuang = masterLokasi || '-';
         }
       } else {
         if (dinKls !== '-' && dinBag !== '-' && tingkat !== '-') {
           kelasMengajar = `${dinKls} ${dinBag} ${tingkat}`;
         }
-        lokasiRuang =
-          cariLokasiKelasHariKBM(kelasMengajar, masterStrukturKelasKBM, formasiList) ||
-          (jamNum === 4 ? lokTakMaster || lokDinMaster : lokDinMaster) ||
-          '-';
+        const masterLokasi = cariLokasiKelasHariKBM(kelasMengajar, masterStrukturKelasKBM, formasiList);
+        lokasiRuang = masterLokasi || '-';
       }
 
       let tktSlot = tingkat;
@@ -409,10 +407,8 @@ export function ekstraksiSesiJadwalHariIni(
       const ownClassWithGender =
         gender && gender !== '-' ? `${ownClassBase} (${gender})` : ownClassBase;
 
-      const lokDin =
-        cariLokasiKelasHariKBM(ownClassWithGender, masterStrukturKelasKBM, formasiList) ||
-        lokDinMaster ||
-        '-';
+      const masterLokasi = cariLokasiKelasHariKBM(ownClassWithGender, masterStrukturKelasKBM, formasiList);
+      const lokDin = masterLokasi || '-';
       const lokTak = lokTakMaster || lokDin;
 
       let fansList: string[] = [];

@@ -328,25 +328,29 @@ export function cariLokasiKelasHariKBM(
   if (!namaKelas || namaKelas === '-') return '';
   const normTarget = normalisasiNamaKelas(namaKelas);
 
-  if (Array.isArray(masterStrukturKelasKBM) && masterStrukturKelasKBM.length > 0) {
-    const foundKbm = masterStrukturKelasKBM.find((k) => {
-      const kNorm = normalisasiNamaKelas(`${k.kls} ${k.bag} ${k.tingkat}`);
-      const kNormGen = normalisasiNamaKelas(`${k.kls} ${k.bag} ${k.tingkat} (${k.papi})`);
-      return kNorm === normTarget || kNormGen === normTarget;
-    });
-    if (foundKbm && foundKbm.lokal && foundKbm.lokal !== '-') {
-      return foundKbm.lokal;
-    }
-  }
-
+  // 1. Prioritas Utama: Master Formasi Kelas (formasiList)
   if (Array.isArray(formasiList) && formasiList.length > 0) {
     const foundFormasi = formasiList.find((f) => {
       const fNorm = normalisasiNamaKelas(`${f.din_kls} ${f.din_bag} ${f.tingkat}`);
       const fNormGen = normalisasiNamaKelas(`${f.din_kls} ${f.din_bag} ${f.tingkat} (${f.pa_pi})`);
       return fNorm === normTarget || fNormGen === normTarget;
     });
-    if (foundFormasi && foundFormasi.lokasi_diniyyah && foundFormasi.lokasi_diniyyah !== '-') {
-      return foundFormasi.lokasi_diniyyah;
+    if (foundFormasi) {
+      return (foundFormasi.lokasi_diniyyah && foundFormasi.lokasi_diniyyah !== '-')
+        ? foundFormasi.lokasi_diniyyah
+        : '-';
+    }
+  }
+
+  // 2. Fallback: Master Struktur Kelas KBM
+  if (Array.isArray(masterStrukturKelasKBM) && masterStrukturKelasKBM.length > 0) {
+    const foundKbm = masterStrukturKelasKBM.find((k) => {
+      const kNorm = normalisasiNamaKelas(`${k.kls} ${k.bag} ${k.tingkat}`);
+      const kNormGen = normalisasiNamaKelas(`${k.kls} ${k.bag} ${k.tingkat} (${k.papi})`);
+      return kNorm === normTarget || kNormGen === normTarget;
+    });
+    if (foundKbm) {
+      return (foundKbm.lokal && foundKbm.lokal !== '-') ? foundKbm.lokal : '-';
     }
   }
 
@@ -513,20 +517,30 @@ export function parseSlotHariKBM(
         const upperKurung = isiKurungAkhir.toUpperCase();
         if (upperKurung === 'PA' || upperKurung === 'PI' || upperKurung === 'UG') {
           namaKelas = formatTampilanKelas(rawLok);
-          lokasiRuang = cariLokasiKelasHariKBM(namaKelas, masterStrukturKelasKBM, formasiList) || defaultLokasiGuru || '-';
         } else {
           namaKelas = formatTampilanKelas(match[1].trim());
-          lokasiRuang =
-            isiKurungAkhir && isiKurungAkhir !== '-'
-              ? isiKurungAkhir
-              : cariLokasiKelasHariKBM(namaKelas, masterStrukturKelasKBM, formasiList) || defaultLokasiGuru || '-';
+        }
+
+        // 1. Prioritas Utama: Lokasi resmi dari Formasi Kelas
+        const masterLokasi = cariLokasiKelasHariKBM(namaKelas, masterStrukturKelasKBM, formasiList);
+        if (masterLokasi && masterLokasi !== '-') {
+          lokasiRuang = masterLokasi;
+        } else if (masterLokasi === '-') {
+          // Kelas terdaftar di formasi kelas namun lokasinya belum diisi/masih kosong
+          lokasiRuang = '-';
+        } else if (upperKurung !== 'PA' && upperKurung !== 'PI' && upperKurung !== 'UG' && isiKurungAkhir && isiKurungAkhir !== '-') {
+          // 2. Fallback ke teks kurung lama hanya jika kelas tidak terdaftar di formasi
+          lokasiRuang = isiKurungAkhir;
+        } else {
+          lokasiRuang = '-';
         }
       } else {
         namaKelas = formatTampilanKelas(rawLok);
-        lokasiRuang = cariLokasiKelasHariKBM(namaKelas, masterStrukturKelasKBM, formasiList) || defaultLokasiGuru || '-';
+        const masterLokasi = cariLokasiKelasHariKBM(namaKelas, masterStrukturKelasKBM, formasiList);
+        lokasiRuang = masterLokasi || '-';
       }
     } else {
-      lokasiRuang = defaultLokasiGuru || '-';
+      lokasiRuang = '-';
     }
 
     let tktSlot = defaultTingkat;
@@ -881,14 +895,14 @@ export function buildMasterStrukturKelasKBM(
         mustahiqNama: namaMustahiqFormasi || '-',
         mustahiqKG: profilMustahiq?.nia || '-',
         mustahiqJah: profilMustahiq?.jah_asatidz || 'Mustahiq',
-        lokal: f.lokasi_diniyyah || profilMustahiq?.lokasi_diniyyah || '-',
+        lokal: f.lokasi_diniyyah || '-',
         isUnggulan: isUg,
         jadwal: buatJadwalKosong(),
       });
     }
   });
 
-  // 2. Pindai dari master Asatidz untuk mengisi/melengkapi Mustahiq & Lokal
+  // 2. Pindai dari master Asatidz untuk mengisi/melengkapi Mustahiq
   (asatidzList || []).forEach((a) => {
     const tingkat = (a.tingkat_asatidz || '').trim().toUpperCase();
     const kls = (a.din_kls_asatidz || '').trim();
@@ -897,7 +911,6 @@ export function buildMasterStrukturKelasKBM(
     const nama = (a.nama_asatidz || '').trim();
     const nia = (a.nia || '').trim();
     const jah = (a.jah_asatidz || '').trim();
-    const lokDin = (a.lokasi_diniyyah || '').trim();
 
     if (tingkat && kls && bag) {
       const key = `${kls} ${bag} ${tingkat} (${papi || '-'})`;
@@ -912,7 +925,7 @@ export function buildMasterStrukturKelasKBM(
           mustahiqNama: '-',
           mustahiqKG: '-',
           mustahiqJah: '',
-          lokal: lokDin || '-',
+          lokal: '-',
           isUnggulan: isKelasUnggulan(namaKelasMurni, formasiList),
           jadwal: buatJadwalKosong(),
         });
@@ -930,9 +943,6 @@ export function buildMasterStrukturKelasKBM(
         item.mustahiqNama = nama;
         item.mustahiqKG = nia || '-';
         item.mustahiqJah = jah;
-        if (lokDin && lokDin !== '-') item.lokal = lokDin;
-      } else if (item.lokal === '-' && lokDin && lokDin !== '-') {
-        item.lokal = lokDin;
       }
     }
   });

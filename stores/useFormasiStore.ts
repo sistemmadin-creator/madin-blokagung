@@ -143,6 +143,101 @@ interface FormasiState {
   ) => Promise<{ inserted: number; skipped: number } | null>;
 }
 
+async function cascadeSyncLokasiKelas(
+  tingkat: string,
+  din_kls: string,
+  din_bag: string,
+  pa_pi: string,
+  lokasiDiniyyah?: string | null
+) {
+  try {
+    const baseKelas = `${din_kls} ${din_bag} ${tingkat} (${pa_pi})`;
+    const lokasiClean = (lokasiDiniyyah && lokasiDiniyyah !== '-') ? String(lokasiDiniyyah).trim() : '';
+    const newLokasi = lokasiClean ? `${baseKelas} (${lokasiClean})` : baseKelas;
+
+    // 1. Update tabel jadwal_kbm_slots jika tersedia
+    const slotQuery = supabase
+      .from('jadwal_kbm_slots' as any)
+      .select('id, jam, fan');
+    if (typeof (slotQuery as any).eq === 'function') {
+      const { data: slots } = await (slotQuery as any).eq('kelas_lengkap', baseKelas);
+      if (slots && slots.length > 0) {
+        for (const s of slots as any[]) {
+          const rawSlot = `Jam ${s.jam} | ${s.fan || '-'} | ${newLokasi}`;
+          await supabase
+            .from('jadwal_kbm_slots' as any)
+            .update({
+              lokasi: newLokasi,
+              raw_slot: rawSlot,
+            })
+            .eq('id', s.id);
+        }
+      }
+    }
+
+    // 2. Update app_settings JADWAL_MENGAJAR_ASATIDZ
+    const appQuery = supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'JADWAL_MENGAJAR_ASATIDZ');
+
+    let appData: any = null;
+    if (typeof (appQuery as any).maybeSingle === 'function') {
+      const res = await (appQuery as any).maybeSingle();
+      appData = res.data;
+    } else if (typeof (appQuery as any).single === 'function') {
+      const res = await (appQuery as any).single();
+      appData = res.data;
+    } else {
+      const res = await appQuery;
+      appData = Array.isArray(res?.data) ? res?.data[0] : res?.data;
+    }
+
+    if (appData?.value) {
+      const jMap = typeof appData.value === 'string' ? JSON.parse(appData.value) : appData.value;
+      let changed = false;
+      const days = ['sabtu', 'ahad', 'senin', 'selasa', 'rabu', 'kamis'];
+      const normTarget = baseKelas.replace(/\s+/g, ' ').toUpperCase();
+
+      for (const row of Object.values(jMap) as any[]) {
+        if (!row || typeof row !== 'object') continue;
+        for (const day of days) {
+          if (!row[day]) continue;
+          const lines = String(row[day]).split('\n');
+          const newLines = lines.map((line: string) => {
+            const parts = line.split('|').map((p: string) => p.trim());
+            if (parts.length >= 3) {
+              const rawLok = parts[2];
+              const match = rawLok.match(/^(.*?)\s*\(([^()]+)\)$/);
+              let kls = rawLok;
+              if (match) {
+                const inner = match[2].trim().toUpperCase();
+                if (inner !== 'PA' && inner !== 'PI' && inner !== 'UG') {
+                  kls = match[1].trim();
+                }
+              }
+              if (kls.replace(/\s+/g, ' ').toUpperCase() === normTarget) {
+                changed = true;
+                return `${parts[0]} | ${parts[1]} | ${newLokasi}`;
+              }
+            }
+            return line;
+          });
+          row[day] = newLines.join('\n');
+        }
+      }
+
+      if (changed) {
+        await supabase
+          .from('app_settings')
+          .upsert([{ key: 'JADWAL_MENGAJAR_ASATIDZ', value: jMap }], { onConflict: 'key' });
+      }
+    }
+  } catch (err) {
+    console.warn('Cascade sync formasi lokasi ke jadwal error:', err);
+  }
+}
+
 export const useFormasiStore = create<FormasiState>((set, get) => ({
   formasiList: [],
   isLoading: false,
@@ -317,6 +412,13 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
           `Membuat formasi kelas baru: ${payload.tingkat} ${payload.din_kls}${payload.din_bag} (${payload.pa_pi})`
         );
       }
+      await cascadeSyncLokasiKelas(
+        payload.tingkat,
+        payload.din_kls,
+        payload.din_bag,
+        payload.pa_pi,
+        payload.lokasi_diniyyah
+      );
       await get().fetchFormasi();
       return true;
     } catch (err: any) {
