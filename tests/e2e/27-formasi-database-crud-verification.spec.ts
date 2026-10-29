@@ -46,16 +46,27 @@ test.describe('Verifikasi E2E: Database CRUD Formasi Kelas & Sinkronisasi Rombel
     await expect(page.getByText('Tidak ada data formasi kelas yang cocok dengan filter.')).toBeVisible({ timeout: 10_000 });
   });
 
-  test('2.0 Formasi Master Page (/formasi): Blok Diniyyah & Lokasi Diniyyah Terisi Nyata', async ({ page }) => {
+  test('2.0 Formasi Master Page (/formasi): Kolom Domisili & Lokasi Bersih Siap Input Ulang', async ({ page }) => {
     await page.goto('/formasi');
 
     const searchInput = page.getByPlaceholder(/Ketik pencarian/i);
-    await searchInput.fill('1 C ULA PA');
+    await searchInput.fill('1 A ULA PA');
 
-    // Pastikan baris ULA 1 C PA menampilkan Blok Diniyyah "Blok Induk" yang telah dinormalisasi
-    await expect(page.getByRole('button', { name: 'Blok Induk' }).first()).toBeVisible({ timeout: 15_000 });
-    // Pastikan Lokasi Diniyyah tampil
-    await expect(page.getByText('Asrama Al-Falah Dalam').first()).toBeVisible();
+    // Pastikan baris ULA 1 A PA menampilkan Wali Kelas Fikrul Umam dan kolom lokasi berstatus bersih (-)
+    await expect(page.getByRole('cell', { name: 'FIKRUL UMAM AL HANIF' })).toBeVisible({ timeout: 15_000 });
+
+    // Klik tombol edit untuk membuka form input
+    const editBtn = page.getByTitle('Edit Formasi').first();
+    await editBtn.click();
+
+    // Verifikasi Modal Edit Formasi Kelas terbuka dan field lokasi kosong bersih siap diinput ulang
+    await expect(page.getByRole('heading', { name: /Edit Formasi Kelas/i })).toBeVisible();
+    const inputDomisili = page.getByPlaceholder(/Contoh: Asrama Al-Barokah/i);
+    await expect(inputDomisili).toBeVisible();
+    await expect(inputDomisili).toHaveValue('');
+
+    // Tutup modal
+    await page.getByRole('button', { name: 'Batal', exact: true }).click();
   });
 
   test('3.0 Modul Absensi (/absensi): Memuat Data Blok Tanpa Error Kolom Legacy', async ({ page }) => {

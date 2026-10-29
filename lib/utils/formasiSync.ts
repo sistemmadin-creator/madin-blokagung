@@ -46,13 +46,10 @@ export function getWaliKelasSyncInfo(f: Partial<FormasiKelas>, listAsatidz: Asat
 
   const primaryAsatidz = matchedAsatidz[0] || null;
 
-  const domisili =
-    f.domisili ||
-    (primaryAsatidz?.blok
-      ? `Blok ${primaryAsatidz.blok}${primaryAsatidz.asrama ? ' - ' + primaryAsatidz.asrama : ''}`
-      : '-');
-  const lokasiTakror = f.lokasi_takror || primaryAsatidz?.lokasi_takror || '-';
-  const lokasiDiniyyah = f.lokasi_diniyyah || primaryAsatidz?.lokasi_diniyyah || '-';
+  // Nilai murni dari Formasi Kelas (tanpa fallback pinjaman dari data pribadi asatidz)
+  const domisili = f.domisili || '-';
+  const lokasiTakror = f.lokasi_takror || '-';
+  const lokasiDiniyyah = f.lokasi_diniyyah || '-';
   const blokDiniyyah = f.blok_diniyyah || '-';
   const blokTakror = f.blok_takror || '-';
   const fotoTakror = f.foto_takror || '';

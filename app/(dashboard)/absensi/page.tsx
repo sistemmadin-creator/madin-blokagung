@@ -264,7 +264,14 @@ export default function AbsensiAsatidzPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sesiHariIni, getSesiStatusData, savedRecords, useAbsensiStore.getState().pendingStatus]);
 
-  // Daftar Blok unik untuk filter dropdown
+  // ============================================================================
+  // DATA TAB 2: RIWAYAT & REKAP DATA
+  // ============================================================================
+  const semuaRiwayatList = useMemo(() => {
+    return bangunDaftarRiwayatAbsensi(rawBucketMap, asatidzList, formasiList);
+  }, [rawBucketMap, asatidzList, formasiList]);
+
+  // Daftar Blok unik untuk filter dropdown (menggabungkan sesi hari ini, formasi, dan riwayat tersimpan)
   const daftarBlokUnik = useMemo(() => {
     const setBlok = new Set<string>();
     ([1, 2, 3, 4] as JamKbm[]).forEach((j) => {
@@ -276,8 +283,11 @@ export default function AbsensiAsatidzPage() {
       const blk = f.blok_diniyyah || f.blok_takror;
       if (blk && blk !== '-') setBlok.add(blk);
     });
+    semuaRiwayatList.forEach((item) => {
+      if (item.blok && item.blok !== '-') setBlok.add(item.blok);
+    });
     return Array.from(setBlok).sort((a, b) => bandingkanBlokHariKBM(a, b));
-  }, [sesiHariIni, formasiList]);
+  }, [sesiHariIni, formasiList, semuaRiwayatList]);
 
   // Handler filter per-jam
   const updateJamFilter = (jam: JamKbm, partial: Partial<JamFilterState>) => {
@@ -347,13 +357,6 @@ export default function AbsensiAsatidzPage() {
     ]);
     showToast('success', 'Data jadwal dan absensi berhasil disegarkan.');
   };
-
-  // ============================================================================
-  // DATA TAB 2: RIWAYAT & REKAP DATA
-  // ============================================================================
-  const semuaRiwayatList = useMemo(() => {
-    return bangunDaftarRiwayatAbsensi(rawBucketMap, asatidzList, formasiList);
-  }, [rawBucketMap, asatidzList, formasiList]);
 
   const filteredRiwayatList = useMemo(() => {
     return semuaRiwayatList.filter((item) => {
