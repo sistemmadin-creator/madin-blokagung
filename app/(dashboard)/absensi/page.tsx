@@ -273,7 +273,8 @@ export default function AbsensiAsatidzPage() {
       });
     });
     formasiList.forEach((f) => {
-      if (f.blok && f.blok !== '-') setBlok.add(f.blok);
+      const blk = f.blok_diniyyah || f.blok_takror;
+      if (blk && blk !== '-') setBlok.add(blk);
     });
     return Array.from(setBlok).sort((a, b) => bandingkanBlokHariKBM(a, b));
   }, [sesiHariIni, formasiList]);

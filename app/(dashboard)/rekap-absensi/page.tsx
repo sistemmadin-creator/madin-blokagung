@@ -115,12 +115,12 @@ function dapatkanBlokRekapAsatidz(
         .toUpperCase();
       return (fDin && fDin === normLok) || (fTak && fTak === normLok);
     });
+    const formasiBlok = foundFormasi?.blok_diniyyah || foundFormasi?.blok_takror;
     if (
-      foundFormasi &&
-      foundFormasi.blok &&
-      String(foundFormasi.blok).trim() !== '-'
+      formasiBlok &&
+      String(formasiBlok).trim() !== '-'
     ) {
-      return formatLabelBlokRekap(foundFormasi.blok);
+      return formatLabelBlokRekap(formasiBlok);
     }
   }
 
@@ -143,12 +143,12 @@ function dapatkanBlokRekapAsatidz(
           (!papi || String(f.pa_pi || '').trim().toUpperCase() === papi)
         );
       });
+      const klsBlok = foundKelas?.blok_diniyyah || foundKelas?.blok_takror;
       if (
-        foundKelas &&
-        foundKelas.blok &&
-        String(foundKelas.blok).trim() !== '-'
+        klsBlok &&
+        String(klsBlok).trim() !== '-'
       ) {
-        return formatLabelBlokRekap(foundKelas.blok);
+        return formatLabelBlokRekap(klsBlok);
       }
     }
   }
@@ -297,7 +297,7 @@ export default function RekapAbsensiPage() {
     const setJah = new Set<string>();
 
     (formasiList || []).forEach((f) => {
-      const blk = String(f.blok || '').trim();
+      const blk = String(f.blok_diniyyah || f.blok_takror || '').trim();
       if (blk && blk !== '-' && blk.toLowerCase() !== 'belum diatur') {
         setBlok.add(formatLabelBlokRekap(blk));
       }

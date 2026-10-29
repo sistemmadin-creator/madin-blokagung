@@ -27,7 +27,6 @@ export const ALLOWED_FORMASI_COLUMNS = [
   'domisili',
   'lokasi_takror',
   'lokasi_diniyyah',
-  'blok',
   'blok_diniyyah',
   'blok_takror',
   'foto_takror',
@@ -53,8 +52,7 @@ export function sanitizeFormasiPayload(data: Partial<FormasiKelas>): Record<stri
   clean.domisili = data.domisili || '';
   clean.lokasi_takror = data.lokasi_takror || '';
   clean.lokasi_diniyyah = data.lokasi_diniyyah || '';
-  clean.blok = data.blok || data.blok_diniyyah || '';
-  clean.blok_diniyyah = data.blok_diniyyah || data.blok || '';
+  clean.blok_diniyyah = data.blok_diniyyah || '';
   clean.blok_takror = data.blok_takror || '';
   clean.foto_takror = data.foto_takror || '';
   clean.foto_diniyyah = data.foto_diniyyah || '';
@@ -471,7 +469,7 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
       const idsToClear = currentList
         .filter((f) => {
           if (f.pa_pi !== gender || !f.id) return false;
-          const fBlokUpper = String(f.blok || '').trim().toUpperCase();
+          const fBlokUpper = String(f.blok_diniyyah || '').trim().toUpperCase();
           const wasInGroup =
             (oldUpper && fBlokUpper === oldUpper) || fBlokUpper === newUpper;
           return wasInGroup && !selectedSet.has(f.id);
@@ -486,7 +484,7 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
       if (idsToClear.length > 0) {
         const { error: clearErr } = await supabase
           .from('formasi_kelas')
-          .update({ blok: '' })
+          .update({ blok_diniyyah: '' })
           .in('id', idsToClear);
         if (clearErr) throw clearErr;
       }
@@ -494,7 +492,7 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
       if (idsToSet.length > 0) {
         const { error: setErr } = await supabase
           .from('formasi_kelas')
-          .update({ blok: trimmedName })
+          .update({ blok_diniyyah: trimmedName })
           .in('id', idsToSet);
         if (setErr) throw setErr;
       }
@@ -502,8 +500,8 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
       // Perbarui state formasiList lokal
       const updatedFormasiList = currentList.map((f) => {
         if (!f.id || f.pa_pi !== gender) return f;
-        if (idsToSet.includes(f.id)) return { ...f, blok: trimmedName };
-        if (idsToClear.includes(f.id)) return { ...f, blok: '' };
+        if (idsToSet.includes(f.id)) return { ...f, blok_diniyyah: trimmedName };
+        if (idsToClear.includes(f.id)) return { ...f, blok_diniyyah: '' };
         return f;
       });
 
@@ -529,7 +527,7 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
 
       // Pastikan seluruh blok aktif di formasi_kelas juga tercatat di nextGroups
       for (const f of updatedFormasiList) {
-        const bName = String(f.blok || '').trim();
+        const bName = String(f.blok_diniyyah || '').trim();
         if (!bName) continue;
         const exists = nextGroups.some(
           (g) => g.gender === f.pa_pi && g.namaBlok.trim().toUpperCase() === bName.toUpperCase()
@@ -573,14 +571,14 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
           (f) =>
             f.pa_pi === gender &&
             f.id &&
-            String(f.blok || '').trim().toUpperCase() === targetUpper
+            String(f.blok_diniyyah || '').trim().toUpperCase() === targetUpper
         )
         .map((f) => f.id as string);
 
       if (idsToClear.length > 0) {
         const { error } = await supabase
           .from('formasi_kelas')
-          .update({ blok: '' })
+          .update({ blok_diniyyah: '' })
           .in('id', idsToClear);
         if (error) throw error;
       }
@@ -663,7 +661,8 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
             domisili: '',
             lokasi_takror: '',
             lokasi_diniyyah: '',
-            blok: '',
+            blok_diniyyah: '',
+            blok_takror: '',
             foto_takror: '',
             foto_diniyyah: '',
           });

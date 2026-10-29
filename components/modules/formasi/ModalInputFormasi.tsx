@@ -40,7 +40,6 @@ export default function ModalInputFormasi({
     lokasi_takror: '',
     blok_diniyyah: '',
     blok_takror: '',
-    blok: '',
     foto_takror: '',
     foto_diniyyah: '',
   });
@@ -76,9 +75,8 @@ export default function ModalInputFormasi({
         domisili: editFormasiData.domisili || '',
         lokasi_diniyyah: editFormasiData.lokasi_diniyyah || '',
         lokasi_takror: editFormasiData.lokasi_takror || '',
-        blok_diniyyah: editFormasiData.blok_diniyyah || editFormasiData.blok || '',
+        blok_diniyyah: editFormasiData.blok_diniyyah || '',
         blok_takror: editFormasiData.blok_takror || '',
-        blok: editFormasiData.blok || '',
         foto_takror: editFormasiData.foto_takror || '',
         foto_diniyyah: editFormasiData.foto_diniyyah || '',
       });
@@ -96,7 +94,6 @@ export default function ModalInputFormasi({
         lokasi_takror: '',
         blok_diniyyah: '',
         blok_takror: '',
-        blok: '',
         foto_takror: '',
         foto_diniyyah: '',
       });
@@ -220,7 +217,6 @@ export default function ModalInputFormasi({
         ),
         blok_diniyyah: formData.blok_diniyyah || '',
         blok_takror: formData.blok_takror || '',
-        blok: formData.blok_diniyyah || formData.blok_takror || formData.blok || '',
       },
       isEdit,
       editFormasiData?.id

@@ -384,8 +384,8 @@ export function dapatkanBlokDariSesiMengajar(
       });
 
       if (matchFormasi) {
-        // Prioritas utama: blok_diniyyah (atau blok lama bila terisi)
-        const blokD = String(matchFormasi.blok_diniyyah || matchFormasi.blok || '').trim();
+        // Prioritas utama: blok_diniyyah
+        const blokD = String(matchFormasi.blok_diniyyah || '').trim();
         if (blokD && blokD !== '-') return blokD;
 
         // Jika blok belum terisi di formasi, petakan lewat hierarki lokasi Diniyyah

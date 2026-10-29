@@ -1,0 +1,1355 @@
+{
+  "absensi_records": {
+    "totalRows": 327,
+    "columnsCount": 23,
+    "columns": [
+      {
+        "column": "id",
+        "type": "text",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "tanggal",
+        "type": "text",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "hari",
+        "type": "text",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "jam_ke",
+        "type": "text",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "jam_num",
+        "type": "integer",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "nama_asatidz",
+        "type": "text",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "nia",
+        "type": "text",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "gender",
+        "type": "text",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "tingkat",
+        "type": "text",
+        "filled": 292,
+        "total": 327,
+        "pct": 89
+      },
+      {
+        "column": "din_kls",
+        "type": "text",
+        "filled": 292,
+        "total": 327,
+        "pct": 89
+      },
+      {
+        "column": "din_bag",
+        "type": "text",
+        "filled": 292,
+        "total": 327,
+        "pct": 89
+      },
+      {
+        "column": "blok",
+        "type": "text",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "kelas_mengajar",
+        "type": "text",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "fan",
+        "type": "text",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "lokasi",
+        "type": "text",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "status",
+        "type": "text",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "keterangan",
+        "type": "text",
+        "filled": 0,
+        "total": 327,
+        "pct": 0
+      },
+      {
+        "column": "menit_terlambat",
+        "type": "text",
+        "filled": 0,
+        "total": 327,
+        "pct": 0
+      },
+      {
+        "column": "nama_pengganti",
+        "type": "text",
+        "filled": 0,
+        "total": 327,
+        "pct": 0
+      },
+      {
+        "column": "diinput_oleh",
+        "type": "text",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "waktu_update",
+        "type": "text",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp with time zone",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp with time zone",
+        "filled": 327,
+        "total": 327,
+        "pct": 100
+      }
+    ]
+  },
+  "activity_logs": {
+    "totalRows": 477,
+    "columnsCount": 6,
+    "columns": [
+      {
+        "column": "id",
+        "type": "bigint",
+        "filled": 477,
+        "total": 477,
+        "pct": 100
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp with time zone",
+        "filled": 477,
+        "total": 477,
+        "pct": 100
+      },
+      {
+        "column": "username",
+        "type": "text",
+        "filled": 477,
+        "total": 477,
+        "pct": 100
+      },
+      {
+        "column": "nama",
+        "type": "text",
+        "filled": 477,
+        "total": 477,
+        "pct": 100
+      },
+      {
+        "column": "aktivitas",
+        "type": "text",
+        "filled": 477,
+        "total": 477,
+        "pct": 100
+      },
+      {
+        "column": "detail",
+        "type": "text",
+        "filled": 477,
+        "total": 477,
+        "pct": 100
+      }
+    ]
+  },
+  "app_settings": {
+    "totalRows": 15,
+    "columnsCount": 2,
+    "columns": [
+      {
+        "column": "key",
+        "type": "text",
+        "filled": 15,
+        "total": 15,
+        "pct": 100
+      },
+      {
+        "column": "value",
+        "type": "jsonb",
+        "filled": 15,
+        "total": 15,
+        "pct": 100
+      }
+    ]
+  },
+  "asatidz": {
+    "totalRows": 353,
+    "columnsCount": 27,
+    "columns": [
+      {
+        "column": "id",
+        "type": "uuid",
+        "filled": 353,
+        "total": 353,
+        "pct": 100
+      },
+      {
+        "column": "nis",
+        "type": "text",
+        "filled": 1,
+        "total": 353,
+        "pct": 0
+      },
+      {
+        "column": "nia",
+        "type": "text",
+        "filled": 353,
+        "total": 353,
+        "pct": 100
+      },
+      {
+        "column": "nama_asatidz",
+        "type": "text",
+        "filled": 353,
+        "total": 353,
+        "pct": 100
+      },
+      {
+        "column": "pa_pi",
+        "type": "text",
+        "filled": 353,
+        "total": 353,
+        "pct": 100
+      },
+      {
+        "column": "tempat_lahir",
+        "type": "text",
+        "filled": 1,
+        "total": 353,
+        "pct": 0
+      },
+      {
+        "column": "tgl_lahir",
+        "type": "text",
+        "filled": 1,
+        "total": 353,
+        "pct": 0
+      },
+      {
+        "column": "bln_lahir",
+        "type": "text",
+        "filled": 0,
+        "total": 353,
+        "pct": 0
+      },
+      {
+        "column": "thn_lahir",
+        "type": "text",
+        "filled": 1,
+        "total": 353,
+        "pct": 0
+      },
+      {
+        "column": "dusun",
+        "type": "text",
+        "filled": 3,
+        "total": 353,
+        "pct": 1
+      },
+      {
+        "column": "desa",
+        "type": "text",
+        "filled": 5,
+        "total": 353,
+        "pct": 1
+      },
+      {
+        "column": "kecamatan",
+        "type": "text",
+        "filled": 5,
+        "total": 353,
+        "pct": 1
+      },
+      {
+        "column": "kabupaten",
+        "type": "text",
+        "filled": 5,
+        "total": 353,
+        "pct": 1
+      },
+      {
+        "column": "provinsi",
+        "type": "text",
+        "filled": 9,
+        "total": 353,
+        "pct": 3
+      },
+      {
+        "column": "blok",
+        "type": "text",
+        "filled": 80,
+        "total": 353,
+        "pct": 23
+      },
+      {
+        "column": "asrama",
+        "type": "text",
+        "filled": 4,
+        "total": 353,
+        "pct": 1
+      },
+      {
+        "column": "kode",
+        "type": "text",
+        "filled": 1,
+        "total": 353,
+        "pct": 0
+      },
+      {
+        "column": "kamar",
+        "type": "text",
+        "filled": 1,
+        "total": 353,
+        "pct": 0
+      },
+      {
+        "column": "tingkat_asatidz",
+        "type": "text",
+        "filled": 174,
+        "total": 353,
+        "pct": 49
+      },
+      {
+        "column": "din_kls_asatidz",
+        "type": "text",
+        "filled": 175,
+        "total": 353,
+        "pct": 50
+      },
+      {
+        "column": "din_bag_asatidz",
+        "type": "text",
+        "filled": 174,
+        "total": 353,
+        "pct": 49
+      },
+      {
+        "column": "jah_asatidz",
+        "type": "text",
+        "filled": 353,
+        "total": 353,
+        "pct": 100
+      },
+      {
+        "column": "lokasi_diniyyah",
+        "type": "text",
+        "filled": 170,
+        "total": 353,
+        "pct": 48
+      },
+      {
+        "column": "lokasi_takror",
+        "type": "text",
+        "filled": 169,
+        "total": 353,
+        "pct": 48
+      },
+      {
+        "column": "foto_asatidz",
+        "type": "text",
+        "filled": 2,
+        "total": 353,
+        "pct": 1
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp with time zone",
+        "filled": 353,
+        "total": 353,
+        "pct": 100
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp with time zone",
+        "filled": 353,
+        "total": 353,
+        "pct": 100
+      }
+    ]
+  },
+  "formasi_kelas": {
+    "totalRows": 169,
+    "columnsCount": 16,
+    "columns": [
+      {
+        "column": "id",
+        "type": "uuid",
+        "filled": 169,
+        "total": 169,
+        "pct": 100
+      },
+      {
+        "column": "tingkat",
+        "type": "text",
+        "filled": 169,
+        "total": 169,
+        "pct": 100
+      },
+      {
+        "column": "din_kls",
+        "type": "text",
+        "filled": 169,
+        "total": 169,
+        "pct": 100
+      },
+      {
+        "column": "din_bag",
+        "type": "text",
+        "filled": 169,
+        "total": 169,
+        "pct": 100
+      },
+      {
+        "column": "pa_pi",
+        "type": "text",
+        "filled": 169,
+        "total": 169,
+        "pct": 100
+      },
+      {
+        "column": "is_unggulan",
+        "type": "boolean",
+        "filled": 169,
+        "total": 169,
+        "pct": 100
+      },
+      {
+        "column": "id_mustahiq",
+        "type": "text",
+        "filled": 169,
+        "total": 169,
+        "pct": 100
+      },
+      {
+        "column": "lokasi_diniyyah",
+        "type": "text",
+        "filled": 169,
+        "total": 169,
+        "pct": 100
+      },
+      {
+        "column": "lokasi_takror",
+        "type": "text",
+        "filled": 168,
+        "total": 169,
+        "pct": 99
+      },
+      {
+        "column": "kapasitas_maksimal",
+        "type": "integer",
+        "filled": 169,
+        "total": 169,
+        "pct": 100
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp with time zone",
+        "filled": 169,
+        "total": 169,
+        "pct": 100
+      },
+      {
+        "column": "domisili",
+        "type": "text",
+        "filled": 79,
+        "total": 169,
+        "pct": 47
+      },
+      {
+        "column": "foto_takror",
+        "type": "text",
+        "filled": 0,
+        "total": 169,
+        "pct": 0
+      },
+      {
+        "column": "foto_diniyyah",
+        "type": "text",
+        "filled": 0,
+        "total": 169,
+        "pct": 0
+      },
+      {
+        "column": "blok_diniyyah",
+        "type": "text",
+        "filled": 79,
+        "total": 169,
+        "pct": 47
+      },
+      {
+        "column": "blok_takror",
+        "type": "text",
+        "filled": 0,
+        "total": 169,
+        "pct": 0
+      }
+    ]
+  },
+  "jadwal_kbm_slots": {
+    "totalRows": 4410,
+    "columnsCount": 15,
+    "columns": [
+      {
+        "column": "id",
+        "type": "uuid",
+        "filled": 4410,
+        "total": 4410,
+        "pct": 100
+      },
+      {
+        "column": "nama_asatidz",
+        "type": "text",
+        "filled": 4410,
+        "total": 4410,
+        "pct": 100
+      },
+      {
+        "column": "nia",
+        "type": "text",
+        "filled": 29,
+        "total": 4410,
+        "pct": 1
+      },
+      {
+        "column": "hari",
+        "type": "text",
+        "filled": 4410,
+        "total": 4410,
+        "pct": 100
+      },
+      {
+        "column": "jam",
+        "type": "integer",
+        "filled": 4410,
+        "total": 4410,
+        "pct": 100
+      },
+      {
+        "column": "tingkat",
+        "type": "text",
+        "filled": 4398,
+        "total": 4410,
+        "pct": 100
+      },
+      {
+        "column": "din_kls",
+        "type": "text",
+        "filled": 4398,
+        "total": 4410,
+        "pct": 100
+      },
+      {
+        "column": "din_bag",
+        "type": "text",
+        "filled": 4398,
+        "total": 4410,
+        "pct": 100
+      },
+      {
+        "column": "pa_pi",
+        "type": "text",
+        "filled": 4398,
+        "total": 4410,
+        "pct": 100
+      },
+      {
+        "column": "kelas_lengkap",
+        "type": "text",
+        "filled": 4410,
+        "total": 4410,
+        "pct": 100
+      },
+      {
+        "column": "fan",
+        "type": "text",
+        "filled": 4401,
+        "total": 4410,
+        "pct": 100
+      },
+      {
+        "column": "lokasi",
+        "type": "text",
+        "filled": 4410,
+        "total": 4410,
+        "pct": 100
+      },
+      {
+        "column": "raw_slot",
+        "type": "text",
+        "filled": 4410,
+        "total": 4410,
+        "pct": 100
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp with time zone",
+        "filled": 4410,
+        "total": 4410,
+        "pct": 100
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp with time zone",
+        "filled": 4410,
+        "total": 4410,
+        "pct": 100
+      }
+    ]
+  },
+  "notification_logs": {
+    "totalRows": 0,
+    "columnsCount": 9,
+    "columns": [
+      {
+        "column": "id",
+        "type": "uuid",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "recipient_type",
+        "type": "text",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "recipient_target",
+        "type": "text",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "category",
+        "type": "text",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "message",
+        "type": "text",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "channel",
+        "type": "text",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "status",
+        "type": "text",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "metadata",
+        "type": "jsonb",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp with time zone",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      }
+    ]
+  },
+  "offline_sync_logs": {
+    "totalRows": 0,
+    "columnsCount": 6,
+    "columns": [
+      {
+        "column": "id",
+        "type": "uuid",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "client_id",
+        "type": "text",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "synced_count",
+        "type": "integer",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "failed_count",
+        "type": "integer",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "details",
+        "type": "jsonb",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp with time zone",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      }
+    ]
+  },
+  "santri": {
+    "totalRows": 2,
+    "columnsCount": 37,
+    "columns": [
+      {
+        "column": "id",
+        "type": "bigint",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "no_induk",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "no_biro",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "nisn",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "pa_pi",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "nama",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "tempat_lahir",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "tgl_lahir",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "bln_lahir",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "thn_lahir",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "dusun",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "desa",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "kecamatan",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "kabupaten",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "provinsi",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "blok",
+        "type": "text",
+        "filled": 0,
+        "total": 2,
+        "pct": 0
+      },
+      {
+        "column": "asrama",
+        "type": "text",
+        "filled": 0,
+        "total": 2,
+        "pct": 0
+      },
+      {
+        "column": "kode",
+        "type": "text",
+        "filled": 0,
+        "total": 2,
+        "pct": 0
+      },
+      {
+        "column": "kamar",
+        "type": "text",
+        "filled": 0,
+        "total": 2,
+        "pct": 0
+      },
+      {
+        "column": "kelas",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "bag",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "semester",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "jurusan",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "unit",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "din_kls",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "din_bag",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "tingkat",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "orda",
+        "type": "text",
+        "filled": 1,
+        "total": 2,
+        "pct": 50
+      },
+      {
+        "column": "nik",
+        "type": "text",
+        "filled": 0,
+        "total": 2,
+        "pct": 0
+      },
+      {
+        "column": "no_kk",
+        "type": "text",
+        "filled": 0,
+        "total": 2,
+        "pct": 0
+      },
+      {
+        "column": "nama_ayah",
+        "type": "text",
+        "filled": 0,
+        "total": 2,
+        "pct": 0
+      },
+      {
+        "column": "nik_ayah",
+        "type": "text",
+        "filled": 0,
+        "total": 2,
+        "pct": 0
+      },
+      {
+        "column": "nama_ibu",
+        "type": "text",
+        "filled": 0,
+        "total": 2,
+        "pct": 0
+      },
+      {
+        "column": "nik_ibu",
+        "type": "text",
+        "filled": 0,
+        "total": 2,
+        "pct": 0
+      },
+      {
+        "column": "telepon",
+        "type": "text",
+        "filled": 0,
+        "total": 2,
+        "pct": 0
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp with time zone",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "foto",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      }
+    ]
+  },
+  "schedule_solver_proposals": {
+    "totalRows": 0,
+    "columnsCount": 7,
+    "columns": [
+      {
+        "column": "id",
+        "type": "uuid",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "title",
+        "type": "text",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "status",
+        "type": "text",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "proposed_slots",
+        "type": "jsonb",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "conflicts_detected",
+        "type": "integer",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp with time zone",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp with time zone",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      }
+    ]
+  },
+  "setoran_hafalan_records": {
+    "totalRows": 2,
+    "columnsCount": 20,
+    "columns": [
+      {
+        "column": "id",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "no_induk",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "tanggal",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "nama",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "tgl_lahir",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "bln_lahir",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "thn_lahir",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "tempat_lahir",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "penjaga",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "mustahiq",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "tingkat",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "din_bag",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "din_kls",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "kecamatan",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "kabupaten",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "provinsi",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "bin",
+        "type": "text",
+        "filled": 0,
+        "total": 2,
+        "pct": 0
+      },
+      {
+        "column": "item_hafalan",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "kategori",
+        "type": "text",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp with time zone",
+        "filled": 2,
+        "total": 2,
+        "pct": 100
+      }
+    ]
+  },
+  "warta_berita": {
+    "totalRows": 0,
+    "columnsCount": 15,
+    "columns": [
+      {
+        "column": "id",
+        "type": "uuid",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "title",
+        "type": "character varying",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "slug",
+        "type": "character varying",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "topic",
+        "type": "USER-DEFINED",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "display_type",
+        "type": "USER-DEFINED",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "excerpt",
+        "type": "character varying",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "content",
+        "type": "text",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "cover_image_url",
+        "type": "text",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "author_name",
+        "type": "character varying",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "status",
+        "type": "USER-DEFINED",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "views_count",
+        "type": "integer",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "tags",
+        "type": "ARRAY",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "published_at",
+        "type": "timestamp with time zone",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp with time zone",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp with time zone",
+        "filled": 0,
+        "total": 0,
+        "pct": 0
+      }
+    ]
+  }
+}

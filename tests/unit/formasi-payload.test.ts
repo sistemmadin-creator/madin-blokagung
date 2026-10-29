@@ -154,18 +154,6 @@ describe('Formasi Kelas Payload Sanitization & Kelas Unggulan', () => {
 
       expect(dataWithHierarki.blok_diniyyah).toBe('Blok Induk');
       expect(dataWithHierarki.blok_takror).toBe('Blok 6');
-      expect(dataWithHierarki.blok).toBe('Blok Induk'); // Fallback compatibility
-
-      // Uji fallback jika hanya blok yang dikirim
-      const dataLegacy = sanitizeFormasiPayload({
-        tingkat: 'ULA',
-        din_kls: '1',
-        din_bag: 'B',
-        blok: 'Blok 4',
-      });
-      expect(dataLegacy.blok_diniyyah).toBe('Blok 4');
-      expect(dataLegacy.blok).toBe('Blok 4');
-      expect(dataLegacy.blok_takror).toBe('');
     });
   });
 

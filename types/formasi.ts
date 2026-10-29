@@ -12,7 +12,6 @@ export interface FormasiKelas {
   domisili?: string;
   lokasi_takror?: string;
   lokasi_diniyyah?: string;
-  blok?: string; // Legacy: fallback untuk blok_diniyyah
   blok_diniyyah?: string; // Hierarki: Blok Diniyyah > Lokasi Diniyyah
   blok_takror?: string; // Hierarki: Blok Takror > Lokasi Takror
   foto_takror?: string;

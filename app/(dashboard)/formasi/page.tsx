@@ -116,14 +116,14 @@ export default function FormasiMasterPage() {
         if (!dom.includes(customFilters.domisili.toLowerCase())) return false;
       }
       if (customFilters.blok) {
-        const blk = (f.blok_diniyyah || f.blok_diniyyah_sync || f.blok_takror || f.blok_takror_sync || f.blok || '').toLowerCase();
+        const blk = (f.blok_diniyyah || f.blok_diniyyah_sync || f.blok_takror || f.blok_takror_sync || '').toLowerCase();
         if (!blk.includes(customFilters.blok.toLowerCase())) return false;
       }
 
       // 2. Keyword Search
       if (search.trim()) {
         const q = search.toLowerCase().trim();
-        const text = `${f.din_kls} ${f.din_bag} ${f.tingkat} ${f.pa_pi} ${f.wali_kelas_text} ${f.domisili_sync || ''} ${f.blok_takror || f.blok_takror_sync || ''} ${f.takror_sync || ''} ${f.blok_diniyyah || f.blok_diniyyah_sync || ''} ${f.diniyyah_sync || ''} ${f.blok || ''}`.toLowerCase();
+        const text = `${f.din_kls} ${f.din_bag} ${f.tingkat} ${f.pa_pi} ${f.wali_kelas_text} ${f.domisili_sync || ''} ${f.blok_takror || f.blok_takror_sync || ''} ${f.takror_sync || ''} ${f.blok_diniyyah || f.blok_diniyyah_sync || ''} ${f.diniyyah_sync || ''}`.toLowerCase();
         if (!text.includes(q)) return false;
       }
 
@@ -570,7 +570,7 @@ export default function FormasiMasterPage() {
                           className="py-2.5 px-3"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {(f.blok_diniyyah || f.blok_diniyyah_sync || f.blok) && (f.blok_diniyyah || f.blok_diniyyah_sync || f.blok) !== '-' ? (
+                          {(f.blok_diniyyah || f.blok_diniyyah_sync) && (f.blok_diniyyah || f.blok_diniyyah_sync) !== '-' ? (
                             <button
                               type="button"
                               onClick={() => openHierarkiModal('diniyyah')}
@@ -578,7 +578,7 @@ export default function FormasiMasterPage() {
                               className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[11px] font-semibold transition"
                             >
                               <Building className="w-2.5 h-2.5 text-emerald-700" />
-                              <span>{f.blok_diniyyah || f.blok_diniyyah_sync || f.blok}</span>
+                              <span>{f.blok_diniyyah || f.blok_diniyyah_sync}</span>
                             </button>
                           ) : (
                             <button

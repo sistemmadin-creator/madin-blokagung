@@ -106,7 +106,7 @@ export default function FormasiPaPage() {
       }
       if (search.trim()) {
         const q = search.toLowerCase().trim();
-        const text = `${f.din_kls} ${f.din_bag} ${f.tingkat} ${f.wali_kelas_text} ${f.domisili_sync || ''} ${f.blok_takror || f.blok_takror_sync || ''} ${f.takror_sync || ''} ${f.blok_diniyyah || f.blok_diniyyah_sync || ''} ${f.diniyyah_sync || ''} ${f.blok || ''}`.toLowerCase();
+        const text = `${f.din_kls} ${f.din_bag} ${f.tingkat} ${f.wali_kelas_text} ${f.domisili_sync || ''} ${f.blok_takror || f.blok_takror_sync || ''} ${f.takror_sync || ''} ${f.blok_diniyyah || f.blok_diniyyah_sync || ''} ${f.diniyyah_sync || ''}`.toLowerCase();
         if (!text.includes(q)) return false;
       }
       return true;
@@ -212,7 +212,8 @@ export default function FormasiPaPage() {
       MUSTAHIQ: f.wali_kelas_text || '-',
       'LOKAL TAKROR': f.takror_sync || f.lokasi_takror || '-',
       'LOKAL DINIYYAH': f.diniyyah_sync || f.lokasi_diniyyah || '-',
-      BLOK: f.blok || '-',
+      'BLOK DINIYYAH': f.blok_diniyyah || f.blok_diniyyah_sync || '-',
+      'BLOK TAKROR': f.blok_takror || f.blok_takror_sync || '-',
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -393,7 +394,7 @@ export default function FormasiPaPage() {
                   const namaKelas = `${f.din_kls || ''} ${f.din_bag || ''} ${f.tingkat || ''}`.trim();
                   const domisiliTeks = (f.domisili_sync || f.domisili || '-').replace(/^Blok\s+/i, '');
                   const blokTakrorVal = f.blok_takror || f.blok_takror_sync || '';
-                  const blokDiniyyahVal = f.blok_diniyyah || f.blok_diniyyah_sync || f.blok || '';
+                  const blokDiniyyahVal = f.blok_diniyyah || f.blok_diniyyah_sync || '';
                   const blokTakrorLabel = blokTakrorVal && blokTakrorVal !== '-' ? `Blok ${blokTakrorVal.replace(/^blok\s*/i, '').trim()}` : '';
                   const blokDiniyyahLabel = blokDiniyyahVal && blokDiniyyahVal !== '-' ? `Blok ${blokDiniyyahVal.replace(/^blok\s*/i, '').trim()}` : '';
 
@@ -412,7 +413,7 @@ export default function FormasiPaPage() {
                           y: e.clientY,
                           kelasId: f.id,
                           namaKelas,
-                          currentBlok: f.blok || '',
+                          currentBlok: f.blok_diniyyah || '',
                         });
                       }}
                       className="hover:bg-slate-50 transition cursor-pointer"

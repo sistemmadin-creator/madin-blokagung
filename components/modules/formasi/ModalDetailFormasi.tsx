@@ -175,7 +175,7 @@ export default function ModalDetailFormasi() {
 
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Blok Diniyyah:</span>
-                <span className="font-semibold text-emerald-800">{f.blok_diniyyah || f.blok_diniyyah_sync || f.blok || '-'}</span>
+                <span className="font-semibold text-emerald-800">{f.blok_diniyyah || f.blok_diniyyah_sync || '-'}</span>
               </div>
 
               <div className="flex items-center justify-between">

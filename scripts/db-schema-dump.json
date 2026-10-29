@@ -1,0 +1,1124 @@
+{
+  "absensi_records": [
+    {
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "tanggal",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "hari",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "jam_ke",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "jam_num",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "nama_asatidz",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "nia",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "gender",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "tingkat",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "din_kls",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "din_bag",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "blok",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "kelas_mengajar",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "fan",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "lokasi",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "keterangan",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "menit_terlambat",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "nama_pengganti",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "diinput_oleh",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "'Admin'::text"
+    },
+    {
+      "column_name": "waktu_update",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    }
+  ],
+  "activity_logs": [
+    {
+      "column_name": "id",
+      "data_type": "bigint",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "column_name": "username",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "'admin'::text"
+    },
+    {
+      "column_name": "nama",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "'Master Administrator'::text"
+    },
+    {
+      "column_name": "aktivitas",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "detail",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "'-'::text"
+    }
+  ],
+  "app_settings": [
+    {
+      "column_name": "key",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "value",
+      "data_type": "jsonb",
+      "is_nullable": "NO",
+      "column_default": "'{\"tree1\": \"\", \"tree2\": \"\", \"tree3\": \"\"}'::jsonb"
+    }
+  ],
+  "asatidz": [
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "uuid_generate_v4()"
+    },
+    {
+      "column_name": "nis",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "nia",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "nama_asatidz",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "pa_pi",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "tempat_lahir",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "tgl_lahir",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "bln_lahir",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "thn_lahir",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "dusun",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "desa",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "kecamatan",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "kabupaten",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "provinsi",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "blok",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "asrama",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "kode",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "kamar",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "tingkat_asatidz",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "din_kls_asatidz",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "din_bag_asatidz",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "jah_asatidz",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "lokasi_diniyyah",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "lokasi_takror",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "foto_asatidz",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    }
+  ],
+  "formasi_kelas": [
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "column_name": "tingkat",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "din_kls",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "din_bag",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "pa_pi",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "is_unggulan",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "column_name": "id_mustahiq",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "lokasi_diniyyah",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "lokasi_takror",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "kapasitas_maksimal",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "column_default": "80"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "column_name": "domisili",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "foto_takror",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "foto_diniyyah",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "blok_diniyyah",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "blok_takror",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    }
+  ],
+  "jadwal_kbm_slots": [
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "column_name": "nama_asatidz",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "nia",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "hari",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "jam",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "tingkat",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "din_kls",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "din_bag",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "pa_pi",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "column_name": "kelas_lengkap",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "fan",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "lokasi",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "raw_slot",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    }
+  ],
+  "notification_logs": [
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "column_name": "recipient_type",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "recipient_target",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "category",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "message",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "channel",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": "'draft'::text"
+    },
+    {
+      "column_name": "metadata",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "column_default": "'{}'::jsonb"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    }
+  ],
+  "offline_sync_logs": [
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "column_name": "client_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "synced_count",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "column_name": "failed_count",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "column_name": "details",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "column_default": "'[]'::jsonb"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    }
+  ],
+  "santri": [
+    {
+      "column_name": "id",
+      "data_type": "bigint",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "no_induk",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "no_biro",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "nisn",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "pa_pi",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "nama",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "tempat_lahir",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "tgl_lahir",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "bln_lahir",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "thn_lahir",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "dusun",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "desa",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "kecamatan",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "kabupaten",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "provinsi",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "blok",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "asrama",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "kode",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "kamar",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "kelas",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "bag",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "semester",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "jurusan",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "unit",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "din_kls",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "din_bag",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "tingkat",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "orda",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "nik",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "no_kk",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "nama_ayah",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "nik_ayah",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "nama_ibu",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "nik_ibu",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "telepon",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "column_name": "foto",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    }
+  ],
+  "schedule_solver_proposals": [
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "column_name": "title",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": "'draft'::text"
+    },
+    {
+      "column_name": "proposed_slots",
+      "data_type": "jsonb",
+      "is_nullable": "NO",
+      "column_default": "'[]'::jsonb"
+    },
+    {
+      "column_name": "conflicts_detected",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    }
+  ],
+  "setoran_hafalan_records": [
+    {
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "no_induk",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "tanggal",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "nama",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "tgl_lahir",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "bln_lahir",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "thn_lahir",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "tempat_lahir",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "penjaga",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "mustahiq",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "tingkat",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "din_bag",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "din_kls",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "kecamatan",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "kabupaten",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "provinsi",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "bin",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "''::text"
+    },
+    {
+      "column_name": "item_hafalan",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "kategori",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    }
+  ],
+  "warta_berita": [
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "column_name": "title",
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "slug",
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "topic",
+      "data_type": "USER-DEFINED",
+      "is_nullable": "NO",
+      "column_default": "'tingkat_ula'::post_topic_enum"
+    },
+    {
+      "column_name": "display_type",
+      "data_type": "USER-DEFINED",
+      "is_nullable": "NO",
+      "column_default": "'regular'::post_display_type_enum"
+    },
+    {
+      "column_name": "excerpt",
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "content",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "cover_image_url",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "column_name": "author_name",
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "column_default": "'Redaksi Madin Blokagung'::character varying"
+    },
+    {
+      "column_name": "status",
+      "data_type": "USER-DEFINED",
+      "is_nullable": "NO",
+      "column_default": "'draft'::post_status_enum"
+    },
+    {
+      "column_name": "views_count",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "column_name": "tags",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": "ARRAY[]::text[]"
+    },
+    {
+      "column_name": "published_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    }
+  ]
+}
