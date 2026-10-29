@@ -51,6 +51,9 @@ test.describe('Tahap 2 & 3: Pengaturan Hierarki Blok KBM (Diniyyah & Takror)', (
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
 
+    // Pastikan data hierarki selesai dimuat
+    await expect(dialog.getByText('Blok Induk').first()).toBeVisible({ timeout: 15_000 });
+
     // Tambah Blok Baru untuk pengujian (unik per run)
     const suffix = Date.now().toString().slice(-4);
     const testBlokName = `Blok Uji ${suffix}`;
@@ -61,18 +64,17 @@ test.describe('Tahap 2 & 3: Pengaturan Hierarki Blok KBM (Diniyyah & Takror)', (
     const btnTambahBlok = dialog.locator('[data-testid="btn-tambah-blok"]');
     await btnTambahBlok.click();
 
-    // Verifikasi blok baru terpilih dan tampil di list
-    const blokItem = dialog.locator('div', { hasText: testBlokName }).first();
-    await expect(blokItem).toBeVisible();
-    await blokItem.click();
+    // Verifikasi kartu blok baru tampil di grid
+    const cardBlok = dialog.locator(`[data-testid="card-blok-${testBlokName}"]`);
+    await expect(cardBlok).toBeVisible();
 
     // Tambah Ruang di dalam blok uji
     const testLocationName = `Ruang Uji ${suffix}`;
-    const inputLocation = dialog.locator('[data-testid="input-tambah-lokasi"]');
+    const inputLocation = cardBlok.locator('[data-testid="input-tambah-lokasi"]');
     await expect(inputLocation).toBeVisible();
     await inputLocation.fill(testLocationName);
 
-    const btnTambahLokasi = dialog.locator('[data-testid="btn-tambah-lokasi"]');
+    const btnTambahLokasi = cardBlok.locator('[data-testid="btn-tambah-lokasi"]');
     await btnTambahLokasi.click();
 
     // Verifikasi ruang muncul di list lokasi
@@ -85,6 +87,7 @@ test.describe('Tahap 2 & 3: Pengaturan Hierarki Blok KBM (Diniyyah & Takror)', (
     // Hapus blok uji
     page.once('dialog', (confirmDialog) => confirmDialog.accept());
     await dialog.locator(`button[title="Hapus Blok ${testBlokName}"]`).click();
+    await expect(cardBlok).not.toBeVisible();
 
     // Tutup dialog
     await dialog.getByRole('button', { name: 'Tutup', exact: true }).click();

@@ -351,6 +351,7 @@ describe('Gender-Aware Class Matching & Schedule Isolation (PA vs PI)', () => {
     const mockAsatidzKamarPribadi: Asatidz = {
       nia: 'A001',
       nama_asatidz: 'Ustadz Ahmad',
+      pa_pi: 'PA',
       blok: 'Kamar Asrama 10', // Kamar asrama pribadi guru (BUKAN blok KBM santri)
     };
 
