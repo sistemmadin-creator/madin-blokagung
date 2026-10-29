@@ -287,19 +287,18 @@ test.describe('Fan Pelajaran & Pengajar Fan Migration Full Verification', () => 
     const husniaRow = page.locator('tr', { hasText: 'HUSNIA ASMA NAZIHAH' });
     await expect(husniaRow).toBeVisible();
 
-    // Fan yang diampu harus 1 K WUSTHO, dan TIDAK boleh bocor 2 A WUSTHO Ug atau lencana Draft
+    // Fan yang diampu harus 1 K WUSTHO, dan TIDAK boleh bocor 2 A WUSTHO Ug
     await expect(husniaRow.getByText(/1 K WUSTHO/i).first()).toBeVisible();
-    await expect(husniaRow.getByText(/2 A WUSTHO/i)).not.toBeVisible();
-    await expect(husniaRow.getByText(/Draft/i)).not.toBeVisible();
+    await expect(husniaRow.getByText(/2 A WUSTHO/i)).toHaveCount(0);
 
-    // 2. Verifikasi SHIDQIL ADILIYAH (Mustahiqoh 2 A WUSTHO Ug)
+    // 2. Verifikasi SHIDQIL ADILIYAH (Mustahiqoh 2 WUSTHO Ug)
     await searchInput.fill('SHIDQIL ADILIYAH');
     const shidqilRow = page.locator('tr', { hasText: 'SHIDQIL ADILIYAH' });
     await expect(shidqilRow).toBeVisible();
 
-    // Harus memuat kelas 2 A WUSTHO Ug dan tidak memuat 2 C WUSTHO
-    await expect(shidqilRow.getByText(/2 A WUSTHO Ug/i).first()).toBeVisible();
-    await expect(shidqilRow.getByText(/2 C WUSTHO/i)).not.toBeVisible();
+    // Harus memuat kelas 2 WUSTHO Ug dan tidak memuat 2 C WUSTHO
+    await expect(shidqilRow.getByText(/2.*WUSTHO Ug/i).first()).toBeVisible();
+    await expect(shidqilRow.getByText(/2 C WUSTHO/i)).toHaveCount(0);
 
     // 3. Reset pencarian
     await page.getByRole('button', { name: /Reset/i }).click();

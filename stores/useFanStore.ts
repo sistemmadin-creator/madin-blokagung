@@ -571,34 +571,26 @@ export const useFanStore = create<FanState>((set, get) => ({
 
     // 2. Cakupan UNGGULAN (Hanya terapkan ke key Unggulan, tanpa mengotori key Reguler)
     if (scope === 'unggulan' || scope === 'semua') {
-      const targetBags =
-        selectedBagUg && selectedBagUg !== 'ALL'
-          ? [selectedBagUg.toUpperCase()]
-          : daftarBagUg;
+      const keyUgUnified = `${klsStr} ${tktUpper} (Ug)`;
+      const itemsUg = cfg[keyUgUnified] || cfg[keyReguler] || [];
 
-      targetBags.forEach((bag) => {
-        const namaKelas = `${klsStr} ${bag} ${tktUpper}`;
-        const keyUg = `${namaKelas} (Ug)`;
-        const itemsUg = cfg[keyUg] || cfg[keyReguler] || [];
+      const mustahiqUg = getMustahiqByScope(
+        { tingkat: tktUpper, dinKls: klsStr, scope: 'unggulan' },
+        asatidzList,
+        formasiList
+      );
 
-        const mustahiqBag = getMustahiqByScope(
-          { tingkat: tktUpper, dinKls: klsStr, scope: 'unggulan', selectedBag: bag },
-          asatidzList,
-          formasiList
-        );
+      itemsUg.forEach((rawItem) => {
+        const itemKeyUg = `${keyUgUnified}||${rawItem}`;
+        if (!detail.item![itemKeyUg]) detail.item![itemKeyUg] = {};
 
-        itemsUg.forEach((rawItem) => {
-          const itemKeyUg = `${keyUg}||${rawItem}`;
-          if (!detail.item![itemKeyUg]) detail.item![itemKeyUg] = {};
-
-          if (selectedItems.includes(rawItem)) {
-            detail.item![itemKeyUg].pengajar = 'MS';
-            detail.item![itemKeyUg].asatidz = [...mustahiqBag];
-          } else if (detail.item![itemKeyUg].pengajar === 'MS') {
-            detail.item![itemKeyUg].pengajar = '';
-            detail.item![itemKeyUg].asatidz = [];
-          }
-        });
+        if (selectedItems.includes(rawItem)) {
+          detail.item![itemKeyUg].pengajar = 'MS';
+          detail.item![itemKeyUg].asatidz = [...mustahiqUg];
+        } else if (detail.item![itemKeyUg].pengajar === 'MS') {
+          detail.item![itemKeyUg].pengajar = '';
+          detail.item![itemKeyUg].asatidz = [];
+        }
       });
     }
 

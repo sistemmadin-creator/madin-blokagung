@@ -1096,10 +1096,16 @@ export function dapatkanKelasKeyFanDariObj(
 ): { effectiveKey: string; primaryKey: string; fallbackKey: string; isUg: boolean } {
   const namaKelasMurni = `${k.kls} ${k.bag} ${k.tingkat}`.trim();
   const isUg = Boolean(k.isUnggulan || (formasiList && isKelasUnggulan(namaKelasMurni, formasiList)));
-  const keyUg = `${namaKelasMurni} (Ug)`;
+  const keyUg = `${k.kls} ${k.tingkat} (Ug)`;
+  const keyUgLegacy = `${namaKelasMurni} (Ug)`;
   const keyReg = `${k.kls} ${k.tingkat}`;
-  if (isUg && fanConfig && Array.isArray(fanConfig[keyUg]) && fanConfig[keyUg].length > 0) {
-    return { effectiveKey: keyUg, primaryKey: keyUg, fallbackKey: keyReg, isUg: true };
+  if (isUg && fanConfig) {
+    if (Array.isArray(fanConfig[keyUg]) && fanConfig[keyUg].length > 0) {
+      return { effectiveKey: keyUg, primaryKey: keyUg, fallbackKey: keyReg, isUg: true };
+    }
+    if (Array.isArray(fanConfig[keyUgLegacy]) && fanConfig[keyUgLegacy].length > 0) {
+      return { effectiveKey: keyUgLegacy, primaryKey: keyUg, fallbackKey: keyReg, isUg: true };
+    }
   }
   return { effectiveKey: keyReg, primaryKey: isUg ? keyUg : keyReg, fallbackKey: keyReg, isUg };
 }
@@ -1230,7 +1236,8 @@ export function siapkanCacheRelasiFanJadwalKelas(
 ): CacheRelasiFanJadwalKelas {
   const namaKelasMurni = `${k.kls} ${k.bag} ${k.tingkat}`.trim();
   const isUg = Boolean(k.isUnggulan || isKelasUnggulan(namaKelasMurni, formasiList));
-  const primaryFanKey = isUg ? `${namaKelasMurni} (Ug)` : `${k.kls} ${k.tingkat}`;
+  const primaryFanKey = isUg ? `${k.kls} ${k.tingkat} (Ug)` : `${k.kls} ${k.tingkat}`;
+  const legacyUgFanKey = `${namaKelasMurni} (Ug)`;
   const fallbackFanKey = `${k.kls} ${k.tingkat}`;
 
   const listFanKelas: CacheRelasiFanJadwalKelas['listFanKelas'] = [];
@@ -1282,10 +1289,14 @@ export function siapkanCacheRelasiFanJadwalKelas(
   };
 
   ekstrakFanDariKey(primaryFanKey);
-  if (isUg) ekstrakFanDariKey(fallbackFanKey);
+  if (isUg) {
+    ekstrakFanDariKey(legacyUgFanKey);
+    ekstrakFanDariKey(fallbackFanKey);
+  }
 
   const configFans =
     (fanConfig && fanConfig[primaryFanKey]) ||
+    (isUg && fanConfig && fanConfig[legacyUgFanKey]) ||
     (isUg && fanConfig ? fanConfig[fallbackFanKey] : null) ||
     [];
 

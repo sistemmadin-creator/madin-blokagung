@@ -6,7 +6,7 @@ import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import {
   getDaftarKelasUnikDariMaster,
-  getDaftarKelasUnggulan,
+  getDaftarKelasUnggulanUnik,
   toRomanNumeralKls,
   parseFanItemString,
   URUTAN_TINGKAT,
@@ -83,7 +83,7 @@ export default function FanPelajaranPage() {
     () => getDaftarKelasUnikDariMaster(formasiList, asatidzList),
     [formasiList, asatidzList]
   );
-  const listUnggulanNama = useMemo(() => getDaftarKelasUnggulan(formasiList), [formasiList]);
+  const listMasterUnggulan = useMemo(() => getDaftarKelasUnggulanUnik(formasiList), [formasiList]);
 
   // Kelompokkan kelas berdasarkan switchMode
   const itemsToRender = useMemo(() => {
@@ -112,26 +112,21 @@ export default function FanPelajaranPage() {
 
     // 2. Unggulan
     if (switchMode === 'semua' || switchMode === 'unggulan') {
-      listUnggulanNama.sort().forEach((klsUg) => {
-        const p = klsUg.trim().split(/\s+/);
-        const klsNum = p[0] || '1';
-        const bag = p[1] || '';
-        const tkt = (p.slice(2).join(' ') || 'ULA').toUpperCase();
-        const keyUg = `${klsUg} (Ug)`;
+      listMasterUnggulan.forEach((c) => {
+        const keyUg = `${c.kls} ${c.tingkat} (Ug)`;
         list.push({
-          klsNum,
-          tingkat: tkt,
+          klsNum: c.kls,
+          tingkat: c.tingkat,
           kelasKey: keyUg,
-          fallbackKey: `${klsNum} ${tkt}`,
-          romawiKls: `${toRomanNumeralKls(klsNum)} ${bag}`,
+          fallbackKey: `${c.kls} ${c.tingkat}`,
+          romawiKls: toRomanNumeralKls(c.kls),
           isUg: true,
-          bag,
         });
       });
     }
 
     return list;
-  }, [switchMode, listMasterReguler, listUnggulanNama]);
+  }, [switchMode, listMasterReguler, listMasterUnggulan]);
 
   // Filter pencarian
   const getItemsFanTersaring = useCallback(

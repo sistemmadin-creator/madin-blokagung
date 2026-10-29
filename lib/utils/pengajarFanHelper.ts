@@ -417,8 +417,12 @@ export function buildSyncJadwalToFanPayload(
         const tingkat = normalizeTingkatName(rawTkt);
         const isUg = isKelasUnggulan(kelasBersih, formasiList);
 
-        let targetKelasKey = isUg ? `${kelasBersih} (Ug)` : `${klsNum} ${tingkat}`;
-        if (!isUg && !cfg[targetKelasKey]) {
+        let targetKelasKey = isUg ? `${klsNum} ${tingkat} (Ug)` : `${klsNum} ${tingkat}`;
+        if (isUg && !cfg[targetKelasKey]) {
+          if (cfg[`${kelasBersih} (Ug)`]) {
+            targetKelasKey = `${kelasBersih} (Ug)`;
+          }
+        } else if (!isUg && !cfg[targetKelasKey]) {
           // Fallback toleran jika config memakai format IST vs ISTI'DAD
           if (tingkat === "ISTI'DAD" && cfg[`${klsNum} IST`]) {
             targetKelasKey = `${klsNum} IST`;

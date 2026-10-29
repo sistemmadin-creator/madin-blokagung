@@ -417,14 +417,17 @@ export function ekstraksiSesiJadwalHariIni(
 
       let fansList: string[] = [];
       if (fanConfig) {
-        const keyUg = `${dinKls} ${dinBag.toUpperCase()} ${tingkat.toUpperCase()} (Ug)`;
+        const keyUg = `${dinKls} ${tingkat.toUpperCase()} (Ug)`;
+        const keyUgLegacy = `${dinKls} ${dinBag.toUpperCase()} ${tingkat.toUpperCase()} (Ug)`;
         const keyReg = `${dinKls} ${tingkat.toUpperCase()}`;
-        if (
-          isKelasUnggulan(ownClassBase, formasiList) &&
-          Array.isArray(fanConfig[keyUg]) &&
-          fanConfig[keyUg].length > 0
-        ) {
-          fansList = fanConfig[keyUg];
+        if (isKelasUnggulan(ownClassBase, formasiList)) {
+          if (Array.isArray(fanConfig[keyUg]) && fanConfig[keyUg].length > 0) {
+            fansList = fanConfig[keyUg];
+          } else if (Array.isArray(fanConfig[keyUgLegacy]) && fanConfig[keyUgLegacy].length > 0) {
+            fansList = fanConfig[keyUgLegacy];
+          } else if (Array.isArray(fanConfig[keyReg])) {
+            fansList = fanConfig[keyReg];
+          }
         } else if (Array.isArray(fanConfig[keyReg])) {
           fansList = fanConfig[keyReg];
         }

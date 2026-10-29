@@ -1,0 +1,1954 @@
+{
+  "FAN_PELAJARAN_DETAIL": {
+    "item": {
+      "1 ULA||Takror": {
+        "jam": "5",
+        "asatidz": [],
+        "pengajar": ""
+      },
+      "1 ULA||Bandongan": {
+        "jam": "4",
+        "asatidz": [],
+        "pengajar": ""
+      },
+      "1 ULA||(Takror) Takror": {
+        "jam": "1",
+        "asatidz": [
+          "Kuni Nafi'ah",
+          "Nurul Afifah",
+          "Agung Setiaji",
+          "Siti Maesaroh",
+          "Ikhwanul Karim",
+          "Dina Asnal Muna",
+          "Ahnaf Human Azizy",
+          "M Daud Yusuf Alha",
+          "M. Taufiqurrohman",
+          "Ahmad Syah Amnillah",
+          "Eka Nurfina Ma'sumah",
+          "Fikrul Umam Al Hanif",
+          "Hanifah Aulia Firdani",
+          "Cahaya Putra Rahmadani",
+          "Humaidi Nashri Abdilah",
+          "Susmita Cinta Haromain",
+          "Khoirini Siva'a Qolbina",
+          "Muhammad Shochibul Wafa",
+          "Wahyun Dwi Mazro'atul H",
+          "Moh. Irfan Fatkhur Rohman",
+          "M. Yusuf Chevin Maulana NS",
+          "Dewi Masyitoh Anneira Rahma",
+          "Wayang Izza Amrulhima Sembah SC",
+          "ULFATUS SA`ADAH"
+        ]
+      },
+      "2 ULA||(Takror) Takror": {
+        "jam": "1",
+        "asatidz": [
+          "MUTOHAR",
+          "HARIYANTI",
+          "IKA PUTRI",
+          "ANWAR FUADI",
+          "SUTI AMANDA",
+          "MUZAKI RIFAI",
+          "NABILA FAIZA",
+          "SABARUN JAMIL",
+          "SITI RAHMAWATI",
+          "DZIMAS PARI ASIF",
+          "HILMATUS SA'ADAH",
+          "M. TAMIM MUBAROK",
+          "KARIMAH SALSABILA",
+          "ULFIYATUL FITRIAH",
+          "ARJU NABIHAL FIKRI",
+          "RIFKIYATUS SA`ADAH",
+          "MOHAMMAD REZA AZIZI",
+          "SYAHRUL IRFAN AZIZI",
+          "VINA BALQIS SA'ADAH",
+          "AHMAD MAULANA HAQIQI",
+          "FAHMI MALIK RAMADHAN",
+          "MUHAMMAD ANWAR FUADII",
+          "ACHMAD KAWAKIBUL MUNIR",
+          "ANIN NUR ILMIATIL FAHMI",
+          "HANA LAYINATUL MASRUROH",
+          "MUHAMMAD ABDU AR ROZZAQ",
+          "PUTRI NUR INDAH ELVIANA",
+          "ALTHIFATUZ ZAHRO' AL AJMALA"
+        ]
+      },
+      "3 ULA||(Takror) Takror": {
+        "jam": "1",
+        "asatidz": [
+          "RIFKI KAMIL",
+          "AHMAD AFALLAH",
+          "HILDA MAULIDY",
+          "HUSNI MUBAROK",
+          "RIJAL PRAYOGA",
+          "DEVI WULANDARI",
+          "FAZRIYAL AKBAR",
+          "HULYATUL HILDA",
+          "LAYIN MA'FIANA",
+          "NISMATUL HUSNA",
+          "M MAHRUS ASRORI",
+          "MU'ARIF HIDAYAT",
+          "MUHAMAD MAWAHIB",
+          "HAUL BAHRUN NAIM",
+          "KHUSNUL KHOTIMAH",
+          "PAHMIDIA MAULIDI",
+          "ACHMAD SAIFURROUF",
+          "SANDIA MUKHODIMAH",
+          "DALILAH EL BARUROH",
+          "NAYLA FAHIMATUD DINI",
+          "CANTIK NIKMATURROHMAH",
+          "INTAN HIDAYATUL MILATI",
+          "AJENG HURUN EIN YESIRINA",
+          "MUHAMMAD HASANAL BULQIAH",
+          "MUHAMMAD HANIFAN ABDI RABBANIE",
+          "DESTA EGY RAHMA"
+        ]
+      },
+      "4 ULA||(Takror) Takror": {
+        "jam": "1",
+        "asatidz": [
+          "NIA AVIENDA",
+          "FAIZ FAUZIYAH",
+          "NADHIFA AMALIA",
+          "M. Ilham Kholik",
+          "Junaidi Abu Tami",
+          "SISKA NUR AZIZAH",
+          "ULFATUL LUTFIYAH",
+          "Ahmad Adi Sutiono",
+          "Akmal Azka Ardani",
+          "RATNA AYU LESTARI",
+          "SITI WARDATUL AZKIYA",
+          "FARAH DZIHNA MUHTAROM",
+          "Ah Aziz Al Asy'ari Ali",
+          "Muhammad Fathan Rasyid",
+          "Zulfa Roikhatul Jannah",
+          "Cheriliya Aisya Azzahra",
+          "M. Iklil Farido Amirudin",
+          "Ahmad Najam Kholif Darmawan",
+          "Muhammad Fadli Reza Prasetya"
+        ]
+      },
+      "1 ULYA||(Takror) Takror": {
+        "jam": "1",
+        "asatidz": [
+          "Sukandar",
+          "Istiqomah",
+          "Muchlisin",
+          "Achmad Hafirudin",
+          "Ulfatul Munawwaroh",
+          "Ima Inayatul Mukaromah",
+          "M. Ali Fikri Azam Zami",
+          "Nuwafi Laili Mufarihah",
+          "Siti Chisbiyatul Fitriyah"
+        ]
+      },
+      "2 ULYA||(Takror) Takror": {
+        "jam": "1",
+        "asatidz": [
+          "Inarotul Aliddah",
+          "M. Muhtar Safaat",
+          "Moh. Indi Asrofi",
+          "M. Hilmi Alfian",
+          "IKFINA YA MAULA (PONUT)",
+          "NIDA DUSTURIYA",
+          "ELMAS MAISYA AL BAREZA"
+        ]
+      },
+      "1 WUSTHO||(Takror) Takror": {
+        "jam": "1",
+        "asatidz": [
+          "Abdul Jalil",
+          "Arif Muhtadi",
+          "Lilik Hidayati",
+          "Evi Ayu Saputri",
+          "Liana Maulidina",
+          "Qoulan Syadidan",
+          "M Aburizal Azizy",
+          "Risma Yuliantika",
+          "Febri Rohmatullah",
+          "Saffanatuz Zuhro'",
+          "Kuni Qur'rota Aini",
+          "Mir'atus Sholichah",
+          "Fia Fatihatus Shofa",
+          "Wahyu Arif Prasetyo",
+          "Muhammad Faiz Ardani",
+          "Deni Bhekti Kurnianto",
+          "Muhammad Mutohhar Adamawiy",
+          "JAZILATUL KHASANAH",
+          "ZILVIE ZUHDATUL MUKARROM K."
+        ]
+      },
+      "2 WUSTHO||(Takror) Takror": {
+        "jam": "1",
+        "asatidz": [
+          "Ayu Indah Sari",
+          "Dafiq Ariyanto",
+          "Nikmaturrohmah",
+          "Alimatul Amalia",
+          "Shofiya Nabilla",
+          "Nafisatun Nafi'iyah",
+          "Ahmad Yusuf Al Faruq",
+          "Anikmatul Mutmainnah",
+          "Shafitri Ahmad Wijaya",
+          "Ahmad Fahim Hilmy Ahimsa",
+          "M. Farkhan Ziya'ul Haqqi",
+          "Muhammad Sunniy Islamuddin"
+        ]
+      },
+      "3 ULA||(Badongan) Badongan": {
+        "asatidz": [
+          "DESTA EGY RAHMA"
+        ],
+        "pengajar": ""
+      },
+      "1 ISTI'DAD||(Takror) Takror": {
+        "jam": "4",
+        "asatidz": [
+          "MOH SABIQ AL-HADI"
+        ]
+      },
+      "1 ULA||(Fiqih) Fathul Qarib": {
+        "jam": "1",
+        "asatidz": [],
+        "pengajar": ""
+      },
+      "2 ULYA||(Badongan) Badongan": {
+        "asatidz": [
+          "M. Hilmi Alfian",
+          "IKFINA YA MAULA (PONUT)",
+          "NIDA DUSTURIYA",
+          "ELMAS MAISYA AL BAREZA"
+        ],
+        "pengajar": ""
+      },
+      "3 B ULA (Ug)||(Fiqih) Fiqih": {
+        "asatidz": [
+          "Ahmad Junaidi",
+          "MAUIDHOTUL HASANAH"
+        ],
+        "pengajar": ""
+      },
+      "3 B ULA (Ug)||(I'lal) I'lal": {
+        "asatidz": [
+          "Ahmad Junaidi",
+          "MAUIDHOTUL HASANAH"
+        ],
+        "pengajar": ""
+      },
+      "3 B ULA (Ug)||(Nahwu) Nahwu": {
+        "asatidz": [
+          "Ahmad Junaidi",
+          "MAUIDHOTUL HASANAH"
+        ],
+        "pengajar": ""
+      },
+      "4 ULA||(Nahwu) Al-‘Imrithi": {
+        "jam": "4",
+        "asatidz": [
+          "AH AZIZ AL ASY'ARI ALI",
+          "AHMAD ADI SUTIONO",
+          "AHMAD NAJAM KHOLIF DARMAWAN",
+          "AKMAL AZKA ARDANI",
+          "CHERILIYA AISYA AZZAHRA",
+          "FAIZ FAUZIYAH",
+          "FARAH DZIHNA MUHTAROM",
+          "INAROTU ASNAL HANA",
+          "JUNAIDI ABU TAMI",
+          "M. IKLIL FARIDO AMIRUDIN",
+          "M. ILHAM KHOLIK",
+          "MUHAMMAD FADLI REZA PRASETYA",
+          "MUHAMMAD FATHAN RASYID",
+          "NADHIFA AMALIA",
+          "NIA AVIENDA",
+          "RATNA AYU LESTARI",
+          "SEPTINISA MAFTUHAH",
+          "SISKA NUR AZIZAH",
+          "SITI WARDATUL AZKIYA",
+          "ULFATUL LUTFIYAH",
+          "ZULFA ROIKHATUL JANNAH"
+        ],
+        "pengajar": "MS"
+      },
+      "1 ULA||(Pegon) Pegon Al-Itqon": {
+        "jam": "2",
+        "asatidz": [
+          "AGUNG SETIAJI",
+          "AHMAD SYAH AMNILLAH",
+          "AHNAF HUMAN AZIZY",
+          "CAHAYA PUTRA RAHMADANI",
+          "DEWI MASYITOH ANNEIRA RAHMA",
+          "DINA ASNAL MUNA",
+          "EKA NURFINA MA'SUMAH",
+          "FIKRUL UMAM AL HANIF",
+          "HANIFAH AULIA FIRDANI",
+          "HUMAIDI NASHRI ABDILAH",
+          "IKHWANUL KARIM",
+          "KHOIRINI SIVA'A QOLBINA",
+          "KUNI NAFI'AH",
+          "M DAUD YUSUF ALHA",
+          "M. TAUFIQURROHMAN",
+          "M. YUSUF CHEVIN MAULANA NS",
+          "MOH. IRFAN FATKHUR ROHMAN",
+          "MUHAMMAD SHOCHIBUL WAFA",
+          "NURUL AFIFAH",
+          "SITI MAESAROH",
+          "SUSMITA CINTA HAROMAIN",
+          "ULFATUS SA`ADAH",
+          "WAHYUN DWI MAZRO'ATUL H",
+          "WAYANG IZZA AMRULHIMA SEMBAH SC"
+        ],
+        "pengajar": "MS"
+      },
+      "1 WUSTHO||(Badongan) Badongan": {
+        "asatidz": [
+          "JAZILATUL KHASANAH",
+          "ZILVIE ZUHDATUL MUKARROM K."
+        ],
+        "pengajar": ""
+      },
+      "3 A ULA (Ug)||(Takror) Takror": {
+        "asatidz": [
+          "YAZIDA FAHRIZ SALSABILA"
+        ],
+        "pengajar": ""
+      },
+      "3 B ULA (Ug)||(Shorof) Shorof": {
+        "asatidz": [
+          "Ahmad Junaidi",
+          "MAUIDHOTUL HASANAH"
+        ],
+        "pengajar": ""
+      },
+      "3 B ULA (Ug)||(Takror) Takror": {
+        "asatidz": [
+          "Ahmad Junaidi",
+          "MAUIDHOTUL HASANAH"
+        ],
+        "pengajar": ""
+      },
+      "3 B ULA (Ug)||(Tarikh) Tarikh": {
+        "asatidz": [
+          "Agus M. Ainun Niam"
+        ],
+        "pengajar": ""
+      },
+      "3 B ULA (Ug)||(Tauhid) Tauhid": {
+        "asatidz": [
+          "Moh. Kavin Aisar Afiqi"
+        ],
+        "pengajar": ""
+      },
+      "3 ULA||(Fiqih) Matan Taqrib 1": {
+        "jam": "2",
+        "asatidz": [
+          "AGUS H. M. FAKHRI ALI",
+          "AGUS H. AINUL YAQIN",
+          "AGUS M. ILHAM ZULKIFLI WAHAB",
+          "SIDIQ SATYA PAMUNGKAS",
+          "M. FAJAR AT TAMIMI",
+          "MOH NUR WAHID KHOIRUL BASAR",
+          "AHMAD HAFIDHI KHOLILUL ASY'ARI",
+          "RO'IS MAHMUDI",
+          "MIFTAHUDIN MUSTAQIM",
+          "MOH. KAVIN AISAR AFIQI",
+          "FIRNANDA MAHRUS REZA",
+          "INDAH ROFIQOTUL FITRIYAH",
+          "GITA AZZAHRA",
+          "BINTI MUNIROTUZ ZAHRO'",
+          "HILDA MAULIDY",
+          "DEVI WULANDARI",
+          "HULYATUL HILDA",
+          "LAYIN MA'FIANA",
+          "NISMATUL HUSNA",
+          "KHUSNUL KHOTIMAH",
+          "PAHMIDIA MAULIDI",
+          "SANDIA MUKHODIMAH",
+          "DALILAH EL BARUROH",
+          "NAYLA FAHIMATUD DINI",
+          "CANTIK NIKMATURROHMAH",
+          "INTAN HIDAYATUL MILATI",
+          "AJENG HURUN EIN YESIRINA",
+          "DESTA EGY RAHMA"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "4 A ULA (Ug)||(Hadist) Hadist": {
+        "asatidz": [
+          "ARIFNA DINA ALMADANI"
+        ],
+        "pengajar": ""
+      },
+      "4 A ULA (Ug)||(Takror) Takror": {
+        "jam": "1",
+        "asatidz": [
+          "Muhammad Abdul Azis",
+          "ARIFNA DINA ALMADANI"
+        ]
+      },
+      "4 B ULA (Ug)||(Hadist) Hadist": {
+        "asatidz": [
+          "Afifa Saila Fina Sabrina"
+        ],
+        "pengajar": ""
+      },
+      "4 B ULA (Ug)||(Takror) Takror": {
+        "asatidz": [
+          "Hafidz Muslimin",
+          "Afifa Saila Fina Sabrina"
+        ],
+        "pengajar": ""
+      },
+      "1 A ULYA (Ug)||(Takror) Takror": {
+        "asatidz": [
+          "Ro'is muzakky"
+        ],
+        "pengajar": ""
+      },
+      "1 ULYA||(Fiqih) Fathul Qorib 3": {
+        "jam": "4",
+        "asatidz": [
+          "ILHAM PRASETYO",
+          "UST. ULUL AZMI",
+          "Sukandar",
+          "Istiqomah",
+          "Muchlisin",
+          "Achmad Hafirudin",
+          "Ulfatul Munawwaroh",
+          "Ima Inayatul Mukaromah",
+          "M. Ali Fikri Azam Zami",
+          "Nuwafi Laili Mufarihah",
+          "Siti Chisbiyatul Fitriyah"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "2 ULA||(Fiqih) Safinatun Najah": {
+        "jam": "2",
+        "asatidz": [
+          "ACHMAD KAWAKIBUL MUNIR",
+          "AHMAD MAULANA HAQIQI",
+          "ALTHIFATUZ ZAHRO' AL AJMALA",
+          "ANIN NUR ILMIATIL FAHMI",
+          "ANWAR FUADI",
+          "ARJU NABIHAL FIKRI",
+          "DZIMAS PARI ASIF",
+          "FAHMI MALIK RAMADHAN",
+          "HANA LAYINATUL MASRUROH",
+          "HARIYANTI",
+          "HILMATUS SA'ADAH",
+          "IKA PUTRI",
+          "KARIMAH SALSABILA",
+          "M. TAMIM MUBAROK",
+          "MOHAMMAD REZA AZIZI",
+          "MUHAMMAD ABDU AR ROZZAQ",
+          "MUHAMMAD ANWAR FUADII",
+          "MUTOHAR",
+          "MUZAKI RIFAI",
+          "NABILA FAIZA",
+          "PUTRI NUR INDAH ELVIANA",
+          "RIFKIYATUS SA`ADAH",
+          "SABARUN JAMIL",
+          "SITI RAHMAWATI",
+          "SUTI AMANDA",
+          "SYAHRUL IRFAN AZIZI",
+          "ULFIYATUL FITRIAH",
+          "VINA BALQIS SA'ADAH",
+          "M. Fajar At Tamimi",
+          "ULFATUS SA`ADAH"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "2 ULYA||(Fiqih) Fathul Qorib 4": {
+        "jam": "6",
+        "asatidz": [
+          "ELMAS MAISYA AL BAREZA",
+          "IKFINA YA MAULA (PONUT)",
+          "KHOROTUN HISAN",
+          "M. HILMI ALFIAN",
+          "M. MUHTAR SAFAAT",
+          "MOH. AYUB ZAKARIA",
+          "NIDA DUSTURIYA",
+          "Inarotul Aliddah",
+          "Moh. Indi Asrofi"
+        ],
+        "pengajar": "MS"
+      },
+      "3 ULA||(I'lal) Qowa'idul I'lal": {
+        "jam": "1",
+        "asatidz": [
+          "ACHMAD SAIFURROUF",
+          "AHMAD AFALLAH",
+          "AJENG HURUN EIN YESIRINA",
+          "CANTIK NIKMATURROHMAH",
+          "DALILAH EL BARUROH",
+          "DESTA EGY RAHMA",
+          "DEVI WULANDARI",
+          "FAZRIYAL AKBAR",
+          "HAUL BAHRUN NAIM",
+          "HILDA MAULIDY",
+          "HULYATUL HILDA",
+          "HUSNI MUBAROK",
+          "INTAN HIDAYATUL MILATI",
+          "KHUSNUL KHOTIMAH",
+          "LAYIN MA'FIANA",
+          "M MAHRUS ASRORI",
+          "MU'ARIF HIDAYAT",
+          "MUHAMAD MAWAHIB",
+          "MUHAMMAD HANIFAN ABDI RABBANIE",
+          "MUHAMMAD HASANAL BULQIAH",
+          "NAYLA FAHIMATUD DINI",
+          "NISMATUL HUSNA",
+          "PAHMIDIA MAULIDI",
+          "RIFKI KAMIL",
+          "RIJAL PRAYOGA",
+          "SANDIA MUKHODIMAH"
+        ],
+        "pengajar": "MS"
+      },
+      "3 ULA||(Shorof) Tasrif Istilah": {
+        "jam": "3",
+        "asatidz": [
+          "ACHMAD SAIFURROUF",
+          "AHMAD AFALLAH",
+          "AJENG HURUN EIN YESIRINA",
+          "CANTIK NIKMATURROHMAH",
+          "DALILAH EL BARUROH",
+          "DESTA EGY RAHMA",
+          "DEVI WULANDARI",
+          "FAZRIYAL AKBAR",
+          "HAUL BAHRUN NAIM",
+          "HILDA MAULIDY",
+          "HULYATUL HILDA",
+          "HUSNI MUBAROK",
+          "INTAN HIDAYATUL MILATI",
+          "KHUSNUL KHOTIMAH",
+          "LAYIN MA'FIANA",
+          "M MAHRUS ASRORI",
+          "MU'ARIF HIDAYAT",
+          "MUHAMAD MAWAHIB",
+          "MUHAMMAD HANIFAN ABDI RABBANIE",
+          "MUHAMMAD HASANAL BULQIAH",
+          "NAYLA FAHIMATUD DINI",
+          "NISMATUL HUSNA",
+          "PAHMIDIA MAULIDI",
+          "RIFKI KAMIL",
+          "RIJAL PRAYOGA",
+          "SANDIA MUKHODIMAH"
+        ],
+        "pengajar": "MS"
+      },
+      "4 ULA||(Fiqih)  Matan Taqrib 2": {
+        "jam": "4",
+        "asatidz": [
+          "AH AZIZ AL ASY'ARI ALI",
+          "AHMAD ADI SUTIONO",
+          "AHMAD NAJAM KHOLIF DARMAWAN",
+          "AKMAL AZKA ARDANI",
+          "CHERILIYA AISYA AZZAHRA",
+          "FAIZ FAUZIYAH",
+          "FARAH DZIHNA MUHTAROM",
+          "INAROTU ASNAL HANA",
+          "JUNAIDI ABU TAMI",
+          "M. IKLIL FARIDO AMIRUDIN",
+          "M. ILHAM KHOLIK",
+          "MUHAMMAD FADLI REZA PRASETYA",
+          "MUHAMMAD FATHAN RASYID",
+          "NADHIFA AMALIA",
+          "NIA AVIENDA",
+          "RATNA AYU LESTARI",
+          "SEPTINISA MAFTUHAH",
+          "SISKA NUR AZIZAH",
+          "SITI WARDATUL AZKIYA",
+          "ULFATUL LUTFIYAH",
+          "ZULFA ROIKHATUL JANNAH"
+        ],
+        "pengajar": "MS"
+      },
+      "4 ULA||(Shorof) Tasrif Lughowi": {
+        "jam": "2",
+        "asatidz": [
+          "AH AZIZ AL ASY'ARI ALI",
+          "AHMAD ADI SUTIONO",
+          "AHMAD NAJAM KHOLIF DARMAWAN",
+          "AKMAL AZKA ARDANI",
+          "CHERILIYA AISYA AZZAHRA",
+          "FAIZ FAUZIYAH",
+          "FARAH DZIHNA MUHTAROM",
+          "INAROTU ASNAL HANA",
+          "JUNAIDI ABU TAMI",
+          "M. IKLIL FARIDO AMIRUDIN",
+          "M. ILHAM KHOLIK",
+          "MUHAMMAD FADLI REZA PRASETYA",
+          "MUHAMMAD FATHAN RASYID",
+          "NADHIFA AMALIA",
+          "NIA AVIENDA",
+          "RATNA AYU LESTARI",
+          "SEPTINISA MAFTUHAH",
+          "SISKA NUR AZIZAH",
+          "SITI WARDATUL AZKIYA",
+          "ULFATUL LUTFIYAH",
+          "ZULFA ROIKHATUL JANNAH"
+        ],
+        "pengajar": "MS"
+      },
+      "1 A WUSTHO (Ug)||(Takror) Takror": {
+        "asatidz": [
+          "Rizqi Maulana Achmad"
+        ],
+        "pengajar": ""
+      },
+      "1 B WUSTHO (Ug)||(Takror) Takror": {
+        "asatidz": [
+          "Muhammad Miftahul Ilham"
+        ],
+        "pengajar": ""
+      },
+      "1 ULYA||(Sorogan) Fathul Qorib 3": {
+        "jam": "1"
+      },
+      "1 WUSTHO||(Fiqih) Fathul Qorib 1": {
+        "jam": "4",
+        "asatidz": [
+          "ABDUL JALIL",
+          "ARIF MUHTADI",
+          "DENI BHEKTI KURNIANTO",
+          "EVI AYU SAPUTRI",
+          "FEBRI ROHMATULLAH",
+          "FIA FATIHATUS SHOFA",
+          "HUSNIA ASMA NAZIHAH",
+          "JAZILATUL KHASANAH",
+          "KUNI QUR'ROTA AINI",
+          "LIANA MAULIDINA",
+          "LILIK HIDAYATI",
+          "M ABURIZAL AZIZY",
+          "MIR'ATUS SHOLICHAH",
+          "MUHAMMAD FAIZ ARDANI",
+          "MUHAMMAD MUTOHHAR ADAMAWIY",
+          "NAFISATUN NAFI'IYAH",
+          "QOULAN SYADIDAN",
+          "RISMA YULIANTIKA",
+          "SAFFANATUZ ZUHRO'",
+          "WAHYU ARIF PRASETYO",
+          "ZILVIE ZUHDATUL MUKARROM K.",
+          "Azwar Anas",
+          "M. Kholil Ridwan",
+          "Irham Khofif Arroufi",
+          "Mohamad Naufal Zabidi",
+          "M. YAHYA IFAN BAHTIAR"
+        ],
+        "pengajar": ""
+      },
+      "1 WUSTHO||(Shorof) Nadmul Maqsud": {
+        "jam": "2"
+      },
+      "2 A WUSTHO (Ug)||(Takror) Takror": {
+        "asatidz": [
+          "Muhammad Ali Makmun"
+        ],
+        "pengajar": ""
+      },
+      "2 B WUSTHO (Ug)||(Takror) Takror": {},
+      "2 ULA||(Nahwu) Ikhtisor Nahwiyah": {
+        "jam": "4",
+        "asatidz": [
+          "ACHMAD KAWAKIBUL MUNIR",
+          "AHMAD MAULANA HAQIQI",
+          "ALTHIFATUZ ZAHRO' AL AJMALA",
+          "ANIN NUR ILMIATIL FAHMI",
+          "ANWAR FUADI",
+          "ARJU NABIHAL FIKRI",
+          "DZIMAS PARI ASIF",
+          "FAHMI MALIK RAMADHAN",
+          "HANA LAYINATUL MASRUROH",
+          "HARIYANTI",
+          "HILMATUS SA'ADAH",
+          "IKA PUTRI",
+          "KARIMAH SALSABILA",
+          "M. TAMIM MUBAROK",
+          "MOHAMMAD REZA AZIZI",
+          "MUHAMMAD ABDU AR ROZZAQ",
+          "MUHAMMAD ANWAR FUADII",
+          "MUTOHAR",
+          "MUZAKI RIFAI",
+          "NABILA FAIZA",
+          "PUTRI NUR INDAH ELVIANA",
+          "RIFKIYATUS SA`ADAH",
+          "SABARUN JAMIL",
+          "SITI RAHMAWATI",
+          "SUTI AMANDA",
+          "SYAHRUL IRFAN AZIZI",
+          "ULFIYATUL FITRIAH",
+          "VINA BALQIS SA'ADAH",
+          "ULFATUS SA`ADAH"
+        ],
+        "pengajar": "MS"
+      },
+      "2 ULYA||(Sorogan) Fathul Qorib 4": {
+        "jam": "1"
+      },
+      "2 WUSTHO||(Fiqih) Fathul Qorib 2": {
+        "jam": "4",
+        "asatidz": [
+          "AGUS SABIQ",
+          "MUHAMMAD FAIZ ARDANI",
+          "DAFIQ ARIYANTO",
+          "DIMAS ARISANDI",
+          "RIZA AZIZI",
+          "MOHAMAD NAUFAL ZABIDI",
+          "Ayu Indah Sari",
+          "Nikmaturrohmah",
+          "Alimatul Amalia",
+          "Shofiya Nabilla",
+          "Nafisatun Nafi'iyah",
+          "Ahmad Yusuf Al Faruq",
+          "Anikmatul Mutmainnah",
+          "Shafitri Ahmad Wijaya",
+          "Ahmad Fahim Hilmy Ahimsa",
+          "M. Farkhan Ziya'ul Haqqi",
+          "Muhammad Sunniy Islamuddin"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "3 A ULA (Ug)||(Badongan) Badongan": {
+        "asatidz": [
+          "YAZIDA FAHRIZ SALSABILA"
+        ],
+        "pengajar": ""
+      },
+      "4 ULA||(Hadist) Targhib Wa Tarhib": {
+        "jam": "1",
+        "asatidz": [
+          "AGUS H. INDY NAJMU TSAQIB",
+          "AGUS M. ISHAQ, S.SOS.I, M.PD",
+          "AGUS ADIB AHMADA, M.PD",
+          "AGUS AHMAD SUPRIYADI, S.E",
+          "AGUS NURIS TSAQIF",
+          "AGUS H. ALAIKA NASRULLOH",
+          "AGUS MA'RUF ARWANI, M.PD",
+          "ZAINUL FUAD",
+          "FATIMATUL MUNAWAROH",
+          "NIA AVIENDA",
+          "FAIZ FAUZIYAH",
+          "NADHIFA AMALIA",
+          "SISKA NUR AZIZAH",
+          "ULFATUL LUTFIYAH",
+          "RATNA AYU LESTARI",
+          "Inarotu Asnal Hana",
+          "Septinisa Maftuhah",
+          "SITI WARDATUL AZKIYA",
+          "FARAH DZIHNA MUHTAROM",
+          "Zulfa Roikhatul Jannah",
+          "Cheriliya Aisya Azzahra"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "1 ISTI'DAD||(Pegon) Pegon Al-Itqon": {
+        "jam": "4"
+      },
+      "1 ULA||(Akhlaq) Tanbihul Muta'alim": {
+        "jam": "2",
+        "asatidz": [
+          "MUHAMMAD DARWIS AL-FIRDAUS",
+          "NASHIRUL UMAM",
+          "AHMAD REZA DLIYAULLOH",
+          "LUKMAN",
+          "HABIB IMRONI",
+          "MINANULOH MUHTADI",
+          "AULIA HIDIA AYUSHA",
+          "TARISA ZAHROTUR RIMAYA",
+          "PUPUT ANGGRAINI",
+          "Nurul Afifah",
+          "Siti Maesaroh",
+          "Dina Asnal Muna",
+          "Eka Nurfina Ma'sumah",
+          "Hanifah Aulia Firdani",
+          "Susmita Cinta Haromain",
+          "Khoirini Siva'a Qolbina",
+          "Wahyun Dwi Mazro'atul H",
+          "Dewi Masyitoh Anneira Rahma",
+          "ULFATUS SA`ADAH",
+          "NY. HJ. ULFA FARIDA",
+          "NG. PUJI ARIANI"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "1 ULA||(Jam Ke-3) Akhlaqul Banin I": {
+        "jam": "1"
+      },
+      "1 ULA||(Tauhid) Aqidatul Mubtadiin": {
+        "jam": "2",
+        "asatidz": [
+          "M. AFNAN AMANULLOH",
+          "AHMAD BAGIR MUSTYHAFA",
+          "DA'I MUSYAFA",
+          "RO'IS MAHMUDI",
+          "HABIB IMRONI",
+          "MINANULOH MUHTADI",
+          "NUR AINI AZIZAH",
+          "ISMA NUR HIDAYAH",
+          "FADILAH INTAN",
+          "Nurul Afifah",
+          "Siti Maesaroh",
+          "Dina Asnal Muna",
+          "Eka Nurfina Ma'sumah",
+          "Hanifah Aulia Firdani",
+          "Susmita Cinta Haromain",
+          "Khoirini Siva'a Qolbina",
+          "Wahyun Dwi Mazro'atul H",
+          "Dewi Masyitoh Anneira Rahma",
+          "ULFATUS SA`ADAH"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "1 ULYA||(Balaghoh) Jauharul Maknun": {
+        "jam": "4",
+        "asatidz": [
+          "ACHMAD HAFIRUDIN",
+          "FINKA OKTAVIANA PUTRI",
+          "IMA INAYATUL MUKAROMAH",
+          "INAROTUL ALIDDAH",
+          "ISTIQOMAH",
+          "M. ALI FIKRI AZAM ZAMI",
+          "MUCHLISIN",
+          "NUWAFI LAILI MUFARIHAH",
+          "SUKANDAR",
+          "ULFATUL MUNAWWAROH"
+        ],
+        "pengajar": "MS"
+      },
+      "1 WUSTHO||(Q. I'rab) Qowaidul I'rab": {
+        "jam": "1",
+        "asatidz": [
+          "AHMAD FAHIM HILMY AHIMSA",
+          "NUR HAYIN MARZUQI",
+          "AHMAD MUTOHAR",
+          "UST. ABDUL HAMID",
+          "SHOLEHUDDIN AL MALIKUS SHOLEH",
+          "DHEA AMIROH",
+          "EFITA RETNO ULANDARI",
+          "Lilik Hidayati",
+          "Risma Yuliantika",
+          "Kuni Qur'rota Aini",
+          "Mir'atus Sholichah",
+          "Husnia Asma Nazihah",
+          "Nafisatun Nafi'iyah",
+          "JAZILATUL KHASANAH",
+          "ZILVIE ZUHDATUL MUKARROM K."
+        ],
+        "pengajar": "MS, MB"
+      },
+      "1 WUSTHO||(Sorogan)  Fathul Qorib 1": {
+        "jam": "1"
+      },
+      "2 WUSTHO||(Sorogan)  Fathul Qorib 2": {
+        "jam": "1"
+      },
+      "4 A ULA (Ug)||(Nahwu) Al-‘Imrithi": {
+        "jam": "4",
+        "asatidz": [
+          "ARIFNA DINA ALMADANI",
+          "MUHAMMAD ABDUL AZIS"
+        ],
+        "pengajar": "MS"
+      },
+      "4 B ULA (Ug)||(Nahwu) Al-‘Imrithi": {
+        "jam": "4",
+        "asatidz": [
+          "AFIFA SAILA FINA SABRINA",
+          "HAFIDZ MUSLIMIN"
+        ],
+        "pengajar": "MS"
+      },
+      "4 ULA||(Tauhid) Matan Ummul Barohin": {
+        "jam": "2",
+        "asatidz": [
+          "MUHAMMAD SUNNIY ISLAMUDDIN",
+          "ZAINUL FUAD",
+          "SIDIQ SATYA PAMUNGKAS",
+          "ROKIB MUNAWIR",
+          "NUR HAYIN MARZUQI",
+          "HABIBUL IKHWAN",
+          "AFFAN SIFA IBRAHIM",
+          "M. FARKHAN ZIYA'UL HAQQI",
+          "INDANA NAZIHATUN NI'MAH",
+          "VINA KHUSNAL KHULUQI",
+          "NAYLA ZUHROTUN NAFISAH",
+          "YAZIDA FAHRIZ SALSABILA"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "1 A ULYA (Ug)||(I. Hadits) I. Hadits": {
+        "asatidz": [
+          "Ro'is muzakky",
+          "Kunti Mahbubah Ahmad"
+        ],
+        "pengajar": ""
+      },
+      "1 A ULYA (Ug)||(I. Mantiq) I. Mantiq": {
+        "asatidz": [
+          "Ro'is muzakky",
+          "Kunti Mahbubah Ahmad"
+        ],
+        "pengajar": ""
+      },
+      "1 A ULYA (Ug)||(I. Qur'an) I. Qur'an": {
+        "asatidz": [
+          "Ro'is muzakky",
+          "Kunti Mahbubah Ahmad"
+        ],
+        "pengajar": ""
+      },
+      "2 ULA||(Tauhid) Nadhom Aqidatul Awam": {
+        "jam": "2",
+        "asatidz": [
+          "MUHAMMAD HASANAL BULQIAH",
+          "AHMAD NUR AFANDI",
+          "MUHAMMAD IBNU KHARIS",
+          "LUKMAN",
+          "DA'I MUSYAFA",
+          "AHMAD FAIZ SETIYAWAN",
+          "MIFTAHUDIN MUSTAQIM",
+          "MOH. SYUKRON RIZQI DZUL FAHMI",
+          "AZKA SALMA ADIBA",
+          "IKFINA YA MAULANAN NUZULA",
+          "IZATUN NURIN MAKIYYAH",
+          "VIA ARIK KUSUMA",
+          "SHOHIBATUL ASLAMIYYAH",
+          "ISMA NUR HIDAYAH"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "2 ULYA||(Tauhid) Hushunul Hamidiyyah": {
+        "jam": "2",
+        "asatidz": [
+          "KH. ALY ASYIQIN",
+          "AGUS H. M. BAHRUL ULUM MUBAROK, LC",
+          "AGUS YASIR LANA",
+          "MOH. AYUB ZAKARIA",
+          "UST. AINUN NA'IM",
+          "M. Hilmi Alfian",
+          "IKFINA YA MAULA (PONUT)",
+          "NIDA DUSTURIYA",
+          "ELMAS MAISYA AL BAREZA"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "3 A ULA (Ug)||(Fiqih) Matan Taqrib 1": {
+        "jam": "2",
+        "asatidz": [
+          "AKHMAD DHIYAUL LAMI'",
+          "GITA AZZAHRA",
+          "YAZIDA FAHRIZ SALSABILA"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "3 ULA||(Nahwu) Jurumiyyah {Al-Bayan}": {
+        "jam": "4",
+        "asatidz": [
+          "ACHMAD SAIFURROUF",
+          "AHMAD AFALLAH",
+          "AJENG HURUN EIN YESIRINA",
+          "CANTIK NIKMATURROHMAH",
+          "DALILAH EL BARUROH",
+          "DESTA EGY RAHMA",
+          "DEVI WULANDARI",
+          "FAZRIYAL AKBAR",
+          "HAUL BAHRUN NAIM",
+          "HILDA MAULIDY",
+          "HULYATUL HILDA",
+          "HUSNI MUBAROK",
+          "INTAN HIDAYATUL MILATI",
+          "KHUSNUL KHOTIMAH",
+          "LAYIN MA'FIANA",
+          "M MAHRUS ASRORI",
+          "MU'ARIF HIDAYAT",
+          "MUHAMAD MAWAHIB",
+          "MUHAMMAD HANIFAN ABDI RABBANIE",
+          "MUHAMMAD HASANAL BULQIAH",
+          "NAYLA FAHIMATUD DINI",
+          "NISMATUL HUSNA",
+          "PAHMIDIA MAULIDI",
+          "RIFKI KAMIL",
+          "RIJAL PRAYOGA",
+          "SANDIA MUKHODIMAH",
+          "Syahrul Irfan Azizi"
+        ],
+        "pengajar": "MS"
+      },
+      "3 ULA||(Tauhid) Tahsilu Nailil Marom": {
+        "jam": "2",
+        "asatidz": [
+          "CAHAYA PUTRA RAHMADANI",
+          "SIDIQ SATYA PAMUNGKAS",
+          "AHMAD FAIZ SETIYAWAN",
+          "MOH NUR WAHID KHOIRUL BASAR",
+          "AHMAD FAKIH LUKMAN HAKIM",
+          "NUR HAYIN MARZUQI",
+          "MIFTAHUDIN MUSTAQIM",
+          "MUHAMMAD HADZIQ 'AQIL",
+          "MOH. KAVIN AISAR AFIQI",
+          "MOH. SYUKRON RIZQI DZUL FAHMI",
+          "WILDA LUQI UTAMI",
+          "AULIA DWI MASRUROH",
+          "AGUS ROZIN",
+          "FAQIHATUD DINIYAH"
+        ],
+        "pengajar": "MB"
+      },
+      "4 A ULA (Ug)||(Fiqih) Matan Taqrib 2": {
+        "jam": "4",
+        "asatidz": [
+          "MUHAMMAD ABDUL AZIS",
+          "ARIFNA DINA ALMADANI"
+        ],
+        "pengajar": "MS"
+      },
+      "4 B ULA (Ug)||(Fiqih) Matan Taqrib 2": {
+        "jam": "4",
+        "asatidz": [
+          "HAFIDZ MUSLIMIN",
+          "Afifa Saila Fina Sabrina"
+        ],
+        "pengajar": "MS"
+      },
+      "1 A ULYA (Ug)||(Fiqih) Fathul Qorib 3": {
+        "jam": "4",
+        "asatidz": [
+          "RO'IS MUZAKKY"
+        ],
+        "pengajar": "MS"
+      },
+      "1 WUSTHO||(Praktek Fiqh) Praktek Fiqh": {
+        "asatidz": [
+          "Lilik Hidayati",
+          "Risma Yuliantika",
+          "Kuni Qur'rota Aini",
+          "Mir'atus Sholichah",
+          "Husnia Asma Nazihah",
+          "Nafisatun Nafi'iyah",
+          "JAZILATUL KHASANAH",
+          "ZILVIE ZUHDATUL MUKARROM K."
+        ],
+        "pengajar": ""
+      },
+      "2 WUSTHO||(Praktek Fiqh) Praktek Fiqh": {
+        "asatidz": [
+          "Ayu Indah Sari",
+          "Nikmaturrohmah",
+          "Alimatul Amalia",
+          "Shafitri Ahmad Wijaya"
+        ],
+        "pengajar": ""
+      },
+      "3 A ULA (Ug)||(I'lal) Qowa'idul I'lal": {
+        "jam": "1",
+        "asatidz": [
+          "AKHMAD DHIYAUL LAMI'",
+          "YAZIDA FAHRIZ SALSABILA"
+        ],
+        "pengajar": "MS"
+      },
+      "3 A ULA (Ug)||(Shorof) Tasrif Istilah": {
+        "jam": "3",
+        "asatidz": [
+          "AKHMAD DHIYAUL LAMI'",
+          "YAZIDA FAHRIZ SALSABILA"
+        ],
+        "pengajar": "MS"
+      },
+      "4 A ULA (Ug)||(Fiqih)  Matan Taqrib 2": {
+        "jam": "2",
+        "asatidz": [
+          "MUHAMMAD ABDUL AZIS"
+        ],
+        "pengajar": "MS"
+      },
+      "4 A ULA (Ug)||(Shorof) Tasrif Lughowi": {
+        "jam": "2",
+        "asatidz": [
+          "ARIFNA DINA ALMADANI",
+          "MUHAMMAD ABDUL AZIS"
+        ],
+        "pengajar": "MS"
+      },
+      "4 B ULA (Ug)||(Shorof) Tasrif Lughowi": {
+        "jam": "2",
+        "asatidz": [
+          "AFIFA SAILA FINA SABRINA",
+          "HAFIDZ MUSLIMIN"
+        ],
+        "pengajar": "MS"
+      },
+      "1 ULYA||(I. Hadits) Syarah Baiquniyyah": {
+        "jam": "2",
+        "asatidz": [
+          "AGUS H. MUKHTAR HANIF Z, LC, M.A",
+          "AGUS H. M. BAHRUL ULUM MUBAROK, LC",
+          "SUKANDAR",
+          "M. FAJAR AT TAMIMI",
+          "UST. NUR HAFIDZ NIZAM FAHMI",
+          "UST. SIROJUL UMAM",
+          "Inarotul Aliddah",
+          "Ulfatul Munawwaroh",
+          "Ima Inayatul Mukaromah"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "3 ULA||(Bandongan) Minhajul Muta'allim": {
+        "jam": "1",
+        "asatidz": [
+          "RIFKI KAMIL",
+          "AHMAD AFALLAH",
+          "HILDA MAULIDY",
+          "HUSNI MUBAROK",
+          "RIJAL PRAYOGA",
+          "DEVI WULANDARI",
+          "FAZRIYAL AKBAR",
+          "HULYATUL HILDA",
+          "LAYIN MA'FIANA",
+          "NISMATUL HUSNA",
+          "M MAHRUS ASRORI",
+          "MU'ARIF HIDAYAT",
+          "MUHAMAD MAWAHIB",
+          "HAUL BAHRUN NAIM",
+          "KHUSNUL KHOTIMAH",
+          "PAHMIDIA MAULIDI",
+          "ACHMAD SAIFURROUF",
+          "SANDIA MUKHODIMAH",
+          "DALILAH EL BARUROH",
+          "NAYLA FAHIMATUD DINI",
+          "CANTIK NIKMATURROHMAH",
+          "INTAN HIDAYATUL MILATI",
+          "AJENG HURUN EIN YESIRINA",
+          "MUHAMMAD HASANAL BULQIAH",
+          "MUHAMMAD HANIFAN ABDI RABBANIE"
+        ]
+      },
+      "1 A WUSTHO (Ug)||(Fiqih) Fathul Qorib 1": {
+        "jam": "4",
+        "asatidz": [
+          "ARMIA ZULIA PUTRI",
+          "RIZQI MAULANA ACHMAD"
+        ],
+        "pengajar": "MS"
+      },
+      "1 B WUSTHO (Ug)||(Fiqih) Fathul Qorib 1": {
+        "jam": "4",
+        "asatidz": [
+          "IRODATUN NASIHA",
+          "MUHAMMAD MIFTAHUL ILHAM"
+        ],
+        "pengajar": "MS"
+      },
+      "1 ISTI'DAD||(Akhlaq) Tanbihul Muta'alim": {
+        "jam": "4"
+      },
+      "1 ISTI'DAD||(Tauhid) Aqidatul Mubtadiin": {
+        "jam": "4"
+      },
+      "2 A WUSTHO (Ug)||(Fiqih) Fathul Qorib 2": {
+        "jam": "4",
+        "asatidz": [
+          "MUHAMMAD ALI MAKMUN",
+          "SHIDQIL ADILIYAH",
+          "M ABURIZAL AZIZY"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "2 B WUSTHO (Ug)||(Fiqih) Fathul Qorib 2": {},
+      "2 ULYA||(Ushul Fiqih) Tashilut Thuruqot": {
+        "jam": "4",
+        "asatidz": [
+          "ELMAS MAISYA AL BAREZA",
+          "IKFINA YA MAULA (PONUT)",
+          "KHOROTUN HISAN",
+          "M. HILMI ALFIAN",
+          "M. MUHTAR SAFAAT",
+          "MOH. AYUB ZAKARIA",
+          "NIDA DUSTURIYA",
+          "Moh. Indi Asrofi"
+        ],
+        "pengajar": "MS"
+      },
+      "4 A ULA (Ug)||(Tauhid) khulasotul kalam": {
+        "jam": "2",
+        "asatidz": [
+          "INDANA NAZIHATUN NI'MAH"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "4 B ULA (Ug)||(Tauhid) khulasotul kalam": {
+        "jam": "2",
+        "asatidz": [
+          "AHMAD FAKIH LUKMAN HAKIM",
+          "INDANA NAZIHATUN NI'MAH"
+        ],
+        "pengajar": "MB"
+      },
+      "1 A WUSTHO (Ug)||(Shorof) Qowaidul I'rab": {
+        "jam": "1",
+        "asatidz": [],
+        "pengajar": ""
+      },
+      "1 B WUSTHO (Ug)||(Shorof) Qowaidul I'rab": {
+        "jam": "1",
+        "asatidz": [
+          "MUHAMMAD MIFTAHUL ILHAM",
+          "INDI NAJMUS TSAQIB"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "1 ULA||(Fiqih) Mabadi Fiqih Juz I-II-III": {
+        "jam": "2",
+        "asatidz": [],
+        "pengajar": ""
+      },
+      "4 A ULA (Ug)||(Hadist) Targhib Wa Tarhib": {
+        "jam": "1"
+      },
+      "1 A ULYA (Ug)||(balaghoh) Jauharul Maknun": {
+        "jam": "4",
+        "asatidz": [
+          "RO'IS MUZAKKY",
+          "Kunti Mahbubah Ahmad"
+        ],
+        "pengajar": "MS"
+      },
+      "1 A ULYA (Ug)||(mantiq) sulamul munawaroq": {
+        "jam": "2",
+        "asatidz": [
+          "RO'IS MUZAKKY",
+          "AGUS YASIR LANA"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "1 ULA||(Fiqih)  Mabadi Fiqih Juz I II III": {
+        "jam": "4",
+        "asatidz": [
+          "AGUNG SETIAJI",
+          "AHMAD SYAH AMNILLAH",
+          "AHNAF HUMAN AZIZY",
+          "CAHAYA PUTRA RAHMADANI",
+          "DEWI MASYITOH ANNEIRA RAHMA",
+          "DINA ASNAL MUNA",
+          "EKA NURFINA MA'SUMAH",
+          "FIKRUL UMAM AL HANIF",
+          "HANIFAH AULIA FIRDANI",
+          "HUMAIDI NASHRI ABDILAH",
+          "IKHWANUL KARIM",
+          "KHOIRINI SIVA'A QOLBINA",
+          "KUNI NAFI'AH",
+          "M DAUD YUSUF ALHA",
+          "M. TAUFIQURROHMAN",
+          "M. YUSUF CHEVIN MAULANA NS",
+          "MOH. IRFAN FATKHUR ROHMAN",
+          "MUHAMMAD SHOCHIBUL WAFA",
+          "NURUL AFIFAH",
+          "SITI MAESAROH",
+          "SUSMITA CINTA HAROMAIN",
+          "ULFATUS SA`ADAH",
+          "WAHYUN DWI MAZRO'ATUL H",
+          "WAYANG IZZA AMRULHIMA SEMBAH SC"
+        ],
+        "pengajar": "MS"
+      },
+      "1 ULA||(Tajwid) Panduan Tajwid + Juz Amma": {
+        "jam": "4",
+        "asatidz": [
+          "AGUNG SETIAJI",
+          "AHMAD SYAH AMNILLAH",
+          "AHNAF HUMAN AZIZY",
+          "CAHAYA PUTRA RAHMADANI",
+          "DEWI MASYITOH ANNEIRA RAHMA",
+          "DINA ASNAL MUNA",
+          "EKA NURFINA MA'SUMAH",
+          "FIKRUL UMAM AL HANIF",
+          "HANIFAH AULIA FIRDANI",
+          "HUMAIDI NASHRI ABDILAH",
+          "IKHWANUL KARIM",
+          "KHOIRINI SIVA'A QOLBINA",
+          "KUNI NAFI'AH",
+          "M DAUD YUSUF ALHA",
+          "M. TAUFIQURROHMAN",
+          "M. YUSUF CHEVIN MAULANA NS",
+          "MOH. IRFAN FATKHUR ROHMAN",
+          "MUHAMMAD SHOCHIBUL WAFA",
+          "NURUL AFIFAH",
+          "SITI MAESAROH",
+          "SUSMITA CINTA HAROMAIN",
+          "ULFATUS SA`ADAH",
+          "WAHYUN DWI MAZRO'ATUL H",
+          "WAYANG IZZA AMRULHIMA SEMBAH SC"
+        ],
+        "pengajar": "MS"
+      },
+      "1 A ULYA (Ug)||(Hadits) Syarah Baiquniyyah": {
+        "jam": "1",
+        "asatidz": [
+          "KH. AHMAD MUBASYIR SYAFA'AT, S.PD.I"
+        ],
+        "pengajar": "MB"
+      },
+      "1 ULA||(Praktek Fiqh) Panduan Fiqh Praktis": {
+        "jam": "4",
+        "asatidz": [
+          "AGUNG SETIAJI",
+          "AHMAD SYAH AMNILLAH",
+          "AHNAF HUMAN AZIZY",
+          "CAHAYA PUTRA RAHMADANI",
+          "DEWI MASYITOH ANNEIRA RAHMA",
+          "DINA ASNAL MUNA",
+          "EKA NURFINA MA'SUMAH",
+          "FIKRUL UMAM AL HANIF",
+          "HANIFAH AULIA FIRDANI",
+          "HUMAIDI NASHRI ABDILAH",
+          "IKHWANUL KARIM",
+          "KHOIRINI SIVA'A QOLBINA",
+          "KUNI NAFI'AH",
+          "M DAUD YUSUF ALHA",
+          "M. TAUFIQURROHMAN",
+          "M. YUSUF CHEVIN MAULANA NS",
+          "MOH. IRFAN FATKHUR ROHMAN",
+          "MUHAMMAD SHOCHIBUL WAFA",
+          "NURUL AFIFAH",
+          "SITI MAESAROH",
+          "SUSMITA CINTA HAROMAIN",
+          "ULFATUS SA`ADAH",
+          "WAHYUN DWI MAZRO'ATUL H",
+          "WAYANG IZZA AMRULHIMA SEMBAH SC"
+        ],
+        "pengajar": "MS"
+      },
+      "2 B WUSTHO (Ug)||(Sorogan)  Fathul Qorib 2": {},
+      "2 ULA||(Praktek Fiqh) Panduan Fiqh Praktis": {
+        "jam": "4",
+        "asatidz": [
+          "ACHMAD KAWAKIBUL MUNIR",
+          "AHMAD MAULANA HAQIQI",
+          "ALTHIFATUZ ZAHRO' AL AJMALA",
+          "ANIN NUR ILMIATIL FAHMI",
+          "ANWAR FUADI",
+          "ARJU NABIHAL FIKRI",
+          "DZIMAS PARI ASIF",
+          "FAHMI MALIK RAMADHAN",
+          "HANA LAYINATUL MASRUROH",
+          "HARIYANTI",
+          "HILMATUS SA'ADAH",
+          "IKA PUTRI",
+          "KARIMAH SALSABILA",
+          "M. TAMIM MUBAROK",
+          "MOHAMMAD REZA AZIZI",
+          "MUHAMMAD ABDU AR ROZZAQ",
+          "MUHAMMAD ANWAR FUADII",
+          "MUTOHAR",
+          "MUZAKI RIFAI",
+          "NABILA FAIZA",
+          "PUTRI NUR INDAH ELVIANA",
+          "RIFKIYATUS SA`ADAH",
+          "SABARUN JAMIL",
+          "SITI RAHMAWATI",
+          "SUTI AMANDA",
+          "SYAHRUL IRFAN AZIZI",
+          "ULFIYATUL FITRIAH",
+          "VINA BALQIS SA'ADAH"
+        ],
+        "pengajar": "MS"
+      },
+      "4 A ULA (Ug)||(Tauhid) Matan Ummul Barohin": {
+        "jam": "1"
+      },
+      "2 ULA||(Imla') Pengantar Belajar Ilmu Imla'": {
+        "jam": "2",
+        "asatidz": [
+          "ACHMAD KAWAKIBUL MUNIR",
+          "AHMAD MAULANA HAQIQI",
+          "ALTHIFATUZ ZAHRO' AL AJMALA",
+          "ANIN NUR ILMIATIL FAHMI",
+          "ANWAR FUADI",
+          "ARJU NABIHAL FIKRI",
+          "DZIMAS PARI ASIF",
+          "FAHMI MALIK RAMADHAN",
+          "HANA LAYINATUL MASRUROH",
+          "HARIYANTI",
+          "HILMATUS SA'ADAH",
+          "IKA PUTRI",
+          "KARIMAH SALSABILA",
+          "M. TAMIM MUBAROK",
+          "MOHAMMAD REZA AZIZI",
+          "MUHAMMAD ABDU AR ROZZAQ",
+          "MUHAMMAD ANWAR FUADII",
+          "MUTOHAR",
+          "MUZAKI RIFAI",
+          "NABILA FAIZA",
+          "PUTRI NUR INDAH ELVIANA",
+          "RIFKIYATUS SA`ADAH",
+          "SABARUN JAMIL",
+          "SITI RAHMAWATI",
+          "SUTI AMANDA",
+          "SYAHRUL IRFAN AZIZI",
+          "ULFIYATUL FITRIAH",
+          "VINA BALQIS SA'ADAH",
+          "ULFATUS SA`ADAH"
+        ],
+        "pengajar": "MS"
+      },
+      "3 A ULA (Ug)||(Nahwu) Jurumiyyah {Al-Bayan}": {
+        "jam": "4",
+        "asatidz": [
+          "AKHMAD DHIYAUL LAMI'",
+          "YAZIDA FAHRIZ SALSABILA"
+        ],
+        "pengajar": "MS"
+      },
+      "3 A ULA (Ug)||(Tauhid) Tahsilu Nailil Marom": {
+        "jam": "1",
+        "asatidz": [
+          "AHMAD FAKIH LUKMAN HAKIM",
+          "FAQIHATUD DINIYAH"
+        ],
+        "pengajar": "MB"
+      },
+      "1 WUSTHO||(Nahwu) Al-Fiyyah Ibnu Malik Juz 1": {
+        "jam": "6",
+        "asatidz": [
+          "Abdul Jalil",
+          "Arif Muhtadi",
+          "Qoulan Syadidan",
+          "M Aburizal Azizy",
+          "Febri Rohmatullah",
+          "Wahyu Arif Prasetyo",
+          "Muhammad Faiz Ardani",
+          "Deni Bhekti Kurnianto",
+          "Muhammad Mutohhar Adamawiy",
+          "RISMA YULIANTIKA",
+          "LILIK HIDAYATI",
+          "LIANA MAULIDINA",
+          "FIA FATIHATUS SHOFA",
+          "KUNI QUR'ROTA AINI",
+          "MIR'ATUS SHOLICHAH",
+          "SAFFANATUZ ZUHRO'",
+          "EVI AYU SAPUTRI",
+          "HUSNIA ASMA NAZIHAH",
+          "NAFISATUN NAFI'IYAH",
+          "JAZILATUL KHASANAH",
+          "ZILVIE ZUHDATUL MUKARROM K."
+        ],
+        "pengajar": "MS"
+      },
+      "2 A WUSTHO (Ug)||(Hadits) Syarah Baiquniyyah": {
+        "jam": "2",
+        "asatidz": [
+          "SHOLEHUDDIN AL MALIKUS SHOLEH",
+          "UST. AHMAD DIMYATI"
+        ],
+        "pengajar": "MB"
+      },
+      "2 B WUSTHO (Ug)||(Praktek Fiqh) Praktek Fiqh": {},
+      "2 WUSTHO||(Nahwu) Al-Fiyyah Ibnu Malik Juz 2": {
+        "jam": "6",
+        "asatidz": [
+          "AHMAD FAHIM HILMY AHIMSA",
+          "AHMAD YUSUF AL FARUQ",
+          "ALIMATUL AMALIA",
+          "ANIKMATUL MUTMAINNAH",
+          "AYU INDAH SARI",
+          "DAFIQ ARIYANTO",
+          "LAYLA NIRMALA",
+          "M. FARKHAN ZIYA'UL HAQQI",
+          "MUHAMMAD SUNNIY ISLAMUDDIN",
+          "NIKMATURROHMAH",
+          "SHAFITRI AHMAD WIJAYA",
+          "SHOFIYA NABILLA",
+          "SITI CHISBIYATUL FITRIYAH"
+        ],
+        "pengajar": "MS"
+      },
+      "2 WUSTHO||(Tauhid) Taqrirot Jauharotut Tauhid": {
+        "jam": "2",
+        "asatidz": [
+          "FEBRI ROHMATULLAH",
+          "NYOMAN HOFIF HARAKAH",
+          "UST. ATO'ILAH",
+          "UST. ULUL AZMI",
+          "AGUS H. MUHAMMADUN ASLAM, M.AG",
+          "IKA MUMARISATUL HAQQI",
+          "IKFINA YAMAULA (PONSEL)",
+          "IIS FARIDHOTUS SHOLIHAH",
+          "Ayu Indah Sari",
+          "Nikmaturrohmah",
+          "Alimatul Amalia",
+          "Shafitri Ahmad Wijaya"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "3 B ULA (Ug)||(Bandongan) Minhajul Muta'allim": {
+        "asatidz": [
+          "Ahmad Junaidi",
+          "MAUIDHOTUL HASANAH"
+        ],
+        "pengajar": ""
+      },
+      "3 ULA||(Tarikh) Khulasoh Nurul Yaqin Juz I.II": {
+        "jam": "1",
+        "asatidz": [
+          "AGUS H. AHMAD ADIB FAIZI",
+          "AGUS AHMAD NAFI', S.PD.I",
+          "AGUS IMAM HARITS",
+          "AGUS M. AINUN NIAM",
+          "MOH NUR WAHID KHOIRUL BASAR",
+          "M. MUKHTAR LATIFIL ANSORI",
+          "MOH. SYUKRON RIZQI DZUL FAHMI",
+          "AGUS KAMALUDDIN, S.PD.I",
+          "SAFINATUL HASANAH"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "4 ULA||(Bandongan) Adabul 'Alim Walmuta'allim": {
+        "jam": "1",
+        "asatidz": [
+          "NIA AVIENDA",
+          "FAIZ FAUZIYAH",
+          "NADHIFA AMALIA",
+          "M. Ilham Kholik",
+          "Junaidi Abu Tami",
+          "SISKA NUR AZIZAH",
+          "ULFATUL LUTFIYAH",
+          "Ahmad Adi Sutiono",
+          "Akmal Azka Ardani",
+          "RATNA AYU LESTARI",
+          "SITI WARDATUL AZKIYA",
+          "FARAH DZIHNA MUHTAROM",
+          "Ah Aziz Al Asy'ari Ali",
+          "Muhammad Fathan Rasyid",
+          "Zulfa Roikhatul Jannah",
+          "Cheriliya Aisya Azzahra",
+          "M. Iklil Farido Amirudin",
+          "Ahmad Najam Kholif Darmawan",
+          "Muhammad Fadli Reza Prasetya"
+        ]
+      },
+      "1 ISTI'DAD||(Fiqih)  Mabadi Fiqih Juz I II III": {
+        "jam": "4"
+      },
+      "1 ISTI'DAD||(Tajwid) Panduan Tajwid + Juz Amma": {
+        "jam": "4"
+      },
+      "1 ULYA||(I. Mantiq) Taqriran Sullamul Munauroq": {
+        "jam": "2",
+        "asatidz": [
+          "SUKANDAR",
+          "UST. IRFANI",
+          "UST. TIJAN ABRORI",
+          "M. QOIDUS SHOLAH",
+          "AGUS YASIR LANA",
+          "AHMAD FAHRURROZIQIN",
+          "M. FARKHAN ZIYA'UL HAQQI",
+          "Inarotul Aliddah",
+          "Ulfatul Munawwaroh",
+          "Ima Inayatul Mukaromah"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "2 ULA||(Badongan) Akhlaqul Banin/Banat Juz III": {
+        "jam": "1",
+        "asatidz": [
+          "MUTOHAR",
+          "HARIYANTI",
+          "IKA PUTRI",
+          "ANWAR FUADI",
+          "SUTI AMANDA",
+          "MUZAKI RIFAI",
+          "NABILA FAIZA",
+          "SABARUN JAMIL",
+          "SITI RAHMAWATI",
+          "DZIMAS PARI ASIF",
+          "HILMATUS SA'ADAH",
+          "M. TAMIM MUBAROK",
+          "KARIMAH SALSABILA",
+          "ULFIYATUL FITRIAH",
+          "ARJU NABIHAL FIKRI",
+          "RIFKIYATUS SA`ADAH",
+          "MOHAMMAD REZA AZIZI",
+          "SYAHRUL IRFAN AZIZI",
+          "VINA BALQIS SA'ADAH",
+          "AHMAD MAULANA HAQIQI",
+          "FAHMI MALIK RAMADHAN",
+          "MUHAMMAD ANWAR FUADII",
+          "ACHMAD KAWAKIBUL MUNIR",
+          "ANIN NUR ILMIATIL FAHMI",
+          "HANA LAYINATUL MASRUROH",
+          "MUHAMMAD ABDU AR ROZZAQ",
+          "PUTRI NUR INDAH ELVIANA",
+          "ALTHIFATUZ ZAHRO' AL AJMALA"
+        ]
+      },
+      "2 ULYA||(Hkm Fiqih) Idoh Fi Qowaidil Fiqhiyyah": {
+        "jam": "4",
+        "asatidz": [
+          "DR. KH. ABDUL KHOLIQ SYAFA'AT, M.A",
+          "AGUS H. MUHAMMADUN ASLAM, M.AG",
+          "MOH. AYUB ZAKARIA",
+          "UST.HARIS AMAMI",
+          "UST. CHALWA MA'SUM",
+          "UST. FIKRI HIDAYATULLOH",
+          "UST. FARID MUHAJIR",
+          "AHMAD YUSUF AL FARUQ",
+          "ACHMAD HAFIRUDIN",
+          "M. Hilmi Alfian",
+          "IKFINA YA MAULA (PONUT)",
+          "NIDA DUSTURIYA",
+          "ELMAS MAISYA AL BAREZA"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "1 ISTI'DAD||(Praktek Fiqh) Panduan Fiqh Praktis": {
+        "jam": "4"
+      },
+      "1 WUSTHO||(Tauhid) Taqrirot Khoridatul Bahiyyah": {
+        "jam": "2",
+        "asatidz": [
+          "AHMAD FAHIM HILMY AHIMSA",
+          "SHOLEHUDDIN AL MALIKUS SHOLEH",
+          "NUR HAYIN MARZUQI",
+          "AHMAD MUTOHAR",
+          "UST. ABDUL HAMID",
+          "ULFI ZAKIYA ALMADINA",
+          "IKFINA YAMAULA (PONSEL)",
+          "Lilik Hidayati",
+          "Risma Yuliantika",
+          "Kuni Qur'rota Aini",
+          "Mir'atus Sholichah",
+          "Husnia Asma Nazihah",
+          "Nafisatun Nafi'iyah",
+          "JAZILATUL KHASANAH",
+          "ZILVIE ZUHDATUL MUKARROM K."
+        ],
+        "pengajar": "MS, MB"
+      },
+      "2 ULA||(B. Arab) Md. Du. Lug. Arobiyyah Juz I II": {
+        "jam": "2",
+        "asatidz": [
+          "SYEKH ZAINI (DALWA)",
+          "MUHAMMAD FARHAN (DALWA)",
+          "AHMAD FAQIH ABDUL KARIM",
+          "ZIDAN INJA SAHLAN",
+          "MAULIDA NUR AZIZAH",
+          "NIKEN NAODIA DARTY",
+          "SARI KHUSNA NABILA",
+          "FAIZATUL UMMAH",
+          "NG. HJ. MAYA BADRIYATUL JAMROH"
+        ],
+        "pengajar": "MB"
+      },
+      "1 ULA||(Badongan) Akhlaqul Banin/nat I.II {PA/PI}": {
+        "jam": "1",
+        "asatidz": [
+          "AGUNG SETIAJI",
+          "AHMAD SYAH AMNILLAH",
+          "AHNAF HUMAN AZIZY",
+          "CAHAYA PUTRA RAHMADANI",
+          "DEWI MASYITOH ANNEIRA RAHMA",
+          "DINA ASNAL MUNA",
+          "EKA NURFINA MA'SUMAH",
+          "FIKRUL UMAM AL HANIF",
+          "HANIFAH AULIA FIRDANI",
+          "HUMAIDI NASHRI ABDILAH",
+          "IKHWANUL KARIM",
+          "KHOIRINI SIVA'A QOLBINA",
+          "KUNI NAFI'AH",
+          "M DAUD YUSUF ALHA",
+          "M. TAUFIQURROHMAN",
+          "M. YUSUF CHEVIN MAULANA NS",
+          "MOH. IRFAN FATKHUR ROHMAN",
+          "MUHAMMAD SHOCHIBUL WAFA",
+          "NURUL AFIFAH",
+          "SITI MAESAROH",
+          "SUSMITA CINTA HAROMAIN",
+          "ULFATUS SA`ADAH",
+          "WAHYUN DWI MAZRO'ATUL H",
+          "WAYANG IZZA AMRULHIMA SEMBAH SC"
+        ],
+        "pengajar": "MS"
+      },
+      "1 A WUSTHO (Ug)||(Nahwu) Al-Fiyyah Ibnu Malik Juz 1": {
+        "jam": "6",
+        "asatidz": [
+          "Rizqi Maulana Achmad",
+          "ARMIA ZULIA PUTRI"
+        ],
+        "pengajar": "MS"
+      },
+      "1 B WUSTHO (Ug)||(Nahwu) Al-Fiyyah Ibnu Malik Juz 1": {
+        "jam": "6",
+        "asatidz": [
+          "Muhammad Miftahul Ilham",
+          "IRODATUN NASIHA"
+        ],
+        "pengajar": "MS"
+      },
+      "2 A WUSTHO (Ug)||(Nahwu) Al-Fiyyah Ibnu Malik Juz 2": {
+        "jam": "4",
+        "asatidz": [
+          "MUHAMMAD ALI MAKMUN",
+          "SHIDQIL ADILIYAH"
+        ],
+        "pengajar": "MS"
+      },
+      "2 B WUSTHO (Ug)||(Nahwu) Al-Fiyyah Ibnu Malik Juz 2": {
+        "asatidz": [
+          "ELMIDA HIDAYATUL MAULIDAH",
+          "SUKRON ABDUL MAJID"
+        ],
+        "pengajar": "MS"
+      },
+      "3 A ULA (Ug)||(Tarikh) Khulasoh Nurul Yaqin Juz III": {
+        "jam": "1",
+        "asatidz": [
+          "AGUS KAMALUDDIN, S.PD.I",
+          "SAFINATUL HASANAH"
+        ],
+        "pengajar": "MB"
+      },
+      "2 A WUSTHO (Ug)||(Tauhid) Taqrirot Jauharotut Tauhid": {
+        "jam": "2",
+        "asatidz": [
+          "AGUS H. MUHAMMADUN ASLAM, M.AG",
+          "IKFINA YAMAULA (PONSEL)"
+        ],
+        "pengajar": "MB"
+      },
+      "2 B WUSTHO (Ug)||(Tauhid) Taqrirot Jauharotut Tauhid": {},
+      "4 A ULA (Ug)||(Bandongan) Adabul 'Alim Walmuta'allim": {
+        "jam": "0",
+        "asatidz": [
+          "Muhammad Abdul Azis",
+          "ARIFNA DINA ALMADANI"
+        ]
+      },
+      "4 B ULA (Ug)||(Bandongan) Adabul 'Alim Walmuta'allim": {
+        "asatidz": [
+          "Hafidz Muslimin",
+          "Afifa Saila Fina Sabrina"
+        ],
+        "pengajar": ""
+      },
+      "1 ULYA||(I. Qur'an) Qowaid Asasiyyah Fi Ulumil Qur'an": {
+        "jam": "2",
+        "asatidz": [
+          "AGUS H. MUKHTAR HANIF Z, LC, M.A",
+          "AGUS H. M. BAHRUL ULUM MUBAROK, LC",
+          "SUKANDAR",
+          "M. FAJAR AT TAMIMI",
+          "INDI NAJMUS TSAQIB",
+          "M. HILMI ALFIAN",
+          "Inarotul Aliddah",
+          "Ulfatul Munawwaroh",
+          "Ima Inayatul Mukaromah"
+        ],
+        "pengajar": "MS, MB"
+      },
+      "1 A WUSTHO (Ug)||(Tauhid) Taqrirot Khoridatul Bahiyyah": {
+        "jam": "2",
+        "asatidz": [
+          "UST. ABDUL HAMID",
+          "INDI NAJMUS TSAQIB"
+        ],
+        "pengajar": "MB"
+      },
+      "1 B WUSTHO (Ug)||(Tauhid) Taqrirot Khoridatul Bahiyyah": {
+        "jam": "2",
+        "asatidz": [
+          "UST. ABDUL HAMID",
+          "INDI NAJMUS TSAQIB"
+        ],
+        "pengajar": "MB"
+      },
+      "1 ISTI'DAD||(Badongan) Akhlaqul Banin/nat I.II {PA/PI}": {
+        "jam": "4",
+        "asatidz": [
+          "MOH SABIQ AL-HADI"
+        ]
+      },
+      "1 A ULYA (Ug)||(U qur'an) Qowaid Asasiyyah Fi Ulumil Qur'an": {
+        "jam": "1",
+        "asatidz": [
+          "KH. AHMAD MUNIB SYAFA'AT, LC. M.E.I"
+        ],
+        "pengajar": "MS, MB"
+      }
+    },
+    "kelas": {
+      "1 ULA": {
+        "keterangan": "",
+        "jamMaksimal": "2"
+      },
+      "2 ULA": {
+        "jamMaksimal": "0"
+      },
+      "1 WUSTHO": {
+        "keterangan": ""
+      },
+      "1 ISTI'DAD": {
+        "keterangan": ""
+      }
+    }
+  },
+  "FAN_CONFIG": {
+    "1 ULA": [
+      "(Fiqih)  Mabadi Fiqih Juz I II III",
+      "(Tajwid) Panduan Tajwid + Juz Amma",
+      "(Tauhid) Aqidatul Mubtadiin",
+      "(Akhlaq) Tanbihul Muta'alim",
+      "(Pegon) Pegon Al-Itqon",
+      "(Praktek Fiqh) Panduan Fiqh Praktis",
+      "(Badongan) Akhlaqul Banin/nat I.II {PA/PI}",
+      "(Takror) Takror"
+    ],
+    "2 ULA": [
+      "(Nahwu) Ikhtisor Nahwiyah",
+      "(Fiqih) Safinatun Najah",
+      "(Tauhid) Nadhom Aqidatul Awam",
+      "(B. Arab) Md. Du. Lug. Arobiyyah Juz I II",
+      "(Imla') Pengantar Belajar Ilmu Imla'",
+      "(Praktek Fiqh) Panduan Fiqh Praktis",
+      "(Badongan) Akhlaqul Banin/Banat Juz III",
+      "(Takror) Takror"
+    ],
+    "3 ULA": [
+      "(Nahwu) Jurumiyyah {Al-Bayan}",
+      "(Fiqih) Matan Taqrib 1",
+      "(Shorof) Tasrif Istilah",
+      "(I'lal) Qowa'idul I'lal",
+      "(Tarikh) Khulasoh Nurul Yaqin Juz I.II",
+      "(Tauhid) Tahsilu Nailil Marom",
+      "(Bandongan) Minhajul Muta'allim",
+      "(Takror) Takror",
+      "(Badongan) Badongan"
+    ],
+    "4 ULA": [
+      "(Nahwu) Al-‘Imrithi",
+      "(Fiqih)  Matan Taqrib 2",
+      "(Shorof) Tasrif Lughowi",
+      "(Hadist) Targhib Wa Tarhib",
+      "(Tauhid) Matan Ummul Barohin",
+      "(Bandongan) Adabul 'Alim Walmuta'allim",
+      "(Takror) Takror"
+    ],
+    "1 ULYA": [
+      "(Balaghoh) Jauharul Maknun",
+      "(I. Mantiq) Taqriran Sullamul Munauroq",
+      "(I. Hadits) Syarah Baiquniyyah",
+      "(I. Qur'an) Qowaid Asasiyyah Fi Ulumil Qur'an",
+      "(Fiqih) Fathul Qorib 3",
+      "(Sorogan) Fathul Qorib 3",
+      "(Takror) Takror"
+    ],
+    "2 ULYA": [
+      "(Ushul Fiqih) Tashilut Thuruqot",
+      "(Fiqih) Fathul Qorib 4",
+      "(Hkm Fiqih) Idoh Fi Qowaidil Fiqhiyyah",
+      "(Tauhid) Hushunul Hamidiyyah",
+      "(Sorogan) Fathul Qorib 4",
+      "(Takror) Takror",
+      "(Badongan) Badongan"
+    ],
+    "1 WUSTHO": [
+      "(Nahwu) Al-Fiyyah Ibnu Malik Juz 1",
+      "(Fiqih) Fathul Qorib 1",
+      "(Shorof) Nadmul Maqsud",
+      "(Tauhid) Taqrirot Khoridatul Bahiyyah",
+      "(Q. I'rab) Qowaidul I'rab",
+      "(Sorogan)  Fathul Qorib 1",
+      "(Takror) Takror",
+      "(Praktek Fiqh) Praktek Fiqh",
+      "(Badongan) Badongan"
+    ],
+    "2 WUSTHO": [
+      "(Nahwu) Al-Fiyyah Ibnu Malik Juz 2",
+      "(Fiqih) Fathul Qorib 2",
+      "(Tauhid) Taqrirot Jauharotut Tauhid",
+      "(Sorogan)  Fathul Qorib 2",
+      "(Takror) Takror",
+      "(Praktek Fiqh) Praktek Fiqh"
+    ],
+    "1 ISTI'DAD": [
+      "(Fiqih)  Mabadi Fiqih Juz I II III",
+      "(Tajwid) Panduan Tajwid + Juz Amma",
+      "(Tauhid) Aqidatul Mubtadiin",
+      "(Akhlaq) Tanbihul Muta'alim",
+      "(Pegon) Pegon Al-Itqon",
+      "(Praktek Fiqh) Panduan Fiqh Praktis",
+      "(Badongan) Akhlaqul Banin/nat I.II {PA/PI}",
+      "(Takror) Takror"
+    ],
+    "3 A ULA (Ug)": [
+      "(Fiqih) Matan Taqrib 1",
+      "(Shorof) Tasrif Istilah",
+      "(Tauhid) Tahsilu Nailil Marom",
+      "(I'lal) Qowa'idul I'lal",
+      "(Nahwu) Jurumiyyah {Al-Bayan}",
+      "(Tarikh) Khulasoh Nurul Yaqin Juz III",
+      "(Badongan) Badongan",
+      "(Takror) Takror"
+    ],
+    "3 B ULA (Ug)": [
+      "(Fiqih) Fiqih",
+      "(Bandongan) Minhajul Muta'allim",
+      "(Takror) Takror",
+      "(Nahwu) Nahwu",
+      "(Shorof) Shorof",
+      "(I'lal) I'lal",
+      "(Tarikh) Tarikh",
+      "(Tauhid) Tauhid"
+    ],
+    "4 A ULA (Ug)": [
+      "(Fiqih) Matan Taqrib 2",
+      "(Nahwu) Al-‘Imrithi",
+      "(Shorof) Tasrif Lughowi",
+      "(Tauhid) khulasotul kalam",
+      "(Bandongan) Adabul 'Alim Walmuta'allim",
+      "(Takror) Takror",
+      "(Hadist) Hadist"
+    ],
+    "4 B ULA (Ug)": [
+      "(Fiqih) Matan Taqrib 2",
+      "(Nahwu) Al-‘Imrithi",
+      "(Shorof) Tasrif Lughowi",
+      "(Tauhid) khulasotul kalam",
+      "(Bandongan) Adabul 'Alim Walmuta'allim",
+      "(Takror) Takror",
+      "(Hadist) Hadist"
+    ],
+    "1 A ULYA (Ug)": [
+      "(Fiqih) Fathul Qorib 3",
+      "(balaghoh) Jauharul Maknun",
+      "(U qur'an) Qowaid Asasiyyah Fi Ulumil Qur'an",
+      "(mantiq) sulamul munawaroq",
+      "(Hadits) Syarah Baiquniyyah",
+      "(Takror) Takror",
+      "(I. Mantiq) I. Mantiq",
+      "(I. Hadits) I. Hadits",
+      "(I. Qur'an) I. Qur'an"
+    ],
+    "1 A WUSTHO (Ug)": [
+      "(Fiqih) Fathul Qorib 1",
+      "(Nahwu) Al-Fiyyah Ibnu Malik Juz 1",
+      "(Tauhid) Taqrirot Khoridatul Bahiyyah",
+      "(Shorof) Qowaidul I'rab",
+      "(Takror) Takror"
+    ],
+    "1 B WUSTHO (Ug)": [
+      "(Fiqih) Fathul Qorib 1",
+      "(Nahwu) Al-Fiyyah Ibnu Malik Juz 1",
+      "(Tauhid) Taqrirot Khoridatul Bahiyyah",
+      "(Shorof) Qowaidul I'rab",
+      "(Takror) Takror"
+    ],
+    "2 A WUSTHO (Ug)": [
+      "(Fiqih) Fathul Qorib 2",
+      "(Nahwu) Al-Fiyyah Ibnu Malik Juz 2",
+      "(Tauhid) Taqrirot Jauharotut Tauhid",
+      "(Hadits) Syarah Baiquniyyah",
+      "(Takror) Takror"
+    ]
+  }
+}

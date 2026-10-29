@@ -167,6 +167,35 @@ export function getDaftarKelasUnikDariMaster(
 }
 
 /**
+ * Mengekstrak daftar kelas unggulan unik ({ tingkat, kls }) dari master Formasi (is_unggulan === true)
+ */
+export function getDaftarKelasUnggulanUnik(
+  formasiList: Formasi[]
+): Array<{ tingkat: string; kls: string }> {
+  const mapKelas = new Set<string>();
+
+  (formasiList || []).forEach((f) => {
+    if (f && f.is_unggulan) {
+      const tingkat = String(f.tingkat || '').trim().toUpperCase();
+      const kls = String(f.din_kls || '').trim().toUpperCase();
+      if (tingkat && kls) {
+        mapKelas.add(JSON.stringify({ tingkat, kls }));
+      }
+    }
+  });
+
+  const arr = Array.from(mapKelas).map((s) => JSON.parse(s) as { tingkat: string; kls: string });
+  arr.sort((a, b) => {
+    const orderA = URUTAN_TINGKAT[a.tingkat] || 99;
+    const orderB = URUTAN_TINGKAT[b.tingkat] || 99;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.kls.localeCompare(b.kls, undefined, { numeric: true });
+  });
+
+  return arr;
+}
+
+/**
  * Mengambil daftar item fan dari config dengan fallback jika Unggulan belum didefinisikan secara khusus
  */
 export function getItemsKonfigFanKelas(
@@ -177,7 +206,13 @@ export function getItemsKonfigFanKelas(
   if (Array.isArray(cfg[kelasKey]) && cfg[kelasKey].length) return cfg[kelasKey];
   if (/\(Ug\)\s*$/i.test(kelasKey)) {
     const p = kelasKey.replace(/\s*\(Ug\)\s*$/i, '').trim().split(/\s+/);
-    const fb = p[0] + ' ' + p[p.length - 1];
+    const klsNum = p[0];
+    const tkt = p[p.length - 1];
+    // Coba format baru "${kls} ${tingkat} (Ug)"
+    const ugUnifiedKey = `${klsNum} ${tkt} (Ug)`;
+    if (Array.isArray(cfg[ugUnifiedKey]) && cfg[ugUnifiedKey].length) return cfg[ugUnifiedKey];
+    // Fallback ke reguler "${kls} ${tingkat}"
+    const fb = `${klsNum} ${tkt}`;
     if (Array.isArray(cfg[fb])) return cfg[fb];
   }
   return null;

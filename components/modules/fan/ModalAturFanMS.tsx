@@ -72,17 +72,22 @@ export default function ModalAturFanMS() {
     if (scope === 'reguler') {
       return keyReguler;
     }
+    const keyUgUnified = `${dinKls} ${tingkat} (Ug)`;
+    if (fanConfig[keyUgUnified] && fanConfig[keyUgUnified].length > 0) {
+      return keyUgUnified;
+    }
     // Jika scope unggulan dan dipilih spesifik
     if (selectedBagUg !== 'ALL') {
       const keySpesifik = `${dinKls} ${selectedBagUg} ${tingkat} (Ug)`;
-      return keySpesifik;
+      if (fanConfig[keySpesifik]) return keySpesifik;
     }
     // Jika 'ALL', gunakan bagian pertama unggulan atau fallback reguler
     if (daftarBagUg.length > 0) {
-      return `${dinKls} ${daftarBagUg[0]} ${tingkat} (Ug)`;
+      const legacyKey = `${dinKls} ${daftarBagUg[0]} ${tingkat} (Ug)`;
+      if (fanConfig[legacyKey]) return legacyKey;
     }
-    return keyReguler;
-  }, [scope, selectedBagUg, dinKls, tingkat, keyReguler, daftarBagUg]);
+    return keyUgUnified;
+  }, [scope, selectedBagUg, dinKls, tingkat, keyReguler, daftarBagUg, fanConfig]);
 
   // Daftar item Fan yang ditampilkan
   const items = useMemo(() => {

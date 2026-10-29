@@ -7,7 +7,7 @@ import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import {
   getDaftarKelasUnikDariMaster,
-  getDaftarKelasUnggulan,
+  getDaftarKelasUnggulanUnik,
   parseFanItemString,
 } from '@/lib/utils/fanHelper';
 import { FanConfigMap } from '@/types/fan';
@@ -123,8 +123,8 @@ export default function ModalPengaturanFan() {
     [formasiList, asatidzList]
   );
 
-  const listUnggulanNama = useMemo(
-    () => getDaftarKelasUnggulan(formasiList),
+  const listMasterUnggulan = useMemo(
+    () => getDaftarKelasUnggulanUnik(formasiList),
     [formasiList]
   );
 
@@ -138,18 +138,15 @@ export default function ModalPengaturanFan() {
         isUg: false,
       });
     });
-    listUnggulanNama.forEach((klsUg) => {
-      let tkt = 'ULA';
-      if (klsUg.toUpperCase().includes('WUSTHO')) tkt = 'WUSTHO';
-      else if (klsUg.toUpperCase().includes('ULYA')) tkt = 'ULYA';
+    listMasterUnggulan.forEach((item) => {
       keys.push({
-        key: `${klsUg} (Ug)`,
-        tingkat: tkt,
+        key: `${item.kls} ${item.tingkat} (Ug)`,
+        tingkat: item.tingkat.toUpperCase(),
         isUg: true,
       });
     });
     return keys;
-  }, [listMasterReguler, listUnggulanNama]);
+  }, [listMasterReguler, listMasterUnggulan]);
 
   // Autocomplete / suggestions list derived from all configured fan items
   const suggestedKitabList = useMemo(() => {
@@ -451,7 +448,7 @@ export default function ModalPengaturanFan() {
             }`}
           >
             <Star className="w-3 h-3 fill-current" />
-            <span>Unggulan ({listUnggulanNama.length})</span>
+            <span>Unggulan ({listMasterUnggulan.length})</span>
           </button>
         </div>
 
