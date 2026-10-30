@@ -436,41 +436,62 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
       return asatidzList.map((a) => a.nama_asatidz).filter(Boolean);
     })();
 
-    // Kumpulkan seluruh pengajar fan/opsi yang sibuk di kelas lain
-    const busyTeachersList: Array<{
-      guru: string;
-      busyClass: string;
-      detail?: any;
-      isEligible: boolean;
-    }> = [];
-
-    opsiAsatidz.forEach((g) => {
-      const gUpper = g.trim().toUpperCase();
-      const busy = mapBusy[gUpper];
-      if (busy) {
-        const detail = mapBusyDetails[gUpper];
-        const isFanMatch =
-          !valFanLower ||
-          !detail ||
-          detail.fan.toLowerCase() === valFanLower ||
-          (detail.fanAsli && detail.fanAsli.toLowerCase() === valFanLower) ||
-          valFanLower.includes(detail.fan.toLowerCase()) ||
-          detail.fan.toLowerCase().includes(valFanLower);
-        const isJenjangMatch =
-          !detail ||
-          !detail.tingkat ||
-          !currentClass.tingkat ||
-          detail.tingkat.toUpperCase() === currentClass.tingkat.toUpperCase();
-
-        busyTeachersList.push({
-          guru: g,
-          busyClass: busy,
-          detail,
-          isEligible: isFanMatch && isJenjangMatch,
-        });
+    // Kumpulkan seluruh pengajar fan/opsi yang sibuk di kelas lain (didiskon deduplikasi nama)
+    // HANYA diproses jika Fan sudah dipilih ATAU Guru sudah diisi pada baris sesi ini
+    // untuk mencegah banjir peringatan bentrok/switch ketika baris masih kosong bersih
+    const busyTeachersMap = new Map<
+      string,
+      {
+        guru: string;
+        busyClass: string;
+        detail?: any;
+        isEligible: boolean;
       }
-    });
+    >();
 
+    if (valFanLower || cleanGuruUpper) {
+      opsiAsatidz.forEach((g) => {
+        const gUpper = g.trim().toUpperCase();
+        if (!gUpper || busyTeachersMap.has(gUpper)) return;
+        const busy = mapBusy[gUpper];
+        if (busy) {
+          const detail = mapBusyDetails[gUpper];
+
+          // Syarat 1: Fan harus sudah terisi/dipilih dan cocok dengan fan yang diajar di kelas mitra
+          const isFanMatch =
+            Boolean(valFanLower) &&
+            Boolean(detail?.fan) &&
+            (detail.fan.toLowerCase() === valFanLower ||
+              (detail.fanAsli && detail.fanAsli.toLowerCase() === valFanLower) ||
+              valFanLower.includes(detail.fan.toLowerCase()) ||
+              detail.fan.toLowerCase().includes(valFanLower));
+
+          // Syarat 2: Jenjang tingkat dan angka kelas harus setara (misal sama-sama 1 ULYA)
+          const isClassMatch =
+            Boolean(detail?.tingkat) &&
+            Boolean(currentClass.tingkat) &&
+            detail.tingkat.toUpperCase() === currentClass.tingkat.toUpperCase() &&
+            (!detail.kls || !currentClass.kls || detail.kls === currentClass.kls);
+
+          // Syarat 3: Gender harus sama persis (Putri 'PI' hanya dengan 'PI', Putra 'PA' hanya dengan 'PA')
+          const isGenderMatch =
+            !detail?.papi ||
+            !currentClass.papi ||
+            detail.papi.toUpperCase() === currentClass.papi.toUpperCase();
+
+          const isEligible = isFanMatch && isClassMatch && isGenderMatch;
+
+          busyTeachersMap.set(gUpper, {
+            guru: g,
+            busyClass: busy,
+            detail,
+            isEligible,
+          });
+        }
+      });
+    }
+
+    const busyTeachersList = Array.from(busyTeachersMap.values());
     const eligibleGabungList = busyTeachersList.filter((b) => b.isEligible);
     const isMSHighlighted = highlightMSCell === `${jam}_${hari}`;
 
@@ -597,6 +618,9 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
               if (namaMS && namaGuru.trim().toUpperCase() === namaMS.toUpperCase()) return null;
               const gUpper = namaGuru.trim().toUpperCase();
               const busyClass = mapBusy[gUpper];
+              const eligibleInfo = busyTeachersMap.get(gUpper);
+              const isEligible = Boolean(eligibleInfo?.isEligible);
+
               if (busyClass) {
                 if (isGabungActive) {
                   return (
@@ -607,11 +631,20 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
                     />
                   );
                 }
+                if (isEligible) {
+                  return (
+                    <option
+                      key={`${namaGuru}_${gIdx}`}
+                      value={`[GABUNG KELAS di ${busyClass}] ${namaGuru}`}
+                      label={`🤝 Gabung Kelas dengan ${busyClass} (${hari} Jam ${jam})`}
+                    />
+                  );
+                }
                 return (
                   <option
                     key={`${namaGuru}_${gIdx}`}
-                    value={`[GABUNG KELAS di ${busyClass}] ${namaGuru}`}
-                    label={`🤝 Gabung Kelas dengan ${busyClass} (${hari} Jam ${jam})`}
+                    value={`[TERPAKAI di ${busyClass}] ${namaGuru}`}
+                    label={`⚠️ Terpakai di ${busyClass} (${hari} Jam ${jam})`}
                   />
                 );
               }

@@ -222,7 +222,8 @@ export const RelationalMigrationService = {
 
         uniqueParsed.sort((a, b) => a.jam - b.jam);
         row[hKey] = uniqueParsed.map((p) => p.raw).join('\n');
-        totalJam += uniqueParsed.length;
+        const jamSet = new Set(uniqueParsed.map((p) => p.jam));
+        totalJam += jamSet.size;
 
         uniqueParsed.forEach((p) => {
           const kInfo = this.extractKelasInfoFromSlot(p.lokasi);
