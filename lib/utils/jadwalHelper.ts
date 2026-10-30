@@ -607,8 +607,15 @@ export function addSlotToGuruObj(
   if (dayIdx === -1) return;
   const hKey = HARI_KEYS_LOWER[dayIdx];
   const targetJam = parseInt(String(jam), 10);
+  const targetInfo = parseInfoKelasNorm(lokasiGabungan);
 
-  const slots = parseJadwalCell_Client(jdwObj[hKey]).filter((s) => s.jam !== targetJam);
+  const slots = parseJadwalCell_Client(jdwObj[hKey]).filter((s) => {
+    if (s.jam !== targetJam) return true;
+    if (targetInfo.norm) {
+      return !isInfoKelasCocok(parseInfoKelasNorm(s.lokasi), targetInfo);
+    }
+    return false;
+  });
   slots.push({
     raw: '',
     jam: targetJam,
@@ -628,7 +635,8 @@ export function syncGuruMengajarAndTotalObj(jdwObj: TeacherJadwalRow, asatidzLis
 
   HARI_KEYS_LOWER.forEach((hKey) => {
     const slots = parseJadwalCell_Client(jdwObj[hKey]);
-    total += slots.length;
+    const jamSet = new Set(slots.map((s) => s.jam));
+    total += jamSet.size;
     slots.forEach((s) => {
       if (s.lokasi && s.lokasi !== '-') {
         const m = s.lokasi.match(/^(.*?)\s*\(([^()]*)\)$/);
@@ -1215,6 +1223,17 @@ export function hitungLabelPengajarDariListAsatidz(
   return existingLabel || 'MB';
 }
 
+export interface SlotBusyDetail {
+  labelKls: string;
+  kelasKey: string;
+  fan: string;
+  fanAsli?: string;
+  tingkat: string;
+  kls: string;
+  papi: string;
+  lokal?: string;
+}
+
 export interface CacheRelasiFanJadwalKelas {
   kelasKey: string;
   primaryFanKey: string;
@@ -1231,6 +1250,7 @@ export interface CacheRelasiFanJadwalKelas {
   mapAsatidzKeFan: Record<string, string[]>;
   setSemuaAsatidz: string[];
   mapBusyAll: Record<string, Record<string, string>>;
+  mapBusyDetails?: Record<string, Record<string, SlotBusyDetail>>;
 }
 
 /**
@@ -1325,9 +1345,12 @@ export function siapkanCacheRelasiFanJadwalKelas(
   });
 
   const mapBusyAll: Record<string, Record<string, string>> = {};
+  const mapBusyDetails: Record<string, Record<string, SlotBusyDetail>> = {};
   LIST_HARI.forEach((h) => {
     mapBusyAll[`${h}_1`] = {};
     mapBusyAll[`${h}_2`] = {};
+    mapBusyDetails[`${h}_1`] = {};
+    mapBusyDetails[`${h}_2`] = {};
   });
 
   (masterStrukturKelasKBM || []).forEach((kOther) => {
@@ -1341,7 +1364,18 @@ export function siapkanCacheRelasiFanJadwalKelas(
         const sesiList = (kOther.jadwal && kOther.jadwal[h] && kOther.jadwal[h][j]) || [];
         sesiList.forEach((s) => {
           if (s.guru && s.guru !== '-') {
-            mapBusyAll[`${h}_${j}`][s.guru.trim().toUpperCase()] = labelKls;
+            const gUpper = s.guru.trim().toUpperCase();
+            mapBusyAll[`${h}_${j}`][gUpper] = labelKls;
+            mapBusyDetails[`${h}_${j}`][gUpper] = {
+              labelKls,
+              kelasKey: kOther.key,
+              fan: s.fan || '',
+              fanAsli: s.fanAsli || s.fan || '',
+              tingkat: kOther.tingkat || '',
+              kls: kOther.kls || '',
+              papi: kOther.papi || '',
+              lokal: kOther.lokal || '',
+            };
           }
         });
       });
@@ -1359,5 +1393,6 @@ export function siapkanCacheRelasiFanJadwalKelas(
     mapAsatidzKeFan,
     setSemuaAsatidz: Array.from(setSemuaAsatidz),
     mapBusyAll,
+    mapBusyDetails,
   };
 }

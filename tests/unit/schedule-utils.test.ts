@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { JadwalAsatidzRow } from '@/types/jadwal';
-import { bandingkanUrutanKelasKBM, dapatkanBlokDariSesiMengajar } from '@/lib/utils/jadwalHelper';
+import {
+  bandingkanUrutanKelasKBM,
+  dapatkanBlokDariSesiMengajar,
+  addSlotToGuruObj,
+  syncGuruMengajarAndTotalObj,
+  parseJadwalCell_Client,
+} from '@/lib/utils/jadwalHelper';
 import { Formasi, HierarkiBlokKBMConfig } from '@/types/formasi';
 import { Asatidz } from '@/types/asatidz';
 
@@ -388,6 +394,67 @@ describe('Gender-Aware Class Matching & Schedule Isolation (PA vs PI)', () => {
       );
       // Harus Belum Diatur, BUKAN 'Kamar Asrama 10'
       expect(blok).toBe('Belum Diatur');
+    });
+  });
+
+  describe('Fitur Gabung Kelas (Multi-Class Teaching at Same Slot)', () => {
+    it('1. addSlotToGuruObj mendukung multi-kelas gabung di jam yang sama tanpa menimpa kelas lain', () => {
+      const guruRow: JadwalAsatidzRow = {
+        nama_asatidz: 'UST. AHMAD DIMYATI',
+        selasa: 'Jam 1 | Hadits | 2 A WUSTHO (PI)',
+      };
+
+      // Tambahkan kelas 2 B WUSTHO (PI) di Selasa Jam 1 (Gabung Kelas)
+      addSlotToGuruObj(guruRow, 'Selasa', 1, 'Hadits', '2 B WUSTHO (PI)');
+
+      const slots = parseJadwalCell_Client(guruRow.selasa);
+      expect(slots).toHaveLength(2);
+      expect(slots[0]).toMatchObject({ jam: 1, fan: 'Hadits', lokasi: '2 A WUSTHO (PI)' });
+      expect(slots[1]).toMatchObject({ jam: 1, fan: 'Hadits', lokasi: '2 B WUSTHO (PI)' });
+    });
+
+    it('2. addSlotToGuruObj menimpa slot jika kelasnya sama persis pada jam tersebut', () => {
+      const guruRow: JadwalAsatidzRow = {
+        nama_asatidz: 'UST. AHMAD DIMYATI',
+        selasa: 'Jam 1 | Hadits | 2 A WUSTHO (PI)\nJam 1 | Hadits | 2 B WUSTHO (PI)',
+      };
+
+      // Update fan untuk 2 B WUSTHO (PI) di jam 1
+      addSlotToGuruObj(guruRow, 'Selasa', 1, 'Fiqih', '2 B WUSTHO (PI)');
+
+      const slots = parseJadwalCell_Client(guruRow.selasa);
+      expect(slots).toHaveLength(2);
+      expect(slots[0]).toMatchObject({ jam: 1, fan: 'Hadits', lokasi: '2 A WUSTHO (PI)' });
+      expect(slots[1]).toMatchObject({ jam: 1, fan: 'Fiqih', lokasi: '2 B WUSTHO (PI)' });
+    });
+
+    it('3. removeSlotFromGuruObj hanya menghapus kelas yang ditargetkan, menjaga kelas gabungan lainnya', () => {
+      const guruRow: JadwalAsatidzRow = {
+        nama_asatidz: 'UST. AHMAD DIMYATI',
+        selasa: 'Jam 1 | Hadits | 2 A WUSTHO (PI)\nJam 1 | Hadits | 2 B WUSTHO (PI)',
+      };
+
+      // Hapus slot kelas 2 B WUSTHO (PI)
+      removeSlotFromGuruObj(guruRow, 'Selasa', 1, '2 B WUSTHO (PI)');
+
+      const slots = parseJadwalCell_Client(guruRow.selasa);
+      expect(slots).toHaveLength(1);
+      expect(slots[0]).toMatchObject({ jam: 1, fan: 'Hadits', lokasi: '2 A WUSTHO (PI)' });
+    });
+
+    it('4. syncGuruMengajarAndTotalObj menghitung jam kehadiran unik dan mencatat semua kelas gabungan', () => {
+      const guruRow: JadwalAsatidzRow = {
+        nama_asatidz: 'UST. AHMAD DIMYATI',
+        selasa: 'Jam 1 | Hadits | 2 A WUSTHO (PI)\nJam 1 | Hadits | 2 B WUSTHO (PI)\nJam 2 | Hadits | 2 A WUSTHO (PI)\nJam 2 | Hadits | 2 B WUSTHO (PI)',
+      };
+
+      syncGuruMengajarAndTotalObj(guruRow);
+
+      // Jam 1 dan Jam 2 masing-masing digabung, jadi kehadiran fisik adalah 2 Jam
+      expect(guruRow.totalJam).toBe('2');
+      // Kolom mengajar harus memuat kedua kelas
+      expect(guruRow.mengajar).toContain('2 A WUSTHO');
+      expect(guruRow.mengajar).toContain('2 B WUSTHO');
     });
   });
 });
