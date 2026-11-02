@@ -69,7 +69,7 @@ export default function AbsenCepatPage() {
   // Filter & Selection State
   const [search, setSearch] = useState<string>('');
   const [filterBlok, setFilterBlok] = useState<string>('ALL');
-  const [sortBy, setSortBy] = useState<SortOptionCepat>('kelas_asc');
+  const [sortBy, setSortBy] = useState<SortOptionCepat>('blok_asc');
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
@@ -230,6 +230,21 @@ export default function AbsenCepatPage() {
   const totalPages =
     pageSize === -1 ? 1 : Math.max(1, Math.ceil(filteredSesi.length / pageSize));
 
+  // Peta total sesi per blok & indeks posisi item dalam bloknya di seluruh filteredSesi
+  const { totalPerBlokMap, itemIndexInBlokMap } = useMemo(() => {
+    const totals = new Map<string, number>();
+    const indices = new Map<string, number>();
+
+    filteredSesi.forEach((s) => {
+      const bKey = s.blok || 'Belum Diatur';
+      const nextIdx = (totals.get(bKey) || 0) + 1;
+      totals.set(bKey, nextIdx);
+      indices.set(getSesiKey(selectedDate, s), nextIdx);
+    });
+
+    return { totalPerBlokMap: totals, itemIndexInBlokMap: indices };
+  }, [filteredSesi, selectedDate]);
+
   // Sesi yang dipaginasi pada halaman aktif
   const paginatedSesi = useMemo(() => {
     if (pageSize === -1) return filteredSesi;
@@ -237,25 +252,40 @@ export default function AbsenCepatPage() {
     return filteredSesi.slice(start, start + pageSize);
   }, [filteredSesi, currentPage, pageSize]);
 
-  // Kelompokkan sesi pada halaman aktif berdasarkan Blok (mengikuti urutan bandingkanBlokHariKBM)
+  // Kelompokkan sesi pada halaman aktif berdasarkan Blok secara berkesinambungan
   const groupedByBlok = useMemo(() => {
     const map = new Map<string, SesiJadwalHarian[]>();
+    const blokOrder: string[] = [];
+
     paginatedSesi.forEach((s) => {
       const bKey = s.blok || 'Belum Diatur';
-      if (!map.has(bKey)) map.set(bKey, []);
+      if (!map.has(bKey)) {
+        map.set(bKey, []);
+        blokOrder.push(bKey);
+      }
       map.get(bKey)!.push(s);
     });
 
-    const sortedKeys = Array.from(map.keys()).sort((a, b) =>
-      bandingkanBlokHariKBM(a, b)
-    );
+    return blokOrder.map((blok) => {
+      const items = map.get(blok)!;
+      const totalInBlok = totalPerBlokMap.get(blok) || items.length;
+      const firstItemKey = getSesiKey(selectedDate, items[0]);
+      const lastItemKey = getSesiKey(selectedDate, items[items.length - 1]);
+      const firstIdx = itemIndexInBlokMap.get(firstItemKey) || 1;
+      const lastIdx = itemIndexInBlokMap.get(lastItemKey) || items.length;
+      const isLanjutan = firstIdx > 1;
 
-    return sortedKeys.map((blok) => ({
-      blok,
-      labelBlok: formatLabelBlokHariKBM(blok).toUpperCase(),
-      items: map.get(blok)!,
-    }));
-  }, [paginatedSesi]);
+      return {
+        blok,
+        isLanjutan,
+        labelBlok: formatLabelBlokHariKBM(blok).toUpperCase(),
+        firstIdx,
+        lastIdx,
+        totalInBlok,
+        items,
+      };
+    });
+  }, [paginatedSesi, totalPerBlokMap, itemIndexInBlokMap, selectedDate]);
 
   // Toggle pilih 1 kartu
   const toggleSelectKey = (sKey: string, forceValue?: boolean) => {
@@ -688,9 +718,9 @@ export default function AbsenCepatPage() {
               onChange={(e) => setSortBy(e.target.value as SortOptionCepat)}
               className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
-              <option value="kelas_asc">Urut: Kelas (A-Z)</option>
-              <option value="blok_asc">Urut: Blok (Kecil-Besar)</option>
-              <option value="nama_asc">Urut: Nama (A-Z)</option>
+              <option value="blok_asc">Urut: Blok &amp; Kelas (Rekomendasi)</option>
+              <option value="kelas_asc">Urut: Seluruh Kelas (Lintas Blok)</option>
+              <option value="nama_asc">Urut: Nama Asatidz (A-Z)</option>
             </select>
 
             <select
@@ -774,12 +804,19 @@ export default function AbsenCepatPage() {
                 >
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-emerald-700" />
-                    <span className="text-xs font-extrabold text-emerald-900 tracking-wide">
-                      {group.labelBlok}
+                    <span className="text-xs font-extrabold text-emerald-900 tracking-wide flex items-center gap-1.5">
+                      <span>{group.labelBlok}</span>
+                      {group.isLanjutan && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-200/80 text-emerald-800">
+                          (Lanjutan)
+                        </span>
+                      )}
                     </span>
                   </div>
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold">
-                    {group.items.length} Asatidz
+                    {group.totalInBlok > group.items.length
+                      ? `Sesi ${group.firstIdx} - ${group.lastIdx} dari ${group.totalInBlok} Asatidz`
+                      : `${group.items.length} Asatidz`}
                   </span>
                 </div>
 
