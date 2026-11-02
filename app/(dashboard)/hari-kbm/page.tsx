@@ -62,6 +62,11 @@ export default function HariKbmPage() {
   const [search, setSearch] = useState('');
   const [fltTingkat, setFltTingkat] = useState('');
   const [fltJam, setFltJam] = useState<'semua' | '1' | '2'>('semua');
+  const [filterBlok, setFilterBlok] = useState<string>('ALL');
+
+  // Pagination State (Sama seperti Absen Cepat)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(25);
 
   useEffect(() => {
     fetchJadwal();
@@ -169,7 +174,17 @@ export default function HariKbmPage() {
     return result;
   }, [activeHari, asatidzList, jadwalMap, masterStrukturKelasKBM, formasiList, fanConfig, hierarkiConfig]);
 
-  // 2. Filter data berdasarkan pencarian, tingkat, dan jam
+  // Daftar Blok Unik untuk dropdown filter (diurutkan resmi)
+  const daftarBlokUnik = useMemo(() => {
+    const setBlok = new Set<string>();
+    listGuruAktif.forEach((g) => {
+      const b = g.blok || 'Belum Diatur';
+      setBlok.add(b);
+    });
+    return Array.from(setBlok).sort(bandingkanBlokHariKBM);
+  }, [listGuruAktif]);
+
+  // 2. Filter data berdasarkan pencarian, tingkat, jam, dan blok
   const filteredGuruAktif = useMemo(() => {
     const q = search.trim().toLowerCase();
     const qClean = q.replace(/\s+/g, '');
@@ -179,6 +194,13 @@ export default function HariKbmPage() {
 
     return listGuruAktif.filter((item) => {
       let validSlots = item.slots;
+
+      // Filter Blok
+      if (filterBlok && filterBlok !== 'ALL') {
+        const bTarget = filterBlok.replace(/^blok\s*/i, '').trim().toUpperCase();
+        const bItem = String(item.blok || 'Belum Diatur').replace(/^blok\s*/i, '').trim().toUpperCase();
+        if (bTarget !== bItem) return false;
+      }
 
       if (fJamNum > 0) {
         validSlots = validSlots.filter((s) => s.jam === fJamNum);
@@ -216,13 +238,47 @@ export default function HariKbmPage() {
 
       return true;
     });
-  }, [listGuruAktif, search, fltTingkat, fltJam, masterStrukturKelasKBM, asatidzList, formasiList]);
+  }, [listGuruAktif, filterBlok, search, fltTingkat, fltJam, masterStrukturKelasKBM, asatidzList, formasiList]);
 
-  // 3. Kelompokkan per Blok Kelas
+  // Reset ke halaman 1 saat filter atau pageSize berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeHari, fltTingkat, fltJam, filterBlok, search, pageSize]);
+
+  // 3. Pengurutan Global Terpadu (Urutan Blok Resmi -> Hierarki Kelas Universal -> NIA Asatidz)
+  const sortedGuruAktif = useMemo(() => {
+    return [...filteredGuruAktif].sort((a, b) => {
+      // 1. Urutkan berdasarkan Blok Resmi
+      const cmpBlok = bandingkanBlokHariKBM(a.blok, b.blok);
+      if (cmpBlok !== 0) return cmpBlok;
+
+      // 2. Di dalam blok yang sama, urutkan berdasarkan kelas mengajar (hierarki universal: 1 ULA -> 2 ULA -> dst.)
+      const kelasA = a.slots[0]?.kelas || '';
+      const kelasB = b.slots[0]?.kelas || '';
+      const cmpKelas = bandingkanUrutanKelasUniversal(kelasA, kelasB);
+      if (cmpKelas !== 0) return cmpKelas;
+
+      // 3. Fallback ke kode/NIA
+      return compareNIANatural(a.nia, b.nia);
+    });
+  }, [filteredGuruAktif]);
+
+  // Total Halaman
+  const totalPages =
+    pageSize === -1 ? 1 : Math.max(1, Math.ceil(sortedGuruAktif.length / pageSize));
+
+  // Asatidz yang dipaginasi pada halaman aktif
+  const paginatedGuruAktif = useMemo(() => {
+    if (pageSize === -1) return sortedGuruAktif;
+    const start = (currentPage - 1) * pageSize;
+    return sortedGuruAktif.slice(start, start + pageSize);
+  }, [sortedGuruAktif, currentPage, pageSize]);
+
+  // 4. Kelompokkan Asatidz Halaman Aktif per Blok Kelas
   const daftarKelompokBlok: KelompokBlokHariKBM[] = useMemo(() => {
     const mapBlok: Record<string, KelompokBlokHariKBM> = {};
 
-    filteredGuruAktif.forEach((item) => {
+    paginatedGuruAktif.forEach((item) => {
       let blokAsli = String(item.blok || '').trim();
       if (!blokAsli || blokAsli === '-') blokAsli = 'Belum Diatur';
       const kunciBlok = blokAsli.replace(/^blok\s*/i, '').trim().toUpperCase();
@@ -240,21 +296,10 @@ export default function HariKbmPage() {
       bandingkanBlokHariKBM(a.namaBlok, b.namaBlok)
     );
 
-    // Urutan default hierarki kelas (1 ULA -> 2 ULA -> 3 ULA -> 4 ULA -> 1 WUSTHO... -> 1 ULYA...)
-    kelompokList.forEach((k) => {
-      k.daftarAsatidz.sort((a, b) => {
-        const kelasA = a.slots[0]?.kelas || '';
-        const kelasB = b.slots[0]?.kelas || '';
-        const cmpKelas = bandingkanUrutanKelasUniversal(kelasA, kelasB);
-        if (cmpKelas !== 0) return cmpKelas;
-        return compareNIANatural(a.nia, b.nia);
-      });
-    });
-
     return kelompokList;
-  }, [filteredGuruAktif]);
+  }, [paginatedGuruAktif]);
 
-  // Total jam statistics
+  // Total jam statistics (dari data terfilter keseluruhan)
   const totalJamTampil = useMemo(() => {
     let count = 0;
     const fJamNum = fltJam === '1' ? 1 : fltJam === '2' ? 2 : 0;
@@ -268,9 +313,9 @@ export default function HariKbmPage() {
     return count;
   }, [filteredGuruAktif, fltJam]);
 
-  // Export Excel
+  // Export Excel (Mengekspor seluruh data asatidz terfilter, tidak terpotong halaman tampilan)
   const handleExportExcel = () => {
-    if (filteredGuruAktif.length === 0) {
+    if (sortedGuruAktif.length === 0) {
       alert('Tidak ada data yang dapat diexport.');
       return;
     }
@@ -280,7 +325,28 @@ export default function HariKbmPage() {
     ];
 
     let no = 1;
-    daftarKelompokBlok.forEach((kelompok) => {
+
+    // Kelompokkan seluruh sortedGuruAktif per blok resmi
+    const mapBlokAll: Record<string, KelompokBlokHariKBM> = {};
+    sortedGuruAktif.forEach((item) => {
+      let blokAsli = String(item.blok || '').trim();
+      if (!blokAsli || blokAsli === '-') blokAsli = 'Belum Diatur';
+      const kunciBlok = blokAsli.replace(/^blok\s*/i, '').trim().toUpperCase();
+
+      if (!mapBlokAll[kunciBlok]) {
+        mapBlokAll[kunciBlok] = {
+          namaBlok: blokAsli,
+          daftarAsatidz: [],
+        };
+      }
+      mapBlokAll[kunciBlok].daftarAsatidz.push(item);
+    });
+
+    const allKelompok = Object.values(mapBlokAll).sort((a, b) =>
+      bandingkanBlokHariKBM(a.namaBlok, b.namaBlok)
+    );
+
+    allKelompok.forEach((kelompok) => {
       kelompok.daftarAsatidz.forEach((item) => {
         let slots = item.slots;
         if (fltJam === '1') slots = slots.filter((s) => s.jam === 1);
@@ -318,7 +384,8 @@ export default function HariKbmPage() {
     }, 600);
   };
 
-  let globalNoUrut = 1;
+  // Penomoran baris kontinu berdasar halaman aktif
+  let globalNoUrut = pageSize === -1 ? 1 : (currentPage - 1) * pageSize + 1;
 
   return (
     <div className="space-y-6">
@@ -428,7 +495,7 @@ export default function HariKbmPage() {
         </div>
 
         {/* Filters Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 items-end mt-4 pt-3 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end mt-4 pt-3 border-t border-slate-100">
           <div>
             <label className="block text-[11px] font-bold text-slate-500 mb-1">
               Pencarian Cepat:
@@ -453,6 +520,24 @@ export default function HariKbmPage() {
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               )}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 mb-1">
+              Blok Kelas:
+            </label>
+            <select
+              value={filterBlok}
+              onChange={(e) => setFilterBlok(e.target.value)}
+              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 font-medium text-slate-700"
+            >
+              <option value="ALL">Semua Blok</option>
+              {daftarBlokUnik.map((b) => (
+                <option key={b} value={b}>
+                  {formatLabelBlokHariKBM(b)}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -488,15 +573,51 @@ export default function HariKbmPage() {
           </div>
         </div>
 
-        {/* Status Badges */}
-        <div className="flex items-center gap-2 flex-wrap text-xs mt-3 pt-3 border-t border-slate-100">
-          <span className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 font-semibold text-emerald-800">
-            {filteredGuruAktif.length} Asatidz Mengajar
-          </span>
-          <span className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 font-medium text-slate-700">
-            {totalJamTampil} Total Jam (Jam 1 &amp; 2)
-          </span>
-          <span className="text-slate-400 italic text-[11px] ml-auto">
+        {/* Status Badges & Paging Toolbar */}
+        <div className="flex items-center justify-between gap-3 flex-wrap text-xs mt-3 pt-3 border-t border-slate-100">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 font-semibold text-emerald-800">
+              {filteredGuruAktif.length} Asatidz Mengajar
+            </span>
+            <span className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 font-medium text-slate-700">
+              {totalJamTampil} Total Jam (Jam 1 &amp; 2)
+            </span>
+
+            {/* Dropdown Ukuran Halaman */}
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
+            >
+              <option value={15}>15 Asatidz / Hal</option>
+              <option value={25}>25 Asatidz / Hal</option>
+              <option value={50}>50 Asatidz / Hal</option>
+              <option value={-1}>Semua Asatidz</option>
+            </select>
+
+            <span className="font-semibold text-slate-600 text-[11.5px]">
+              Menampilkan:{' '}
+              <strong>
+                {pageSize === -1 || sortedGuruAktif.length === 0
+                  ? sortedGuruAktif.length
+                  : `${(currentPage - 1) * pageSize + 1} - ${Math.min(
+                      currentPage * pageSize,
+                      sortedGuruAktif.length
+                    )}`}
+              </strong>{' '}
+              dari <strong>{sortedGuruAktif.length}</strong> Asatidz
+              {pageSize !== -1 && totalPages > 1 && (
+                <span className="ml-1 text-slate-400 font-normal">
+                  (Hal {currentPage}/{totalPages})
+                </span>
+              )}
+            </span>
+          </div>
+
+          <span className="text-slate-400 italic text-[11px] hidden lg:inline">
             *Klik nama Asatidz untuk lihat profil; klik nama Kelas untuk rincian jadwal kelas.
           </span>
         </div>
@@ -542,6 +663,7 @@ export default function HariKbmPage() {
                       <React.Fragment key={kelompok.namaBlok}>
                         {/* 7 Kolom Baris Header Pemisah Blok */}
                         <tr
+                          data-testid="group-blok-header-kbm"
                           className="table-group-divider"
                           style={{
                             background: 'rgba(15, 118, 110, 0.08)',
@@ -579,7 +701,11 @@ export default function HariKbmPage() {
                           if (fltJam === '2') slotsToShow = slotsToShow.filter((s) => s.jam === 2);
 
                           return (
-                            <tr key={`${kelompok.namaBlok}-${item.nama}`} className="hover:bg-slate-50/70 transition-colors">
+                            <tr
+                              key={`${kelompok.namaBlok}-${item.nama}`}
+                              data-testid="row-asatidz-kbm"
+                              className="hover:bg-slate-50/70 transition-colors"
+                            >
                               <td
                                 className="text-center font-bold text-slate-400 text-xs sticky left-0 z-10 bg-white"
                                 style={{ width: 44, minWidth: 44 }}
@@ -710,7 +836,10 @@ export default function HariKbmPage() {
               return (
                 <div key={kelompok.namaBlok} className="space-y-3">
                   {/* Banner Blok */}
-                  <div className="bg-emerald-700/10 border-l-4 border-emerald-700 px-4 py-2.5 rounded-r-xl flex items-center justify-between">
+                  <div
+                    data-testid="group-blok-header-kbm"
+                    className="bg-emerald-700/10 border-l-4 border-emerald-700 px-4 py-2.5 rounded-r-xl flex items-center justify-between"
+                  >
                     <div className="flex items-center gap-2">
                       <Building2 className="w-4 h-4 text-emerald-800" />
                       <h4 className="font-bold text-emerald-950 uppercase tracking-wide text-sm m-0">
@@ -822,6 +951,68 @@ export default function HariKbmPage() {
               );
             })
           )}
+        </div>
+      )}
+
+      {/* 4. FOOTER PAGINATION HARI KBM (Tabel & Kartu) */}
+      {pageSize !== -1 && totalPages > 1 && (
+        <div className="card-panel border-0 p-4 bg-slate-50/90 border border-slate-200/90 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs no-print-kbm">
+          <span className="text-slate-600 font-medium">
+            Menampilkan{' '}
+            <strong>{(currentPage - 1) * pageSize + 1}</strong> -{' '}
+            <strong>{Math.min(currentPage * pageSize, sortedGuruAktif.length)}</strong>{' '}
+            dari <strong>{sortedGuruAktif.length}</strong> Asatidz (Halaman{' '}
+            <strong>{currentPage}</strong> dari <strong>{totalPages}</strong>)
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 font-bold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs"
+            >
+              Sebelumnya
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => {
+              if (
+                num === 1 ||
+                num === totalPages ||
+                (num >= currentPage - 2 && num <= currentPage + 2)
+              ) {
+                const isActive = num === currentPage;
+                return (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setCurrentPage(num)}
+                    className={`min-w-[32px] h-8 px-2 rounded-lg font-bold text-xs transition border ${
+                      isActive
+                        ? 'bg-emerald-700 border-emerald-700 text-white shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                );
+              }
+              if (num === currentPage - 3 || num === currentPage + 3) {
+                return (
+                  <span key={num} className="px-1 text-slate-400">
+                    ...
+                  </span>
+                );
+              }
+              return null;
+            })}
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 font-bold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs"
+            >
+              Berikutnya
+            </button>
+          </div>
         </div>
       )}
 
