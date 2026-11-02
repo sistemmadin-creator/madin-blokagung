@@ -12,6 +12,9 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
+export const DEFAULT_VAPID_PUBLIC_KEY =
+  'BHHyuMT9yL1ESkHwxDiLez3X56Iwq2kq27fVhDu40m9zqHvfqLY6LjwMq_T3OyYQeu7OirmiXodP8j_uQnZJLIU';
+
 export type PushPermissionStatus = 'unsupported' | 'default' | 'granted' | 'denied';
 
 export const WebPushClientService = {
@@ -87,10 +90,8 @@ export const WebPushClientService = {
         throw new Error('Gagal menginisialisasi service worker');
       }
 
-      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!vapidPublicKey) {
-        throw new Error('Kunci publik VAPID belum dikonfigurasi di lingkungan aplikasi');
-      }
+      const vapidPublicKey =
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || DEFAULT_VAPID_PUBLIC_KEY;
 
       // 3. Daftarkan ke PushManager browser
       let subscription = await reg.pushManager.getSubscription();
