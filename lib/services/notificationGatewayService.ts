@@ -154,4 +154,33 @@ export const NotificationGatewayService = {
       return false;
     }
   },
+
+  /**
+   * Mengirim notifikasi Web Push langsung ke layar HP penerima yang telah mengizinkan notifikasi
+   */
+  async dispatchWebPushNotification(params: {
+    title: string;
+    body: string;
+    url?: string;
+    role?: 'santri' | 'asatidz' | 'wali' | 'admin';
+    targetIdentifier?: string;
+  }): Promise<boolean> {
+    try {
+      const res = await fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: params.title,
+          body: params.body,
+          url: params.url || '/',
+          role: params.role,
+          target_identifier: params.targetIdentifier,
+        }),
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('Gagal dispatch Web Push:', err);
+      return false;
+    }
+  },
 };

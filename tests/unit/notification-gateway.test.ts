@@ -61,4 +61,8 @@ describe('NotificationGatewayService & QRCodeHelper (Fase 3: Otomasi Komunikasi)
     expect(parsedGuru.type).toBe('ASATIDZ');
     expect(parsedGuru.id).toBe('B12');
   });
+
+  it('6. Menyediakan fungsi dispatchWebPushNotification untuk pengiriman notifikasi HP', () => {
+    expect(typeof NotificationGatewayService.dispatchWebPushNotification).toBe('function');
+  });
 });

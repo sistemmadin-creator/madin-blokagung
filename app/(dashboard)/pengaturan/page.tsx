@@ -20,8 +20,10 @@ import ModalHierarkiBlokKBM from '@/components/modules/formasi/ModalHierarkiBlok
 import CardAturanAkademik from '@/components/modules/settings/CardAturanAkademik';
 import CardAturanMuhafadzoh from '@/components/modules/settings/CardAturanMuhafadzoh';
 import CardAturanPiagam from '@/components/modules/settings/CardAturanPiagam';
+import CardPengaturanNotifikasi from '@/components/modules/settings/CardPengaturanNotifikasi';
+import { BellRing } from 'lucide-react';
 
-type TabKey = 'overview' | 'sidebar' | 'hierarki' | 'audit' | 'akademik' | 'muhafadzoh' | 'piagam';
+type TabKey = 'overview' | 'sidebar' | 'hierarki' | 'audit' | 'akademik' | 'muhafadzoh' | 'piagam' | 'notifikasi';
 
 function PengaturanContent() {
   const searchParams = useSearchParams();
@@ -52,6 +54,7 @@ function PengaturanContent() {
     { key: 'akademik', label: 'Aturan KBM & Libur', icon: <CalendarDays className="w-4 h-4 text-cyan-500" />, testId: 'tab-akademik' },
     { key: 'muhafadzoh', label: 'Aturan Muhafadzoh', icon: <BookOpen className="w-4 h-4 text-rose-500" />, testId: 'tab-muhafadzoh' },
     { key: 'piagam', label: 'Aturan Piagam', icon: <Award className="w-4 h-4 text-indigo-500" />, testId: 'tab-piagam' },
+    { key: 'notifikasi', label: 'Notifikasi HP (Push)', icon: <BellRing className="w-4 h-4 text-emerald-600" />, testId: 'tab-notifikasi' },
   ];
 
   return (
@@ -273,6 +276,30 @@ function PengaturanContent() {
                 </button>
               </div>
             </div>
+
+            {/* Pilar 7: Notifikasi Layar HP (Web Push) */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between group">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-3">
+                  <BellRing className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-slate-900 text-base">Notifikasi Layar HP</h3>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  Konfigurasi Web Push Notification ke HP santri &amp; asatidz, uji coba notifikasi berdering di ponsel, dan siaran pengumuman serentak.
+                </p>
+              </div>
+              <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-emerald-700">Web Push &amp; PWA</span>
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('notifikasi')}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900"
+                >
+                  <span>Atur Notifikasi</span>
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -404,6 +431,13 @@ function PengaturanContent() {
       {activeTab === 'piagam' && (
         <div className="animate-fade-in">
           <CardAturanPiagam />
+        </div>
+      )}
+
+      {/* Tab Notifikasi HP */}
+      {activeTab === 'notifikasi' && (
+        <div className="animate-fade-in">
+          <CardPengaturanNotifikasi />
         </div>
       )}
 

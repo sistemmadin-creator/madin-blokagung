@@ -7,6 +7,7 @@ import { useAppStore } from '@/stores/useAppStore';
 import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
+import NotificationBellPrompt from '@/components/common/NotificationBellPrompt';
 
 export default function Navbar() {
   const { isSidebarCollapsed, toggleSidebar } = useAppStore();
@@ -124,6 +125,9 @@ export default function Navbar() {
               )}
             </button>
           </div>
+
+          {/* Lonceng Izin Notifikasi HP */}
+          <NotificationBellPrompt />
 
           {/* Menu Profil Pill */}
           <div className="relative" ref={dropdownRef}>

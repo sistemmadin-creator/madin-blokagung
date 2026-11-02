@@ -19,7 +19,8 @@ import {
   Zap,
   ShieldCheck,
   Newspaper,
-  LayoutDashboard
+  LayoutDashboard,
+  BellRing
 } from 'lucide-react';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
@@ -249,6 +250,14 @@ export default function BottomNavMobile() {
           >
             <Settings className="w-4 h-4 text-amber-600" />
             <span>Ubah Sidebar &amp; Menu</span>
+          </Link>
+          <Link
+            href="/pengaturan?tab=notifikasi"
+            onClick={() => setActiveMenu(null)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800 text-left"
+          >
+            <BellRing className="w-4 h-4 text-emerald-600" />
+            <span>Notifikasi Layar HP (Push)</span>
           </Link>
           <button
             onClick={() => {
