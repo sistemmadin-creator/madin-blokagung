@@ -303,22 +303,45 @@ export function formatLabelBlokHariKBM(blok: string | null | undefined): string 
 }
 
 /**
- * Pengurutan kelompok Blok Kelas: Blok Induk paling atas, blok nomor natural, Belum Diatur paling bawah
+ * Pengurutan resmi kelompok Blok Kelas:
+ * 1. Blok Induk Putra
+ * 2. Blok Induk Ponut
+ * 3. Blok Induk Ponsel
+ * 4. Blok Induk (fallback umum)
+ * 5. Blok GP (Gedung Putri)
+ * 6. Blok Angka Berurutan (Blok 1, Blok 2, Blok 3, Blok 4 ... Blok 12)
+ * 7. Blok Embel
+ * 8. Blok bernama lainnya (alfabetis)
+ * 9. Belum Diatur / '-' / kosong (paling bawah)
  */
 export function bandingkanBlokHariKBM(a: string | null | undefined, b: string | null | undefined): number {
   const bersihkan = (val: string | null | undefined) =>
     String(val || '')
       .replace(/^blok\s*/i, '')
+      .replace(/\s+/g, ' ')
       .trim()
       .toUpperCase();
 
   const blokA = bersihkan(a);
   const blokB = bersihkan(b);
 
-  const peringkat = (blok: string) => {
-    if (blok === 'INDUK') return 0;
-    if (!blok || blok === '-' || blok === 'BELUM DIATUR') return 2;
-    return 1;
+  const peringkat = (blok: string): number => {
+    if (!blok || blok === '-' || blok === 'BELUM DIATUR') return 99;
+    if (blok === 'INDUK PUTRA' || blok === 'INDUK PA' || blok === 'INDUK (PA)') return 1;
+    if (blok === 'INDUK PONUT' || blok === 'INDUK PI' || blok === 'INDUK (PI)' || blok === 'INDUK UTARA') return 2;
+    if (blok === 'INDUK PONSEL' || blok === 'INDUK SELATAN') return 3;
+    if (blok === 'INDUK') return 4;
+    if (blok === 'GP' || blok === 'GEDUNG PUTRI') return 5;
+
+    // Blok Angka murni atau berawalan angka (misal "1", "2", "3" ... "12")
+    const numMatch = blok.match(/^(\d+)/);
+    if (numMatch) {
+      return 10 + parseInt(numMatch[1], 10);
+    }
+
+    if (blok === 'EMBEL' || blok === 'BLOK EMBEL') return 90;
+
+    return 80;
   };
 
   const pA = peringkat(blokA);

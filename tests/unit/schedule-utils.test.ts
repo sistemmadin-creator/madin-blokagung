@@ -3,6 +3,7 @@ import { JadwalAsatidzRow } from '@/types/jadwal';
 import {
   bandingkanUrutanKelasKBM,
   bandingkanUrutanKelasUniversal,
+  bandingkanBlokHariKBM,
   dapatkanBlokDariSesiMengajar,
   addSlotToGuruObj,
   syncGuruMengajarAndTotalObj,
@@ -533,6 +534,56 @@ describe('Gender-Aware Class Matching & Schedule Isolation (PA vs PI)', () => {
       expect(classes[1]).toBe('1 A WUSTHO');
       expect(classes.slice(2)).toContain('-');
       expect(classes.slice(2)).toContain('');
+    });
+  });
+
+  describe('bandingkanBlokHariKBM (Urutan Resmi Grup Blok)', () => {
+    it('mengurutkan grup blok sesuai hierarki: Induk Putra -> Induk Ponut -> Induk Ponsel -> GP -> Blok Angka -> Blok Embel -> Belum Diatur', () => {
+      const expected = [
+        'Blok Induk Putra',
+        'Blok Induk Ponut',
+        'Blok Induk Ponsel',
+        'Blok GP',
+        'Blok 1',
+        'Blok 2',
+        'Blok 3',
+        'Blok 4',
+        'Blok 5',
+        'Blok 8',
+        'Blok 10',
+        'Blok 11',
+        'Blok 12',
+        'Blok Embel',
+        'Belum Diatur',
+      ];
+
+      const input = [
+        'Blok 4',
+        'Blok Embel',
+        'Blok Induk Ponsel',
+        'Blok 12',
+        'Belum Diatur',
+        'Blok 1',
+        'Blok GP',
+        'Blok 10',
+        'Blok 2',
+        'Blok Induk Putra',
+        'Blok 5',
+        'Blok 8',
+        'Blok 3',
+        'Blok 11',
+        'Blok Induk Ponut',
+      ];
+
+      input.sort(bandingkanBlokHariKBM);
+
+      expect(input).toEqual(expected);
+    });
+
+    it('menangani input nama blok tanpa prefix "Blok" secara akurat', () => {
+      const input = ['Blok 4', 'Induk Putra', 'GP', 'Induk Ponut', 'Embel'];
+      input.sort(bandingkanBlokHariKBM);
+      expect(input).toEqual(['Induk Putra', 'Induk Ponut', 'GP', 'Blok 4', 'Embel']);
     });
   });
 });

@@ -71,6 +71,10 @@ export default function AbsenCepatPage() {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(25);
+
   // Modals State
   const [detailSesi, setDetailSesi] = useState<SesiJadwalHarian | null>(null);
   const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
@@ -214,10 +218,26 @@ export default function AbsenCepatPage() {
       });
   }, [allSesiJam, filterBlok, search, sortBy]);
 
-  // Kelompokkan berdasarkan Blok (mengikuti urutan bandingkanBlokHariKBM)
+  // Reset ke halaman 1 saat filter pencarian, blok, jam, urutan, atau pageSize berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedJam, filterBlok, search, sortBy, pageSize]);
+
+  // Total Halaman
+  const totalPages =
+    pageSize === -1 ? 1 : Math.max(1, Math.ceil(filteredSesi.length / pageSize));
+
+  // Sesi yang dipaginasi pada halaman aktif
+  const paginatedSesi = useMemo(() => {
+    if (pageSize === -1) return filteredSesi;
+    const start = (currentPage - 1) * pageSize;
+    return filteredSesi.slice(start, start + pageSize);
+  }, [filteredSesi, currentPage, pageSize]);
+
+  // Kelompokkan sesi pada halaman aktif berdasarkan Blok (mengikuti urutan bandingkanBlokHariKBM)
   const groupedByBlok = useMemo(() => {
     const map = new Map<string, SesiJadwalHarian[]>();
-    filteredSesi.forEach((s) => {
+    paginatedSesi.forEach((s) => {
       const bKey = s.blok || 'Belum Diatur';
       if (!map.has(bKey)) map.set(bKey, []);
       map.get(bKey)!.push(s);
@@ -232,7 +252,7 @@ export default function AbsenCepatPage() {
       labelBlok: formatLabelBlokHariKBM(blok).toUpperCase(),
       items: map.get(blok)!,
     }));
-  }, [filteredSesi]);
+  }, [paginatedSesi]);
 
   // Toggle pilih 1 kartu
   const toggleSelectKey = (sKey: string, forceValue?: boolean) => {
@@ -659,6 +679,20 @@ export default function AbsenCepatPage() {
               <option value="blok_asc">Urut: Blok (Kecil-Besar)</option>
               <option value="nama_asc">Urut: Nama (A-Z)</option>
             </select>
+
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value={15}>15 Sesi / Hal</option>
+              <option value={25}>25 Sesi / Hal</option>
+              <option value={50}>50 Sesi / Hal</option>
+              <option value={-1}>Semua Sesi</option>
+            </select>
           </div>
 
           <div className="flex items-center gap-3 text-[11px] text-slate-500">
@@ -666,8 +700,21 @@ export default function AbsenCepatPage() {
               Klik/Tahan-Geser: Pilih • Klik 2x: Detail & Status
             </span>
             <span className="font-semibold">
-              Menampilkan: <strong>{filteredSesi.length}</strong> dari{' '}
-              <strong>{allSesiJam.length}</strong> Sesi
+              Menampilkan:{' '}
+              <strong>
+                {pageSize === -1 || filteredSesi.length === 0
+                  ? filteredSesi.length
+                  : `${(currentPage - 1) * pageSize + 1} - ${Math.min(
+                      currentPage * pageSize,
+                      filteredSesi.length
+                    )}`}
+              </strong>{' '}
+              dari <strong>{filteredSesi.length}</strong> Sesi
+              {pageSize !== -1 && totalPages > 1 && (
+                <span className="ml-1 text-slate-400 font-normal">
+                  (Hal {currentPage}/{totalPages})
+                </span>
+              )}
             </span>
           </div>
         </div>
@@ -708,7 +755,10 @@ export default function AbsenCepatPage() {
             groupedByBlok.map((group) => (
               <div key={group.blok} className="space-y-2">
                 {/* Banner Header Kelompok Blok (Hijau Khas Gambar 4) */}
-                <div className="flex items-center justify-between px-3.5 py-2 rounded-lg bg-emerald-50/90 border border-emerald-200/80">
+                <div
+                  data-testid="group-blok-header"
+                  className="flex items-center justify-between px-3.5 py-2 rounded-lg bg-emerald-50/90 border border-emerald-200/80"
+                >
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-emerald-700" />
                     <span className="text-xs font-extrabold text-emerald-900 tracking-wide">
@@ -763,7 +813,10 @@ export default function AbsenCepatPage() {
                           </button>
 
                           {/* Badge Kelas Mengajar */}
-                          <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-extrabold text-[11px] shrink-0">
+                          <span
+                            data-testid="badge-kelas-cepat"
+                            className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-extrabold text-[11px] shrink-0"
+                          >
                             {sesi.kelasMengajar}
                           </span>
 
@@ -812,6 +865,68 @@ export default function AbsenCepatPage() {
             ))
           )}
         </div>
+
+        {/* Footer Pagination Halaman Absen Cepat */}
+        {pageSize !== -1 && totalPages > 1 && (
+          <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <span className="text-slate-600 font-medium">
+              Menampilkan{' '}
+              <strong>{(currentPage - 1) * pageSize + 1}</strong> -{' '}
+              <strong>{Math.min(currentPage * pageSize, filteredSesi.length)}</strong>{' '}
+              dari <strong>{filteredSesi.length}</strong> Sesi (Halaman{' '}
+              <strong>{currentPage}</strong> dari <strong>{totalPages}</strong>)
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 font-bold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs"
+              >
+                Sebelumnya
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => {
+                if (
+                  num === 1 ||
+                  num === totalPages ||
+                  (num >= currentPage - 2 && num <= currentPage + 2)
+                ) {
+                  const isActive = num === currentPage;
+                  return (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setCurrentPage(num)}
+                      className={`min-w-[32px] h-8 px-2 rounded-lg font-bold text-xs transition border ${
+                        isActive
+                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  );
+                }
+                if (num === currentPage - 3 || num === currentPage + 3) {
+                  return (
+                    <span key={num} className="px-1 text-slate-400">
+                      ...
+                    </span>
+                  );
+                }
+                return null;
+              })}
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 font-bold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs"
+              >
+                Berikutnya
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ====================================================================

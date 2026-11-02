@@ -191,4 +191,42 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
     await modal.getByRole('button', { name: 'Batal', exact: true }).click();
     await expect(modal).not.toBeVisible();
   });
+
+  test('6.0 Absen Cepat: Urutan Grup Blok Resmi & Kontrol Pagination', async ({ page }) => {
+    await page.goto('/absen-cepat');
+
+    // Tunggu data sesi termuat
+    await expect(page.getByText(/dari [1-9]\d* Sesi/i).first()).toBeVisible({ timeout: 20000 });
+
+    // 1. Verifikasi Urutan Blok: Blok Induk Putra harus muncul lebih awal daripada Blok 4
+    const blockBanners = page.getByTestId('group-blok-header');
+    await expect(blockBanners.first()).toBeVisible();
+
+    const firstBannerText = await blockBanners.first().innerText();
+    // Blok teratas harus Blok Induk Putra (bukan Blok 4)
+    expect(firstBannerText.toUpperCase()).toContain('BLOK INDUK PUTRA');
+
+    // 2. Verifikasi Kelas Teratas di dalam Blok Induk Putra adalah 1 A ULA (PA)
+    const firstClassBadge = page.getByTestId('badge-kelas-cepat').first();
+    const firstClassText = await firstClassBadge.innerText();
+    expect(firstClassText).toContain('1 A ULA');
+
+    // 3. Verifikasi Keberadaan Dropdown PageSize Pagination
+    const pageSizeSelect = page.locator('select').filter({ hasText: /25 Sesi \/ Hal/i });
+    await expect(pageSizeSelect).toBeVisible();
+
+    // 4. Verifikasi Navigasi Pagination
+    const btnBerikutnya = page.getByRole('button', { name: 'Berikutnya', exact: true });
+    if (await btnBerikutnya.isVisible()) {
+      await expect(page.getByText(/Halaman 1 dari/i)).toBeVisible();
+      // Klik halaman berikutnya
+      await btnBerikutnya.click();
+      await expect(page.getByText(/Halaman 2 dari/i)).toBeVisible();
+
+      // Klik kembali ke halaman sebelumnya
+      const btnSebelumnya = page.getByRole('button', { name: 'Sebelumnya', exact: true });
+      await btnSebelumnya.click();
+      await expect(page.getByText(/Halaman 1 dari/i)).toBeVisible();
+    }
+  });
 });
