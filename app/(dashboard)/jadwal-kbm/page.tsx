@@ -100,7 +100,11 @@ export default function JadwalKbmPage() {
       if (fltGender && k.papi !== fltGender) return false;
 
       const namaKelasMurni = `${k.kls} ${k.bag} ${k.tingkat}`.trim();
-      const isUg = Boolean(k.isUnggulan || isKelasUnggulan(namaKelasMurni, formasiList));
+      const isUg = Boolean(
+        k.isUnggulan !== undefined
+          ? k.isUnggulan
+          : isKelasUnggulan(namaKelasMurni, formasiList, k.papi)
+      );
       if (switchMode === 'reguler' && isUg) return false;
       if (switchMode === 'unggulan' && !isUg) return false;
 
@@ -257,7 +261,9 @@ export default function JadwalKbmPage() {
     masterStrukturKelasKBM.forEach((k, idx) => {
       const noStr = idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`;
       const isUg = Boolean(
-        k.isUnggulan || isKelasUnggulan(`${k.kls} ${k.bag} ${k.tingkat}`, formasiList)
+        k.isUnggulan !== undefined
+          ? k.isUnggulan
+          : isKelasUnggulan(`${k.kls} ${k.bag} ${k.tingkat}`, formasiList, k.papi)
       );
       const klsDisplay = `${k.kls} ${k.bag}${isUg ? ' (Ug)' : ''}`;
 
@@ -536,7 +542,9 @@ export default function JadwalKbmPage() {
                 listTampil.map((k, idx) => {
                   const noStr = idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`;
                   const isUg = Boolean(
-                    k.isUnggulan || isKelasUnggulan(`${k.kls} ${k.bag} ${k.tingkat}`, formasiList)
+                    k.isUnggulan !== undefined
+                      ? k.isUnggulan
+                      : isKelasUnggulan(`${k.kls} ${k.bag} ${k.tingkat}`, formasiList, k.papi)
                   );
                   const isPutri = k.papi === 'PI' || String(k.papi || '').trim().toUpperCase() === 'PUTRI';
                   const rowGenderClass = isPutri ? 'row-jadwal-pi' : 'row-jadwal-pa';

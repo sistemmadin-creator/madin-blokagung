@@ -417,7 +417,7 @@ export function ekstraksiSesiJadwalHariIni(
         const keyUg = `${dinKls} ${tingkat.toUpperCase()} (Ug)`;
         const keyUgLegacy = `${dinKls} ${dinBag.toUpperCase()} ${tingkat.toUpperCase()} (Ug)`;
         const keyReg = `${dinKls} ${tingkat.toUpperCase()}`;
-        if (isKelasUnggulan(ownClassBase, formasiList)) {
+        if (isKelasUnggulan(ownClassBase, formasiList, gender)) {
           if (Array.isArray(fanConfig[keyUg]) && fanConfig[keyUg].length > 0) {
             fansList = fanConfig[keyUg];
           } else if (Array.isArray(fanConfig[keyUgLegacy]) && fanConfig[keyUgLegacy].length > 0) {

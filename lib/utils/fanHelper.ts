@@ -100,13 +100,33 @@ export function normalisasiKelasBandingUnggulan(str: string | null | undefined):
 }
 
 /**
- * Mengambil daftar nama kelas yang berstatus Unggulan (`is_unggulan === true`) dari master formasi
+ * Mengambil daftar nama kelas yang berstatus Unggulan (`is_unggulan === true`) dari master formasi.
+ * Jika parameter `papi` diberikan ('PA' atau 'PI'), hanya mengambil kelas unggulan untuk gender tersebut.
  */
-export function getDaftarKelasUnggulan(formasiList: Formasi[]): string[] {
+export function getDaftarKelasUnggulan(formasiList: Formasi[], papi?: string): string[] {
   const setUg = new Map<string, string>();
+
+  let filterGender = '';
+  if (papi) {
+    const p = String(papi).trim().toUpperCase();
+    if (p === 'PA' || p === 'PUTRA') filterGender = 'PA';
+    else if (p === 'PI' || p === 'PUTRI') filterGender = 'PI';
+  }
 
   (formasiList || []).forEach((f) => {
     if (f && f.is_unggulan) {
+      const fPapi = String(f.pa_pi || '').trim().toUpperCase();
+      const fGender =
+        fPapi === 'PA' || fPapi === 'PUTRA'
+          ? 'PA'
+          : fPapi === 'PI' || fPapi === 'PUTRI'
+          ? 'PI'
+          : '';
+
+      if (filterGender && fGender && fGender !== filterGender) {
+        return;
+      }
+
       const kls = String(f.din_kls || '').trim();
       const bag = String(f.din_bag || '').trim().toUpperCase();
       const tingkat = String(f.tingkat || '').trim().toUpperCase();
@@ -121,12 +141,56 @@ export function getDaftarKelasUnggulan(formasiList: Formasi[]): string[] {
 }
 
 /**
- * Mengecek apakah suatu nama kelas ("1 A ULA") berstatus Kelas Unggulan
+ * Mengecek apakah suatu nama kelas ("1 A ULA", "2 A ULYA (PA)") berstatus Kelas Unggulan.
+ * Mendukung deteksi gender langsung dari string atau parameter opsional `papi` ('PA' / 'PI')
+ * sehingga kelas Putra dan Putri dinilai secara presisi dan independen.
  */
-export function isKelasUnggulan(namaKelas: string, formasiList: Formasi[]): boolean {
-  const clean = normalisasiKelasBandingUnggulan(namaKelas);
-  return getDaftarKelasUnggulan(formasiList).some(
-    (k) => normalisasiKelasBandingUnggulan(k) === clean
+export function isKelasUnggulan(
+  namaKelas: string,
+  formasiList: Formasi[],
+  papi?: string
+): boolean {
+  if (!formasiList || formasiList.length === 0) return false;
+
+  let targetGender = '';
+  if (papi) {
+    const pUpper = String(papi).trim().toUpperCase();
+    if (pUpper === 'PA' || pUpper === 'PUTRA') targetGender = 'PA';
+    else if (pUpper === 'PI' || pUpper === 'PUTRI') targetGender = 'PI';
+  } else {
+    const match = String(namaKelas).match(/\b(PA|PI|PUTRA|PUTRI)\b/i);
+    if (match) {
+      const g = match[1].toUpperCase();
+      targetGender = g === 'PA' || g === 'PUTRA' ? 'PA' : 'PI';
+    }
+  }
+
+  const cleanNama = normalisasiKelasBandingUnggulan(namaKelas);
+
+  if (targetGender) {
+    const match = (formasiList || []).find((f) => {
+      const fKls = String(f.din_kls || '').trim();
+      const fBag = String(f.din_bag || '').trim().toUpperCase();
+      const fTingkat = String(f.tingkat || '').trim().toUpperCase();
+      const fPapi = String(f.pa_pi || '').trim().toUpperCase();
+      const fGender =
+        fPapi === 'PA' || fPapi === 'PUTRA'
+          ? 'PA'
+          : fPapi === 'PI' || fPapi === 'PUTRI'
+          ? 'PI'
+          : '';
+
+      const fNamaClean = normalisasiKelasBandingUnggulan(`${fKls} ${fBag} ${fTingkat}`);
+      return fNamaClean === cleanNama && fGender === targetGender;
+    });
+
+    if (match) {
+      return Boolean(match.is_unggulan);
+    }
+  }
+
+  return getDaftarKelasUnggulan(formasiList, targetGender).some(
+    (k) => normalisasiKelasBandingUnggulan(k) === cleanNama
   );
 }
 

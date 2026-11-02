@@ -82,8 +82,8 @@ export function buildUnifiedTeacherMap(
     const { isMS } = cekKategoriJahAsatidz(a.jah_asatidz);
     if (isMS) {
       if (
-        isKelasUnggulan(`${kls} ${bag} ${rawTkt}`, formasiList) ||
-        isKelasUnggulan(`${kls} ${bag} ${tkt}`, formasiList)
+        isKelasUnggulan(`${kls} ${bag} ${rawTkt}`, formasiList, a.pa_pi) ||
+        isKelasUnggulan(`${kls} ${bag} ${tkt}`, formasiList, a.pa_pi)
       ) {
         unggulanMustahiqMap.set(n, { tingkat: tkt, klsNum: parseInt(kls, 10) || 0, bag });
       } else {
@@ -193,7 +193,7 @@ export function buildUnifiedTeacherMap(
 
         const klsNum = parseInt(parts[0], 10) || 0;
         const tingkat = normalizeTingkatName(parts[parts.length - 1]);
-        const isUg = isKelasUnggulan(kelasBersih, formasiList);
+        const isUg = isKelasUnggulan(murniDenganGender, formasiList);
         const kelasLabel = isUg ? `${kelasBersih} Ug` : kelasBersih;
 
         // Parse fan & mapel
@@ -415,7 +415,7 @@ export function buildSyncJadwalToFanPayload(
         const klsNum = parts[0];
         const rawTkt = parts[parts.length - 1]?.toUpperCase();
         const tingkat = normalizeTingkatName(rawTkt);
-        const isUg = isKelasUnggulan(kelasBersih, formasiList);
+        const isUg = isKelasUnggulan(murniDenganGender, formasiList);
 
         let targetKelasKey = isUg ? `${klsNum} ${tingkat} (Ug)` : `${klsNum} ${tingkat}`;
         if (isUg && !cfg[targetKelasKey]) {

@@ -1052,7 +1052,7 @@ export function buildMasterStrukturKelasKBM(
 
     const key = `${kls} ${bag} ${tingkat} (${papi || '-'})`;
     const namaKelasMurni = `${kls} ${bag} ${tingkat}`.trim();
-    const isUg = isKelasUnggulan(namaKelasMurni, formasiList);
+    const isUg = Boolean(f.is_unggulan);
     const namaMustahiqFormasi = (f.id_mustahiq || '').trim();
     const profilMustahiq = namaMustahiqFormasi
       ? mapAsatidzByUpper.get(namaMustahiqFormasi.toUpperCase())
@@ -1099,7 +1099,7 @@ export function buildMasterStrukturKelasKBM(
           mustahiqKG: '-',
           mustahiqJah: '',
           lokal: '-',
-          isUnggulan: isKelasUnggulan(namaKelasMurni, formasiList),
+          isUnggulan: isKelasUnggulan(namaKelasMurni, formasiList, papi),
           jadwal: buatJadwalKosong(),
         });
       }
@@ -1278,7 +1278,11 @@ export function dapatkanKelasKeyFanDariObj(
   fanConfig?: FanConfigMap
 ): { effectiveKey: string; primaryKey: string; fallbackKey: string; isUg: boolean } {
   const namaKelasMurni = `${k.kls} ${k.bag} ${k.tingkat}`.trim();
-  const isUg = Boolean(k.isUnggulan || (formasiList && isKelasUnggulan(namaKelasMurni, formasiList)));
+  const isUg = Boolean(
+    k.isUnggulan !== undefined
+      ? k.isUnggulan
+      : formasiList && isKelasUnggulan(namaKelasMurni, formasiList, k.papi)
+  );
   const keyUg = `${k.kls} ${k.tingkat} (Ug)`;
   const keyUgLegacy = `${namaKelasMurni} (Ug)`;
   const keyReg = `${k.kls} ${k.tingkat}`;
@@ -1415,7 +1419,11 @@ export function siapkanCacheRelasiFanJadwalKelas(
   masterStrukturKelasKBM: KelasKbmItem[]
 ): CacheRelasiFanJadwalKelas {
   const namaKelasMurni = `${k.kls} ${k.bag} ${k.tingkat}`.trim();
-  const isUg = Boolean(k.isUnggulan || isKelasUnggulan(namaKelasMurni, formasiList));
+  const isUg = Boolean(
+    k.isUnggulan !== undefined
+      ? k.isUnggulan
+      : isKelasUnggulan(namaKelasMurni, formasiList, k.papi)
+  );
   const primaryFanKey = isUg ? `${k.kls} ${k.tingkat} (Ug)` : `${k.kls} ${k.tingkat}`;
   const legacyUgFanKey = `${namaKelasMurni} (Ug)`;
   const fallbackFanKey = `${k.kls} ${k.tingkat}`;
