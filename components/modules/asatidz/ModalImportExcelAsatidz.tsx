@@ -5,6 +5,7 @@ import Dialog from '@/components/ui/Dialog';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
+import { isEligibleForTeaching } from './ModalInputAsatidz';
 import * as XLSX from 'xlsx';
 import {
   FileSpreadsheet,
@@ -135,7 +136,35 @@ export default function ModalImportExcelAsatidz() {
       '03',
     ];
 
-    const ws = XLSX.utils.aoa_to_sheet([headers, contohBaris1, contohBaris2]);
+    // Contoh Baris 3: Jah Selain Mustahiq (Contoh: TU, Munawib, TOP dll)
+    // Kolom KBM (Tingkat, Din. Kls, Din. Bag, Lokasi Diniyyah, Lokasi Takror) dikosongkan
+    const contohBaris3 = [
+      '202109',
+      'C1',
+      'UST. M. ROFIQ',
+      'PA',
+      '', // Tingkat: Kosong
+      '', // Din. Kls: Kosong
+      '', // Din. Bag: Kosong
+      'TU',
+      '', // Lokasi Diniyyah: Kosong
+      '', // Lokasi Takror: Kosong
+      'BANYUWANGI',
+      '15',
+      '03',
+      '1995',
+      'Darungan',
+      'Tegalsari',
+      'Tegalsari',
+      'Banyuwangi',
+      'Jawa Timur',
+      'Induk',
+      'Darussalam',
+      'C',
+      '05',
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, contohBaris1, contohBaris2, contohBaris3]);
     ws['!cols'] = headers.map((h) => ({ wch: Math.max(h.length + 5, 14) }));
 
     const wb = XLSX.utils.book_new();
@@ -199,6 +228,9 @@ export default function ModalImportExcelAsatidz() {
         const tglRaw = getExcelColumnValue(row, ['tgl_lahir', 'Tgl Lahir', 'Tanggal Lahir', 'Tanggal']);
         const tglFormatted = tglRaw ? tglRaw.padStart(2, '0') : '';
 
+        const jah = getExcelColumnValue(row, ['jah_asatidz', 'Jah', 'Jabatan']);
+        const isTeaching = isEligibleForTeaching(jah);
+
         recordsToInsert.push({
           nis: getExcelColumnValue(row, ['nis', 'NIS', 'No Induk Santri']),
           nia: getExcelColumnValue(row, ['nia', 'NIA', 'Kode', 'Kode Guru']).toUpperCase(),
@@ -217,12 +249,13 @@ export default function ModalImportExcelAsatidz() {
           asrama: getExcelColumnValue(row, ['asrama', 'Asrama']),
           kode: getExcelColumnValue(row, ['kode', 'Kode Kamar', 'Kode Asrama']),
           kamar: getExcelColumnValue(row, ['kamar', 'Kamar', 'No Kamar']),
-          tingkat_asatidz: getExcelColumnValue(row, ['tingkat_asatidz', 'Tingkat', 'Jenjang']).toUpperCase(),
-          din_kls_asatidz: getExcelColumnValue(row, ['din_kls_asatidz', 'Din. Kls', 'Din Kls', 'Kelas']),
-          din_bag_asatidz: getExcelColumnValue(row, ['din_bag_asatidz', 'Din. Bag', 'Din Bag', 'Bagian', 'Bag']).toUpperCase(),
-          jah_asatidz: getExcelColumnValue(row, ['jah_asatidz', 'Jah', 'Jabatan']),
-          lokasi_diniyyah: getExcelColumnValue(row, ['lokasi_diniyyah', 'Lokasi Diniyyah', 'Ruang Diniyyah']),
-          lokasi_takror: getExcelColumnValue(row, ['lokasi_takror', 'Lokasi Takror', 'Ruang Takror']),
+          // Kolom Tugas Mengajar & Lokasi KBM hanya disimpan jika Jah adalah Mustahiq, Mustahiqoh, atau MS & Koor
+          tingkat_asatidz: isTeaching ? getExcelColumnValue(row, ['tingkat_asatidz', 'Tingkat', 'Jenjang']).toUpperCase() : '',
+          din_kls_asatidz: isTeaching ? getExcelColumnValue(row, ['din_kls_asatidz', 'Din. Kls', 'Din Kls', 'Kelas']) : '',
+          din_bag_asatidz: isTeaching ? getExcelColumnValue(row, ['din_bag_asatidz', 'Din. Bag', 'Din Bag', 'Bagian', 'Bag']).toUpperCase() : '',
+          jah_asatidz: jah,
+          lokasi_diniyyah: isTeaching ? getExcelColumnValue(row, ['lokasi_diniyyah', 'Lokasi Diniyyah', 'Ruang Diniyyah']) : '',
+          lokasi_takror: isTeaching ? getExcelColumnValue(row, ['lokasi_takror', 'Lokasi Takror', 'Ruang Takror']) : '',
           foto_asatidz: getExcelColumnValue(row, ['foto_asatidz', 'Foto', 'URL Foto']),
         });
       });
@@ -298,9 +331,14 @@ export default function ModalImportExcelAsatidz() {
               <span>Unduh Template Excel</span>
             </button>
           </div>
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Format kolom yang didukung: <code className="text-rose-600 font-semibold">Nama Lengkap</code> (atau <code className="text-rose-600 font-semibold">nama_asatidz</code>), <code className="text-rose-600 font-semibold">PA/PI</code> (PA/PI), <code className="text-rose-600 font-semibold">NIA</code>, <code className="text-rose-600 font-semibold">Tingkat</code>, <code className="text-rose-600 font-semibold">Din. Kls</code>, <code className="text-rose-600 font-semibold">Din. Bag</code>, dan <code className="text-rose-600 font-semibold">Jah</code>.
-          </p>
+          <div className="text-xs text-slate-600 leading-relaxed space-y-1.5">
+            <p>
+              Kolom Identitas Wajib (Semua Jah): <code className="text-rose-600 font-semibold">Nama Lengkap</code> (atau <code className="text-rose-600 font-semibold">nama_asatidz</code>), <code className="text-rose-600 font-semibold">PA/PI</code>, <code className="text-rose-600 font-semibold">NIA</code>, dan <code className="text-rose-600 font-semibold">Jah</code>.
+            </p>
+            <p className="text-[11px] text-emerald-800 bg-emerald-50/80 p-2 rounded-lg border border-emerald-200 leading-normal">
+              <strong>Catatan Tugas Mengajar:</strong> Kolom <code className="font-semibold text-emerald-950">Tingkat</code>, <code className="font-semibold text-emerald-950">Din. Kls</code>, <code className="font-semibold text-emerald-950">Din. Bag</code>, dan <code className="font-semibold text-emerald-950">Lokasi</code> hanya wajib/berlaku untuk Jah <strong>Mustahiq</strong>, <strong>Mustahiqoh</strong>, dan <strong>MS &amp; Koor</strong>. Untuk Jah selain itu (TU, Munawib, TOP, KS, dll.) kolom tersebut dikosongkan.
+            </p>
+          </div>
         </div>
 
         {/* File Picker Drag & Drop Area */}

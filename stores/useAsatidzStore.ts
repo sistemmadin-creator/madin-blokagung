@@ -273,22 +273,27 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
               module: 'asatidz',
               title: `Edit Asatidz: ${data.nama_asatidz}`,
               undo: async () => {
-                const { data: existRow } = await supabase
+                const { data: existRow, error: fetchErr } = await supabase
                   .from('asatidz')
                   .select('*')
                   .eq('nia', data.nia)
                   .maybeSingle();
 
+                if (fetchErr) throw fetchErr;
                 if (!existRow) {
                   console.warn(`[UNDO ASATIDZ] Gagal: Asatidz ${data.nia} tidak ditemukan.`);
                   await get().fetchAsatidz();
                   return false;
                 }
 
-                // Deteksi konflik OCC: jika field yang kita ubah di nextDelta ternyata sudah diubah lagi oleh orang lain di server
-                const conflictingKeys = Object.keys(nextDelta).filter(
-                  (k) => (existRow as any)[k] !== (nextDelta as any)[k]
-                );
+                // Deteksi konflik OCC dengan normalisasi nilai agar null vs '' tidak memicu konflik palsu
+                const conflictingKeys = Object.keys(nextDelta).filter((k) => {
+                  const vServer = (existRow as any)[k];
+                  const vExpected = (nextDelta as any)[k];
+                  const normServer = vServer === null || vServer === undefined ? '' : String(vServer).trim();
+                  const normExpected = vExpected === null || vExpected === undefined ? '' : String(vExpected).trim();
+                  return normServer !== normExpected;
+                });
 
                 if (conflictingKeys.length > 0) {
                   const serverValuesStr = conflictingKeys
@@ -312,25 +317,52 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
                   }
                 }
 
-                await supabase.from('asatidz').update(prevDelta).eq('nia', data.nia);
+                const { error: undoErr } = await supabase
+                  .from('asatidz')
+                  .update(prevDelta)
+                  .eq('nia', data.nia);
+                if (undoErr) throw undoErr;
+
+                // Rollback relasional jika nama asatidz diubah
+                if (prevDelta.nama_asatidz && nextDelta.nama_asatidz) {
+                  await CascadeAsatidzService.cascadeRenameAsatidz(
+                    String(nextDelta.nama_asatidz),
+                    String(prevDelta.nama_asatidz)
+                  );
+                }
+
                 await get().fetchAsatidz();
                 return true;
               },
               redo: async () => {
                 const targetKey = (prevDelta.nia as string) || data.nia;
-                const { data: existRow } = await supabase
+                const { data: existRow, error: fetchErr } = await supabase
                   .from('asatidz')
                   .select('nia')
                   .eq('nia', targetKey)
                   .maybeSingle();
 
+                if (fetchErr) throw fetchErr;
                 if (!existRow) {
                   console.warn(`[REDO ASATIDZ] Gagal: Asatidz ${targetKey} tidak ditemukan.`);
                   await get().fetchAsatidz();
                   return false;
                 }
 
-                await supabase.from('asatidz').update(nextDelta).eq('nia', targetKey);
+                const { error: redoErr } = await supabase
+                  .from('asatidz')
+                  .update(nextDelta)
+                  .eq('nia', targetKey);
+                if (redoErr) throw redoErr;
+
+                // Terapkan kembali relasional rename jika nama asatidz diubah
+                if (prevDelta.nama_asatidz && nextDelta.nama_asatidz) {
+                  await CascadeAsatidzService.cascadeRenameAsatidz(
+                    String(prevDelta.nama_asatidz),
+                    String(nextDelta.nama_asatidz)
+                  );
+                }
+
                 await get().fetchAsatidz();
                 return true;
               },
@@ -349,7 +381,11 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
             module: 'asatidz',
             title: `Tambah Asatidz: ${data.nama_asatidz}`,
             undo: async () => {
-              await supabase.from('asatidz').delete().eq('nia', data.nia);
+              const { error: undoErr } = await supabase
+                .from('asatidz')
+                .delete()
+                .eq('nia', data.nia);
+              if (undoErr) throw undoErr;
               await get().fetchAsatidz();
               return true;
             },
@@ -361,7 +397,10 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
                 .maybeSingle();
 
               if (!existRow) {
-                await supabase.from('asatidz').insert([payload]);
+                const { error: redoErr } = await supabase
+                  .from('asatidz')
+                  .insert([payload]);
+                if (redoErr) throw redoErr;
               }
               await get().fetchAsatidz();
               return true;
@@ -401,14 +440,17 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
           module: 'asatidz',
           title: `Hapus Asatidz: ${targetAsatidz.nama_asatidz || nia}`,
           undo: async () => {
-            const { data: existRow } = await supabase
+            const { data: existRow, error: fetchErr } = await supabase
               .from('asatidz')
               .select('nia')
               .eq('nia', nia)
               .maybeSingle();
 
+            if (fetchErr) throw fetchErr;
+
             if (!existRow) {
-              await supabase.from('asatidz').insert([restorePayload]);
+              const { error: insertErr } = await supabase.from('asatidz').insert([restorePayload]);
+              if (insertErr) throw insertErr;
             }
             if (cascadeSnapshot) {
               await CascadeAsatidzService.restoreSnapshot(cascadeSnapshot);
@@ -417,7 +459,8 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
             return true;
           },
           redo: async () => {
-            await supabase.from('asatidz').delete().eq('nia', nia);
+            const { error: delErr } = await supabase.from('asatidz').delete().eq('nia', nia);
+            if (delErr) throw delErr;
             if (targetAsatidz) {
               await CascadeAsatidzService.cascadeDeleteAsatidz([targetAsatidz]);
             }
@@ -468,14 +511,18 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
           module: 'asatidz',
           title: `Hapus ${deletedList.length} Asatidz Terpilih`,
           undo: async () => {
-            const { data: existingRows } = await supabase
+            const { data: existingRows, error: fetchErr } = await supabase
               .from('asatidz')
               .select('nia')
               .in('nia', selected);
+
+            if (fetchErr) throw fetchErr;
+
             const existingKeys = new Set((existingRows || []).map((r) => r.nia));
             const toInsert = restoreList.filter((a) => !existingKeys.has(a.nia));
             if (toInsert.length > 0) {
-              await supabase.from('asatidz').insert(toInsert);
+              const { error: insertErr } = await supabase.from('asatidz').insert(toInsert);
+              if (insertErr) throw insertErr;
             }
             if (cascadeSnapshot) {
               await CascadeAsatidzService.restoreSnapshot(cascadeSnapshot);
@@ -484,7 +531,8 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
             return true;
           },
           redo: async () => {
-            await supabase.from('asatidz').delete().in('nia', selected);
+            const { error: delErr } = await supabase.from('asatidz').delete().in('nia', selected);
+            if (delErr) throw delErr;
             if (deletedList.length > 0) {
               await CascadeAsatidzService.cascadeDeleteAsatidz(deletedList);
             }
@@ -519,9 +567,11 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
       );
       set({ asatidzList: updatedList });
     } else if (eventType === 'DELETE' && oldRecord) {
-      const filteredList = currentList.filter(
-        (a) => a.nia !== oldRecord.nia
-      );
+      const filteredList = currentList.filter((a) => {
+        if (oldRecord.nia) return a.nia !== oldRecord.nia;
+        if (oldRecord.id) return a.id !== oldRecord.id;
+        return true;
+      });
       set({ asatidzList: filteredList });
     }
   },

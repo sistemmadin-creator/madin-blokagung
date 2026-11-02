@@ -78,7 +78,7 @@ export default function Navbar() {
               disabled={undoStack.length === 0 || isExecuting}
               title={
                 undoStack.length > 0
-                  ? `Batalkan (Ctrl+Z): ${undoStack[undoStack.length - 1].title}`
+                  ? `Batalkan (Ctrl+Z): [${undoStack[undoStack.length - 1].module.toUpperCase()}] ${undoStack[undoStack.length - 1].title}`
                   : 'Undo (Ctrl+Z): Belum ada riwayat perubahan'
               }
               aria-label="Batalkan perubahan (Undo)"
@@ -105,7 +105,7 @@ export default function Navbar() {
               disabled={redoStack.length === 0 || isExecuting}
               title={
                 redoStack.length > 0
-                  ? `Ulangi (Ctrl+Y): ${redoStack[redoStack.length - 1].title}`
+                  ? `Ulangi (Ctrl+Y): [${redoStack[redoStack.length - 1].module.toUpperCase()}] ${redoStack[redoStack.length - 1].title}`
                   : 'Redo (Ctrl+Y): Belum ada riwayat untuk diulang'
               }
               aria-label="Ulangi perubahan (Redo)"

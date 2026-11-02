@@ -29,7 +29,7 @@ test.describe('Modul 02: Master Data Dewan Asatidz', () => {
     await expect(page.getByPlaceholder(/Nama lengkap asatidz/i)).toBeVisible();
 
     // Close modal
-    const cancelBtn = page.getByRole('button', { name: /Batal/i });
+    const cancelBtn = page.getByRole('button', { name: 'Batal', exact: true });
     await cancelBtn.click();
     await expect(page.getByRole('heading', { name: /Form Pendaftaran Data Asatidz/i })).toBeHidden();
   });

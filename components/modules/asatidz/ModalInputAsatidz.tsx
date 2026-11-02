@@ -53,6 +53,14 @@ const JAH_PI_OPTIONS = [
   "ISTI'DAD",
 ];
 
+export const TEACHING_JAH_OPTIONS = ['Mustahiq', 'Mustahiqoh', 'MS & Koor'];
+
+export function isEligibleForTeaching(jah: string | null | undefined): boolean {
+  if (!jah) return false;
+  const clean = jah.trim().toLowerCase();
+  return clean === 'mustahiq' || clean === 'mustahiqoh' || clean === 'ms & koor';
+}
+
 const NIA_PREFIX_OPTIONS = ['A', 'B', 'C', 'D', 'E', 'PA', 'PI'];
 
 const BULAN_OPTIONS = [
@@ -237,6 +245,21 @@ export default function ModalInputAsatidz() {
         next.jah_asatidz = value === 'PA' ? 'Mustahiq' : 'Mustahiqoh';
       }
 
+      // Jika Jah diganti ke selain Mustahiq, Mustahiqoh, atau MS & Koor, sterilkan data KBM
+      if (name === 'jah_asatidz') {
+        if (!isEligibleForTeaching(value)) {
+          next.tingkat_asatidz = '';
+          next.din_kls_asatidz = '';
+          next.din_bag_asatidz = '';
+          next.lokasi_diniyyah = '';
+          next.lokasi_takror = '';
+        } else if (!next.tingkat_asatidz) {
+          next.tingkat_asatidz = 'Ula';
+          next.din_kls_asatidz = '1';
+          next.din_bag_asatidz = 'A';
+        }
+      }
+
       return next;
     });
   };
@@ -286,9 +309,19 @@ export default function ModalInputAsatidz() {
       return;
     }
 
+    const isTeachingJah = isEligibleForTeaching(formData.jah_asatidz);
+    const sanitizedPayload: Asatidz = {
+      ...(formData as Asatidz),
+      tingkat_asatidz: isTeachingJah ? (formData.tingkat_asatidz || '') : '',
+      din_kls_asatidz: isTeachingJah ? (formData.din_kls_asatidz || '') : '',
+      din_bag_asatidz: isTeachingJah ? (formData.din_bag_asatidz || '') : '',
+      lokasi_diniyyah: isTeachingJah ? (formData.lokasi_diniyyah || '') : '',
+      lokasi_takror: isTeachingJah ? (formData.lokasi_takror || '') : '',
+    };
+
     setIsSubmitting(true);
     const success = await saveAsatidz(
-      formData as Asatidz,
+      sanitizedPayload,
       isEdit,
       editAsatidzData?.nia
     );
@@ -300,6 +333,7 @@ export default function ModalInputAsatidz() {
   };
 
   const jahOptions = formData.pa_pi === 'PI' ? JAH_PI_OPTIONS : JAH_PA_OPTIONS;
+  const isTeachingJah = isEligibleForTeaching(formData.jah_asatidz);
 
   // Tahun Options (Current down to 1950)
   const currentYear = new Date().getFullYear();
@@ -578,10 +612,28 @@ export default function ModalInputAsatidz() {
           </div>
 
           {/* 2. Tugas Mengajar & Lokasi Diniyyah */}
-          <div className="p-3.5 border border-slate-200 rounded-xl bg-slate-50 space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-              2. Tugas Mengajar &amp; Lokasi KBM
-            </h4>
+          <div
+            className={`p-3.5 border rounded-xl space-y-3 transition-colors ${
+              isTeachingJah
+                ? 'border-slate-200 bg-slate-50'
+                : 'border-slate-200/60 bg-slate-100/70'
+            }`}
+          >
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h4
+                className={`text-xs font-bold uppercase tracking-wider ${
+                  isTeachingJah ? 'text-emerald-700' : 'text-slate-500'
+                }`}
+              >
+                2. Tugas Mengajar &amp; Lokasi KBM
+              </h4>
+              {!isTeachingJah && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                  Khusus Jah: Mustahiq, Mustahiqoh, &amp; MS &amp; Koor
+                </span>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">
@@ -589,10 +641,16 @@ export default function ModalInputAsatidz() {
                 </label>
                 <select
                   name="tingkat_asatidz"
-                  value={formData.tingkat_asatidz || 'Ula'}
+                  disabled={!isTeachingJah}
+                  value={isTeachingJah ? (formData.tingkat_asatidz || 'Ula') : ''}
                   onChange={handleChange}
-                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white"
+                  className={`w-full text-xs py-1.5 px-2.5 rounded-lg border transition ${
+                    isTeachingJah
+                      ? 'border-slate-200 bg-white text-slate-800'
+                      : 'border-slate-200 bg-slate-200/50 text-slate-400 cursor-not-allowed'
+                  }`}
                 >
+                  <option value="">{isTeachingJah ? 'Pilih Tingkat' : '-'}</option>
                   <option value="Ula">Ula</option>
                   <option value="Wustho">Wustho</option>
                   <option value="Ulya">Ulya</option>
@@ -606,10 +664,15 @@ export default function ModalInputAsatidz() {
                 <input
                   type="text"
                   name="din_kls_asatidz"
-                  value={formData.din_kls_asatidz || '1'}
+                  disabled={!isTeachingJah}
+                  value={isTeachingJah ? (formData.din_kls_asatidz || '') : ''}
                   onChange={handleChange}
-                  placeholder="Contoh: 1, 2, 3"
-                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white text-center"
+                  placeholder={isTeachingJah ? 'Contoh: 1, 2, 3' : '-'}
+                  className={`w-full text-xs py-1.5 px-2.5 rounded-lg border text-center transition ${
+                    isTeachingJah
+                      ? 'border-slate-200 bg-white text-slate-800'
+                      : 'border-slate-200 bg-slate-200/50 text-slate-400 cursor-not-allowed'
+                  }`}
                 />
               </div>
 
@@ -620,10 +683,15 @@ export default function ModalInputAsatidz() {
                 <input
                   type="text"
                   name="din_bag_asatidz"
-                  value={formData.din_bag_asatidz || 'A'}
+                  disabled={!isTeachingJah}
+                  value={isTeachingJah ? (formData.din_bag_asatidz || '') : ''}
                   onChange={handleChange}
-                  placeholder="Contoh: A, B, C, N"
-                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white text-center uppercase"
+                  placeholder={isTeachingJah ? 'Contoh: A, B, C, N' : '-'}
+                  className={`w-full text-xs py-1.5 px-2.5 rounded-lg border text-center uppercase transition ${
+                    isTeachingJah
+                      ? 'border-slate-200 bg-white text-slate-800'
+                      : 'border-slate-200 bg-slate-200/50 text-slate-400 cursor-not-allowed'
+                  }`}
                 />
               </div>
 
@@ -634,10 +702,19 @@ export default function ModalInputAsatidz() {
                 <input
                   type="text"
                   name="lokasi_diniyyah"
-                  value={formData.lokasi_diniyyah || ''}
+                  disabled={!isTeachingJah}
+                  value={isTeachingJah ? (formData.lokasi_diniyyah || '') : ''}
                   onChange={handleChange}
-                  placeholder="Contoh: Masjid Lt.1 Barat Utara / Asrama Al-Falah"
-                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white"
+                  placeholder={
+                    isTeachingJah
+                      ? 'Contoh: Masjid Lt.1 Barat Utara / Asrama Al-Falah'
+                      : 'Tidak berlaku untuk Jah ini'
+                  }
+                  className={`w-full text-xs py-1.5 px-2.5 rounded-lg border transition ${
+                    isTeachingJah
+                      ? 'border-slate-200 bg-white text-slate-800'
+                      : 'border-slate-200 bg-slate-200/50 text-slate-400 cursor-not-allowed'
+                  }`}
                 />
               </div>
 
@@ -648,10 +725,15 @@ export default function ModalInputAsatidz() {
                 <input
                   type="text"
                   name="lokasi_takror"
-                  value={formData.lokasi_takror || ''}
+                  disabled={!isTeachingJah}
+                  value={isTeachingJah ? (formData.lokasi_takror || '') : ''}
                   onChange={handleChange}
-                  placeholder="Ruang Takror Malam"
-                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white"
+                  placeholder={isTeachingJah ? 'Ruang Takror Malam' : 'Tidak berlaku'}
+                  className={`w-full text-xs py-1.5 px-2.5 rounded-lg border transition ${
+                    isTeachingJah
+                      ? 'border-slate-200 bg-white text-slate-800'
+                      : 'border-slate-200 bg-slate-200/50 text-slate-400 cursor-not-allowed'
+                  }`}
                 />
               </div>
             </div>
