@@ -134,7 +134,6 @@ export default function ModalInputAsatidz() {
     } else {
       setFormData({
         nia: '',
-        nis: '',
         nama_asatidz: '',
         pa_pi: 'PA',
         jah_asatidz: 'Mustahiq',

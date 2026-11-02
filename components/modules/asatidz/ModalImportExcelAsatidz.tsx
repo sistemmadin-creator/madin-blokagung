@@ -59,7 +59,6 @@ export default function ModalImportExcelAsatidz() {
 
   const handleDownloadTemplate = () => {
     const headers = [
-      'NIS',
       'NIA',
       'Nama Lengkap',
       'PA/PI',
@@ -232,7 +231,6 @@ export default function ModalImportExcelAsatidz() {
         const isTeaching = isEligibleForTeaching(jah);
 
         recordsToInsert.push({
-          nis: getExcelColumnValue(row, ['nis', 'NIS', 'No Induk Santri']),
           nia: getExcelColumnValue(row, ['nia', 'NIA', 'Kode', 'Kode Guru']).toUpperCase(),
           nama_asatidz: nama,
           pa_pi: papi,

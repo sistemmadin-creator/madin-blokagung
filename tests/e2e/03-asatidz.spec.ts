@@ -14,7 +14,7 @@ test.describe('Modul 02: Master Data Dewan Asatidz', () => {
   });
 
   test('search input for asatidz works', async ({ page }) => {
-    const searchInput = page.getByPlaceholder(/Pencarian: Nama, NIA, NIS/i);
+    const searchInput = page.getByPlaceholder(/Pencarian: Nama, NIA/i);
     await expect(searchInput).toBeVisible();
     await searchInput.fill('Ahmad');
     await expect(searchInput).toHaveValue('Ahmad');

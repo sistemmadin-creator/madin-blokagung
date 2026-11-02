@@ -366,7 +366,7 @@ export default function AsatidzPage() {
             type="text"
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
-            placeholder="Pencarian: Nama, NIA, NIS, Kamar, Jah..."
+            placeholder="Pencarian: Nama, NIA, Kamar, Jah..."
             className="w-full pl-9 pr-7 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-600 text-slate-800 placeholder:text-slate-400"
           />
           {searchKeyword && (

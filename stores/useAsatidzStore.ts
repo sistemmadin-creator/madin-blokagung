@@ -238,6 +238,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
 
       const payload: Record<string, any> = { ...data };
       delete payload.id; // Let supabase handle primary key or update
+      delete payload.nis; // Sanitize: tabel asatidz tidak memiliki kolom nis
       if (payload.nama_asatidz) {
         payload.nama_asatidz = String(payload.nama_asatidz).toUpperCase();
       }
