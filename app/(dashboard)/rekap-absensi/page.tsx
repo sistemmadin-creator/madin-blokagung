@@ -41,6 +41,7 @@ import {
   formatLabelBlokHariKBM,
   bandingkanBlokHariKBM,
   getJadwalGuruFromMap,
+  bandingkanUrutanKelasUniversal,
 } from '@/lib/utils/jadwalHelper';
 import ModalGeneratorWA from '@/components/modules/rekap-absensi/ModalGeneratorWA';
 import ModalDrilldownRekap, {
@@ -438,12 +439,23 @@ export default function RekapAbsensiPage() {
         totalTerjadwal += (sch[hari] || 0) * weekdayCount[hari];
       });
 
+      // Tentukan kelas tugas (dari formasi mustahiq atau data asatidz)
+      const foundFormasi = (formasiList || []).find(
+        (f) => String(f.id_mustahiq || '').trim().toUpperCase() === nama.toUpperCase()
+      );
+      const kelasTugas = foundFormasi
+        ? `${foundFormasi.din_kls} ${foundFormasi.din_bag} ${foundFormasi.tingkat} (${foundFormasi.pa_pi || ''})`.replace(/\s+/g, ' ').trim()
+        : a.din_kls_asatidz && a.tingkat_asatidz
+        ? `${a.din_kls_asatidz} ${a.din_bag_asatidz || ''} ${a.tingkat_asatidz} (${a.pa_pi || ''})`.replace(/\s+/g, ' ').trim()
+        : '';
+
       mapAsatidz[key] = {
         nama,
         nia: a.nia || '-',
         blok: dapatkanBlokRekapAsatidz(a, formasiList),
         jah: a.jah_asatidz || '-',
         tingkat: a.tingkat_asatidz || '-',
+        kelasTugas,
         totalTerjadwal,
         hadir: 0,
         izin: 0,
@@ -472,6 +484,7 @@ export default function RekapAbsensiPage() {
           blok: dapatkanBlokRekapAsatidz(null, formasiList, r.lokasi || ''),
           jah: '-',
           tingkat: r.tingkat || '-',
+          kelasTugas: r.kelasMengajar || '',
           totalTerjadwal: 0,
           hadir: 0,
           izin: 0,
@@ -701,6 +714,9 @@ export default function RekapAbsensiPage() {
           break;
       }
       if (cmp === 0) {
+        // Prioritas tie-breaker: Hierarki kelas tugas/asal (1 ULA -> 2 ULA -> ... -> WUSTHO -> ULYA)
+        const cmpKls = bandingkanUrutanKelasUniversal(a.kelasTugas, b.kelasTugas);
+        if (cmpKls !== 0) return cmpKls;
         return a.nama.localeCompare(b.nama);
       }
       return sortDir === 'asc' ? cmp : -cmp;

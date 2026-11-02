@@ -31,6 +31,7 @@ import {
   bandingkanBlokHariKBM,
   formatLabelBlokHariKBM,
   buildMasterStrukturKelasKBM,
+  bandingkanUrutanKelasUniversal,
 } from '@/lib/utils/jadwalHelper';
 import ModalDetailAbsenCepat from '@/components/modules/absen-cepat/ModalDetailAbsenCepat';
 import ModalNotifAbsenBlok from '@/components/modules/absen-cepat/ModalNotifAbsenBlok';
@@ -206,10 +207,10 @@ export default function AbsenCepatPage() {
           const cmpB = bandingkanBlokHariKBM(a.blok, b.blok);
           if (cmpB !== 0) return cmpB;
         }
-        return a.kelasMengajar.localeCompare(b.kelasMengajar, undefined, {
-          numeric: true,
-          sensitivity: 'base',
-        });
+        return (
+          bandingkanUrutanKelasUniversal(a.kelasMengajar, b.kelasMengajar) ||
+          a.nama.localeCompare(b.nama, undefined, { sensitivity: 'base' })
+        );
       });
   }, [allSesiJam, filterBlok, search, sortBy]);
 

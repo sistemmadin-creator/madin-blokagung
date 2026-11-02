@@ -20,6 +20,7 @@ import { getSesiKey } from '@/lib/utils/absensiHelper';
 import {
   formatLabelBlokHariKBM,
   bandingkanBlokHariKBM,
+  bandingkanUrutanKelasUniversal,
 } from '@/lib/utils/jadwalHelper';
 
 interface ModalPresensiMassalProps {
@@ -164,9 +165,10 @@ export default function ModalPresensiMassal({
       .sort((a, b) => {
         const cmpB = bandingkanBlokHariKBM(a.blok, b.blok);
         if (cmpB !== 0) return cmpB;
-        return a.kelasMengajar.localeCompare(b.kelasMengajar, undefined, {
-          numeric: true,
-        });
+        return (
+          bandingkanUrutanKelasUniversal(a.kelasMengajar, b.kelasMengajar) ||
+          a.nama.localeCompare(b.nama, undefined, { sensitivity: 'base' })
+        );
       });
   }, [rawList, filterBlok, bulkSearch]);
 

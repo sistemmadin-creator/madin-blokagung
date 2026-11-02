@@ -54,6 +54,7 @@ import {
   bandingkanBlokHariKBM,
   formatLabelBlokHariKBM,
   buildMasterStrukturKelasKBM,
+  bandingkanUrutanKelasUniversal,
 } from '@/lib/utils/jadwalHelper';
 import ModalAturLibur from '@/components/modules/absensi/ModalAturLibur';
 import ModalListStatusKPI from '@/components/modules/absensi/ModalListStatusKPI';
@@ -836,10 +837,9 @@ export default function AbsensiAsatidzPage() {
                     const cmp = bandingkanBlokHariKBM(b.blok, a.blok);
                     if (cmp !== 0) return cmp;
                   }
-                  return a.kelasMengajar.localeCompare(
-                    b.kelasMengajar,
-                    undefined,
-                    { numeric: true, sensitivity: 'base' }
+                  return (
+                    bandingkanUrutanKelasUniversal(a.kelasMengajar, b.kelasMengajar) ||
+                    a.nama.localeCompare(b.nama, undefined, { sensitivity: 'base' })
                   );
                 });
 

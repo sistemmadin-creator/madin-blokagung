@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { JadwalAsatidzRow } from '@/types/jadwal';
 import {
   bandingkanUrutanKelasKBM,
+  bandingkanUrutanKelasUniversal,
   dapatkanBlokDariSesiMengajar,
   addSlotToGuruObj,
   syncGuruMengajarAndTotalObj,
@@ -455,6 +456,83 @@ describe('Gender-Aware Class Matching & Schedule Isolation (PA vs PI)', () => {
       // Kolom mengajar harus memuat kedua kelas
       expect(guruRow.mengajar).toContain('2 A WUSTHO');
       expect(guruRow.mengajar).toContain('2 B WUSTHO');
+    });
+  });
+
+  describe('bandingkanUrutanKelasUniversal (Hierarki Akademik Madin Blokagung)', () => {
+    it('mengurutkan kelas sesuai urutan resmi: 1-4 ULA -> 1-2 WUSTHO -> 1-2 ULYA', () => {
+      const expectedOrder = [
+        '1 A ULA',
+        '1 B ULA',
+        '2 A ULA',
+        '2 B ULA',
+        '3 A ULA',
+        '3 B ULA',
+        '4 A ULA',
+        '4 B ULA',
+        '1 A WUSTHO',
+        '1 B WUSTHO',
+        '2 A WUSTHO',
+        '2 B WUSTHO',
+        '1 A ULYA',
+        '1 B ULYA',
+        '2 A ULYA',
+        '2 B ULYA',
+      ];
+
+      // Acak urutan input
+      const shuffled = [
+        '2 B WUSTHO',
+        '1 A ULYA',
+        '4 B ULA',
+        '1 A WUSTHO',
+        '3 A ULA',
+        '1 B ULA',
+        '2 A ULA',
+        '2 B ULA',
+        '1 A ULA',
+        '3 B ULA',
+        '4 A ULA',
+        '2 A WUSTHO',
+        '1 B WUSTHO',
+        '2 B ULYA',
+        '1 B ULYA',
+        '2 A ULYA',
+      ];
+
+      shuffled.sort(bandingkanUrutanKelasUniversal);
+
+      expect(shuffled).toEqual(expectedOrder);
+    });
+
+    it('menempatkan ULA sebelum WUSTHO meskipun abjad rombel WUSTHO lebih awal (1 H WUSTHO vs 1 J ULA)', () => {
+      const classes = ['1 J ULA (PA)', '1 H WUSTHO (PA)', '1 C ULA (PI)', '1 I WUSTHO (PA)'];
+      classes.sort(bandingkanUrutanKelasUniversal);
+      expect(classes).toEqual([
+        '1 C ULA (PI)',
+        '1 J ULA (PA)',
+        '1 H WUSTHO (PA)',
+        '1 I WUSTHO (PA)',
+      ]);
+    });
+
+    it('menempatkan WUSTHO sebelum ULYA (1 A WUSTHO vs 1 A ULYA)', () => {
+      const classes = ['1 A ULYA (PA)', '1 A WUSTHO (PA)', '1 A ULA (PA)'];
+      classes.sort(bandingkanUrutanKelasUniversal);
+      expect(classes).toEqual([
+        '1 A ULA (PA)',
+        '1 A WUSTHO (PA)',
+        '1 A ULYA (PA)',
+      ]);
+    });
+
+    it('kelas valid selalu mendahului entri non-kelas ("-" atau kosong)', () => {
+      const classes = ['-', '1 A ULA', '', '1 A WUSTHO'];
+      classes.sort(bandingkanUrutanKelasUniversal);
+      expect(classes[0]).toBe('1 A ULA');
+      expect(classes[1]).toBe('1 A WUSTHO');
+      expect(classes.slice(2)).toContain('-');
+      expect(classes.slice(2)).toContain('');
     });
   });
 });

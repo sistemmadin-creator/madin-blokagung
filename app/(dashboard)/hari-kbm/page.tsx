@@ -27,6 +27,7 @@ import {
   normalisasiNamaKelas,
   buildMasterStrukturKelasKBM,
   getJadwalGuruFromMap,
+  bandingkanUrutanKelasUniversal,
 } from '@/lib/utils/jadwalHelper';
 import { compareNIANatural } from '@/lib/utils/fanHelper';
 import { GuruAktifHariKBM, KelompokBlokHariKBM } from '@/types/hari-kbm';
@@ -239,9 +240,15 @@ export default function HariKbmPage() {
       bandingkanBlokHariKBM(a.namaBlok, b.namaBlok)
     );
 
-    // Natural sort by NIA inside each block
+    // Urutan default hierarki kelas (1 ULA -> 2 ULA -> 3 ULA -> 4 ULA -> 1 WUSTHO... -> 1 ULYA...)
     kelompokList.forEach((k) => {
-      k.daftarAsatidz.sort((a, b) => compareNIANatural(a.nia, b.nia));
+      k.daftarAsatidz.sort((a, b) => {
+        const kelasA = a.slots[0]?.kelas || '';
+        const kelasB = b.slots[0]?.kelas || '';
+        const cmpKelas = bandingkanUrutanKelasUniversal(kelasA, kelasB);
+        if (cmpKelas !== 0) return cmpKelas;
+        return compareNIANatural(a.nia, b.nia);
+      });
     });
 
     return kelompokList;

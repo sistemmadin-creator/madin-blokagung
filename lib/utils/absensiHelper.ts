@@ -21,6 +21,7 @@ import {
   dapatkanBlokDariSesiMengajar,
   bandingkanBlokHariKBM,
   getJadwalGuruFromMap,
+  bandingkanUrutanKelasUniversal,
 } from './jadwalHelper';
 import { isKelasUnggulan, URUTAN_TINGKAT } from './fanHelper';
 
@@ -510,10 +511,8 @@ export function ekstraksiSesiJadwalHariIni(
     }
 
     result[j].sort((a, b) =>
-      String(a.kelasMengajar || '').localeCompare(String(b.kelasMengajar || ''), undefined, {
-        numeric: true,
-        sensitivity: 'base',
-      })
+      bandingkanUrutanKelasUniversal(a.kelasMengajar, b.kelasMengajar) ||
+      String(a.nama || '').localeCompare(String(b.nama || ''))
     );
   });
 
@@ -610,10 +609,10 @@ export function bangunDaftarRiwayatAbsensi(
     if (cmpTgl !== 0) return cmpTgl;
     const cmpJam = String(b.jamKe).localeCompare(String(a.jamKe), undefined, { numeric: true });
     if (cmpJam !== 0) return cmpJam;
-    return String(a.kelasMengajar).localeCompare(String(b.kelasMengajar), undefined, {
-      numeric: true,
-      sensitivity: 'base',
-    });
+    return (
+      bandingkanUrutanKelasUniversal(a.kelasMengajar, b.kelasMengajar) ||
+      String(a.nama || '').localeCompare(String(b.nama || ''))
+    );
   });
 
   return list;

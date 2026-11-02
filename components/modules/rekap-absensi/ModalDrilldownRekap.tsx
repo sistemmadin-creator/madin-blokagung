@@ -21,6 +21,7 @@ export interface RekapAsatidzRow {
   blok: string;
   jah: string;
   tingkat: string;
+  kelasTugas?: string;
   totalTerjadwal: number;
   hadir: number;
   izin: number;

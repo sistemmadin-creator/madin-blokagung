@@ -869,6 +869,134 @@ export function bandingkanUrutanKelasKBM(
   return a.bag.localeCompare(b.bag, undefined, { numeric: true, sensitivity: 'base' });
 }
 
+export interface InfoKelasUniversal {
+  tingkat: string;
+  kls: string;
+  bag: string;
+  papi: 'PA' | 'PI' | '';
+  isValid: boolean;
+  raw: string;
+}
+
+/**
+ * Mengurai string kelas dalam format apa pun ("1 A ULA (PA)", "1 C ULA (PI) (GP 4)", "ULA 1-B")
+ * menjadi struktur terstandarisasi untuk perbandingan hierarki akademik.
+ */
+export function parseStrukturKelasUniversal(str: string | null | undefined): InfoKelasUniversal {
+  if (!str) {
+    return { tingkat: '', kls: '', bag: '', papi: '', isValid: false, raw: '' };
+  }
+
+  const raw = String(str).trim();
+  if (raw === '' || raw === '-') {
+    return { tingkat: '', kls: '', bag: '', papi: '', isValid: false, raw };
+  }
+
+  // Format lama (misal "ULA 1-B" -> "1 B ULA")
+  const formatted = formatTampilanKelas(raw);
+
+  // Regex fleksibel: [Angka] [Bagian] [Tingkat] opsional (Gender)
+  const match = formatted.match(
+    /\b(\d+)\s+([A-Za-z0-9]+)\s+(ULA|WUSTHO|ULYA|ISTI'DAD|IST)\b(?:\s*\((PA|PI|PUTRA|PUTRI)\))?/i
+  );
+
+  if (match) {
+    const kls = match[1];
+    const bag = match[2].toUpperCase();
+    let tingkat = match[3].toUpperCase();
+    if (tingkat === 'IST') tingkat = "ISTI'DAD";
+    let papi: 'PA' | 'PI' | '' = '';
+    if (match[4]) {
+      const upGender = match[4].toUpperCase();
+      papi = upGender === 'PA' || upGender === 'PUTRA' ? 'PA' : upGender === 'PI' || upGender === 'PUTRI' ? 'PI' : '';
+    } else {
+      if (/\b(PA|PUTRA)\b/i.test(formatted)) papi = 'PA';
+      else if (/\b(PI|PUTRI)\b/i.test(formatted)) papi = 'PI';
+    }
+
+    return {
+      tingkat,
+      kls,
+      bag,
+      papi,
+      isValid: true,
+      raw,
+    };
+  }
+
+  // Fallback pola tanpa huruf bagian jika ada, misal "1 ULA" atau "WUSTHO 1"
+  const matchNoBag =
+    formatted.match(/\b(\d+)\s+(ULA|WUSTHO|ULYA|ISTI'DAD|IST)\b/i) ||
+    formatted.match(/\b(ULA|WUSTHO|ULYA|ISTI'DAD|IST)\s+(\d+)\b/i);
+
+  if (matchNoBag) {
+    const isNumFirst = /^\d+/.test(matchNoBag[1]);
+    const kls = isNumFirst ? matchNoBag[1] : matchNoBag[2];
+    let tingkat = (isNumFirst ? matchNoBag[2] : matchNoBag[1]).toUpperCase();
+    if (tingkat === 'IST') tingkat = "ISTI'DAD";
+    const papi: 'PA' | 'PI' | '' = /\b(PA|PUTRA)\b/i.test(formatted)
+      ? 'PA'
+      : /\b(PI|PUTRI)\b/i.test(formatted)
+      ? 'PI'
+      : '';
+
+    return {
+      tingkat,
+      kls,
+      bag: '',
+      papi,
+      isValid: true,
+      raw,
+    };
+  }
+
+  return { tingkat: '', kls: '', bag: '', papi: '', isValid: false, raw };
+}
+
+/**
+ * Komparator Universal Hierarki Kelas Madrasah Diniyyah:
+ * Urutan:
+ * 1. Tingkat: ULA (1) -> WUSTHO (2) -> ULYA (3) -> ISTI'DAD (4)
+ * 2. Angka Kelas: 1 -> 2 -> 3 -> 4
+ * 3. Huruf Bagian: A -> B -> C -> D ...
+ * 4. Gender: PA (1) -> PI (2)
+ * Entri kelas valid selalu mendahului entri non-kelas ('-' atau kosong).
+ */
+export function bandingkanUrutanKelasUniversal(aStr?: string | null, bStr?: string | null): number {
+  const a = parseStrukturKelasUniversal(aStr);
+  const b = parseStrukturKelasUniversal(bStr);
+
+  if (a.isValid && !b.isValid) return -1;
+  if (!a.isValid && b.isValid) return 1;
+  if (!a.isValid && !b.isValid) {
+    return String(aStr || '').localeCompare(String(bStr || ''), undefined, {
+      numeric: true,
+      sensitivity: 'base',
+    });
+  }
+
+  // 1. Tingkat Diniyyah
+  const tA = URUTAN_TINGKAT_KBM[a.tingkat] || 99;
+  const tB = URUTAN_TINGKAT_KBM[b.tingkat] || 99;
+  if (tA !== tB) return tA - tB;
+
+  // 2. Angka Kelas Diniyyah
+  const kA = parseInt(a.kls, 10) || 0;
+  const kB = parseInt(b.kls, 10) || 0;
+  if (kA !== kB) return kA - kB;
+
+  // 3. Huruf Bagian Kelas (A -> B -> C...)
+  const cmpBag = a.bag.localeCompare(b.bag, undefined, { numeric: true, sensitivity: 'base' });
+  if (cmpBag !== 0) return cmpBag;
+
+  // 4. Gender (Putra/PA peringkat 1 sebelum Putri/PI peringkat 2)
+  const gA = a.papi === 'PA' ? 1 : a.papi === 'PI' ? 2 : 3;
+  const gB = b.papi === 'PA' ? 1 : b.papi === 'PI' ? 2 : 3;
+  if (gA !== gB) return gA - gB;
+
+  return 0;
+}
+
 export function buildMasterStrukturKelasKBM(
   formasiList: Formasi[],
   asatidzList: Asatidz[],
