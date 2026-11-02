@@ -237,21 +237,7 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
 
     const matchTerpakai = rawVal.match(/^\[TERPAKAI di (.+?)\]\s*(.+)$/);
     if (matchTerpakai) {
-      if (isGabungActive) {
-        cleanGuru = matchTerpakai[2].trim();
-      } else {
-        alert(
-          `⚠️ BENTROK JADWAL MENGAJAR!\n\n${matchTerpakai[2]} tidak dapat dipilih pada ${hari} Jam ${jam} karena sudah memiliki jadwal mengajar di ${matchTerpakai[1]}.\n\nSolusi:\n1. Aktifkan tombol switch 'Gabung Kelas' jika 2 kelas diajar bersama di jam dan fan yang sama; ATAU\n2. Pilih hari lain untuk ${matchTerpakai[2]} di kelas ini; ATAU\n3. Pindahkan/kosongkan jadwal beliau di ${matchTerpakai[1]} terlebih dahulu.`
-        );
-        return;
-      }
-    }
-
-    if (busyClass && !isGabungActive && !isExplicitGabung) {
-      alert(
-        `⚠️ BENTROK JADWAL MENGAJAR!\n\n${cleanGuru} tidak dapat dipilih pada ${hari} Jam ${jam} karena sudah memiliki jadwal mengajar di ${busyClass}.\n\nSolusi:\n1. Aktifkan tombol switch 'Gabung Kelas' jika 2 kelas diajar bersama di jam dan fan yang sama; ATAU\n2. Pilih hari lain untuk ${cleanGuru} di kelas ini; ATAU\n3. Pindahkan/kosongkan jadwal beliau di ${busyClass} terlebih dahulu.`
-      );
-      return;
+      cleanGuru = matchTerpakai[2].trim();
     }
 
     const currentEntry = (jam === 1 ? jam1Data : jam2Data)[hari] || { asatidz: '', fan: '' };
@@ -643,8 +629,8 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
                 return (
                   <option
                     key={`${namaGuru}_${gIdx}`}
-                    value={`[TERPAKAI di ${busyClass}] ${namaGuru}`}
-                    label={`⚠️ Terpakai di ${busyClass} (${hari} Jam ${jam})`}
+                    value={namaGuru}
+                    label={`(Juga di ${busyClass}) ${namaGuru}`}
                   />
                 );
               }

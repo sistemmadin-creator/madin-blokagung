@@ -1331,32 +1331,17 @@ export function cariRawItemFanPadaKelasKey(
 
 /**
  * Mengecek bentrok fisik seorang Asatidz pada Hari & Jam di `masterStrukturKelasKBM`
+ * Catatan: Di Madin Blokagung, penempatan satu guru di beberapa kelas sekaligus pada jam yang sama
+ * adalah hal yang lumrah dalam operasional pesantren (misal: guru terbagi dua / gabung kelas mandiri),
+ * sehingga sistem tidak memblokirnya.
  */
 export function cekBentrokFisikHariJamKBM(
-  namaGuru: string,
-  hari: string,
-  jam: number,
-  masterStrukturKelasKBM: KelasKbmItem[],
-  excludeSlots: Array<{ kelasKey: string; hari: string; jam: number }> = []
+  _namaGuru: string,
+  _hari: string,
+  _jam: number,
+  _masterStrukturKelasKBM: KelasKbmItem[],
+  _excludeSlots: Array<{ kelasKey: string; hari: string; jam: number }> = []
 ): string | null {
-  if (!namaGuru || namaGuru === '-') return null;
-  const guruUpper = String(namaGuru).trim().toUpperCase();
-  const jamNum = parseInt(String(jam), 10) as 1 | 2;
-
-  for (let i = 0; i < (masterStrukturKelasKBM || []).length; i++) {
-    const kOther = masterStrukturKelasKBM[i];
-    const isExcluded = excludeSlots.some(
-      (ex) => ex.kelasKey === kOther.key && ex.hari === hari && parseInt(String(ex.jam), 10) === jamNum
-    );
-    if (isExcluded) continue;
-
-    const sesiList = (kOther.jadwal && kOther.jadwal[hari] && kOther.jadwal[hari][jamNum]) || [];
-    for (const s of sesiList) {
-      if (s.guru && String(s.guru).trim().toUpperCase() === guruUpper) {
-        return `${kOther.kls} ${kOther.bag} ${kOther.tingkat} (${kOther.papi})`;
-      }
-    }
-  }
   return null;
 }
 
