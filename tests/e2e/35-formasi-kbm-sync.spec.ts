@@ -18,9 +18,9 @@ test.describe('Sinkronisasi Formasi Kelas dengan Jadwal KBM per Kelas (Fase Pres
     // Tunggu tabel merender data ULYA
     await page.waitForTimeout(1000);
 
-    // Cari baris 2 A PA dan 2 A PI
-    const row2APutra = page.locator('tr.row-jadwal-pa:has-text("2 A")');
-    const row2APutri = page.locator('tr.row-jadwal-pi:has-text("2 A")');
+    // Cari baris 2 A ULYA PA dan 2 A ULYA PI
+    const row2APutra = page.locator('tr.row-jadwal-pa:has-text("2 A"):has-text("ULYA")');
+    const row2APutri = page.locator('tr.row-jadwal-pi:has-text("2 A"):has-text("ULYA")');
 
     // 2 A Ulya Putra di Formasi adalah Reguler -> TIDAK BOLEH memiliki badge "Ug"
     if (await row2APutra.count() > 0) {
@@ -36,6 +36,15 @@ test.describe('Sinkronisasi Formasi Kelas dengan Jadwal KBM per Kelas (Fase Pres
   test('2.0 Mode Switcher Reguler vs Unggulan mengelompokkan 2 A PA dan 2 A PI dengan benar', async ({ page }) => {
     await page.goto('/jadwal-kbm');
 
+    // Filter ke Tingkat ULYA
+    const filterTingkat = page.locator('select').first();
+    if (await filterTingkat.isVisible()) {
+      await filterTingkat.selectOption({ label: 'ULYA' }).catch(async () => {
+        await filterTingkat.selectOption('ULYA');
+      });
+    }
+    await page.waitForTimeout(500);
+
     const btnReguler = page.getByRole('button', { name: /Jadwal KBM Reguler/i });
     const btnUnggulan = page.getByRole('button', { name: /Jadwal KBM Unggulan/i });
 
@@ -43,8 +52,7 @@ test.describe('Sinkronisasi Formasi Kelas dengan Jadwal KBM per Kelas (Fase Pres
     await btnReguler.click();
     await page.waitForTimeout(500);
 
-    // 2 A Ulya Putra (PA) harus muncul di mode Reguler
-    const row2APutraReg = page.locator('tr.row-jadwal-pa:has-text("2 A")');
+    const row2APutraReg = page.locator('tr.row-jadwal-pa:has-text("2 A"):has-text("ULYA")');
     if (await row2APutraReg.count() > 0) {
       await expect(row2APutraReg.first()).toBeVisible();
     }
@@ -53,12 +61,10 @@ test.describe('Sinkronisasi Formasi Kelas dengan Jadwal KBM per Kelas (Fase Pres
     await btnUnggulan.click();
     await page.waitForTimeout(500);
 
-    // 2 A Ulya Putra (PA) TIDAK BOLEH muncul di mode Unggulan
-    const row2APutraUg = page.locator('tr.row-jadwal-pa:has-text("2 A")');
+    const row2APutraUg = page.locator('tr.row-jadwal-pa:has-text("2 A"):has-text("ULYA")');
     await expect(row2APutraUg).toHaveCount(0);
 
-    // 2 A Ulya Putri (PI) HARUS muncul di mode Unggulan
-    const row2APutriUg = page.locator('tr.row-jadwal-pi:has-text("2 A")');
+    const row2APutriUg = page.locator('tr.row-jadwal-pi:has-text("2 A"):has-text("ULYA")');
     if (await row2APutriUg.count() > 0) {
       await expect(row2APutriUg.first()).toBeVisible();
     }
