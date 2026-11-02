@@ -40,6 +40,20 @@ export function formatTampilanKelas(str: string | null | undefined): string {
 }
 
 /**
+ * Mendapatkan class stabilo khusus untuk Kode Guru (KG):
+ * - Kode awalan 'A' -> 'cell-kg-a' (Biru)
+ * - Kode awalan 'D' -> 'cell-kg-d' (Ungu)
+ */
+export function getKgHighlightClass(kg?: string | null): string {
+  if (!kg) return '';
+  const clean = String(kg).trim().toUpperCase();
+  if (clean === '' || clean === '-') return '';
+  if (clean.startsWith('A')) return 'cell-kg-a';
+  if (clean.startsWith('D')) return 'cell-kg-d';
+  return '';
+}
+
+/**
  * Info kelas hasil normalisasi untuk pencocokan yang peka gender (PA / PI).
  * - norm   : nama kelas ternormalisasi, tanpa nama gedung di kurung terakhir ("1 A ULA PI")
  * - gender : 'PA' | 'PI' | '' bila tag gender tidak ditulis

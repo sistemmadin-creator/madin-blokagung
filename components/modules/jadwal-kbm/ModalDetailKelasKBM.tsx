@@ -7,7 +7,7 @@ import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useFanStore } from '@/stores/useFanStore';
 import { LIST_HARI, KelasKbmItem } from '@/types/jadwal';
-import { normalisasiNamaKelas } from '@/lib/utils/jadwalHelper';
+import { normalisasiNamaKelas, getKgHighlightClass } from '@/lib/utils/jadwalHelper';
 import {
   UserCheck,
   Users,
@@ -118,7 +118,7 @@ export default function ModalDetailKelasKBM({ masterStrukturKelas }: ModalDetail
             </div>
             <div className="sm:col-span-3">
               <span className="text-slate-400 block text-[11px]">KG / NIA:</span>
-              <span className="font-mono font-bold bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-slate-800">
+              <span className={`font-mono font-bold border px-2 py-0.5 rounded ${getKgHighlightClass(currentClass.mustahiqKG) || 'bg-slate-100 border-slate-200 text-slate-800'}`}>
                 {currentClass.mustahiqKG}
               </span>
             </div>
@@ -151,7 +151,7 @@ export default function ModalDetailKelasKBM({ masterStrukturKelas }: ModalDetail
                     <span className="font-bold text-slate-800 truncate" title={g.nama}>
                       {g.nama}
                     </span>
-                    <span className="text-[10px] font-mono bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-semibold ml-2">
+                    <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-semibold ml-2 ${getKgHighlightClass(g.kg) || 'bg-slate-200 text-slate-700'}`}>
                       {g.kg}
                     </span>
                   </div>
@@ -217,7 +217,10 @@ export default function ModalDetailKelasKBM({ masterStrukturKelas }: ModalDetail
                             <div>
                               <div className="font-bold text-slate-800">{slot.fan}</div>
                               <div className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[90px] mx-auto" title={slot.guru}>
-                                {slot.guru} <b className="text-emerald-700">({slot.kg})</b>
+                                {slot.guru}{' '}
+                                <b className={`font-mono ${getKgHighlightClass(slot.kg) ? `px-1 rounded ${getKgHighlightClass(slot.kg)}` : 'text-emerald-700'}`}>
+                                  ({slot.kg})
+                                </b>
                               </div>
                             </div>
                           ) : (

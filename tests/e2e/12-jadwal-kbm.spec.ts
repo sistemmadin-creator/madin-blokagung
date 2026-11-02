@@ -324,4 +324,91 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
     });
     expect(piBgColor).toBe('rgb(255, 246, 235)');
   });
+
+  test('9.0 Jadwal KBM Per Kelas: Stabilo Khusus Kode Guru (KG) - Kode A (Biru) & Kode D (Ungu)', async ({ page }) => {
+    await page.goto('/jadwal-kbm');
+
+    const table = page.locator('#tableJadwalKBM');
+    await expect(table).toBeVisible({ timeout: 15_000 });
+    await expect(table.locator('tbody tr td.cell-klik-kelas').first()).toBeVisible({ timeout: 15_000 });
+
+    // Verifikasi keberadaan dan style CSS untuk sel Kode A dan Kode D
+    const result = await page.evaluate(() => {
+      const allKgCells = Array.from(document.querySelectorAll('#tbodyJadwalKBM td.cell-kg'));
+      let countA = 0;
+      let countD = 0;
+      let countOther = 0;
+      let aStyleValid = true;
+      let dStyleValid = true;
+      let otherDoesNotHaveAorD = true;
+
+      allKgCells.forEach((td) => {
+        const text = (td.textContent || '').trim().toUpperCase();
+        const hasA = td.classList.contains('cell-kg-a');
+        const hasD = td.classList.contains('cell-kg-d');
+        const computed = window.getComputedStyle(td);
+
+        if (text.startsWith('A') && text !== '-') {
+          countA++;
+          if (!hasA || hasD) aStyleValid = false;
+          // Cek warna background biru muda (#dbeafe = rgb(219, 234, 254))
+          if (computed.backgroundColor !== 'rgb(219, 234, 254)') aStyleValid = false;
+        } else if (text.startsWith('D') && text !== '-') {
+          countD++;
+          if (!hasD || hasA) dStyleValid = false;
+          // Cek warna background ungu muda (#f3e8ff = rgb(243, 232, 255))
+          if (computed.backgroundColor !== 'rgb(243, 232, 255)') dStyleValid = false;
+        } else {
+          countOther++;
+          if (hasA || hasD) {
+            otherDoesNotHaveAorD = false;
+          }
+        }
+      });
+
+      return {
+        totalCells: allKgCells.length,
+        countA,
+        countD,
+        countOther,
+        aStyleValid,
+        dStyleValid,
+        otherDoesNotHaveAorD,
+      };
+    });
+
+    expect(result.totalCells).toBeGreaterThan(0);
+    expect(result.otherDoesNotHaveAorD).toBe(true);
+    expect(result.aStyleValid).toBe(true);
+    expect(result.dStyleValid).toBe(true);
+
+    // Verifikasi bahwa class .cell-kg-a dan .cell-kg-d benar-benar terdaftar di stylesheet dengan warna yang tepat
+    const sheetValidation = await page.evaluate(() => {
+      const testElA = document.createElement('td');
+      testElA.className = 'cell-kg cell-kg-a';
+      document.querySelector('#tbodyJadwalKBM tr')?.appendChild(testElA);
+      const styleA = window.getComputedStyle(testElA);
+      const bgA = styleA.backgroundColor;
+      const colA = styleA.color;
+      testElA.remove();
+
+      const testElD = document.createElement('td');
+      testElD.className = 'cell-kg cell-kg-d';
+      document.querySelector('#tbodyJadwalKBM tr')?.appendChild(testElD);
+      const styleD = window.getComputedStyle(testElD);
+      const bgD = styleD.backgroundColor;
+      const colD = styleD.color;
+      testElD.remove();
+
+      return { bgA, colA, bgD, colD };
+    });
+
+    // Kode A: Biru muda stabilo (#dbeafe = rgb(219, 234, 254)), teks biru tua (#1e40af = rgb(30, 64, 175))
+    expect(sheetValidation.bgA).toBe('rgb(219, 234, 254)');
+    expect(sheetValidation.colA).toBe('rgb(30, 64, 175)');
+
+    // Kode D: Ungu muda stabilo (#f3e8ff = rgb(243, 232, 255)), teks ungu tua (#6b21a8 = rgb(107, 33, 168))
+    expect(sheetValidation.bgD).toBe('rgb(243, 232, 255)');
+    expect(sheetValidation.colD).toBe('rgb(107, 33, 168)');
+  });
 });

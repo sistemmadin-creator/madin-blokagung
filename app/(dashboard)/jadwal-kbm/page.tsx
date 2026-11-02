@@ -21,6 +21,7 @@ import * as XLSX from 'xlsx';
 import {
   dapatkanTahunAjaranKBM,
   buildMasterStrukturKelasKBM,
+  getKgHighlightClass,
 } from '@/lib/utils/jadwalHelper';
 import { isKelasUnggulan } from '@/lib/utils/fanHelper';
 import { KelasKbmItem, SesiSlot } from '@/types/jadwal';
@@ -609,11 +610,12 @@ export default function JadwalKbmPage() {
                           const cutClass = isCutCell
                             ? 'cell-kg-cut-active bg-amber-100 border-2 border-dashed border-amber-500 animate-pulse text-amber-900 font-bold'
                             : '';
+                          const kgHighlight = getKgHighlightClass(sesi?.kg);
 
                           return (
                             <React.Fragment key={`${hari}-1`}>
                               <td
-                                className={`cell-kg cell-kg-clickable cursor-context-menu select-none transition-colors ${cutClass}`}
+                                className={`cell-kg cell-kg-clickable cursor-context-menu select-none transition-colors ${cutClass} ${kgHighlight}`}
                                 onContextMenu={(e) => handleCellContextMenu(e, k, hari, 1, sesi)}
                                 onDoubleClick={(e) => handleCellContextMenu(e, k, hari, 1, sesi)}
                                 onTouchStart={(e) => handleTouchStartKG(e, k, hari, 1, sesi)}
@@ -644,7 +646,7 @@ export default function JadwalKbmPage() {
                         </td>
                         <td
                           rowSpan={2}
-                          className="cell-kg text-center"
+                          className={`cell-kg text-center ${getKgHighlightClass(k.mustahiqKG)}`}
                           title={`Mustahiq: ${k.mustahiqNama}`}
                         >
                           {k.mustahiqKG}
@@ -671,11 +673,12 @@ export default function JadwalKbmPage() {
                           const cutClass = isCutCell
                             ? 'cell-kg-cut-active bg-amber-100 border-2 border-dashed border-amber-500 animate-pulse text-amber-900 font-bold'
                             : '';
+                          const kgHighlight = getKgHighlightClass(sesi?.kg);
 
                           return (
                             <React.Fragment key={`${hari}-2`}>
                               <td
-                                className={`cell-kg cell-kg-clickable cursor-context-menu select-none transition-colors ${cutClass}`}
+                                className={`cell-kg cell-kg-clickable cursor-context-menu select-none transition-colors ${cutClass} ${kgHighlight}`}
                                 onContextMenu={(e) => handleCellContextMenu(e, k, hari, 2, sesi)}
                                 onDoubleClick={(e) => handleCellContextMenu(e, k, hari, 2, sesi)}
                                 onTouchStart={(e) => handleTouchStartKG(e, k, hari, 2, sesi)}
