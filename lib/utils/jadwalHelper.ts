@@ -1231,6 +1231,8 @@ export function cekFanMSuntukKelas(
 
 /**
  * Mengambil informasi batas jam maksimal mingguan suatu Fan dari `fanDetail`
+ * Menggunakan arsitektur pencocokan bertingkat (Exact-First Hierarchical Matching)
+ * untuk mencegah tabrakan substring antar-fan (misal Fiqih vs Ushul Fiqih, Sorogan vs Fiqih).
  */
 export function dapatkanBatasJamFan(
   kelasKey: string,
@@ -1239,21 +1241,7 @@ export function dapatkanBatasJamFan(
   fanDetail?: FanPelajaranDetail
 ): { rawItem: string; maxJam: number | null } | null {
   if (!fanInput || !String(fanInput).trim()) return null;
-  const fanInputClean = String(fanInput).replace(/[()]/g, '').trim().toLowerCase();
-  const listConfig = (fanConfig && fanConfig[kelasKey]) || [];
-
-  const targetRawItem = listConfig.find((item) => {
-    const rawClean = String(item).replace(/[()]/g, '').trim().toLowerCase();
-    const parsed = parseFanItemString(item);
-    return (
-      rawClean === fanInputClean ||
-      parsed.fan.toLowerCase() === fanInputClean ||
-      parsed.mapel.toLowerCase() === fanInputClean ||
-      rawClean.includes(fanInputClean) ||
-      fanInputClean.includes(parsed.mapel.toLowerCase())
-    );
-  });
-
+  const targetRawItem = cariRawItemFanPadaKelasKey(kelasKey, fanInput, fanConfig);
   if (!targetRawItem) return null;
 
   const itemKey = `${kelasKey}||${targetRawItem}`;
@@ -1261,7 +1249,7 @@ export function dapatkanBatasJamFan(
   const maxJam =
     itemDetail && itemDetail.jam !== undefined && itemDetail.jam !== ''
       ? parseInt(String(itemDetail.jam), 10)
-      : null;
+    : null;
 
   return {
     rawItem: targetRawItem,
@@ -1298,7 +1286,10 @@ export function dapatkanKelasKeyFanDariObj(
 }
 
 /**
- * Mencari rawItem di `fanConfig[kelasKey]` yang cocok dengan string fan
+ * Mencari rawItem di `fanConfig[kelasKey]` yang cocok dengan string fan.
+ * Menggunakan pencocokan bertingkat (Exact Match prioritas tertinggi) agar
+ * fan dengan nama substring (seperti Fiqih di dalam Ushul Fiqih) atau kitab
+ * yang sama (seperti Fathul Qorib pada Fiqih & Sorogan) tidak bertabrakan.
  */
 export function cariRawItemFanPadaKelasKey(
   kelasKey: string,
@@ -1307,6 +1298,8 @@ export function cariRawItemFanPadaKelasKey(
 ): string | null {
   if (!kelasKey || !fanInput || fanInput === '-') return null;
   const list = (fanConfig && fanConfig[kelasKey]) || [];
+  if (list.length === 0) return null;
+
   const fStr = String(fanInput).trim();
   const fLower = fStr.toLowerCase();
   const fClean = fStr.replace(/[()]/g, '').trim().toLowerCase();
@@ -1314,23 +1307,69 @@ export function cariRawItemFanPadaKelasKey(
   const inFan = pInput.fan && pInput.fan !== '-' ? pInput.fan.toLowerCase() : '';
   const inMapel = pInput.mapel && pInput.mapel !== '-' ? pInput.mapel.toLowerCase() : '';
 
-  return (
-    list.find((raw) => {
-      const rStr = String(raw || '').trim();
-      const rLower = rStr.toLowerCase();
-      const rClean = rStr.replace(/[()]/g, '').trim().toLowerCase();
-      const p = parseFanItemString(rStr);
+  // 1. Prioritas 1: Persis sama dengan raw lengkap (termasuk tanda kurung)
+  const exactRaw = list.find((raw) => String(raw || '').trim().toLowerCase() === fLower);
+  if (exactRaw) return exactRaw;
+
+  // 2. Prioritas 2: Jika input memiliki format (Fan) Mapel, keduanya harus cocok
+  if (inFan && inMapel) {
+    const dualMatch = list.find((raw) => {
+      const p = parseFanItemString(raw);
       const pFan = p.fan && p.fan !== '-' ? p.fan.toLowerCase() : '';
       const pMapel = p.mapel && p.mapel !== '-' ? p.mapel.toLowerCase() : '';
+      return pFan === inFan && pMapel === inMapel;
+    });
+    if (dualMatch) return dualMatch;
+  }
 
-      return (
-        rLower === fLower ||
-        rClean === fClean ||
-        (pFan && (pFan === fLower || pFan === inFan)) ||
-        (pMapel && (pMapel === fLower || pMapel === inMapel))
-      );
-    }) || null
-  );
+  // 3. Prioritas 3: Jika input hanya Nama Fan murni (misal: "Fiqih", "Ushul Fiqih", "Tauhid", "Sorogan", "Takror")
+  const matchFan = list.find((raw) => {
+    const p = parseFanItemString(raw);
+    const pFan = p.fan && p.fan !== '-' ? p.fan.toLowerCase() : '';
+    return pFan && (pFan === fClean || (inFan && pFan === inFan));
+  });
+  if (matchFan) return matchFan;
+
+  // 4. Prioritas 4: Jika input hanya Nama Mapel/Kitab (misal: "Tashilut Thuruqot", "Fathul Qorib 4")
+  const matchMapel = list.find((raw) => {
+    const p = parseFanItemString(raw);
+    const pFan = p.fan && p.fan !== '-' ? p.fan.toLowerCase() : '';
+    const pMapel = p.mapel && p.mapel !== '-' ? p.mapel.toLowerCase() : '';
+    if (inFan && pFan && pFan !== inFan) return false;
+    return pMapel && (pMapel === fClean || (inMapel && pMapel === inMapel));
+  });
+  if (matchMapel) return matchMapel;
+
+  // 5. Prioritas 5: Cocok persis tanpa tanda kurung
+  const matchClean = list.find((raw) => {
+    const rClean = String(raw || '').replace(/[()]/g, '').trim().toLowerCase();
+    return rClean === fClean;
+  });
+  if (matchClean) return matchClean;
+
+  // 6. Prioritas 6: Prefix match pada Nama Fan atau Mapel
+  const matchPrefix = list.find((raw) => {
+    const p = parseFanItemString(raw);
+    const pFan = p.fan && p.fan !== '-' ? p.fan.toLowerCase() : '';
+    const pMapel = p.mapel && p.mapel !== '-' ? p.mapel.toLowerCase() : '';
+    if (inFan && pFan && pFan !== inFan) return false;
+    return (
+      (pFan && pFan.startsWith(fClean)) ||
+      (pMapel && pMapel.startsWith(fClean))
+    );
+  });
+  if (matchPrefix) return matchPrefix;
+
+  // 7. Prioritas 7: Fallback substring contains (hanya jika input minimal 5 karakter)
+  if (fClean.length >= 5) {
+    const matchContains = list.find((raw) => {
+      const rClean = String(raw || '').replace(/[()]/g, '').trim().toLowerCase();
+      return rClean.includes(fClean);
+    });
+    if (matchContains) return matchContains;
+  }
+
+  return null;
 }
 
 /**

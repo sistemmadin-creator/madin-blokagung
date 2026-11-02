@@ -13,6 +13,7 @@ import {
   parseJadwalCell_Client,
   ekstrakKelasMurniDariLokasi,
   ambilNamaFanSingkat,
+  cariRawItemFanPadaKelasKey,
   HARI_KEYS_LOWER,
   getJadwalGuruFromMap,
 } from './jadwalHelper';
@@ -442,14 +443,10 @@ export function buildSyncJadwalToFanPayload(
             ? parsed.fan
             : ambilNamaFanSingkat(s.fan, tingkat, klsNum, cfg);
 
-        let matchedRawItem = cfg[targetKelasKey].find((r) => {
-          const p = parseFanItemString(r);
-          return (
-            r.toLowerCase() === s.fan.toLowerCase() ||
-            p.fan.toLowerCase() === fanShort.toLowerCase() ||
-            p.mapel.toLowerCase() === (parsed.mapel || s.fan).toLowerCase()
-          );
-        });
+        let matchedRawItem = cariRawItemFanPadaKelasKey(targetKelasKey, s.fan, cfg);
+        if (!matchedRawItem && fanShort && fanShort !== '-') {
+          matchedRawItem = cariRawItemFanPadaKelasKey(targetKelasKey, fanShort, cfg);
+        }
 
         // Bila belum ada di config target (misal Sorogan/Takror pada kelas Unggulan)
         if (!matchedRawItem) {

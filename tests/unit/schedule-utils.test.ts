@@ -8,6 +8,8 @@ import {
   addSlotToGuruObj,
   syncGuruMengajarAndTotalObj,
   parseJadwalCell_Client,
+  dapatkanBatasJamFan,
+  cariRawItemFanPadaKelasKey,
 } from '@/lib/utils/jadwalHelper';
 import { Formasi, HierarkiBlokKBMConfig } from '@/types/formasi';
 import { Asatidz } from '@/types/asatidz';
@@ -584,6 +586,70 @@ describe('Gender-Aware Class Matching & Schedule Isolation (PA vs PI)', () => {
       const input = ['Blok 4', 'Induk Putra', 'GP', 'Induk Ponut', 'Embel'];
       input.sort(bandingkanBlokHariKBM);
       expect(input).toEqual(['Induk Putra', 'Induk Ponut', 'GP', 'Blok 4', 'Embel']);
+    });
+  });
+
+  describe('Fan Collision Prevention & Exact-First Quota Matching', () => {
+    const mockFanConfig = {
+      '2 ULYA': [
+        '(Ushul Fiqih) Tashilut Thuruqot',
+        '(Fiqih) Fathul Qorib 4',
+        '(Hkm Fiqih) Idoh Fi Qowaidil Fiqhiyyah',
+        '(Tauhid) Hushunul Hamidiyyah',
+        '(Sorogan) Fathul Qorib 4',
+        '(Takror) Takror',
+      ],
+      '1 ULYA': [
+        '(Balaghoh) Jauharul Maknun',
+        '(I. Mantiq) Taqriran Sullamul Munauroq',
+        '(I. Hadits) Syarah Baiquniyyah',
+        "(I. Qur'an) Qowaid Asasiyyah Fi Ulumil Qur'an",
+        '(Fiqih) Fathul Qorib 3',
+        '(Sorogan) Fathul Qorib 3',
+        '(Takror) Takror',
+      ],
+    };
+
+    const mockFanDetail = {
+      item: {
+        '2 ULYA||(Ushul Fiqih) Tashilut Thuruqot': { jam: '2', asatidz: [] },
+        '2 ULYA||(Fiqih) Fathul Qorib 4': { jam: '4', asatidz: [] },
+        '2 ULYA||(Hkm Fiqih) Idoh Fi Qowaidil Fiqhiyyah': { jam: '4', asatidz: [] },
+        '2 ULYA||(Tauhid) Hushunul Hamidiyyah': { jam: '2', asatidz: [] },
+        '2 ULYA||(Sorogan) Fathul Qorib 4': { jam: '1', asatidz: [] },
+        '2 ULYA||(Takror) Takror': { jam: '1', asatidz: [] },
+        '1 ULYA||(Fiqih) Fathul Qorib 3': { jam: '4', asatidz: [] },
+        '1 ULYA||(Sorogan) Fathul Qorib 3': { jam: '1', asatidz: [] },
+      },
+    };
+
+    it('harus mencocokkan "Fiqih" di 2 ULYA ke (Fiqih) Fathul Qorib 4 (kuota 4 Jam), BUKAN ke Ushul Fiqih', () => {
+      const res = dapatkanBatasJamFan('2 ULYA', 'Fiqih', mockFanConfig, mockFanDetail);
+      expect(res).not.toBeNull();
+      expect(res?.rawItem).toBe('(Fiqih) Fathul Qorib 4');
+      expect(res?.maxJam).toBe(4);
+    });
+
+    it('harus mencocokkan "Ushul Fiqih" di 2 ULYA ke (Ushul Fiqih) Tashilut Thuruqot (kuota 2 Jam)', () => {
+      const res = dapatkanBatasJamFan('2 ULYA', 'Ushul Fiqih', mockFanConfig, mockFanDetail);
+      expect(res).not.toBeNull();
+      expect(res?.rawItem).toBe('(Ushul Fiqih) Tashilut Thuruqot');
+      expect(res?.maxJam).toBe(2);
+    });
+
+    it('harus mencocokkan "(Sorogan) Fathul Qorib 4" ke Sorogan (kuota 1 Jam), BUKAN ke Fiqih Fathul Qorib 4', () => {
+      const res = dapatkanBatasJamFan('2 ULYA', '(Sorogan) Fathul Qorib 4', mockFanConfig, mockFanDetail);
+      expect(res).not.toBeNull();
+      expect(res?.rawItem).toBe('(Sorogan) Fathul Qorib 4');
+      expect(res?.maxJam).toBe(1);
+    });
+
+    it('cariRawItemFanPadaKelasKey membedakan Fiqih, Ushul Fiqih, dan Sorogan secara presisi', () => {
+      expect(cariRawItemFanPadaKelasKey('2 ULYA', 'Fiqih', mockFanConfig)).toBe('(Fiqih) Fathul Qorib 4');
+      expect(cariRawItemFanPadaKelasKey('2 ULYA', 'Ushul Fiqih', mockFanConfig)).toBe('(Ushul Fiqih) Tashilut Thuruqot');
+      expect(cariRawItemFanPadaKelasKey('2 ULYA', 'Sorogan', mockFanConfig)).toBe('(Sorogan) Fathul Qorib 4');
+      expect(cariRawItemFanPadaKelasKey('1 ULYA', '(Sorogan) Fathul Qorib 3', mockFanConfig)).toBe('(Sorogan) Fathul Qorib 3');
+      expect(cariRawItemFanPadaKelasKey('1 ULYA', '(Fiqih) Fathul Qorib 3', mockFanConfig)).toBe('(Fiqih) Fathul Qorib 3');
     });
   });
 });
