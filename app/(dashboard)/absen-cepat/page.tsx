@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   CalendarOff,
   Users,
+  BellRing,
 } from 'lucide-react';
 import { useAbsensiStore } from '@/stores/useAbsensiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
@@ -36,6 +37,7 @@ import {
 import ModalDetailAbsenCepat from '@/components/modules/absen-cepat/ModalDetailAbsenCepat';
 import ModalNotifAbsenBlok from '@/components/modules/absen-cepat/ModalNotifAbsenBlok';
 import ModalGeneratorWA from '@/components/modules/rekap-absensi/ModalGeneratorWA';
+import ModalKirimNotifCepat from '@/components/modules/absen-cepat/ModalKirimNotifCepat';
 import ModalPresensiMassal from '@/components/modules/absen-cepat/ModalPresensiMassal';
 
 type SortOptionCepat = 'kelas_asc' | 'blok_asc' | 'nama_asc';
@@ -79,6 +81,7 @@ export default function AbsenCepatPage() {
   const [detailSesi, setDetailSesi] = useState<SesiJadwalHarian | null>(null);
   const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
   const [isWAOpen, setIsWAOpen] = useState<boolean>(false);
+  const [isPushModalOpen, setIsPushModalOpen] = useState<boolean>(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState<boolean>(false);
 
   // Toast State
@@ -612,6 +615,16 @@ export default function AbsenCepatPage() {
               Chat WA
             </button>
 
+            {/* Tombol Kirim Notif (Web Push ke HP) */}
+            <button
+              type="button"
+              onClick={() => setIsPushModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-800 hover:bg-emerald-900 text-white shadow-xs transition-colors"
+            >
+              <BellRing className="w-3.5 h-3.5 text-emerald-200" />
+              Kirim Notif
+            </button>
+
             <button
               type="button"
               onClick={handleTandaiSemuaHadir}
@@ -959,6 +972,12 @@ export default function AbsenCepatPage() {
       <ModalGeneratorWA
         isOpen={isWAOpen}
         onClose={() => setIsWAOpen(false)}
+        initialJam={selectedJam}
+      />
+
+      <ModalKirimNotifCepat
+        isOpen={isPushModalOpen}
+        onClose={() => setIsPushModalOpen(false)}
         initialJam={selectedJam}
       />
 

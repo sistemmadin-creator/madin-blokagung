@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Copy, Check, X, Send, RefreshCw } from 'lucide-react';
+import { MessageSquare, Copy, Check, X, Send, RefreshCw, BellRing } from 'lucide-react';
 import { useAbsensiStore } from '@/stores/useAbsensiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useJadwalStore } from '@/stores/useJadwalStore';
@@ -37,6 +37,8 @@ export default function ModalGeneratorWA({
   const [jamPilihan, setJamPilihan] = useState<string>(String(initialJam));
   const [waText, setWaText] = useState<string>('');
   const [copied, setCopied] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushResult, setPushResult] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -131,6 +133,34 @@ export default function ModalGeneratorWA({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const handleSendPush = async () => {
+    if (!waText) return;
+    setPushLoading(true);
+    setPushResult(null);
+    try {
+      const jamLabel =
+        jamPilihan === 'ALL' ? 'Semua Jam' : `Jam Ke-${jamPilihan}`;
+      const res = await fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `Laporan Presensi KBM (${jamLabel}) - Madin Blokagung`,
+          body: waText,
+          url: '/absen-cepat',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal mengirim notifikasi');
+      setPushResult(`Berhasil terkirim ke ${data.sentCount} perangkat HP!`);
+      setTimeout(() => setPushResult(null), 4000);
+    } catch (err: unknown) {
+      const errorObj = err as Error;
+      setPushResult(`Error: ${errorObj.message}`);
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
@@ -194,6 +224,20 @@ export default function ModalGeneratorWA({
             </div>
           </div>
 
+          {/* Alert Hasil Kirim Push */}
+          {pushResult && (
+            <div
+              className={`p-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 ${
+                pushResult.startsWith('Error')
+                  ? 'bg-rose-50 border border-rose-200 text-rose-800'
+                  : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+              }`}
+            >
+              <BellRing className="w-4 h-4 shrink-0" />
+              <span>{pushResult}</span>
+            </div>
+          )}
+
           <div>
             <textarea
               rows={13}
@@ -212,11 +256,11 @@ export default function ModalGeneratorWA({
               Tutup
             </button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={handleCopy}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white transition-colors"
               >
                 {copied ? (
                   <>
@@ -233,8 +277,22 @@ export default function ModalGeneratorWA({
 
               <button
                 type="button"
+                onClick={handleSendPush}
+                disabled={pushLoading || !waText}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold bg-emerald-800 hover:bg-emerald-900 text-white shadow-xs transition-colors disabled:opacity-50"
+              >
+                {pushLoading ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <BellRing className="w-3.5 h-3.5 text-emerald-200" />
+                )}
+                <span>Kirim Notif</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handleSendWA}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors"
               >
                 <Send className="w-3.5 h-3.5" />
                 Kirim ke WhatsApp

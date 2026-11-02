@@ -124,9 +124,14 @@ export const WebPushServerService = {
       },
     };
 
+    let safeBody = payload.body || '';
+    if (safeBody.length > 2000) {
+      safeBody = safeBody.slice(0, 1950) + '\n\n... (Buka web untuk melihat laporan lengkap)';
+    }
+
     const notificationData = JSON.stringify({
       title: payload.title || 'Madin Blokagung',
-      body: payload.body || '',
+      body: safeBody,
       icon: payload.icon || '/logo-madin.png',
       badge: payload.badge || '/logo-madin.png',
       image: payload.image,
