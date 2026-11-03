@@ -62,12 +62,14 @@ test.describe('E2E Generator Laporan Absensi WhatsApp (Migrasi Sesuai Referensi)
     await expect(radioPA).toBeChecked();
     const textPA = await textarea.inputValue();
     expect(textPA).toContain('(PUTRA / PA)');
+    expect(textPA).toContain('Ust.');
 
     // 6. Interaksi: Ganti Filter Gender ke Putri (PI)
     await radioPI.check();
     await expect(radioPI).toBeChecked();
     const textPI = await textarea.inputValue();
     expect(textPI).toContain('(PUTRI / PI)');
+    expect(textPI).toContain('Ustz.');
 
     // Kembalikan ke Semua
     await radioSemua.check();

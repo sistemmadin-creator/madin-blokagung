@@ -738,6 +738,37 @@ export interface GenerateLaporanWAParams {
  * Menghasilkan teks Laporan WhatsApp berformat resmi Madrasah Diniyyah
  * dikelompokkan per Blok dan diurutkan per Tingkat & Kelas (100% kompatibel referensi madinblokagung-main).
  */
+/**
+ * Format nama asatidz untuk laporan WhatsApp:
+ * 1. Setiap asatidz putra diawali 'Ust.' dan putri diawali 'Ustz.'
+ * 2. Membersihkan gelar/awalan yang mungkin sudah tertulis di master data agar tidak duplikat
+ * 3. Membatasi panjang nama maksimal 14 karakter; jika lebih dari 14 huruf, selanjutnya menjadi ' ...'
+ */
+export function formatNamaAsatidzWA(
+  nama: string,
+  gender?: 'PA' | 'PI' | string
+): string {
+  if (!nama || !nama.trim()) return '-';
+
+  // 1. Bersihkan prefix gelar lama jika ada (misal: "Ust.", "Ustadz", "Ustz.", "Ustadzah")
+  let cleanName = nama
+    .trim()
+    .replace(/^(ust(\.|adz)?|ustz(\.|adzah)?)\s+/i, '')
+    .trim();
+
+  // 2. Potong maksimal 14 karakter jika melebihi
+  let truncated = cleanName;
+  if (cleanName.length > 14) {
+    truncated = cleanName.slice(0, 14).trimEnd() + ' ...';
+  }
+
+  // 3. Tambahkan prefix berdasarkan gender
+  const isPI = String(gender || '').trim().toUpperCase() === 'PI';
+  const prefix = isPI ? 'Ustz. ' : 'Ust. ';
+
+  return `${prefix}${truncated}`;
+}
+
 export function generateLaporanWAText({
   tanggal,
   sesiHariIni,
@@ -807,6 +838,7 @@ export function generateLaporanWAText({
 
   interface GuruClassRecordWA {
     guru: string;
+    gender: 'PA' | 'PI' | string;
     sessions: SessionRecordWA[];
   }
 
@@ -853,6 +885,7 @@ export function generateLaporanWAText({
       if (!mapBlok[blokNama][klsKey][guruKey]) {
         mapBlok[blokNama][klsKey][guruKey] = {
           guru: s.nama,
+          gender: genderSesi,
           sessions: [],
         };
       }
@@ -934,13 +967,14 @@ export function generateLaporanWAText({
         const listGuruTeks: string[] = [];
 
         Object.values(guruMap).forEach((gItem) => {
+          const formattedName = formatNamaAsatidzWA(gItem.guru, gItem.gender);
           const firstEmoji = gItem.sessions[0]?.emoji || '❓';
           const isSemuaSama = gItem.sessions.every((se) => se.emoji === firstEmoji);
           if (isSemuaSama) {
-            listGuruTeks.push(`${gItem.guru} ${firstEmoji}`);
+            listGuruTeks.push(`${formattedName} ${firstEmoji}`);
           } else {
             const detailJam = gItem.sessions.map((se) => `J${se.jam}:${se.emoji}`).join(' ');
-            listGuruTeks.push(`${gItem.guru} (${detailJam})`);
+            listGuruTeks.push(`${formattedName} (${detailJam})`);
           }
         });
 

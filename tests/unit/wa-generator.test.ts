@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { generateLaporanWAText, parseKelasWA, getEmojiStatusWA } from '@/lib/utils/absensiHelper';
+import {
+  generateLaporanWAText,
+  parseKelasWA,
+  getEmojiStatusWA,
+  formatNamaAsatidzWA,
+} from '@/lib/utils/absensiHelper';
 import { SesiJadwalHarian, StatusSesiData, JamKbm } from '@/types/absensi';
 
 describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
@@ -119,9 +124,9 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
     expect(text).toContain('HADIR: 1'); // Fikrul Umam
     expect(text).toContain('ALPA: 2'); // Kuni Nafi'ah & Ahnaf
     expect(text).toContain('🏠 BLOK INDUK');
-    // Penggabungan kelas simetris dengan &
-    expect(text).toContain('1. 1 A ULA FIKRUL UMAM AL HANIF ✅ & KUNI NAFI\'AH 🅰️');
-    expect(text).toContain('2. 1 B ULA AHNAF HUMAM AZIZY 🅰️');
+    // Penggabungan kelas simetris dengan & serta prefix Ust./Ustz. & pemotongan 14 huruf
+    expect(text).toContain('1. 1 A ULA Ust. FIKRUL UMAM AL ... ✅ & Ustz. KUNI NAFI\'AH 🅰️');
+    expect(text).toContain('2. 1 B ULA Ust. AHNAF HUMAM AZ ... 🅰️');
   });
 
   it('2. Menyaring hanya sesi Putra saat filter PA dipilih', () => {
@@ -135,7 +140,7 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
 
     expect(text).toContain('ABSENSI DINIYYAH (PUTRA / PA) SELASA, 3 NOVEMBER 2026');
     expect(text).toContain('JUMLAH GURU: 2');
-    expect(text).toContain('1. 1 A ULA FIKRUL UMAM AL HANIF ✅');
+    expect(text).toContain('1. 1 A ULA Ust. FIKRUL UMAM AL ... ✅');
     expect(text).not.toContain('KUNI NAFI\'AH');
   });
 
@@ -150,7 +155,7 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
 
     expect(text).toContain('ABSENSI DINIYYAH (PUTRI / PI) SELASA, 3 NOVEMBER 2026');
     expect(text).toContain('JUMLAH GURU: 1');
-    expect(text).toContain('1. 1 A ULA KUNI NAFI\'AH 🅰️');
+    expect(text).toContain('1. 1 A ULA Ustz. KUNI NAFI\'AH 🅰️');
     expect(text).not.toContain('FIKRUL UMAM AL HANIF');
   });
 
@@ -232,5 +237,24 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
     expect(text).toContain('🏠 BLOK INDUK PUTRA');
     expect(text).toContain('⚠️ BLOK BELUM DIATUR');
     expect(text).not.toContain('🏠 BLOK INDUK\n');
+  });
+
+  it('8. Memeriksa fungsi formatNamaAsatidzWA (prefix Ust./Ustz. dan batas 14 huruf)', () => {
+    // 1. Putra <= 14 huruf
+    expect(formatNamaAsatidzWA('AGUNG SETIAJI', 'PA')).toBe('Ust. AGUNG SETIAJI');
+
+    // 2. Putra > 14 huruf
+    expect(formatNamaAsatidzWA('SHOLEHUDDIN AL MALIKUS SHOLEH', 'PA')).toBe('Ust. SHOLEHUDDIN AL ...');
+    expect(formatNamaAsatidzWA('FIKRUL UMAM AL HANIF', 'PA')).toBe('Ust. FIKRUL UMAM AL ...');
+
+    // 3. Putri <= 14 huruf
+    expect(formatNamaAsatidzWA("KUNI NAFI'AH", 'PI')).toBe("Ustz. KUNI NAFI'AH");
+
+    // 4. Putri > 14 huruf
+    expect(formatNamaAsatidzWA('DEWI MASYITOH ANNEIRA RAHMA', 'PI')).toBe('Ustz. DEWI MASYITOH ...');
+
+    // 5. Nama yang sudah memiliki awalan lama di database (tidak boleh duplikat)
+    expect(formatNamaAsatidzWA('UST. AHMAD DIMYATI', 'PA')).toBe('Ust. AHMAD DIMYATI');
+    expect(formatNamaAsatidzWA('Ustz. SITI MAESAROH', 'PI')).toBe('Ustz. SITI MAESAROH');
   });
 });
