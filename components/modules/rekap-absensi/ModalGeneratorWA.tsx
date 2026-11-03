@@ -90,7 +90,7 @@ export default function ModalGeneratorWA({
     fetchFanData,
   ]);
 
-  // Pastikan sesiHariIni tersinkronisasi bila dibuka dari halaman Rekap Absensi
+  // Pastikan sesiHariIni tersinkronisasi bila dibuka dari halaman Rekap Absensi atau saat formasi selesai dimuat
   useEffect(() => {
     if (isOpen && asatidzList.length > 0) {
       const totalSesi =
@@ -98,7 +98,10 @@ export default function ModalGeneratorWA({
         (sesiHariIni[2]?.length || 0) +
         (sesiHariIni[3]?.length || 0) +
         (sesiHariIni[4]?.length || 0);
-      if (totalSesi === 0) {
+      const hasUnresolved = (sesiHariIni[1] || []).some(
+        (s) => s.blok === 'Belum Diatur' || !s.blok
+      );
+      if (totalSesi === 0 || (formasiList.length > 0 && hasUnresolved)) {
         syncSesiHariIni(
           asatidzList,
           jadwalMap,
@@ -113,7 +116,6 @@ export default function ModalGeneratorWA({
     jadwalMap,
     formasiList,
     fanConfig,
-    sesiHariIni,
     syncSesiHariIni,
   ]);
 

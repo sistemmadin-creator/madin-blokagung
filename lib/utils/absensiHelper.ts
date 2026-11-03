@@ -836,10 +836,8 @@ export function generateLaporanWAText({
         .replace(/^blok\s*/i, '')
         .trim()
         .toUpperCase();
-      const blokNama =
-        !blokBersih || blokBersih === '-' || blokBersih === 'BELUM DIATUR'
-          ? 'INDUK'
-          : blokBersih;
+      const isBelumDiatur = !blokBersih || blokBersih === '-' || blokBersih === 'BELUM DIATUR';
+      const blokNama = isBelumDiatur ? 'BELUM DIATUR' : blokBersih;
 
       if (!mapBlok[blokNama]) mapBlok[blokNama] = {};
 
@@ -909,8 +907,14 @@ export function generateLaporanWAText({
     out += `_Tidak ada data jadwal pengajar untuk kategori ${filterGender} pada jam yang dipilih._\n`;
   } else {
     blokKeys.forEach((bKey) => {
-      const emojiBlok = bKey.includes('9') ? '🏢' : '🏠';
-      out += `${emojiBlok} BLOK ${bKey.replace(/^BLOK\s*/i, '').trim()}\n`;
+      let headerBlok = '';
+      if (bKey === 'BELUM DIATUR') {
+        headerBlok = '⚠️ BLOK BELUM DIATUR';
+      } else {
+        const emojiBlok = bKey.includes('9') ? '🏢' : '🏠';
+        headerBlok = `${emojiBlok} BLOK ${bKey.replace(/^BLOK\s*/i, '').trim()}`;
+      }
+      out += `${headerBlok}\n`;
 
       const kelasMap = mapBlok[bKey];
       const kelasKeys = Object.keys(kelasMap).sort((a, b) => {

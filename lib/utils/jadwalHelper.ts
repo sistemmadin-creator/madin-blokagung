@@ -412,24 +412,49 @@ export function dapatkanBlokDariSesiMengajar(
     const normKelas = normalisasiNamaKelas(firstSlot.kelas);
     const normLokasi = normalisasiNamaKelas(firstSlot.lokasi);
 
-    // 1. Cek pada master Formasi Kelas berdasarkan nama kelas atau lokasi ruang Diniyyah
+    // Deteksi gender target sesi mengajar
+    let targetGender = '';
+    const mGen = String(firstSlot.kelas || '').match(/\(\s*(PA|PI)\s*\)/i);
+    if (mGen) {
+      targetGender = mGen[1].toUpperCase();
+    } else if (asatidzObj?.pa_pi) {
+      targetGender = String(asatidzObj.pa_pi).toUpperCase();
+    }
+
+    // 1. Cek pada master Formasi Kelas (Single Source of Truth)
     if (Array.isArray(formasiList) && formasiList.length > 0) {
-      const matchFormasi = formasiList.find((f) => {
-        const fNorm = normalisasiNamaKelas(`${f.din_kls} ${f.din_bag} ${f.tingkat}`);
-        const fNormGen = normalisasiNamaKelas(`${f.din_kls} ${f.din_bag} ${f.tingkat} (${f.pa_pi})`);
-        const lokNorm = normalisasiNamaKelas(f.lokasi_diniyyah);
-        return (
-          (normKelas && (fNorm === normKelas || fNormGen === normKelas)) ||
-          (normLokasi && normLokasi !== '-' && lokNorm === normLokasi)
-        );
-      });
+      let matchFormasi: Formasi | undefined;
+
+      // Pencarian prioritas 1: Cocok nama kelas dan spesifik gender PA/PI
+      if (targetGender && normKelas) {
+        matchFormasi = formasiList.find((f) => {
+          const fGenderMatch = String(f.pa_pi || '').trim().toUpperCase() === targetGender;
+          if (!fGenderMatch) return false;
+          const fNormGen = normalisasiNamaKelas(`${f.din_kls} ${f.din_bag} ${f.tingkat} (${f.pa_pi})`);
+          const fNorm = normalisasiNamaKelas(`${f.din_kls} ${f.din_bag} ${f.tingkat}`);
+          return fNormGen === normKelas || fNorm === normKelas;
+        });
+      }
+
+      // Pencarian prioritas 2: Cocok nama kelas umum atau lokasi Diniyyah formasi
+      if (!matchFormasi) {
+        matchFormasi = formasiList.find((f) => {
+          const fNorm = normalisasiNamaKelas(`${f.din_kls} ${f.din_bag} ${f.tingkat}`);
+          const fNormGen = normalisasiNamaKelas(`${f.din_kls} ${f.din_bag} ${f.tingkat} (${f.pa_pi})`);
+          const lokNorm = normalisasiNamaKelas(f.lokasi_diniyyah);
+          return (
+            (normKelas && (fNorm === normKelas || fNormGen === normKelas)) ||
+            (normLokasi && normLokasi !== '-' && lokNorm === normLokasi)
+          );
+        });
+      }
 
       if (matchFormasi) {
-        // Prioritas utama: blok_diniyyah
+        // Prioritas utama: blok_diniyyah resmi di Formasi Kelas
         const blokD = String(matchFormasi.blok_diniyyah || '').trim();
         if (blokD && blokD !== '-') return blokD;
 
-        // Jika blok belum terisi di formasi, petakan lewat hierarki lokasi Diniyyah
+        // Jika blok belum terisi di formasi, petakan lewat hierarki lokasi ruang Diniyyah
         const targetLokasi = matchFormasi.lokasi_diniyyah || firstSlot.lokasi;
         if (targetLokasi) {
           const blokH = findBlokFromLokasi('diniyyah', targetLokasi, hierarkiConfig);

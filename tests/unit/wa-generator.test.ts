@@ -185,4 +185,52 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
     expect(getEmojiStatusWA('Terlambat')).toBe('⏳');
     expect(getEmojiStatusWA('Digantikan')).toBe('🔄');
   });
+
+  it('7. Memastikan kelas dengan blok Belum Diatur tidak menjadi BLOK INDUK palsu', () => {
+    const sesiWithBelumDiatur: Record<JamKbm, SesiJadwalHarian[]> = {
+      1: [
+        createSesi({
+          jamNum: 1,
+          jamKe: 'Jam 1',
+          nama: 'GURU INDUK PUTRA',
+          nia: 'X01',
+          gender: 'PA',
+          tingkat: 'ULA',
+          dinKls: '1',
+          dinBag: 'A',
+          blok: 'Induk Putra',
+          kelasMengajar: '1 A ULA (PA)',
+          fan: 'Fiqih',
+        }),
+        createSesi({
+          jamNum: 1,
+          jamKe: 'Jam 1',
+          nama: 'GURU BELUM DIATUR',
+          nia: 'Y01',
+          gender: 'PI',
+          tingkat: 'WUSTHO',
+          dinKls: '1',
+          dinBag: 'A',
+          blok: 'Belum Diatur',
+          kelasMengajar: '1 A WUSTHO (PI)',
+          fan: 'Nahwu',
+        }),
+      ],
+      2: [],
+      3: [],
+      4: [],
+    };
+
+    const text = generateLaporanWAText({
+      tanggal: '2026-11-03',
+      sesiHariIni: sesiWithBelumDiatur,
+      getSesiStatus: () => ({ status: 'Hadir' }),
+      selectedJams: [1],
+      filterGender: 'SEMUA',
+    });
+
+    expect(text).toContain('🏠 BLOK INDUK PUTRA');
+    expect(text).toContain('⚠️ BLOK BELUM DIATUR');
+    expect(text).not.toContain('🏠 BLOK INDUK\n');
+  });
 });
