@@ -34,6 +34,8 @@ import {
   dapatkanBatasJamFan,
   cekBentrokFisikHariJamKBM,
   hitungLabelPengajarDariListAsatidz,
+  terapkanAutoReplaceKelasJam12,
+  type KlaimSlotKelasBaru,
 } from '@/lib/utils/jadwalHelper';
 import { parseFanItemString } from '@/lib/utils/fanHelper';
 import { Asatidz } from '@/types/asatidz';
@@ -353,8 +355,35 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
     set({ stateClipboardKG: null, isContextMenuOpen: false });
   },
 
-  simpanBatchJadwalAsatidz: async (mapPerubahan, logDesc = '', skipHistory = false) => {
+  simpanBatchJadwalAsatidz: async (mapPerubahanAwal, logDesc = '', skipHistory = false) => {
     const currentMap = { ...get().jadwalMap };
+
+    // Auto-replace: satu kelas pada satu hari & jam (Jam 1 & 2) hanya boleh diajar satu guru.
+    // Guru lama pada slot yang baru ditempati otomatis digeser keluar agar tidak bentrok.
+    // Undo/redo (skipHistory) memulihkan snapshot apa adanya sehingga dilewati.
+    let mapPerubahan: Record<string, TeacherJadwalRow> = mapPerubahanAwal;
+    let klaimKelasBaru: KlaimSlotKelasBaru[] = [];
+    if (!skipHistory) {
+      try {
+        const asatidzList = useAsatidzStore.getState().asatidzList || [];
+        const hasil = terapkanAutoReplaceKelasJam12(
+          get().jadwalMap,
+          mapPerubahanAwal,
+          buatPetaGenderGuru(asatidzList),
+          asatidzList
+        );
+        klaimKelasBaru = hasil.klaimBaru;
+        if (hasil.guruTergeser.length > 0) {
+          mapPerubahan = { ...hasil.rowsTergeser, ...mapPerubahanAwal };
+          const namaTergeser = hasil.guruTergeser
+            .map((g) => hasil.rowsTergeser[g]?.nama_asatidz || g)
+            .join(', ');
+          logDesc = `${logDesc || 'Perubahan Jadwal KBM'} (otomatis menggantikan jadwal lama: ${namaTergeser})`;
+        }
+      } catch (err) {
+        console.warn('Auto-replace kelas dilewati:', err);
+      }
+    }
 
     // Simpan snapshot sebelum dan sesudah untuk undo & redo
     const prevTeachers: Record<string, TeacherJadwalRow> = {};
@@ -423,18 +452,53 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
               .map((k) => (mapPerubahan[k]?.nama_asatidz || k).trim())
               .filter(Boolean);
 
+            // 1. Hapus SEMUA slot lama milik guru-guru yang berubah dari tabel jadwal_kbm_slots secara tuntas
+            for (const guruNama of guruChangedNames) {
+              const delQuery = supabase.from('jadwal_kbm_slots' as any).delete();
+              const { error: delErr } =
+                typeof (delQuery as any).ilike === 'function'
+                  ? await (delQuery as any).ilike('nama_asatidz', guruNama)
+                  : await delQuery.eq('nama_asatidz', guruNama);
+              if (delErr) {
+                console.warn(`Hapus slot lama ${guruNama} gagal:`, delErr.message);
+              }
+            }
+
+            // 2. Auto-replace tingkat tabel: kosongkan kelas, hari, dan jam (Jam 1 & 2) yang baru ditempati
+            //    dari guru lain agar tidak ada dua guru pada satu kelas di jam yang sama.
+            //    Pada tahap ini slot guru yang berubah sudah dihapus, sehingga sisa baris adalah guru lain.
+            const cacheSlotHariJam = new Map<string, any[]>();
+            const idTergeser = new Set<string>();
+            for (const klaim of klaimKelasBaru) {
+              const cacheKey = `${klaim.hari}|${klaim.jam}`;
+              if (!cacheSlotHariJam.has(cacheKey)) {
+                const { data: rowsSlot } = await supabase
+                  .from('jadwal_kbm_slots' as any)
+                  .select('id, nama_asatidz, kelas_lengkap')
+                  .eq('hari', klaim.hari)
+                  .eq('jam', klaim.jam);
+                cacheSlotHariJam.set(cacheKey, (rowsSlot as any[]) || []);
+              }
+              (cacheSlotHariJam.get(cacheKey) || []).forEach((r) => {
+                if (isInfoKelasCocok(parseInfoKelasNorm(r.kelas_lengkap), klaim.info)) {
+                  idTergeser.add(r.id);
+                }
+              });
+            }
+            const daftarIdTergeser = Array.from(idTergeser);
+            for (let i = 0; i < daftarIdTergeser.length; i += 100) {
+              const { error: replErr } = await supabase
+                .from('jadwal_kbm_slots' as any)
+                .delete()
+                .in('id', daftarIdTergeser.slice(i, i + 100));
+              if (replErr) {
+                console.warn('Auto-replace slot kelas gagal:', replErr.message);
+              }
+            }
+
+            // 3. Parse slot baru tiap guru dari finalMapToSave dan simpan
             for (const guruNama of guruChangedNames) {
               const guruUpper = guruNama.toUpperCase();
-
-              // 1. Hapus SEMUA slot lama milik guru ini dari tabel jadwal_kbm_slots secara tuntas
-              const delQuery = supabase.from('jadwal_kbm_slots' as any).delete();
-              if (typeof (delQuery as any).ilike === 'function') {
-                await (delQuery as any).ilike('nama_asatidz', guruNama);
-              } else {
-                await delQuery.eq('nama_asatidz', guruNama);
-              }
-
-              // 2. Parse slot baru guru ini (jika ada) dari finalMapToSave dan simpan
               const guruData = finalMapToSave[guruUpper] || finalMapToSave[guruNama];
               if (guruData) {
                 const newSlots = RelationalMigrationService.parseJadwalMapToSlots({
@@ -443,7 +507,12 @@ export const useJadwalStore = create<JadwalState>((set, get) => ({
                 if (newSlots.length > 0) {
                   for (let i = 0; i < newSlots.length; i += 100) {
                     const chunk = newSlots.slice(i, i + 100);
-                    await supabase.from('jadwal_kbm_slots' as any).insert(chunk);
+                    const { error: insErr } = await supabase
+                      .from('jadwal_kbm_slots' as any)
+                      .insert(chunk);
+                    if (insErr) {
+                      console.warn(`Simpan slot baru ${guruNama} gagal:`, insErr.message);
+                    }
                   }
                 }
               }

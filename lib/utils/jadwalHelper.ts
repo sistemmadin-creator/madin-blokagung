@@ -664,6 +664,108 @@ export function addSlotToGuruObj(
 }
 
 /**
+ * Klaim ruang kelas baru: guru yang baru saja ditempatkan pada (hari, jam, kelas).
+ */
+export interface KlaimSlotKelasBaru {
+  guru: string;
+  hari: string;
+  jam: 1 | 2;
+  info: InfoKelasNorm;
+}
+
+export interface HasilAutoReplaceKelas {
+  /** Baris jadwal guru lama yang tergeser (sudah dibersihkan dari slot kelas yang diambil alih) */
+  rowsTergeser: Record<string, TeacherJadwalRow>;
+  /** Nama guru yang tergeser */
+  guruTergeser: string[];
+  /** Seluruh klaim baru (dipakai juga untuk membersihkan tabel relasional) */
+  klaimBaru: KlaimSlotKelasBaru[];
+}
+
+/**
+ * Auto-replace ruang kelas (Jam 1 & Jam 2): satu kelas pada satu hari & jam hanya boleh diajar satu guru.
+ * Slot yang BARU ditempatkan oleh guru-guru pada `rowsBaru` (dibanding `jadwalMapSebelum`) dianggap
+ * sebagai penempatan yang disengaja, sehingga guru lain (yang tidak ikut diubah) pada kelas, hari, dan
+ * jam yang sama otomatis digeser keluar. Slot lama yang tidak disentuh tidak pernah dijadikan klaim.
+ * Satu guru yang mengajar di beberapa kelas sekaligus tidak disentuh sama sekali.
+ */
+export function terapkanAutoReplaceKelasJam12(
+  jadwalMapSebelum: Record<string, TeacherJadwalRow>,
+  rowsBaru: Record<string, TeacherJadwalRow>,
+  genderGuruMap: Record<string, string> = {},
+  asatidzList?: Asatidz[]
+): HasilAutoReplaceKelas {
+  const changedSet = new Set(Object.keys(rowsBaru).map((k) => String(k).trim().toUpperCase()));
+  const klaimBaru: KlaimSlotKelasBaru[] = [];
+
+  const kunciSlot = (s: { jam: number; fan: string; lokasi: string }) =>
+    `${s.jam}|${s.fan.trim().toLowerCase()}|${s.lokasi.trim().toLowerCase()}`;
+
+  Object.keys(rowsBaru).forEach((key) => {
+    const rowBaru = rowsBaru[key];
+    const upper = String(key).trim().toUpperCase();
+    const rowLama = jadwalMapSebelum[upper] || jadwalMapSebelum[key];
+    const namaGuru = String(rowBaru.nama_asatidz || key).trim();
+
+    LIST_HARI.forEach((hari, idx) => {
+      const hKey = HARI_KEYS_LOWER[idx];
+      const slotLama = new Set(parseJadwalCell_Client(rowLama?.[hKey]).map(kunciSlot));
+      parseJadwalCell_Client(rowBaru[hKey]).forEach((s) => {
+        if (s.jam !== 1 && s.jam !== 2) return;
+        if (slotLama.has(kunciSlot(s))) return;
+        const info = parseInfoKelasNorm(s.lokasi);
+        if (!info.norm) return;
+        klaimBaru.push({ guru: namaGuru, hari, jam: s.jam as 1 | 2, info });
+      });
+    });
+  });
+
+  const rowsTergeser: Record<string, TeacherJadwalRow> = {};
+  if (klaimBaru.length === 0) return { rowsTergeser, guruTergeser: [], klaimBaru };
+
+  const klaimPerSlot = new Map<string, KlaimSlotKelasBaru[]>();
+  klaimBaru.forEach((c) => {
+    const k = `${c.hari.toLowerCase()}|${c.jam}`;
+    if (!klaimPerSlot.has(k)) klaimPerSlot.set(k, []);
+    klaimPerSlot.get(k)!.push(c);
+  });
+
+  Object.keys(jadwalMapSebelum).forEach((key) => {
+    const upper = String(key).trim().toUpperCase();
+    if (changedSet.has(upper)) return;
+    const row = jadwalMapSebelum[key];
+    if (!row) return;
+    const gGuru = genderGuruMap[String(row.nama_asatidz || key).trim().toUpperCase()] || '';
+
+    let tergeser = false;
+    const salinan: TeacherJadwalRow = { ...row };
+
+    LIST_HARI.forEach((hari, idx) => {
+      const hKey = HARI_KEYS_LOWER[idx];
+      const slots = parseJadwalCell_Client(row[hKey]);
+      if (slots.length === 0) return;
+      const sisa = slots.filter((s) => {
+        if (s.jam !== 1 && s.jam !== 2) return true;
+        const klaim = klaimPerSlot.get(`${hari.toLowerCase()}|${s.jam}`);
+        if (!klaim) return true;
+        const infoSlot = parseInfoKelasNorm(s.lokasi);
+        const diambil = klaim.some((c) => isInfoKelasCocok(infoSlot, c.info, gGuru));
+        if (diambil) tergeser = true;
+        return !diambil;
+      });
+      if (sisa.length !== slots.length) salinan[hKey] = stringifyJadwalCell_Client(sisa);
+    });
+
+    if (tergeser) {
+      syncGuruMengajarAndTotalObj(salinan, asatidzList);
+      rowsTergeser[upper] = salinan;
+    }
+  });
+
+  return { rowsTergeser, guruTergeser: Object.keys(rowsTergeser), klaimBaru };
+}
+
+/**
  * Menghitung ulang daftar kelas `mengajar` dan `totalJam` pada objek jadwal guru
  */
 export function syncGuruMengajarAndTotalObj(jdwObj: TeacherJadwalRow, asatidzList?: Asatidz[]): void {
