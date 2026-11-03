@@ -686,28 +686,40 @@ function parseKelasInfoForWA(
   };
 }
 
+export function getEmojiStatusWA(status: string | null | undefined): string {
+  const s = String(status || '').toLowerCase().trim();
+  if (s === 'hadir') return '✅';
+  if (s === 'alfa' || s === 'jadwal kosong') return '🅰️';
+  if (s === 'izin') return 'ℹ️';
+  if (s === 'sakit') return '🤒';
+  if (s === 'terlambat') return '⏳';
+  if (s === 'digantikan' || s === 'badal') return '🔄';
+  if (s === 'tugas lain' || s === 'tugas') return '📋';
+  return '❓';
+}
+
 function getEmojiForStatus(status: StatusAbsensi | ''): string {
-  switch (status) {
-    case 'Hadir':
-      return '✅';
-    case 'Alfa':
-    case 'Jadwal Kosong':
-      return '🅰️';
-    case 'Izin':
-      return 'ℹ️';
-    case 'Sakit':
-      return '🤒';
-    case 'Terlambat':
-      return '⏳';
-    case 'Digantikan':
-    case 'Badal':
-      return '🔄';
-    case 'Tugas Lain':
-    case 'Tugas':
-      return '📋';
-    default:
-      return '⏳';
-  }
+  return getEmojiStatusWA(status);
+}
+
+export function parseKelasWA(str: string): { tingkatOrder: number; angka: number; bagian: string } {
+  const upper = String(str || '').toUpperCase();
+  let tingkatOrder = 99;
+  if (/\bULA\b/.test(upper)) tingkatOrder = 1;
+  else if (/\b(WUSTHO|WUSTHA)\b/.test(upper)) tingkatOrder = 2;
+  else if (/\bULYA\b/.test(upper)) tingkatOrder = 3;
+  else if (/\b(ISTI['’]?DAD|IST)\b/.test(upper)) tingkatOrder = 4;
+
+  const matchAngka = upper.match(/\b(\d+)\b/);
+  const angka = matchAngka ? parseInt(matchAngka[1], 10) : 0;
+
+  const bagian = upper
+    .replace(/\b(ULA|WUSTHO|WUSTHA|ULYA|ISTI['’]?DAD|IST)\b/g, '')
+    .replace(/\b\d+\b/g, '')
+    .replace(/[^A-Z0-9]/g, '')
+    .trim();
+
+  return { tingkatOrder, angka, bagian };
 }
 
 export interface GenerateLaporanWAParams {
@@ -715,6 +727,8 @@ export interface GenerateLaporanWAParams {
   sesiHariIni: Record<JamKbm, SesiJadwalHarian[]>;
   getSesiStatus: (sesi: SesiJadwalHarian) => StatusSesiData;
   jamNums?: JamKbm[];
+  selectedJams?: number[];
+  filterGender?: 'SEMUA' | 'PA' | 'PI';
   judulJamLabel?: string;
   isLibur?: boolean;
   infoLibur?: HariLiburInfo | null;
@@ -722,14 +736,15 @@ export interface GenerateLaporanWAParams {
 
 /**
  * Menghasilkan teks Laporan WhatsApp berformat resmi Madrasah Diniyyah
- * dikelompokkan per Blok dan diurutkan per Tingkat & Kelas.
+ * dikelompokkan per Blok dan diurutkan per Tingkat & Kelas (100% kompatibel referensi madinblokagung-main).
  */
 export function generateLaporanWAText({
   tanggal,
   sesiHariIni,
   getSesiStatus,
-  jamNums = [1, 2, 3, 4],
-  judulJamLabel,
+  jamNums,
+  selectedJams,
+  filterGender = 'SEMUA',
   isLibur = false,
   infoLibur = null,
 }: GenerateLaporanWAParams): string {
@@ -748,176 +763,191 @@ export function generateLaporanWAText({
     );
   }
 
-  // Kumpulkan seluruh sesi pada jamNums yang dipilih
-  const allSesi: SesiJadwalHarian[] = [];
-  jamNums.forEach((j) => {
-    const arr = sesiHariIni[j] || [];
-    allSesi.push(...arr);
-  });
-
-  if (allSesi.length === 0) {
-    return (
-      `*ABSENSI DINIYYAH*\n` +
-      `*${tglPanjang}*\n\n` +
-      `_Belum ada jadwal atau sesi KBM untuk tanggal ini._`
-    );
+  // Tentukan jam yang diproses
+  let jamsToProcess: number[] = [];
+  if (selectedJams && selectedJams.length > 0) {
+    jamsToProcess = selectedJams;
+  } else if (jamNums && jamNums.length > 0) {
+    jamsToProcess = jamNums;
+  } else {
+    jamsToProcess = [1, 2];
   }
 
-  let totalSesi = 0;
-  let jmlHadir = 0;
-  let jmlAlpa = 0;
-  let jmlIzin = 0;
+  if (jamsToProcess.length === 0) {
+    return 'Silakan pilih minimal satu Sesi Jam di atas.';
+  }
 
-  interface KelasEntryGroup {
-    kelasNorm: string;
-    blok: string;
-    info: ReturnType<typeof parseKelasInfoForWA>;
-    guruMap: Map<
-      string,
-      {
-        nama: string;
-        entries: Array<{
-          jamNum: JamKbm;
-          status: StatusAbsensi | '';
-          namaPengganti: string;
-          menitTerlambat: string;
-          keterangan: string;
-        }>;
+  const hariRaw = getNamaHariDariTgl(tanggal).toUpperCase();
+  let tglHeader = tanggal;
+  if (tanggal.includes('-')) {
+    const p = tanggal.split('-');
+    const BULAN_IND = [
+      'JANUARI',
+      'FEBRUARI',
+      'MARET',
+      'APRIL',
+      'MEI',
+      'JUNI',
+      'JULI',
+      'AGUSTUS',
+      'SEPTEMBER',
+      'OKTOBER',
+      'NOVEMBER',
+      'DESEMBER',
+    ];
+    const blnNama = BULAN_IND[parseInt(p[1], 10) - 1] || p[1];
+    tglHeader = `${hariRaw}, ${parseInt(p[2], 10)} ${blnNama} ${p[0]}`;
+  }
+
+  interface SessionRecordWA {
+    jam: number;
+    status: string;
+    emoji: string;
+  }
+
+  interface GuruClassRecordWA {
+    guru: string;
+    sessions: SessionRecordWA[];
+  }
+
+  const mapBlok: Record<string, Record<string, Record<string, GuruClassRecordWA>>> = {};
+  const allGuruStatusMap: Record<string, string[]> = {};
+
+  jamsToProcess.forEach((j) => {
+    const sesiList = sesiHariIni[j as JamKbm] || [];
+    sesiList.forEach((s) => {
+      // Deteksi gender sesi (PA / PI)
+      let genderSesi = String(s.gender || '').trim().toUpperCase();
+      if (!genderSesi) {
+        const klsGabung = `${s.kelasMengajar || ''} ${s.lokasiGabungan || ''}`.toUpperCase();
+        if (klsGabung.includes('(PA)') || /\bPA\b/.test(klsGabung)) genderSesi = 'PA';
+        else if (klsGabung.includes('(PI)') || /\bPI\b/.test(klsGabung)) genderSesi = 'PI';
       }
-    >;
+
+      if (filterGender !== 'SEMUA' && genderSesi && genderSesi !== filterGender) {
+        return;
+      }
+
+      const stData = getSesiStatus(s);
+      const status = stData && stData.status ? stData.status : 'Alfa';
+      const emoji = getEmojiStatusWA(status);
+
+      const blokBersih = String(s.blok || '')
+        .replace(/^blok\s*/i, '')
+        .trim()
+        .toUpperCase();
+      const blokNama =
+        !blokBersih || blokBersih === '-' || blokBersih === 'BELUM DIATUR'
+          ? 'INDUK'
+          : blokBersih;
+
+      if (!mapBlok[blokNama]) mapBlok[blokNama] = {};
+
+      // Bersihkan label (PA) / (PI) dari nama kelas agar tampilan laporan rapi
+      const klsKey = String(s.kelasMengajar || 'Lain-lain')
+        .replace(/\s*\((PA|PI)\)\s*/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (!mapBlok[blokNama][klsKey]) mapBlok[blokNama][klsKey] = {};
+
+      const guruKey = s.nama.trim();
+      if (!mapBlok[blokNama][klsKey][guruKey]) {
+        mapBlok[blokNama][klsKey][guruKey] = {
+          guru: s.nama,
+          sessions: [],
+        };
+      }
+      mapBlok[blokNama][klsKey][guruKey].sessions.push({
+        jam: j,
+        status,
+        emoji,
+      });
+
+      if (!allGuruStatusMap[guruKey]) allGuruStatusMap[guruKey] = [];
+      allGuruStatusMap[guruKey].push(status);
+    });
+  });
+
+  // Hitung statistik guru unik
+  const totalGuru = Object.keys(allGuruStatusMap).length;
+  let hadirCount = 0;
+  let alpaCount = 0;
+  let izinCount = 0;
+
+  Object.values(allGuruStatusMap).forEach((statusArr) => {
+    if (statusArr.every((st) => st === 'Hadir' || st === 'Terlambat')) {
+      hadirCount++;
+    } else if (statusArr.some((st) => st === 'Izin' || st === 'Sakit')) {
+      izinCount++;
+    } else {
+      alpaCount++;
+    }
+  });
+
+  let labelKategori = '';
+  if (filterGender === 'PA') labelKategori = ' (PUTRA / PA)';
+  else if (filterGender === 'PI') labelKategori = ' (PUTRI / PI)';
+
+  const listJudul: string[] = [];
+  if (jamsToProcess.includes(1) || jamsToProcess.includes(2)) listJudul.push('DINIYYAH');
+  if (jamsToProcess.includes(3)) listJudul.push('BANDONGAN & SYAWIR');
+  if (jamsToProcess.includes(4)) listJudul.push('TAKROR');
+
+  const judulAbsensi =
+    listJudul.length > 0 ? 'ABSENSI ' + listJudul.join(' & ') : 'ABSENSI DINIYYAH';
+
+  let out = `${judulAbsensi}${labelKategori} ${tglHeader}\n`;
+  out += `JUMLAH GURU: ${totalGuru}\n`;
+  out += `HADIR: ${hadirCount}\n`;
+  out += `ALPA: ${alpaCount}\n`;
+  out += `IZIN: ${izinCount}\n\n`;
+
+  const blokKeys = Object.keys(mapBlok).sort((a, b) => bandingkanBlokHariKBM(a, b));
+
+  if (blokKeys.length === 0) {
+    out += `_Tidak ada data jadwal pengajar untuk kategori ${filterGender} pada jam yang dipilih._\n`;
+  } else {
+    blokKeys.forEach((bKey) => {
+      const emojiBlok = bKey.includes('9') ? '🏢' : '🏠';
+      out += `${emojiBlok} BLOK ${bKey.replace(/^BLOK\s*/i, '').trim()}\n`;
+
+      const kelasMap = mapBlok[bKey];
+      const kelasKeys = Object.keys(kelasMap).sort((a, b) => {
+        const infA = parseKelasWA(a);
+        const infB = parseKelasWA(b);
+        if (infA.tingkatOrder !== infB.tingkatOrder) return infA.tingkatOrder - infB.tingkatOrder;
+        if (infA.angka !== infB.angka) return infA.angka - infB.angka;
+        if (infA.bagian !== infB.bagian) {
+          return infA.bagian.localeCompare(infB.bagian, undefined, { numeric: true });
+        }
+        return a.localeCompare(b);
+      });
+
+      let noUrut = 1;
+      kelasKeys.forEach((kKey) => {
+        const guruMap = kelasMap[kKey];
+        const listGuruTeks: string[] = [];
+
+        Object.values(guruMap).forEach((gItem) => {
+          const firstEmoji = gItem.sessions[0]?.emoji || '❓';
+          const isSemuaSama = gItem.sessions.every((se) => se.emoji === firstEmoji);
+          if (isSemuaSama) {
+            listGuruTeks.push(`${gItem.guru} ${firstEmoji}`);
+          } else {
+            const detailJam = gItem.sessions.map((se) => `J${se.jam}:${se.emoji}`).join(' ');
+            listGuruTeks.push(`${gItem.guru} (${detailJam})`);
+          }
+        });
+
+        const guruStr = listGuruTeks.join(' & ');
+        out += `${noUrut}. ${kKey} ${guruStr}\n`;
+        noUrut++;
+      });
+
+      out += `\n`;
+    });
   }
 
-  const mapBlokKelas = new Map<string, Map<string, KelasEntryGroup>>();
-
-  allSesi.forEach((sesi) => {
-    totalSesi++;
-    const stData = getSesiStatus(sesi);
-    const st = stData.status;
-
-    if (st === 'Hadir' || st === 'Terlambat' || st === 'Digantikan' || st === 'Badal') {
-      jmlHadir++;
-    } else if (st === 'Izin' || st === 'Sakit' || st === 'Tugas Lain' || st === 'Tugas') {
-      jmlIzin++;
-    } else if (st === 'Alfa' || st === 'Jadwal Kosong') {
-      jmlAlpa++;
-    }
-
-    const blokClean = String(sesi.blok || 'Belum Diatur')
-      .replace(/^blok\s*/i, '')
-      .trim()
-      .toUpperCase() || 'BELUM DIATUR';
-
-    if (!mapBlokKelas.has(blokClean)) {
-      mapBlokKelas.set(blokClean, new Map());
-    }
-    const kelasMap = mapBlokKelas.get(blokClean)!;
-
-    const info = parseKelasInfoForWA(sesi.kelasMengajar, {
-      tingkat: sesi.tingkat,
-      dinKls: sesi.dinKls,
-      dinBag: sesi.dinBag,
-      gender: sesi.gender,
-    });
-    const kKey = normalisasiNamaKelas(info.displayLabel);
-
-    if (!kelasMap.has(kKey)) {
-      kelasMap.set(kKey, {
-        kelasNorm: kKey,
-        blok: blokClean,
-        info,
-        guruMap: new Map(),
-      });
-    }
-
-    const group = kelasMap.get(kKey)!;
-    const guruKey = sesi.nama.trim().toUpperCase();
-    if (!group.guruMap.has(guruKey)) {
-      group.guruMap.set(guruKey, {
-        nama: sesi.nama,
-        entries: [],
-      });
-    }
-    group.guruMap.get(guruKey)!.entries.push({
-      jamNum: sesi.jamNum,
-      status: st,
-      namaPengganti: stData.namaPengganti,
-      menitTerlambat: stData.menitTerlambat,
-      keterangan: stData.keterangan,
-    });
-  });
-
-  const sortedBloks = Array.from(mapBlokKelas.keys()).sort((a, b) =>
-    bandingkanBlokHariKBM(a, b)
-  );
-
-  const isMultiJam = jamNums.length > 1;
-  const headerTitle = judulJamLabel
-    ? `*ABSENSI DINIYYAH (${judulJamLabel.toUpperCase()})*`
-    : jamNums.length === 1
-    ? `*ABSENSI DINIYYAH (JAM KE-${jamNums[0]})*`
-    : `*ABSENSI DINIYYAH*`;
-
-  const lines: string[] = [
-    headerTitle,
-    `*${tglPanjang}*`,
-    ``,
-    `JUMLAH GURU : ${totalSesi}`,
-    `HADIR : ${jmlHadir}`,
-    `ALPA : ${jmlAlpa}`,
-    `IZIN : ${jmlIzin}`,
-  ];
-
-  sortedBloks.forEach((blokKey) => {
-    const iconBlok = blokKey === '9' || blokKey === 'INDUK' ? '🏢' : '🏠';
-    const labelBlok =
-      blokKey === 'BELUM DIATUR' ? 'BLOK BELUM DIATUR' : `BLOK ${blokKey}`;
-    lines.push(``);
-    lines.push(`${iconBlok} *${labelBlok}*`);
-
-    const kelasGroups = Array.from(mapBlokKelas.get(blokKey)!.values());
-    kelasGroups.sort((a, b) => {
-      const rankA = URUTAN_TINGKAT[a.info.tingkat] || 99;
-      const rankB = URUTAN_TINGKAT[b.info.tingkat] || 99;
-      if (rankA !== rankB) return rankA - rankB;
-      if (a.info.klsNum !== b.info.klsNum) return a.info.klsNum - b.info.klsNum;
-      return a.info.bag.localeCompare(b.info.bag, undefined, {
-        numeric: true,
-        sensitivity: 'base',
-      });
-    });
-
-    kelasGroups.forEach((kg) => {
-      const guruParts: string[] = [];
-      kg.guruMap.forEach((g) => {
-        g.entries.sort((x, y) => x.jamNum - y.jamNum);
-        if (!isMultiJam || g.entries.length === 1) {
-          const e = g.entries[0];
-          const emoji = getEmojiForStatus(e.status);
-          let extra = '';
-          if (e.status === 'Digantikan' && e.namaPengganti) {
-            extra = ` [Badal: ${e.namaPengganti}]`;
-          } else if (e.status === 'Terlambat' && e.menitTerlambat) {
-            extra = ` [Telat ${e.menitTerlambat}m]`;
-          }
-          guruParts.push(`${g.nama} (${emoji})${extra}`);
-        } else {
-          // Cek apakah semua status sama
-          const allSame = g.entries.every((e) => e.status === g.entries[0].status);
-          if (allSame && g.entries.length === jamNums.length) {
-            const emoji = getEmojiForStatus(g.entries[0].status);
-            guruParts.push(`${g.nama} (${emoji})`);
-          } else {
-            const perJamStr = g.entries
-              .map((e) => `J${e.jamNum}:${getEmojiForStatus(e.status)}`)
-              .join(' ');
-            guruParts.push(`${g.nama} (${perJamStr})`);
-          }
-        }
-      });
-
-      lines.push(`• ${kg.info.displayLabel} : ${guruParts.join(', ')}`);
-    });
-  });
-
-  return lines.join('\n');
+  return out.trim();
 }

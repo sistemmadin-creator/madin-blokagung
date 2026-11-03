@@ -59,11 +59,11 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
     // Buka Modal Chat WA
     const btnWA = page.getByRole('button', { name: /Chat WA/i });
     await btnWA.click();
-    await expect(page.getByRole('heading', { name: /Generator Laporan WhatsApp/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Generator Laporan (Absensi )?WhatsApp/i })).toBeVisible();
 
     // Tutup Modal Chat WA
     await page.getByRole('button', { name: 'Tutup', exact: true }).click();
-    await expect(page.getByRole('heading', { name: /Generator Laporan WhatsApp/i })).not.toBeVisible();
+    await expect(page.getByRole('heading', { name: /Generator Laporan (Absensi )?WhatsApp/i })).not.toBeVisible();
   });
 
   test('3.0 Absen Cepat: Mode Ringkas Berbasis Blok & Sinkronisasi Waktu Pesantren', async ({ page }) => {
@@ -74,7 +74,7 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
     await expect(page.getByText('Mode presensi ringkas dikelompokkan per Blok Kelas')).toBeVisible();
 
     // Toolbar Notif & Tab Jam
-    await expect(page.getByRole('button', { name: /Notif/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Notif', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /Tandai Semua Hadir/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Simpan Jam Ini/i })).toBeVisible();
 
@@ -97,7 +97,7 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
     }
 
     // Buka Modal Notifikasi Blok
-    const btnNotif = page.getByRole('button', { name: /Notif/i });
+    const btnNotif = page.getByRole('button', { name: 'Notif', exact: true });
     await btnNotif.click();
     await expect(page.getByRole('heading', { name: /Monitoring & Notifikasi Absensi Per Blok/i })).toBeVisible();
 

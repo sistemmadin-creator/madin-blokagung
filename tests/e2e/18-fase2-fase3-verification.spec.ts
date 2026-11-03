@@ -24,7 +24,7 @@ test.describe('Fase 2 & Fase 3: Offline-First Resiliency & Smart Automation', ()
     await btnWA.click();
 
     // Modal Generator Laporan WA harus muncul
-    await expect(page.getByRole('heading', { name: /Generator Laporan WhatsApp/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Generator Laporan (Absensi )?WhatsApp/i })).toBeVisible();
 
     // Verifikasi tombol salin teks atau tombol aksi WA
     await expect(page.getByRole('button', { name: /Salin/i })).toBeVisible();
