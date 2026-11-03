@@ -751,7 +751,7 @@ export function formatNamaAsatidzWA(
   if (!nama || !nama.trim()) return '-';
 
   // 1. Bersihkan prefix gelar lama jika ada (misal: "Ust.", "Ustadz", "Ustz.", "Ustadzah")
-  let cleanName = nama
+  const cleanName = nama
     .trim()
     .replace(/^(ust(\.|adz)?|ustz(\.|adzah)?)\s+/i, '')
     .trim();
