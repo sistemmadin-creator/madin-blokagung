@@ -3,9 +3,17 @@ import { generateLaporanWAText, parseKelasWA, getEmojiStatusWA } from '@/lib/uti
 import { SesiJadwalHarian, StatusSesiData, JamKbm } from '@/types/absensi';
 
 describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
+  const createSesi = (data: Partial<SesiJadwalHarian> & Pick<SesiJadwalHarian, 'jamNum' | 'jamKe' | 'nama' | 'nia' | 'gender' | 'tingkat' | 'dinKls' | 'dinBag' | 'blok' | 'kelasMengajar' | 'fan'>): SesiJadwalHarian => ({
+    jah: '',
+    fanAsli: data.fan,
+    lokasi: '',
+    lokasiGabungan: '',
+    ...data,
+  });
+
   const dummySesi: Record<JamKbm, SesiJadwalHarian[]> = {
     1: [
-      {
+      createSesi({
         jamNum: 1,
         jamKe: 'Jam 1',
         nama: 'FIKRUL UMAM AL HANIF',
@@ -17,8 +25,8 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
         blok: 'BLOK INDUK',
         kelasMengajar: '1 A ULA (PA)',
         fan: 'Fiqih',
-      },
-      {
+      }),
+      createSesi({
         jamNum: 1,
         jamKe: 'Jam 1',
         nama: 'KUNI NAFI\'AH',
@@ -30,8 +38,8 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
         blok: 'BLOK INDUK',
         kelasMengajar: '1 A ULA (PI)',
         fan: 'Fiqih',
-      },
-      {
+      }),
+      createSesi({
         jamNum: 1,
         jamKe: 'Jam 1',
         nama: 'AHNAF HUMAM AZIZY',
@@ -43,10 +51,10 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
         blok: 'BLOK INDUK',
         kelasMengajar: '1 B ULA (PA)',
         fan: 'Tajwid',
-      },
+      }),
     ],
     2: [
-      {
+      createSesi({
         jamNum: 2,
         jamKe: 'Jam 2',
         nama: 'FIKRUL UMAM AL HANIF',
@@ -58,8 +66,8 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
         blok: 'BLOK INDUK',
         kelasMengajar: '1 A ULA (PA)',
         fan: 'Fiqih',
-      },
-      {
+      }),
+      createSesi({
         jamNum: 2,
         jamKe: 'Jam 2',
         nama: 'KUNI NAFI\'AH',
@@ -71,10 +79,10 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
         blok: 'BLOK INDUK',
         kelasMengajar: '1 A ULA (PI)',
         fan: 'Fiqih',
-      },
+      }),
     ],
     3: [
-      {
+      createSesi({
         jamNum: 3,
         jamKe: 'Jam 3',
         nama: 'FIKRUL UMAM AL HANIF',
@@ -86,7 +94,7 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
         blok: 'BLOK INDUK',
         kelasMengajar: '1 A ULA (PA)',
         fan: '(Badongan) Akhlaq',
-      },
+      }),
     ],
     4: [],
   };
