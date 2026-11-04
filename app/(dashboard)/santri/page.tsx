@@ -29,6 +29,7 @@ import ModalFilterSantri from '@/components/modules/santri/ModalFilterSantri';
 import ModalHideColumns from '@/components/modules/santri/ModalHideColumns';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import Dialog from '@/components/ui/Dialog';
+import { usePagePermission } from '@/stores/useRbacStore';
 
 function getPaginationNumbers(currentPage: number, totalPages: number): (number | '...')[] {
   if (totalPages <= 7) {
@@ -74,6 +75,14 @@ export default function SantriPage() {
     saveSantri,
   } = useSantriStore();
 
+  const {
+    canCreate,
+    canDelete,
+    canAccessSettings,
+    isPersonAllowed,
+    currentAccount,
+  } = usePagePermission('santri');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const deleteDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -106,9 +115,11 @@ export default function SantriPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Client-side filtering & sorting
+  // Client-side filtering & sorting (termasuk Otoritas Khusus Blok & Gender)
   const filteredData = useMemo(() => {
-    let result = santriList;
+    let result = santriList.filter((s) =>
+      isPersonAllowed({ blok: s.blok, pa_pi: s.pa_pi })
+    );
 
     // 1. Keyword search (nama, no_induk, nisn, kamar, blok, desa)
     if (searchKeyword.trim()) {
@@ -147,7 +158,7 @@ export default function SantriPage() {
     }
 
     return result;
-  }, [santriList, searchKeyword, filterValues, sortKey, sortDirection]);
+  }, [santriList, searchKeyword, filterValues, sortKey, sortDirection, currentAccount]);
 
   // Pagination calculation
   const totalItems = filteredData.length;
@@ -300,13 +311,15 @@ export default function SantriPage() {
             onChange={handleImportExcel}
             className="hidden"
           />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>Impor Excel</span>
-          </button>
+          {canCreate && (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>Impor Excel</span>
+            </button>
+          )}
 
           <button
             onClick={handleExport}
@@ -316,23 +329,27 @@ export default function SantriPage() {
             <span>Export Excel</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setIsHierarchyOpen(true)}
-            title="Pengaturan Hierarki Dropdown (Blok > Asrama > Kode > Kamar)"
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
-          >
-            <Settings className="w-3.5 h-3.5 text-madin-700" />
-            <span className="hidden sm:inline">Hierarki Kamar</span>
-          </button>
+          {canAccessSettings && (
+            <button
+              type="button"
+              onClick={() => setIsHierarchyOpen(true)}
+              title="Pengaturan Hierarki Dropdown (Blok > Asrama > Kode > Kamar)"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
+            >
+              <Settings className="w-3.5 h-3.5 text-madin-700" />
+              <span className="hidden sm:inline">Hierarki Kamar</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => openInputModal(null)}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-madin-700 hover:bg-madin-800 text-white transition shadow-sm"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Tambah Santri</span>
-          </button>
+          {canCreate && (
+            <button
+              onClick={() => openInputModal(null)}
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-madin-700 hover:bg-madin-800 text-white transition shadow-sm"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Tambah Santri</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -357,49 +374,51 @@ export default function SantriPage() {
           </div>
 
           {/* Dropdown Hapus Bulk (Terpilih & Semua) */}
-          <div className="relative" ref={deleteDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setIsDeleteDropdownOpen(!isDeleteDropdownOpen)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                selectedNoInduk.length > 0
-                  ? 'bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100'
-                  : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>
-                Hapus
-                {selectedNoInduk.length > 0 && ` (${selectedNoInduk.length})`}
-              </span>
-              <ChevronDown className="w-3 h-3 ml-0.5" />
-            </button>
+          {canDelete && (
+            <div className="relative" ref={deleteDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsDeleteDropdownOpen(!isDeleteDropdownOpen)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                  selectedNoInduk.length > 0
+                    ? 'bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>
+                  Hapus
+                  {selectedNoInduk.length > 0 && ` (${selectedNoInduk.length})`}
+                </span>
+                <ChevronDown className="w-3 h-3 ml-0.5" />
+              </button>
 
-            {isDeleteDropdownOpen && (
-              <div className="absolute left-0 mt-1.5 w-56 rounded-xl bg-white border border-slate-200 shadow-lg py-1.5 z-30 animate-in fade-in duration-150">
-                <button
-                  type="button"
-                  onClick={handleDeleteSelected}
-                  disabled={selectedNoInduk.length === 0}
-                  className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Hapus Terpilih ({selectedNoInduk.length})</span>
-                </button>
+              {isDeleteDropdownOpen && (
+                <div className="absolute left-0 mt-1.5 w-56 rounded-xl bg-white border border-slate-200 shadow-lg py-1.5 z-30 animate-in fade-in duration-150">
+                  <button
+                    type="button"
+                    onClick={handleDeleteSelected}
+                    disabled={selectedNoInduk.length === 0}
+                    className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Hapus Terpilih ({selectedNoInduk.length})</span>
+                  </button>
 
-                <div className="my-1 border-t border-slate-100" />
+                  <div className="my-1 border-t border-slate-100" />
 
-                <button
-                  type="button"
-                  onClick={handleOpenDeleteAllModal}
-                  className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2 text-rose-600 hover:bg-rose-50 font-semibold transition"
-                >
-                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Hapus Semua Data</span>
-                </button>
-              </div>
-            )}
-          </div>
+                  <button
+                    type="button"
+                    onClick={handleOpenDeleteAllModal}
+                    className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2 text-rose-600 hover:bg-rose-50 font-semibold transition"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Hapus Semua Data</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Kontrol Sisi Kanan: Search & Filter Lanjutan */}

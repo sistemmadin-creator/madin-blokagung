@@ -99,6 +99,7 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
         href: '/pengaturan',
         iconName: 'Settings',
         children: [
+          { id: 'sub-akun', title: 'Kelola Akun & Otoritas', href: '/pengaturan?tab=akun', iconName: 'ShieldCheck' },
           { id: 'sub-hierarki', title: 'Pusat Kendali Admin', href: '/pengaturan?tab=hierarki', iconName: 'Sliders' },
           { id: 'sub-sidebar', title: 'Ubah Sidebar', href: '/pengaturan?tab=sidebar', iconName: 'LayoutList' },
           { id: 'sub-akademik', title: 'Aturan KBM & Libur', href: '/pengaturan?tab=akademik', iconName: 'CalendarDays' },

@@ -3,6 +3,7 @@
 import React from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { SetoranHafalan } from '@/types/setoran';
+import { usePagePermission } from '@/stores/useRbacStore';
 import { Clock, Box, Pencil, Printer, Trash2 } from 'lucide-react';
 
 interface ModalDetailRiwayatSetoranProps {
@@ -24,6 +25,7 @@ export default function ModalDetailRiwayatSetoran({
   onPrint,
   onDelete,
 }: ModalDetailRiwayatSetoranProps) {
+  const { canEdit, canDelete } = usePagePermission('setoran');
   if (!clickedSetoran) return null;
 
   const noInduk = String(clickedSetoran.no_induk || '').trim();
@@ -101,17 +103,19 @@ export default function ModalDetailRiwayatSetoran({
                   <td className="py-2.5 px-3 text-slate-600">{clickedSetoran.penjaga || '-'}</td>
                   <td className="py-2.5 px-3 text-center">
                     <div className="flex items-center justify-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          onEdit(clickedSetoran);
-                        }}
-                        title="Edit Data"
-                        className="p-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onEdit(clickedSetoran);
+                          }}
+                          title="Edit Data"
+                          className="p-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => onPrint(clickedSetoran)}
@@ -120,14 +124,16 @@ export default function ModalDetailRiwayatSetoran({
                       >
                         <Printer className="w-3.5 h-3.5" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => onDelete(clickedSetoran)}
-                        title="Hapus Data"
-                        className="p-1 rounded bg-rose-50 text-rose-600 hover:bg-rose-100 transition"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => onDelete(clickedSetoran)}
+                          title="Hapus Data"
+                          className="p-1 rounded bg-rose-50 text-rose-600 hover:bg-rose-100 transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -175,17 +181,19 @@ export default function ModalDetailRiwayatSetoran({
                       <td className="py-2 px-3 text-slate-600">{r.penjaga || '-'}</td>
                       <td className="py-2 px-3 text-center">
                         <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onClose();
-                              onEdit(r);
-                            }}
-                            title="Edit Data"
-                            className="p-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onClose();
+                                onEdit(r);
+                              }}
+                              title="Edit Data"
+                              className="p-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => onPrint(r)}
@@ -194,14 +202,16 @@ export default function ModalDetailRiwayatSetoran({
                           >
                             <Printer className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => onDelete(r)}
-                            title="Hapus Data"
-                            className="p-1 rounded bg-rose-50 text-rose-600 hover:bg-rose-100 transition"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => onDelete(r)}
+                              title="Hapus Data"
+                              className="p-1 rounded bg-rose-50 text-rose-600 hover:bg-rose-100 transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

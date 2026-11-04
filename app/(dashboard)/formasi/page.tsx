@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
+import { usePagePermission } from '@/stores/useRbacStore';
 import { FormasiWithStats } from '@/types/formasi';
 import { getWaliKelasSyncInfo, getSantriInFormasi } from '@/lib/utils/formasiSync';
 import {
@@ -55,6 +56,7 @@ export default function FormasiMasterPage() {
 
   const { santriList, fetchSantri } = useSantriStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
+  const { canCreate, canEdit, canDelete, canAccessSettings, isClassAllowed } = usePagePermission('formasi');
 
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -100,6 +102,24 @@ export default function FormasiMasterPage() {
   // Filtered by Search & Custom Filters
   const filteredList = useMemo(() => {
     return enrichedList.filter((f) => {
+      if (
+        !isClassAllowed(
+          {
+            tingkat: f.tingkat,
+            din_kls: f.din_kls,
+            din_bag: f.din_bag,
+            pa_pi: f.pa_pi,
+            blok_diniyyah: f.blok_diniyyah || f.blok_diniyyah_sync,
+            blok_takror: f.blok_takror || f.blok_takror_sync,
+            domisili: f.domisili || f.domisili_sync,
+          },
+          santriList,
+          asatidzList
+        )
+      ) {
+        return false;
+      }
+
       // 1. Custom filters
       if (customFilters.tingkat && f.tingkat.toUpperCase() !== customFilters.tingkat.toUpperCase()) {
         return false;
@@ -129,7 +149,7 @@ export default function FormasiMasterPage() {
 
       return true;
     });
-  }, [enrichedList, search, customFilters]);
+  }, [enrichedList, isClassAllowed, santriList, asatidzList, search, customFilters]);
 
   // Sorting: Tingkat -> Din. Kelas -> Din. Bagian -> Gender
   const sortedList = useMemo(() => {
@@ -228,33 +248,39 @@ export default function FormasiMasterPage() {
             <span>Kelas Putri</span>
           </Link>
 
-          <button
-            type="button"
-            onClick={() => openHierarkiModal('diniyyah')}
-            className="px-3 py-1.5 text-xs font-bold rounded-lg border border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition shadow-2xs flex items-center gap-1.5"
-            title="Kelola Hierarki Blok KBM (Diniyyah & Takror)"
-          >
-            <FolderTree className="w-3.5 h-3.5 text-[#0f766e]" />
-            <span>Hierarki Blok KBM</span>
-          </button>
+          {canAccessSettings && (
+            <button
+              type="button"
+              onClick={() => openHierarkiModal('diniyyah')}
+              className="px-3 py-1.5 text-xs font-bold rounded-lg border border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition shadow-2xs flex items-center gap-1.5"
+              title="Kelola Hierarki Blok KBM (Diniyyah & Takror)"
+            >
+              <FolderTree className="w-3.5 h-3.5 text-[#0f766e]" />
+              <span>Hierarki Blok KBM</span>
+            </button>
+          )}
 
-          <button
-            type="button"
-            onClick={() => openInputModal(null)}
-            title="Tambah Formasi Kelas Baru"
-            className="p-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition flex items-center justify-center"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          {canCreate && (
+            <>
+              <button
+                type="button"
+                onClick={() => openInputModal(null)}
+                title="Tambah Formasi Kelas Baru"
+                className="p-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition flex items-center justify-center"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
 
-          <button
-            type="button"
-            onClick={() => openGeneratorModal()}
-            className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition flex items-center gap-1.5"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Generator</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => openGeneratorModal()}
+                className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Generator</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -284,30 +310,32 @@ export default function FormasiMasterPage() {
           {/* Action Group: Bulk Delete, Sembunyikan, Filter, Search */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Dropdown Hapus Terpilih */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsBulkDropdownOpen((prev) => !prev)}
-                className="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-rose-300 text-rose-700 hover:bg-rose-50 transition flex items-center gap-1"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Hapus</span>
-                <ChevronDown className="w-3 h-3 ml-0.5" />
-              </button>
+            {canDelete && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsBulkDropdownOpen((prev) => !prev)}
+                  className="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-rose-300 text-rose-700 hover:bg-rose-50 transition flex items-center gap-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus</span>
+                  <ChevronDown className="w-3 h-3 ml-0.5" />
+                </button>
 
-              {isBulkDropdownOpen && (
-                <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-20 py-1">
-                  <button
-                    type="button"
-                    onClick={handleBulkDelete}
-                    className="w-full text-left px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 font-medium"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Hapus Terpilih ({selectedIds.length})</span>
-                  </button>
-                </div>
-              )}
-            </div>
+                {isBulkDropdownOpen && (
+                  <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-20 py-1">
+                    <button
+                      type="button"
+                      onClick={handleBulkDelete}
+                      className="w-full text-left px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50 flex items-center gap-2 font-medium"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Hapus Terpilih ({selectedIds.length})</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Sembunyikan Kolom Modal */}
             <button
@@ -628,22 +656,26 @@ export default function FormasiMasterPage() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openInputModal(f)}
-                            className="p-1 rounded text-amber-600 hover:bg-amber-50 transition"
-                            title="Edit Formasi"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => f.id && deleteFormasi(f.id)}
-                            className="p-1 rounded text-rose-600 hover:bg-rose-50 transition"
-                            title="Hapus Formasi"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => openInputModal(f)}
+                              className="p-1 rounded text-amber-600 hover:bg-amber-50 transition"
+                              title="Edit Formasi"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => f.id && deleteFormasi(f.id)}
+                              className="p-1 rounded text-rose-600 hover:bg-rose-50 transition"
+                              title="Hapus Formasi"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

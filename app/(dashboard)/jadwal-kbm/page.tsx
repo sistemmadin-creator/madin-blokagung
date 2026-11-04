@@ -4,7 +4,9 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useJadwalStore, LIST_HARI } from '@/stores/useJadwalStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
+import { useSantriStore } from '@/stores/useSantriStore';
 import { useFanStore } from '@/stores/useFanStore';
+import { usePagePermission } from '@/stores/useRbacStore';
 import {
   Calendar,
   RefreshCw,
@@ -46,7 +48,9 @@ export default function JadwalKbmPage() {
 
   const { formasiList, fetchFormasi } = useFormasiStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
+  const { santriList, fetchSantri } = useSantriStore();
   const { fanConfig, fetchFanData } = useFanStore();
+  const { canEdit, isClassAllowed } = usePagePermission('jadwal-kbm');
 
   // Filters
   const [fltTingkat, setFltTingkat] = useState<string>('');
@@ -69,8 +73,9 @@ export default function JadwalKbmPage() {
     fetchJadwal();
     if (formasiList.length === 0) fetchFormasi();
     if (asatidzList.length === 0) fetchAsatidz();
+    if (santriList.length === 0) fetchSantri();
     fetchFanData();
-  }, [fetchJadwal, fetchFormasi, fetchAsatidz, fetchFanData, formasiList.length, asatidzList.length]);
+  }, [fetchJadwal, fetchFormasi, fetchAsatidz, fetchSantri, fetchFanData, formasiList.length, asatidzList.length, santriList.length]);
 
   const tahunAjaran = useMemo(() => dapatkanTahunAjaranKBM(), []);
 
@@ -86,6 +91,22 @@ export default function JadwalKbmPage() {
   // Filtered List
   const listTampil = useMemo(() => {
     return masterStrukturKelasKBM.filter((k) => {
+      if (
+        !isClassAllowed(
+          {
+            tingkat: k.tingkat,
+            din_kls: k.kls,
+            din_bag: k.bag,
+            pa_pi: k.papi,
+            domisili: k.lokal,
+          },
+          santriList,
+          asatidzList
+        )
+      ) {
+        return false;
+      }
+
       if (fltTingkat) {
         const tTarget = fltTingkat.toUpperCase().trim();
         const kTingkat = (k.tingkat || '').toUpperCase().trim();
@@ -126,7 +147,7 @@ export default function JadwalKbmPage() {
 
       return true;
     });
-  }, [masterStrukturKelasKBM, fltTingkat, fltGender, fltSearch, switchMode, formasiList]);
+  }, [masterStrukturKelasKBM, isClassAllowed, santriList, asatidzList, fltTingkat, fltGender, fltSearch, switchMode, formasiList]);
 
   // Total terisi statistics
   const statSlot = useMemo(() => {
@@ -149,6 +170,7 @@ export default function JadwalKbmPage() {
   };
 
   const handleKlsDoubleClick = (k: KelasKbmItem) => {
+    if (!canEdit) return;
     openModalInputJadwal(k.key);
   };
 
@@ -584,17 +606,19 @@ export default function JadwalKbmPage() {
                                 Ug
                               </span>
                             )}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openModalInputJadwal(k.key);
-                              }}
-                              title="Edit Jadwal Kelas Ini"
-                              className="p-0.5 rounded hover:bg-emerald-100 text-slate-400 hover:text-emerald-700 transition"
-                            >
-                              <Pencil className="w-3 h-3 inline" />
-                            </button>
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openModalInputJadwal(k.key);
+                                }}
+                                title="Edit Jadwal Kelas Ini"
+                                className="p-0.5 rounded hover:bg-emerald-100 text-slate-400 hover:text-emerald-700 transition"
+                              >
+                                <Pencil className="w-3 h-3 inline" />
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td rowSpan={2} className="text-center font-medium">

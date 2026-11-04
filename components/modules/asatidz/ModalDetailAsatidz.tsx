@@ -6,6 +6,7 @@ import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { useJadwalStore, LIST_HARI } from '@/stores/useJadwalStore';
+import { usePagePermission } from '@/stores/useRbacStore';
 import {
   formatTampilanKelas,
   getJadwalGuruFromMap,
@@ -37,6 +38,7 @@ export default function ModalDetailAsatidz() {
   const { santriList, fetchSantri } = useSantriStore();
   const { setoranList, fetchSetoranData } = useMuhafadzohStore();
   const { jadwalMap, activeHari, fetchJadwal } = useJadwalStore();
+  const { canEdit, canDelete } = usePagePermission('asatidz');
 
   useEffect(() => {
     if (isDetailModalOpen) {
@@ -436,14 +438,18 @@ export default function ModalDetailAsatidz() {
 
         {/* Footer Tombol Aksi */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition border border-rose-200"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Hapus Asatidz</span>
-          </button>
+          <div>
+            {canDelete && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition border border-rose-200"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus Asatidz</span>
+              </button>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             <button
@@ -453,14 +459,16 @@ export default function ModalDetailAsatidz() {
             >
               Tutup
             </button>
-            <button
-              type="button"
-              onClick={handleEdit}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#115e59] text-white shadow-sm transition"
-            >
-              <Edit className="w-3.5 h-3.5" />
-              <span>Edit Data Asatidz</span>
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={handleEdit}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#115e59] text-white shadow-sm transition"
+              >
+                <Edit className="w-3.5 h-3.5" />
+                <span>Edit Data Asatidz</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

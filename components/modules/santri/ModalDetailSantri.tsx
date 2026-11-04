@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { useSantriStore } from '@/stores/useSantriStore';
+import { usePagePermission } from '@/stores/useRbacStore';
 import { User, MapPin, Home, GraduationCap, Users, Phone, Edit, Trash2, ZoomIn } from 'lucide-react';
 import ModalFotoZoom from './ModalFotoZoom';
 
@@ -14,6 +15,7 @@ export default function ModalDetailSantri() {
     openInputModal,
     deleteSantri,
   } = useSantriStore();
+  const { canEdit, canDelete } = usePagePermission('santri');
 
   const [isZoomOpen, setIsZoomOpen] = useState(false);
 
@@ -243,13 +245,17 @@ export default function ModalDetailSantri() {
 
         {/* Tombol Aksi */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
-          <button
-            onClick={handleDelete}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Hapus Santri
-          </button>
+          <div>
+            {canDelete && (
+              <button
+                onClick={handleDelete}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Hapus Santri
+              </button>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             <button
@@ -258,13 +264,15 @@ export default function ModalDetailSantri() {
             >
               Tutup
             </button>
-            <button
-              onClick={handleEdit}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-madin-700 hover:bg-madin-800 text-white shadow-sm transition"
-            >
-              <Edit className="w-3.5 h-3.5" />
-              Edit Biodata Santri
-            </button>
+            {canEdit && (
+              <button
+                onClick={handleEdit}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-madin-700 hover:bg-madin-800 text-white shadow-sm transition"
+              >
+                <Edit className="w-3.5 h-3.5" />
+                Edit Biodata Santri
+              </button>
+            )}
           </div>
         </div>
       </div>

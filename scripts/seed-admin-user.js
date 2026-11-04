@@ -121,6 +121,18 @@ async function run() {
         [String(userId), userId, JSON.stringify(userMeta)]
       );
     }
+
+    const rbacMigrationPath = path.join(
+      process.cwd(),
+      'supabase',
+      'migrations',
+      '20261105_create_user_accounts_rbac.sql'
+    );
+    if (fs.existsSync(rbacMigrationPath)) {
+      const rbacSql = fs.readFileSync(rbacMigrationPath, 'utf8');
+      await client.query(rbacSql);
+      console.log('Migrasi RBAC 20261105_create_user_accounts_rbac.sql berhasil diterapkan.');
+    }
   } finally {
     await client.end();
   }

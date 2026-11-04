@@ -30,6 +30,8 @@ import {
 import { useAppStore } from '@/stores/useAppStore';
 import { useSidebarConfigStore, DEFAULT_SIDEBAR_GROUPS } from '@/stores/useSidebarConfigStore';
 import { ConfigMenuItem, ConfigMenuGroup, ConfigSubMenuItem } from '@/types/sidebar-config';
+import { useRbacStore } from '@/stores/useRbacStore';
+import { canViewPage, resolvePageIdFromPathname } from '@/lib/utils/rbacHelper';
 
 // Registry of Lucide icons for dynamic rendering
 const ICON_REGISTRY: Record<string, React.ReactNode> = {
@@ -67,7 +69,23 @@ export default function SidebarDesktop() {
   const pathname = usePathname();
   const { isSidebarCollapsed, toggleSidebarCollapse } = useAppStore();
   const { groups } = useSidebarConfigStore();
+  const currentAccount = useRbacStore((s) => s.currentAccount);
   const [mounted, setMounted] = useState(false);
+
+  const isMasterAdmin =
+    !currentAccount ||
+    currentAccount.role === 'master_admin' ||
+    currentAccount.username === 'admin';
+
+  const isHrefPermitted = (href?: string, subId?: string): boolean => {
+    if (!href) return true;
+    if (subId === 'sub-akun' || href.includes('tab=akun')) {
+      return isMasterAdmin;
+    }
+    const pageId = resolvePageIdFromPathname(href);
+    if (!pageId) return true;
+    return canViewPage(currentAccount, pageId, href);
+  };
 
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
     'Jadwal KBM': true,
@@ -134,7 +152,17 @@ export default function SidebarDesktop() {
         {activeGroups
           .filter((grp: ConfigMenuGroup) => !grp.hidden)
           .map((grp: ConfigMenuGroup) => {
-            const visibleItems = grp.items.filter((item: ConfigMenuItem) => !item.hidden);
+            const visibleItems = grp.items.filter((item: ConfigMenuItem) => {
+              if (item.hidden) return false;
+              if (item.children && item.children.length > 0) {
+                const allowedChildren = item.children.filter(
+                  (sub: ConfigSubMenuItem) =>
+                    !sub.hidden && isHrefPermitted(sub.href, sub.id)
+                );
+                return allowedChildren.length > 0;
+              }
+              return isHrefPermitted(item.href, item.id);
+            });
             if (visibleItems.length === 0) return null;
 
             return (
@@ -149,7 +177,10 @@ export default function SidebarDesktop() {
                 )}
 
                 {visibleItems.map((item: ConfigMenuItem) => {
-                  const visibleChildren = item.children?.filter((sub: ConfigSubMenuItem) => !sub.hidden);
+                  const visibleChildren = item.children?.filter(
+                    (sub: ConfigSubMenuItem) =>
+                      !sub.hidden && isHrefPermitted(sub.href, sub.id)
+                  );
                   const hasChildren = visibleChildren && visibleChildren.length > 0;
                   const isSubOpen = openSubmenus[item.title];
                   const isParentActive =

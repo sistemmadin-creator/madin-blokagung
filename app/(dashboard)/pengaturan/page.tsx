@@ -12,6 +12,7 @@ import {
   Award,
   ChevronRight,
   FolderTree,
+  UserCog,
 } from 'lucide-react';
 import SidebarConfigEditor from '@/components/modules/settings/SidebarConfigEditor';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
@@ -21,14 +22,17 @@ import CardAturanAkademik from '@/components/modules/settings/CardAturanAkademik
 import CardAturanMuhafadzoh from '@/components/modules/settings/CardAturanMuhafadzoh';
 import CardAturanPiagam from '@/components/modules/settings/CardAturanPiagam';
 import CardPengaturanNotifikasi from '@/components/modules/settings/CardPengaturanNotifikasi';
+import AccountAuthorityManager from '@/components/modules/settings/AccountAuthorityManager';
+import { usePagePermission } from '@/stores/useRbacStore';
 import { BellRing } from 'lucide-react';
 
-type TabKey = 'overview' | 'sidebar' | 'hierarki' | 'audit' | 'akademik' | 'muhafadzoh' | 'piagam' | 'notifikasi';
+type TabKey = 'overview' | 'akun' | 'sidebar' | 'hierarki' | 'audit' | 'akademik' | 'muhafadzoh' | 'piagam' | 'notifikasi';
 
 function PengaturanContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const tabParam = (searchParams.get('tab') as TabKey) || 'overview';
+  const { isMasterAdmin } = usePagePermission('pengaturan');
 
   const [activeTab, setActiveTab] = useState<TabKey>(tabParam);
   const [showHierarchyModal, setShowHierarchyModal] = useState(false);
@@ -46,8 +50,9 @@ function PengaturanContent() {
     router.push(`/pengaturan?tab=${tab}`);
   };
 
-  const tabs: { key: TabKey; label: string; icon: React.ReactNode; testId: string }[] = [
+  const allTabs: { key: TabKey; label: string; icon: React.ReactNode; testId: string; masterOnly?: boolean }[] = [
     { key: 'overview', label: 'Tinjauan Pengaturan', icon: <Settings className="w-4 h-4" />, testId: 'tab-overview' },
+    { key: 'akun', label: 'Kelola Akun & Otoritas', icon: <UserCog className="w-4 h-4 text-emerald-600" />, testId: 'tab-akun', masterOnly: true },
     { key: 'sidebar', label: 'Ubah Sidebar & Menu', icon: <LayoutList className="w-4 h-4 text-amber-500" />, testId: 'tab-sidebar' },
     { key: 'hierarki', label: 'Pusat Kendali Admin', icon: <Sliders className="w-4 h-4 text-emerald-500" />, testId: 'tab-hierarki' },
     { key: 'audit', label: 'Log Aktivitas Sistem', icon: <ShieldCheck className="w-4 h-4 text-teal-500" />, testId: 'tab-audit' },
@@ -56,6 +61,8 @@ function PengaturanContent() {
     { key: 'piagam', label: 'Aturan Piagam', icon: <Award className="w-4 h-4 text-indigo-500" />, testId: 'tab-piagam' },
     { key: 'notifikasi', label: 'Notifikasi HP (Push)', icon: <BellRing className="w-4 h-4 text-emerald-600" />, testId: 'tab-notifikasi' },
   ];
+
+  const tabs = allTabs.filter((t) => !t.masterOnly || isMasterAdmin);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
@@ -131,8 +138,35 @@ function PengaturanContent() {
       {/* Tab Content Display */}
       {activeTab === 'overview' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Grid 6 Pilar Pengaturan */}
+          {/* Grid Pilar Pengaturan */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* Pilar 0: Kelola Akun & Otoritas (Khusus Master Admin) */}
+            {isMasterAdmin && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between group">
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center mb-3">
+                    <UserCog className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-bold text-slate-900 text-base">Kelola Akun &amp; Otoritas</h3>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                    Tambah, ubah, atau hapus akun pengurus serta atur otoritas halaman (Baca, Edit, Sembunyikan) dan 5 aturan otoritas khusus (Blok, Gender, Pengaturan, Edit, Hapus).
+                  </p>
+                </div>
+                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-emerald-700">Tabel user_accounts</span>
+                  <button
+                    type="button"
+                    data-testid="card-open-akun-tab"
+                    onClick={() => handleSelectTab('akun')}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900"
+                  >
+                    <span>Kelola Akun</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Pilar 1: Pusat Kendali Admin */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between group">
               <div>
@@ -301,6 +335,13 @@ function PengaturanContent() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Tab Kelola Akun & Otoritas */}
+      {activeTab === 'akun' && isMasterAdmin && (
+        <div className="animate-fade-in">
+          <AccountAuthorityManager />
         </div>
       )}
 

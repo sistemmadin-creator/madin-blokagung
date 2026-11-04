@@ -11,7 +11,14 @@ import UndoConflictModal from '@/components/common/UndoConflictModal';
 import RealtimeSyncListener from '@/components/common/RealtimeSyncListener';
 import OfflineStatusIndicator from '@/components/common/OfflineStatusIndicator';
 import { useAppStore } from '@/stores/useAppStore';
+import { useRbacStore } from '@/stores/useRbacStore';
+import {
+  canViewPage,
+  getFirstAllowedRoute,
+  resolvePageIdFromPathname,
+} from '@/lib/utils/rbacHelper';
 import { supabase } from '@/lib/supabase/client';
+import { ShieldAlert } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -19,6 +26,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { isSidebarCollapsed } = useAppStore();
+  const { currentAccount, fetchCurrentAccount } = useRbacStore();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -29,6 +37,8 @@ export default function DashboardLayout({
       if (isMounted && !user) {
         const nextQuery = pathname ? `?next=${encodeURIComponent(pathname)}` : '';
         router.replace(`/login${nextQuery}`);
+      } else if (isMounted && user) {
+        fetchCurrentAccount();
       }
     });
 
@@ -38,14 +48,32 @@ export default function DashboardLayout({
       if (event === 'SIGNED_OUT' || !session) {
         router.replace('/login');
         router.refresh();
+      } else if (session?.user) {
+        fetchCurrentAccount();
       }
     });
+
+    const rbacChannel = supabase
+      .channel('user-accounts-rbac-live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_accounts' },
+        () => {
+          fetchCurrentAccount();
+        }
+      )
+      .subscribe();
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
+      supabase.removeChannel(rbacChannel);
     };
-  }, [pathname, router]);
+  }, [pathname, router, fetchCurrentAccount]);
+
+  const currentPageId = resolvePageIdFromPathname(pathname || '');
+  const isRouteAllowed =
+    !currentPageId || canViewPage(currentAccount, currentPageId, pathname || '');
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800">
@@ -58,7 +86,33 @@ export default function DashboardLayout({
         }`}
       >
         <div className="w-full p-4 md:p-8">
-          {children}
+          {isRouteAllowed ? (
+            children
+          ) : (
+            <div
+              role="alert"
+              className="max-w-lg mx-auto my-12 bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 text-center shadow-xs space-y-4"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center mx-auto">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-900">
+                  Akses Halaman Dibatasi
+                </h2>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Akun Anda (<strong>@{currentAccount?.username}</strong>) tidak memiliki otoritas untuk membuka halaman ini.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => router.replace(getFirstAllowedRoute(currentAccount))}
+                className="min-h-[40px] px-4 py-2 rounded-xl bg-[#0b5751] hover:bg-[#115e59] text-white text-xs font-bold transition"
+              >
+                Kembali ke Halaman Utama
+              </button>
+            </div>
+          )}
         </div>
       </main>
       <BottomNavMobile />

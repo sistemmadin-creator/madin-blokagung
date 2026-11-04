@@ -6,9 +6,11 @@ import { Newspaper, Plus, ExternalLink } from 'lucide-react';
 import TabelKelolaBerita from '@/components/modules/berita/TabelKelolaBerita';
 import ModalFormBerita from '@/components/modules/berita/ModalFormBerita';
 import { useBeritaStore } from '@/stores/useBeritaStore';
+import { usePagePermission } from '@/stores/useRbacStore';
 
 export default function BeritaAdminPage() {
   const { openFormModal } = useBeritaStore();
+  const { canCreate } = usePagePermission('kelola-berita');
 
   return (
     <div className="space-y-6">
@@ -42,14 +44,16 @@ export default function BeritaAdminPage() {
             <span>Lihat Portal Publik</span>
           </Link>
 
-          <button
-            type="button"
-            onClick={() => openFormModal(null)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-emerald-950 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-300 hover:from-amber-200 hover:to-amber-300 transition shadow-md shadow-amber-500/20 active:scale-98"
-          >
-            <Plus className="w-4 h-4 text-emerald-950 stroke-[2.5]" />
-            <span>Tulis Berita Baru</span>
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={() => openFormModal(null)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-emerald-950 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-300 hover:from-amber-200 hover:to-amber-300 transition shadow-md shadow-amber-500/20 active:scale-98"
+            >
+              <Plus className="w-4 h-4 text-emerald-950 stroke-[2.5]" />
+              <span>Tulis Berita Baru</span>
+            </button>
+          )}
         </div>
       </div>
 

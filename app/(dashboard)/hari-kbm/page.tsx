@@ -5,6 +5,7 @@ import { useJadwalStore, LIST_HARI } from '@/stores/useJadwalStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useFanStore } from '@/stores/useFanStore';
+import { usePagePermission } from '@/stores/useRbacStore';
 import {
   CalendarDays,
   Table as TableIcon,
@@ -54,6 +55,7 @@ export default function HariKbmPage() {
   const { asatidzList, fetchAsatidz, openDetailModal } = useAsatidzStore();
   const { formasiList, fetchFormasi } = useFormasiStore();
   const { fanItems, fanConfig, fetchFanData } = useFanStore();
+  const { isPersonAllowed } = usePagePermission('hari-kbm');
 
   // Hierarki Blok KBM Config
   const [hierarkiConfig, setHierarkiConfig] = useState<HierarkiBlokKBMConfig | null>(null);
@@ -193,6 +195,15 @@ export default function HariKbmPage() {
     const fJamNum = fltJam === '1' ? 1 : fltJam === '2' ? 2 : 0;
 
     return listGuruAktif.filter((item) => {
+      if (
+        !isPersonAllowed({
+          blok: item.blok && item.blok !== 'Belum Diatur' ? item.blok : item.rawRow.blok,
+          pa_pi: item.rawRow.pa_pi,
+        })
+      ) {
+        return false;
+      }
+
       let validSlots = item.slots;
 
       // Filter Blok
@@ -238,7 +249,7 @@ export default function HariKbmPage() {
 
       return true;
     });
-  }, [listGuruAktif, filterBlok, search, fltTingkat, fltJam, masterStrukturKelasKBM, asatidzList, formasiList]);
+  }, [listGuruAktif, isPersonAllowed, filterBlok, search, fltTingkat, fltJam, masterStrukturKelasKBM, asatidzList, formasiList]);
 
   // Reset ke halaman 1 saat filter atau pageSize berubah
   useEffect(() => {

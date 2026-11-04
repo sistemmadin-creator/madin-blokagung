@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
+import { usePagePermission } from '@/stores/useRbacStore';
 import {
   UserCheck,
   Filter,
@@ -70,6 +71,7 @@ export default function AsatidzPage() {
     openHideModal,
     openFotoZoom,
   } = useAsatidzStore();
+  const { canCreate, canDelete, isPersonAllowed } = usePagePermission('asatidz');
 
   const [isDeleteDropdownOpen, setIsDeleteDropdownOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -97,7 +99,7 @@ export default function AsatidzPage() {
 
   // Client-side filtering & sorting
   const filteredData = useMemo(() => {
-    let result = asatidzList;
+    let result = asatidzList.filter((a) => isPersonAllowed({ blok: a.blok, pa_pi: a.pa_pi }));
 
     if (searchKeyword.trim()) {
       const q = searchKeyword.toLowerCase();
@@ -146,7 +148,7 @@ export default function AsatidzPage() {
     }
 
     return result;
-  }, [asatidzList, searchKeyword, filterValues, sortKey, sortDirection]);
+  }, [asatidzList, isPersonAllowed, searchKeyword, filterValues, sortKey, sortDirection]);
 
   // Pagination calculation
   const totalItems = filteredData.length;
@@ -244,14 +246,16 @@ export default function AsatidzPage() {
             <span>Muat Ulang</span>
           </button>
 
-          <button
-            type="button"
-            onClick={openImportModal}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>Import Excel</span>
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={openImportModal}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>Import Excel</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -262,14 +266,16 @@ export default function AsatidzPage() {
             <span>Export Excel</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => openInputModal(null)}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#115e59] text-white transition shadow-sm"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Tambah Asatidz</span>
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={() => openInputModal(null)}
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#115e59] text-white transition shadow-sm"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Tambah Asatidz</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -297,37 +303,39 @@ export default function AsatidzPage() {
           <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block"></div>
 
           {/* Tombol Hapus Dropdown */}
-          <div className="relative" ref={deleteDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setIsDeleteDropdownOpen(!isDeleteDropdownOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Hapus</span>
-              {selectedNiaList.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px]">
-                  {selectedNiaList.length}
-                </span>
-              )}
-              <ChevronDown className="w-3 h-3 ml-0.5 opacity-70" />
-            </button>
-
-            {isDeleteDropdownOpen && (
-              <div className="absolute left-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1 animate-in fade-in zoom-in-95 duration-150">
-                <button
-                  type="button"
-                  onClick={handleTriggerBulkDelete}
-                  className="w-full text-left px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>
-                    Hapus Terpilih {selectedNiaList.length > 0 ? `(${selectedNiaList.length})` : ''}
+          {canDelete && (
+            <div className="relative" ref={deleteDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsDeleteDropdownOpen(!isDeleteDropdownOpen)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus</span>
+                {selectedNiaList.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px]">
+                    {selectedNiaList.length}
                   </span>
-                </button>
-              </div>
-            )}
-          </div>
+                )}
+                <ChevronDown className="w-3 h-3 ml-0.5 opacity-70" />
+              </button>
+
+              {isDeleteDropdownOpen && (
+                <div className="absolute left-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1 animate-in fade-in zoom-in-95 duration-150">
+                  <button
+                    type="button"
+                    onClick={handleTriggerBulkDelete}
+                    className="w-full text-left px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>
+                      Hapus Terpilih {selectedNiaList.length > 0 ? `(${selectedNiaList.length})` : ''}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Tombol Sembunyikan Kolom */}
           <button

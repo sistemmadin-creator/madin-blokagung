@@ -24,12 +24,17 @@ import {
 } from 'lucide-react';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
+import { useRbacStore } from '@/stores/useRbacStore';
+import { canAccessSettingsAuthority } from '@/lib/utils/rbacHelper';
 
 export default function BottomNavMobile() {
   const pathname = usePathname();
+  const currentAccount = useRbacStore((s) => s.currentAccount);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
+
+  const allowSettings = canAccessSettingsAuthority(currentAccount);
 
   const toggleDropup = (key: string) => {
     setActiveMenu((prev) => (prev === key ? null : key));

@@ -5,6 +5,7 @@ import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
+import { usePagePermission } from '@/stores/useRbacStore';
 import {
   Grid,
   Save,
@@ -50,6 +51,7 @@ export default function SetoranPage() {
   const { santriList, fetchSantri } = useSantriStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
   const { formasiList, fetchFormasi } = useFormasiStore();
+  const { canDelete, canAccessSettings, isPersonAllowed } = usePagePermission('setoran');
 
   // Top Filter & Search
   const [filterGender, setFilterGender] = useState<'SEMUA' | 'PA' | 'PI'>('SEMUA');
@@ -118,11 +120,12 @@ export default function SetoranPage() {
     }
   }, [editingRecord]);
 
-  // Datalist sumber santri terfilter gender
+  // Datalist sumber santri terfilter gender & otoritas
   const filteredSantriList = useMemo(() => {
-    if (filterGender === 'SEMUA') return santriList;
-    return santriList.filter((s) => norm(s.pa_pi) === filterGender);
-  }, [santriList, filterGender]);
+    const allowed = santriList.filter((s) => isPersonAllowed({ blok: s.blok, pa_pi: s.pa_pi }));
+    if (filterGender === 'SEMUA') return allowed;
+    return allowed.filter((s) => norm(s.pa_pi) === filterGender);
+  }, [santriList, isPersonAllowed, filterGender]);
 
   // Handle santri selection
   const fillSantriData = (santri: any) => {
@@ -371,8 +374,9 @@ export default function SetoranPage() {
   // Filtered History
   const filteredHistory = useMemo(() => {
     return setoranList.filter((s) => {
+      const found = santriList.find((item: any) => String(item.no_induk || item[1]).trim() === String(s.no_induk).trim());
+      if (found && !isPersonAllowed({ blok: found.blok, pa_pi: found.pa_pi })) return false;
       if (filterGender !== 'SEMUA') {
-        const found = santriList.find((item: any) => String(item.no_induk || item[1]).trim() === String(s.no_induk).trim());
         if (found && norm(found.pa_pi || (found as any)[4]) !== filterGender) return false;
       }
       if (searchHistory.trim()) {
@@ -387,7 +391,7 @@ export default function SetoranPage() {
       }
       return true;
     });
-  }, [setoranList, filterGender, searchHistory, santriList]);
+  }, [setoranList, isPersonAllowed, filterGender, searchHistory, santriList]);
 
   // Bulk Selection Checkbox Handlers
   const handleSelectAllRows = (checked: boolean) => {
@@ -574,14 +578,16 @@ export default function SetoranPage() {
               <ImageIcon className="w-4 h-4" />
             </button>
 
-            <button
-              type="button"
-              onClick={openSettings}
-              title="Pengaturan Target & Akses Hafalan"
-              className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition border border-transparent hover:border-slate-200"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
+            {canAccessSettings && (
+              <button
+                type="button"
+                onClick={openSettings}
+                title="Pengaturan Target & Akses Hafalan"
+                className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition border border-transparent hover:border-slate-200"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -596,15 +602,17 @@ export default function SetoranPage() {
               <h5 className="font-bold text-slate-800 text-sm flex items-center gap-2 m-0">
                 <Pencil className="w-4 h-4 text-emerald-700" /> Form Input Hafalan
               </h5>
-              <button
-                type="button"
-                onClick={openSettings}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition shadow-2xs flex items-center gap-1.5"
-                title="Pengaturan Item Hafalan"
-              >
-                <Sliders className="w-3.5 h-3.5" />
-                <span>Opsi Hafalan</span>
-              </button>
+              {canAccessSettings && (
+                <button
+                  type="button"
+                  onClick={openSettings}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition shadow-2xs flex items-center gap-1.5"
+                  title="Pengaturan Item Hafalan"
+                >
+                  <Sliders className="w-3.5 h-3.5" />
+                  <span>Opsi Hafalan</span>
+                </button>
+              )}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
@@ -841,7 +849,7 @@ export default function SetoranPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {selectedIndukList.length > 0 && (
+            {canDelete && selectedIndukList.length > 0 && (
               <button
                 type="button"
                 onClick={handleBulkDelete}

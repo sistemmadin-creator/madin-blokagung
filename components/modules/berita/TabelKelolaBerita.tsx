@@ -16,6 +16,7 @@ import {
   Filter
 } from 'lucide-react';
 import { useBeritaStore } from '@/stores/useBeritaStore';
+import { usePagePermission } from '@/stores/useRbacStore';
 import { TopikBerita, StatusBerita, TOPIK_BERITA_MAP } from '@/types/berita';
 
 export default function TabelKelolaBerita() {
@@ -35,6 +36,7 @@ export default function TabelKelolaBerita() {
     searchKeyword,
     setSearchKeyword
   } = useBeritaStore();
+  const { canCreate, canEdit, canDelete } = usePagePermission('kelola-berita');
 
   useEffect(() => {
     fetchPosts();
@@ -149,14 +151,16 @@ export default function TabelKelolaBerita() {
             </select>
 
             {/* Tombol Tulis Berita */}
-            <button
-              type="button"
-              onClick={() => openFormModal(null)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-emerald-950 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-300 hover:from-amber-200 hover:to-amber-300 transition shadow-md shadow-amber-500/20 active:scale-98"
-            >
-              <Plus className="w-4 h-4 text-emerald-950 stroke-[2.5]" />
-              <span>Tulis Berita Baru</span>
-            </button>
+            {canCreate && (
+              <button
+                type="button"
+                onClick={() => openFormModal(null)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-emerald-950 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-300 hover:from-amber-200 hover:to-amber-300 transition shadow-md shadow-amber-500/20 active:scale-98"
+              >
+                <Plus className="w-4 h-4 text-emerald-950 stroke-[2.5]" />
+                <span>Tulis Berita Baru</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -429,22 +433,26 @@ export default function TabelKelolaBerita() {
                       {/* Tombol Aksi */}
                       <td className="py-3.5 px-4 align-top text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openFormModal(post)}
-                            className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-slate-700 transition"
-                            title="Edit Berita"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteConfirm(post.id)}
-                            className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
-                            title="Hapus Berita"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => openFormModal(post)}
+                              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-slate-700 transition"
+                              title="Edit Berita"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteConfirm(post.id)}
+                              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+                              title="Hapus Berita"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
