@@ -229,7 +229,7 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
     const text = generateLaporanWAText({
       tanggal: '2026-11-03',
       sesiHariIni: sesiWithBelumDiatur,
-      getSesiStatus: () => ({ status: 'Hadir' }),
+      getSesiStatus: () => ({ status: 'Hadir', keterangan: '', menitTerlambat: '', namaPengganti: '', isSaved: false }),
       selectedJams: [1],
       filterGender: 'SEMUA',
     });

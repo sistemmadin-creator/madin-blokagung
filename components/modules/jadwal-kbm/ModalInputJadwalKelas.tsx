@@ -54,7 +54,6 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
   // Form state: Jam 1 dan Jam 2 per hari
   const [jam1Data, setJam1Data] = useState<Record<string, { asatidz: string; fan: string }>>({});
   const [jam2Data, setJam2Data] = useState<Record<string, { asatidz: string; fan: string }>>({});
-  const [gabungKelasMap, setGabungKelasMap] = useState<Record<string, boolean>>({});
   const [highlightMSCell, setHighlightMSCell] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -81,7 +80,6 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
 
     setJam1Data(j1);
     setJam2Data(j2);
-    setGabungKelasMap({});
   }, [isModalInputJadwalOpen, currentClass]);
 
   // Cache relasi Fan <-> Asatidz & peta guru sibuk di kelas lain
@@ -95,25 +93,6 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
       masterStrukturKelas
     );
   }, [currentClass, formasiList, fanConfig, fanDetail, masterStrukturKelas]);
-
-  // Inisialisasi otomatis status gabung kelas jika slot yang sudah terisi memang mengajar di kelas lain
-  useEffect(() => {
-    if (!isModalInputJadwalOpen || !cacheRelasi?.mapBusyAll) return;
-    const initialGabung: Record<string, boolean> = {};
-    LIST_HARI.forEach((hari) => {
-      ([1, 2] as const).forEach((jam) => {
-        const sourceData = jam === 1 ? jam1Data : jam2Data;
-        const entry = sourceData[hari];
-        const gUpper = (entry?.asatidz || '').trim().toUpperCase();
-        if (gUpper && cacheRelasi.mapBusyAll[`${hari}_${jam}`]?.[gUpper]) {
-          initialGabung[`${jam}_${hari}`] = true;
-        }
-      });
-    });
-    if (Object.keys(initialGabung).length > 0) {
-      setGabungKelasMap((prev) => ({ ...initialGabung, ...prev }));
-    }
-  }, [isModalInputJadwalOpen, cacheRelasi]);
 
   if (!currentClass || !cacheRelasi) return null;
 
@@ -169,58 +148,18 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
     return true;
   };
 
-  // Handle toggle switch Gabung Kelas
-  const handleToggleGabungKelas = (
-    jam: 1 | 2,
-    hari: string,
-    guruTarget: string,
-    fanTarget: string,
-    isActive: boolean
-  ) => {
-    const cellKey = `${jam}_${hari}`;
-    setGabungKelasMap((prev) => ({ ...prev, [cellKey]: isActive }));
-
-    const setter = jam === 1 ? setJam1Data : setJam2Data;
-    if (isActive) {
-      setter((prev) => {
-        const cur = prev[hari] || { asatidz: '', fan: '' };
-        return {
-          ...prev,
-          [hari]: {
-            asatidz: guruTarget || cur.asatidz,
-            fan: cur.fan || fanTarget || '',
-          },
-        };
-      });
-    } else {
-      setter((prev) => {
-        const cur = prev[hari] || { asatidz: '', fan: '' };
-        return {
-          ...prev,
-          [hari]: {
-            ...cur,
-            asatidz: '',
-          },
-        };
-      });
-    }
-  };
-
-  // Handle input perubahan Asatidz (dengan sinkronisasi ke Fan & pengecualian Gabung Kelas)
+  // Handle input perubahan Asatidz (dengan sinkronisasi ke Fan & parsing opsi Gabung Kelas)
   const handleAsatidzChange = (jam: 1 | 2, hari: string, rawVal: string) => {
-    const cellKey = `${jam}_${hari}`;
-    const mapBusy = cacheRelasi.mapBusyAll[`${hari}_${jam}`] || {};
-    const isGabungActive = Boolean(gabungKelasMap[cellKey]);
-
     const matchGabung =
-      rawVal.match(/^\[GABUNG KELAS(?: di (.+?))?\]\s*(.+)$/i) ||
-      rawVal.match(/^🤝\s*\[(?:GABUNG KELAS|KELAS DIGABUNG).*?\]\s*(.+)$/i);
-    const isExplicitGabung = Boolean(matchGabung);
+      rawVal.match(/^\[GABUNG KELAS(?::| di)?\s*(.+?)?\]\s*(.+)$/i) ||
+      rawVal.match(/^🤝\s*\[(?:GABUNG KELAS|KELAS DIGABUNG).*?\]\s*(.+)$/i) ||
+      rawVal.match(/^🤝\s*Gabung Kelas dengan .*?—\s*(.+)$/i);
 
     let cleanGuru = rawVal
       .replace(/^\[TERPAKAI di [^\]]+\]\s*/i, '')
       .replace(/^\[GABUNG KELAS.*?\]\s*/i, '')
       .replace(/^🤝\s*\[.*?\]\s*/i, '')
+      .replace(/^🤝\s*Gabung Kelas dengan .*?—\s*/i, '')
       .replace(/^⭐\s*\[MUSTAHIQ KELAS\]\s*/i, '')
       .trim();
 
@@ -228,27 +167,26 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
       cleanGuru = (matchGabung[2] || matchGabung[1] || cleanGuru).trim();
     }
 
-    const gUpper = cleanGuru.toUpperCase();
-    const busyClass = mapBusy[gUpper];
-
-    if (isExplicitGabung && !isGabungActive) {
-      setGabungKelasMap((prev) => ({ ...prev, [cellKey]: true }));
-    }
-
     const matchTerpakai = rawVal.match(/^\[TERPAKAI di (.+?)\]\s*(.+)$/);
     if (matchTerpakai) {
       cleanGuru = matchTerpakai[2].trim();
     }
 
+    const gUpper = cleanGuru.toUpperCase();
     const currentEntry = (jam === 1 ? jam1Data : jam2Data)[hari] || { asatidz: '', fan: '' };
     let nextFan = currentEntry.fan;
 
-    // Auto-fill Fan jika guru hanya mengajar 1 Fan di kelas ini dan kolom Fan masih kosong
+    // Auto-fill Fan jika guru hanya mengajar 1 Fan di kelas ini atau memilih opsi Gabung Kelas dan kolom Fan masih kosong
     if (cleanGuru && !nextFan.trim()) {
-      const fansGuru = cacheRelasi.mapAsatidzKeFan[gUpper] || [];
-      if (fansGuru.length === 1) {
-        if (validasiBatasJamFanKelas(jam, hari, fansGuru[0])) {
-          nextFan = fansGuru[0];
+      const busyDetail = cacheRelasi.mapBusyDetails?.[`${hari}_${jam}`]?.[gUpper];
+      if (busyDetail?.fan && validasiBatasJamFanKelas(jam, hari, busyDetail.fan)) {
+        nextFan = busyDetail.fan;
+      } else {
+        const fansGuru = cacheRelasi.mapAsatidzKeFan[gUpper] || [];
+        if (fansGuru.length === 1) {
+          if (validasiBatasJamFanKelas(jam, hari, fansGuru[0])) {
+            nextFan = fansGuru[0];
+          }
         }
       }
     }
@@ -332,12 +270,6 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
   };
 
   const handleClearDay = (jam: 1 | 2, hari: string) => {
-    const cellKey = `${jam}_${hari}`;
-    setGabungKelasMap((prev) => {
-      const next = { ...prev };
-      delete next[cellKey];
-      return next;
-    });
     if (jam === 1) {
       setJam1Data((prev) => ({
         ...prev,
@@ -359,7 +291,6 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
       });
       setJam1Data(kosong);
       setJam2Data(kosong);
-      setGabungKelasMap({});
     }
   };
 
@@ -388,8 +319,29 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
     const entry = sourceData[hari] || { asatidz: '', fan: '' };
     const cleanGuruUpper = entry.asatidz.trim().toUpperCase();
     const valFanLower = entry.fan.trim().toLowerCase();
-    const cellKey = `${jam}_${hari}`;
-    const isGabungActive = Boolean(gabungKelasMap[cellKey]);
+
+    // Deteksi reaktif status guru saat ini di kelas lain
+    const busyClassCurrent = cleanGuruUpper ? mapBusy[cleanGuruUpper] : '';
+    const busyDetailCurrent = cleanGuruUpper ? mapBusyDetails[cleanGuruUpper] : null;
+
+    // Cek apakah fan saat ini cocok dengan fan di kelas mitra (atau salah satunya belum diatur)
+    const isFanMatching =
+      !valFanLower ||
+      !busyDetailCurrent?.fan ||
+      busyDetailCurrent.fan.toLowerCase() === valFanLower ||
+      (busyDetailCurrent.fanAsli && busyDetailCurrent.fanAsli.toLowerCase() === valFanLower) ||
+      valFanLower.includes(busyDetailCurrent.fan.toLowerCase()) ||
+      busyDetailCurrent.fan.toLowerCase().includes(valFanLower);
+
+    // Cek apakah guru yang saat ini terisi di slot memenuhi syarat resmi gabung kelas
+    const isCurrentGuruEligibleGabung = Boolean(
+      busyClassCurrent &&
+      busyDetailCurrent &&
+      isFanMatching &&
+      busyDetailCurrent.tingkat?.toUpperCase() === currentClass.tingkat?.toUpperCase() &&
+      (!busyDetailCurrent.kls || !currentClass.kls || busyDetailCurrent.kls === currentClass.kls) &&
+      (!busyDetailCurrent.papi || !currentClass.papi || busyDetailCurrent.papi.toUpperCase() === currentClass.papi.toUpperCase())
+    );
 
     // Datalist Fan tersaring berdasarkan Asatidz jika dipilih
     const opsiFan = (() => {
@@ -509,7 +461,7 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
             className={`w-full text-xs py-1.5 px-2 rounded border focus:outline-none font-medium bg-white transition-all ${
               isMSHighlighted
                 ? 'border-emerald-600 ring-2 ring-emerald-500/30 bg-emerald-50/30'
-                : isGabungActive
+                : isCurrentGuruEligibleGabung
                 ? 'border-emerald-500 ring-1 ring-emerald-400 bg-emerald-50/20'
                 : jam === 1
                 ? 'border-slate-300 focus:ring-1 focus:ring-emerald-500'
@@ -517,81 +469,34 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
             }`}
           />
 
-          {/* Banner Status Gabung Kelas Aktif */}
-          {isGabungActive && (
-            <div className="flex items-center justify-between px-2 py-1 bg-emerald-50 border border-emerald-300 rounded text-[11px] text-emerald-800 shadow-sm transition-all">
-              <div className="flex items-center gap-1.5 overflow-hidden">
-                <span className="font-bold text-emerald-700 shrink-0">🤝 Kelas Digabung:</span>
-                <span className="truncate">
-                  {entry.asatidz || 'UST. Pengajar'} (dengan {mapBusy[cleanGuruUpper] || 'Kelas Mitra'})
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                <label className="relative inline-flex items-center cursor-pointer" title="Nonaktifkan Gabung Kelas">
-                  <input
-                    type="checkbox"
-                    checked={true}
-                    onChange={(e) =>
-                      handleToggleGabungKelas(
-                        jam,
-                        hari,
-                        entry.asatidz,
-                        entry.fan,
-                        e.target.checked
-                      )
-                    }
-                    className="sr-only peer"
-                    data-testid={`switch-gabung-${jam}-${hari}`}
-                  />
-                  <div className="w-7 h-4 bg-emerald-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all"></div>
-                </label>
-                <span className="text-[10px] font-bold text-emerald-700">Aktif</span>
-              </div>
+          {/* Badge Indikator Status Gabung Kelas Aktif (Tanpa Sakelar) */}
+          {isCurrentGuruEligibleGabung && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 border border-emerald-300 rounded text-[11px] text-emerald-800 shadow-xs">
+              <span className="font-bold text-emerald-700 shrink-0">🤝 Kelas Digabung:</span>
+              <span className="truncate">dengan {busyClassCurrent}</span>
             </div>
           )}
 
-          {/* Banner Peringatan Bentrok + Tombol Switch Gabung Kelas (Sesuai Panah Merah Gambar 2) */}
-          {!isGabungActive && eligibleGabungList.length > 0 && !entry.asatidz && (
-            <div className="p-1.5 bg-amber-50 border border-amber-300 rounded text-[11px] space-y-1 shadow-sm transition-all">
+          {/* Badge Perhatian Bila Guru Mengajar di Kelas Lain yang Tidak Memenuhi Syarat Gabung */}
+          {!isCurrentGuruEligibleGabung && busyClassCurrent && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 border border-amber-300 rounded text-[11px] text-amber-800 shadow-xs">
+              <span className="font-bold text-amber-700 shrink-0">⚠️ Perhatian:</span>
+              <span className="truncate">Guru juga terjadwal di {busyClassCurrent}</span>
+            </div>
+          )}
+
+          {/* Informasi Pengajar Bentrok & Panduan Gabung Kelas (Tanpa Sakelar) */}
+          {!entry.asatidz && busyTeachersList.length > 0 && (
+            <div className="p-1.5 bg-amber-50 border border-amber-300 rounded text-[11px] space-y-1 shadow-xs transition-all">
               <div className="text-amber-900 leading-tight">
                 ⚠️ Pengajar bentrok di sesi ini: <b>{busyTeachersList.map((b) => `${b.guru} (di ${b.busyClass})`).join(', ')}</b>
               </div>
-              {eligibleGabungList.map((b, bIdx) => (
-                <div key={bIdx} className="flex items-center justify-between pt-1 border-t border-amber-200/60">
-                  <span className="text-[10.5px] text-amber-800">
-                    Gabung kelas dengan <b>{b.busyClass}</b> ({b.guru})?
-                  </span>
-                  <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-2" title={`Gabungkan dengan ${b.busyClass}`}>
-                    <input
-                      type="checkbox"
-                      checked={false}
-                      onChange={(e) =>
-                        handleToggleGabungKelas(
-                          jam,
-                          hari,
-                          b.guru,
-                          b.detail?.fan || entry.fan || '',
-                          e.target.checked
-                        )
-                      }
-                      className="sr-only peer"
-                      data-testid={`switch-gabung-${jam}-${hari}`}
-                    />
-                    <div className="w-7 h-4 bg-slate-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all"></div>
-                    <span className="ml-1.5 text-[10.5px] font-semibold text-emerald-800 hover:text-emerald-900">
-                      Gabung Kelas
-                    </span>
-                  </label>
+              {eligibleGabungList.length > 0 && (
+                <div className="text-[10.5px] text-amber-800 pt-0.5 border-t border-amber-200/60 leading-tight">
+                  💡 Tersedia kelas mitra yang setara. Pilih opsi bertanda <b>🤝 [GABUNG KELAS]</b> pada kolom Asatidz untuk menggabungkan kelas.
                 </div>
-              ))}
+              )}
             </div>
-          )}
-
-          {/* Peringatan Bentrok Biasa (Bila Tidak Ada yang Memenuhi Syarat Gabung) */}
-          {!isGabungActive && eligibleGabungList.length === 0 && busyTeachersList.length > 0 && !entry.asatidz && (
-            <p className="text-[10.5px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 leading-tight">
-              ⚠️ Pengajar bentrok di sesi ini: <b>{busyTeachersList.map((b) => `${b.guru} (di ${b.busyClass})`).join(', ')}</b>
-            </p>
           )}
 
           <datalist id={`dl_asatidz_${jam}_${hari}`}>
@@ -608,7 +513,7 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
               const isEligible = Boolean(eligibleInfo?.isEligible);
 
               if (busyClass) {
-                if (isGabungActive) {
+                if (isCurrentGuruEligibleGabung && cleanGuruUpper === gUpper) {
                   return (
                     <option
                       key={`${namaGuru}_${gIdx}`}
@@ -622,7 +527,7 @@ export default function ModalInputJadwalKelas({ masterStrukturKelas }: ModalInpu
                     <option
                       key={`${namaGuru}_${gIdx}`}
                       value={`[GABUNG KELAS di ${busyClass}] ${namaGuru}`}
-                      label={`🤝 Gabung Kelas dengan ${busyClass} (${hari} Jam ${jam})`}
+                      label={`🤝 Gabung Kelas dengan ${busyClass} (${namaGuru})`}
                     />
                   );
                 }
