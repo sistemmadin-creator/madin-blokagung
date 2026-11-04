@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { WebPushServerService } from '@/lib/services/webPushServer';
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Akses ditolak. Silakan login terlebih dahulu.' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { subscription, role, target_identifier } = body;
 
@@ -24,6 +37,7 @@ export async function POST(req: NextRequest) {
       target_identifier: target_identifier || null,
       user_agent: userAgent,
       device_type: isMobile ? 'mobile' : 'desktop',
+      dbClient: supabase,
     });
 
     return NextResponse.json({ success: true, ...result });
@@ -39,6 +53,18 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Akses ditolak. Silakan login terlebih dahulu.' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { endpoint } = body;
 
@@ -46,7 +72,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Endpoint diperlukan' }, { status: 400 });
     }
 
-    await WebPushServerService.removeSubscription(endpoint);
+    await WebPushServerService.removeSubscription(endpoint, supabase);
     return NextResponse.json({ success: true, message: 'Langganan notifikasi berhasil dihapus' });
   } catch (error: unknown) {
     const err = error as Error;

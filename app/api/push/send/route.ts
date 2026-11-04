@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { WebPushServerService } from '@/lib/services/webPushServer';
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Akses ditolak. Anda harus login sebagai pengurus untuk mengirim notifikasi.' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { title, body: content, url, icon, badge, role, target_identifier, endpoint } = body;
 
@@ -27,6 +40,7 @@ export async function POST(req: NextRequest) {
       endpoint,
       role,
       targetIdentifier: target_identifier,
+      dbClient: supabase,
     });
 
     return NextResponse.json({ success: true, ...result });

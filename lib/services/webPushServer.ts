@@ -42,10 +42,11 @@ export const WebPushServerService = {
   /**
    * Menyimpan atau memperbarui data langganan push (upsert)
    */
-  async saveSubscription(data: PushSubscriptionRecord) {
-    const { endpoint, p256dh, auth, role, target_identifier, user_agent, device_type } = data;
+  async saveSubscription(data: PushSubscriptionRecord & { dbClient?: typeof supabase }) {
+    const { endpoint, p256dh, auth, role, target_identifier, user_agent, device_type, dbClient } = data;
+    const client = dbClient || supabase;
 
-    const { data: existing, error: findError } = await supabase
+    const { data: existing, error: findError } = await client
       .from('push_subscriptions')
       .select('id')
       .eq('endpoint', endpoint)
@@ -56,7 +57,7 @@ export const WebPushServerService = {
     }
 
     if (existing?.id) {
-      const { error: updateError } = await supabase
+      const { error: updateError } = await client
         .from('push_subscriptions')
         .update({
           p256dh,
@@ -74,7 +75,7 @@ export const WebPushServerService = {
       return { id: existing.id, updated: true };
     }
 
-    const { data: inserted, error: insertError } = await supabase
+    const { data: inserted, error: insertError } = await client
       .from('push_subscriptions')
       .insert({
         endpoint,
@@ -96,8 +97,9 @@ export const WebPushServerService = {
   /**
    * Menghapus langganan push dari database jika dinonaktifkan
    */
-  async removeSubscription(endpoint: string) {
-    const { error } = await supabase
+  async removeSubscription(endpoint: string, dbClient?: typeof supabase) {
+    const client = dbClient || supabase;
+    const { error } = await client
       .from('push_subscriptions')
       .delete()
       .eq('endpoint', endpoint);
@@ -170,8 +172,10 @@ export const WebPushServerService = {
     endpoint?: string;
     role?: string;
     targetIdentifier?: string;
+    dbClient?: typeof supabase;
   }) {
-    let query = supabase
+    const client = params.dbClient || supabase;
+    let query = client
       .from('push_subscriptions')
       .select('endpoint, p256dh, auth')
       .eq('is_active', true);

@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import SidebarDesktop from '@/components/layout/SidebarDesktop';
 import BottomNavMobile from '@/components/layout/BottomNavMobile';
@@ -10,6 +11,7 @@ import UndoConflictModal from '@/components/common/UndoConflictModal';
 import RealtimeSyncListener from '@/components/common/RealtimeSyncListener';
 import OfflineStatusIndicator from '@/components/common/OfflineStatusIndicator';
 import { useAppStore } from '@/stores/useAppStore';
+import { supabase } from '@/lib/supabase/client';
 
 export default function DashboardLayout({
   children,
@@ -17,6 +19,33 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { isSidebarCollapsed } = useAppStore();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (isMounted && !user) {
+        const nextQuery = pathname ? `?next=${encodeURIComponent(pathname)}` : '';
+        router.replace(`/login${nextQuery}`);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        router.replace('/login');
+        router.refresh();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [pathname, router]);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800">
