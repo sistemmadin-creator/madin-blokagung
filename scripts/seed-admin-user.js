@@ -133,6 +133,18 @@ async function run() {
       await client.query(rbacSql);
       console.log('Migrasi RBAC 20261105_create_user_accounts_rbac.sql berhasil diterapkan.');
     }
+
+    const switchMigrationPath = path.join(
+      process.cwd(),
+      'supabase',
+      'migrations',
+      '20261106_create_app_security_switch.sql'
+    );
+    if (fs.existsSync(switchMigrationPath)) {
+      const switchSql = fs.readFileSync(switchMigrationPath, 'utf8');
+      await client.query(switchSql);
+      console.log('Migrasi Saklar Keamanan 20261106_create_app_security_switch.sql berhasil diterapkan.');
+    }
   } finally {
     await client.end();
   }

@@ -26,28 +26,39 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { isSidebarCollapsed } = useAppStore();
-  const { currentAccount, fetchCurrentAccount } = useRbacStore();
+  const {
+    currentAccount,
+    fetchCurrentAccount,
+    fetchAppSecurityStatus,
+  } = useRbacStore();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     let isMounted = true;
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (isMounted && !user) {
+    Promise.all([
+      supabase.auth.getUser(),
+      fetchAppSecurityStatus(),
+    ]).then(([{ data: { user } }, isSecurityEnabled]) => {
+      if (!isMounted) return;
+      if (!user && isSecurityEnabled) {
         const nextQuery = pathname ? `?next=${encodeURIComponent(pathname)}` : '';
         router.replace(`/login${nextQuery}`);
-      } else if (isMounted && user) {
+      } else if (user) {
         fetchCurrentAccount();
       }
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT' || !session) {
-        router.replace('/login');
-        router.refresh();
+        const isSecurityEnabled = await fetchAppSecurityStatus();
+        if (isSecurityEnabled) {
+          router.replace('/login');
+          router.refresh();
+        }
       } else if (session?.user) {
         fetchCurrentAccount();
       }
@@ -62,6 +73,22 @@ export default function DashboardLayout({
           fetchCurrentAccount();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'app_security_config' },
+        async () => {
+          const isSecurityEnabled = await fetchAppSecurityStatus();
+          if (isSecurityEnabled) {
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            if (!user) {
+              router.replace('/login');
+              router.refresh();
+            }
+          }
+        }
+      )
       .subscribe();
 
     return () => {
@@ -69,7 +96,7 @@ export default function DashboardLayout({
       subscription.unsubscribe();
       supabase.removeChannel(rbacChannel);
     };
-  }, [pathname, router, fetchCurrentAccount]);
+  }, [pathname, router, fetchCurrentAccount, fetchAppSecurityStatus]);
 
   const currentPageId = resolvePageIdFromPathname(pathname || '');
   const isRouteAllowed =

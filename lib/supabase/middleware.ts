@@ -64,6 +64,12 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (!user) {
+    // Periksa apakah Saklar Keamanan Aplikasi MADINA sedang dinonaktifkan oleh Master Admin
+    const { data: isSecurityEnabled } = await supabase.rpc('is_app_security_enabled');
+    if (isSecurityEnabled === false) {
+      return supabaseResponse;
+    }
+
     if (pathname.startsWith('/api/')) {
       return NextResponse.json(
         { error: 'Akses ditolak. Silakan login terlebih dahulu.' },

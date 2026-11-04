@@ -37,6 +37,7 @@ import {
   extractHierarchyEnums,
   loadHierarchyRules,
 } from '@/lib/services/hierarchy-service';
+import AppSecuritySwitchPanel from '@/components/modules/settings/AppSecuritySwitchPanel';
 
 export default function AccountAuthorityManager() {
   const {
@@ -278,6 +279,9 @@ export default function AccountAuthorityManager() {
 
   return (
     <div className="space-y-5">
+      {/* Panel Saklar Keamanan Aplikasi MADINA Blokagung (Konfirmasi 3x + Sandi Khusus) */}
+      <AppSecuritySwitchPanel />
+
       {/* Header Panel Manajemen Akun */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5">

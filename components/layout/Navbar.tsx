@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Menu, ChevronDown, LogOut, ShieldCheck, User, Undo2, Redo2, BookOpen, Sliders, LayoutList, UserCog } from 'lucide-react';
+import { Menu, ChevronDown, LogOut, LogIn, ShieldCheck, ShieldOff, User, Undo2, Redo2, BookOpen, Sliders, LayoutList, UserCog } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import { useRbacStore } from '@/stores/useRbacStore';
@@ -20,6 +20,7 @@ export default function Navbar() {
   const { isSidebarCollapsed, toggleSidebar } = useAppStore();
   const { undoStack, redoStack, undo, redo, isExecuting } = useUndoRedoStore();
   const currentAccount = useRbacStore((s) => s.currentAccount);
+  const isAppSecurityEnabled = useRbacStore((s) => s.isAppSecurityEnabled);
   const clearCurrentAccount = useRbacStore((s) => s.clearCurrentAccount);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
@@ -88,13 +89,21 @@ export default function Navbar() {
     }
   };
 
+  const isLoggedIn = Boolean(currentAccount || activeProfile);
   const displayFullName =
-    currentAccount?.full_name || activeProfile?.fullName || 'Master Administrator';
+    currentAccount?.full_name ||
+    activeProfile?.fullName ||
+    (!isAppSecurityEnabled ? 'Mode Input Terbuka' : 'Master Administrator');
   const displayRoleLabel =
-    currentAccount?.role_label || activeProfile?.roleLabel || 'Master Admin';
+    currentAccount?.role_label ||
+    activeProfile?.roleLabel ||
+    (!isAppSecurityEnabled ? 'Tanpa Login (Akses Penuh)' : 'Master Admin');
   const displayUsername =
-    currentAccount?.username || activeProfile?.username || 'admin';
+    currentAccount?.username ||
+    activeProfile?.username ||
+    (!isAppSecurityEnabled ? 'tanpa_login' : 'admin');
   const isMasterAdmin =
+    !isLoggedIn ||
     (currentAccount?.role || activeProfile?.role) === 'master_admin' ||
     displayUsername === 'admin';
   const isKurikulumRole = !isMasterAdmin;
@@ -130,6 +139,17 @@ export default function Navbar() {
             <span className="font-bold text-slate-800 text-base md:text-lg tracking-tight select-none">
               Madin Blokagung
             </span>
+            {!isAppSecurityEnabled && (
+              <Link
+                href="/pengaturan?tab=akun"
+                data-testid="badge-open-security-mode"
+                className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-bold hover:bg-amber-200 transition"
+                title="Keamanan Aplikasi sedang Non-Aktif (Mode Input Data Tanpa Login)"
+              >
+                <ShieldOff className="w-3.5 h-3.5 text-amber-700" />
+                <span>Mode Input Terbuka</span>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -303,15 +323,26 @@ export default function Navbar() {
 
                 <hr className="my-1.5 border-slate-100" />
 
-                <button
-                  type="button"
-                  disabled={isLoggingOut}
-                  onClick={handleLogout}
-                  className="w-full text-left px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 rounded-lg flex items-center gap-2.5 transition disabled:opacity-50"
-                >
-                  <LogOut className="w-4 h-4 text-rose-700" />
-                  <span>{isLoggingOut ? 'Mengakhiri sesi...' : 'Keluar / Logout'}</span>
-                </button>
+                {isLoggedIn ? (
+                  <button
+                    type="button"
+                    disabled={isLoggingOut}
+                    onClick={handleLogout}
+                    className="w-full text-left px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 rounded-lg flex items-center gap-2.5 transition disabled:opacity-50"
+                  >
+                    <LogOut className="w-4 h-4 text-rose-700" />
+                    <span>{isLoggingOut ? 'Mengakhiri sesi...' : 'Keluar / Logout'}</span>
+                  </button>
+                ) : (
+                  <Link
+                    href="/login"
+                    onClick={() => setDropdownOpen(false)}
+                    className="w-full text-left px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-50 rounded-lg flex items-center gap-2.5 transition"
+                  >
+                    <LogIn className="w-4 h-4 text-emerald-700" />
+                    <span>Login Pengurus / Master Admin</span>
+                  </Link>
+                )}
               </div>
             )}
           </div>

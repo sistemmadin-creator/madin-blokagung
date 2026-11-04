@@ -82,6 +82,17 @@ function PengaturanContent() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          {isMasterAdmin && (
+            <button
+              type="button"
+              data-testid="btn-header-security-switch"
+              onClick={() => handleSelectTab('akun')}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold shadow-xs transition active:scale-95"
+            >
+              <ShieldCheck className="w-4 h-4 text-amber-700" />
+              <span>Saklar Keamanan &amp; Akun</span>
+            </button>
+          )}
           <button
             type="button"
             data-testid="btn-open-hierarki-kbm-modal"

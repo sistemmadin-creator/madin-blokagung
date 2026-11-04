@@ -40,12 +40,24 @@ interface RbacStoreState {
   isLoadingCurrent: boolean;
   isLoadingList: boolean;
   errorMsg: string | null;
+  isAppSecurityEnabled: boolean;
+  securityUpdatedAt: string | null;
+  securityUpdatedBy: string | null;
 
   fetchCurrentAccount: () => Promise<UserAccountRecord | null>;
   fetchAllAccounts: () => Promise<void>;
   upsertAccount: (input: UpsertAccountInput) => Promise<{ ok: boolean; error?: string }>;
   deleteAccount: (id: string, username: string) => Promise<{ ok: boolean; error?: string }>;
   clearCurrentAccount: () => void;
+  fetchAppSecurityStatus: () => Promise<boolean>;
+  toggleAppSecurity: (
+    enable: boolean,
+    securityPassword: string
+  ) => Promise<{ ok: boolean; error?: string; is_security_enabled?: boolean }>;
+  updateSecurityPassword: (
+    currentPassword: string,
+    newPassword: string
+  ) => Promise<{ ok: boolean; error?: string }>;
 }
 
 export const useRbacStore = create<RbacStoreState>((set, get) => ({
@@ -54,6 +66,9 @@ export const useRbacStore = create<RbacStoreState>((set, get) => ({
   isLoadingCurrent: false,
   isLoadingList: false,
   errorMsg: null,
+  isAppSecurityEnabled: true,
+  securityUpdatedAt: null,
+  securityUpdatedBy: null,
 
   fetchCurrentAccount: async () => {
     set({ isLoadingCurrent: true });
@@ -234,6 +249,100 @@ export const useRbacStore = create<RbacStoreState>((set, get) => ({
 
   clearCurrentAccount: () => {
     set({ currentAccount: null, accountsList: [] });
+  },
+
+  fetchAppSecurityStatus: async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_app_security_status');
+      if (error || !data) {
+        return get().isAppSecurityEnabled;
+      }
+      const statusObj = data as {
+        is_security_enabled?: boolean;
+        updated_at?: string;
+        updated_by?: string;
+      };
+      const enabled = statusObj.is_security_enabled !== false;
+      set({
+        isAppSecurityEnabled: enabled,
+        securityUpdatedAt: statusObj.updated_at || null,
+        securityUpdatedBy: statusObj.updated_by || null,
+      });
+      return enabled;
+    } catch {
+      return get().isAppSecurityEnabled;
+    }
+  },
+
+  toggleAppSecurity: async (enable: boolean, securityPassword: string) => {
+    set({ errorMsg: null });
+    try {
+      const { data, error } = await supabase.rpc('admin_toggle_app_security', {
+        p_enable: enable,
+        p_security_password: securityPassword,
+      });
+
+      if (error) {
+        set({ errorMsg: error.message });
+        return { ok: false, error: error.message };
+      }
+
+      const statusObj = (data || {}) as {
+        is_security_enabled?: boolean;
+        updated_at?: string;
+        updated_by?: string;
+      };
+      const nextState = statusObj.is_security_enabled ?? enable;
+
+      set({
+        isAppSecurityEnabled: nextState,
+        securityUpdatedAt: statusObj.updated_at || new Date().toISOString(),
+        securityUpdatedBy: statusObj.updated_by || 'admin',
+      });
+
+      await logActivity(
+        nextState ? 'AKTIFKAN KEAMANAN APLIKASI' : 'NONAKTIFKAN KEAMANAN APLIKASI',
+        nextState
+          ? 'Mengaktifkan kembali Keamanan Aplikasi MADINA Blokagung (Wajib Login)'
+          : 'Menonaktifkan Keamanan Aplikasi MADINA Blokagung (Mode Input Data Tanpa Login)'
+      );
+
+      return { ok: true, is_security_enabled: nextState };
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Gagal mengubah status keamanan aplikasi.';
+      set({ errorMsg: msg });
+      return { ok: false, error: msg };
+    }
+  },
+
+  updateSecurityPassword: async (currentPassword: string, newPassword: string) => {
+    set({ errorMsg: null });
+    try {
+      const { error } = await supabase.rpc('admin_update_security_password', {
+        p_current_security_password: currentPassword,
+        p_new_security_password: newPassword,
+      });
+
+      if (error) {
+        set({ errorMsg: error.message });
+        return { ok: false, error: error.message };
+      }
+
+      await logActivity(
+        'UBAH SANDI KHUSUS KEAMANAN',
+        'Memperbarui Kata Sandi Khusus Saklar Keamanan Aplikasi MADINA Blokagung'
+      );
+
+      return { ok: true };
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Gagal memperbarui Kata Sandi Khusus Keamanan.';
+      set({ errorMsg: msg });
+      return { ok: false, error: msg };
+    }
   },
 }));
 
