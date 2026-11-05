@@ -222,6 +222,14 @@ export default function BottomNavMobile() {
             <span>Absen Cepat</span>
           </Link>
           <Link
+            href="/absen-konsorsium"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800"
+          >
+            <BookOpen className="w-4 h-4 text-emerald-600" />
+            <span>Absen Konsorsium</span>
+          </Link>
+          <Link
             href="/rekap-absensi"
             onClick={() => setActiveMenu(null)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800"

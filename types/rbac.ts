@@ -15,6 +15,7 @@ export type AppPageId =
   | 'piagam'
   | 'absensi'
   | 'absen-cepat'
+  | 'absen-konsorsium'
   | 'rekap-absensi'
   | 'kelola-berita'
   | 'pengaturan';
@@ -173,6 +174,14 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     routes: ['/absen-cepat'],
     supportsEditOverride: true,
     supportsDeleteOverride: false,
+  },
+  {
+    id: 'absen-konsorsium',
+    label: 'Absen Konsorsium',
+    group: 'PKM. Kesiswaan',
+    routes: ['/absen-konsorsium'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: true,
   },
   {
     id: 'rekap-absensi',
