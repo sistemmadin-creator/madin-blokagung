@@ -223,19 +223,27 @@ export default function SetoranPage() {
     }
 
     const key = `${norm(tingkat)}_${norm(dinKls)}`;
-    let source: Record<string, string[]> = {};
+    let source: Record<string, any> = {};
     if (kategori === 'Wajib') source = config.hafWajib;
     else if (kategori === 'Sunnah') source = config.hafSunnah;
     else if (kategori === 'Kitab') source = config.hafKitab;
 
     const list = source[key];
-    if (Array.isArray(list)) return list;
+    if (Array.isArray(list)) {
+      return list
+        .map((item: any) => (typeof item === 'object' && item !== null ? item.nama : String(item)))
+        .filter(Boolean);
+    }
     if (typeof list === 'string') return String(list).split(',').map((s) => s.trim()).filter(Boolean);
 
     // Fallback default
     if (kategori === 'Wajib') {
       const def = (config.hafWajib as any)?.[key];
-      if (Array.isArray(def)) return def;
+      if (Array.isArray(def)) {
+        return def
+          .map((item: any) => (typeof item === 'object' && item !== null ? item.nama : String(item)))
+          .filter(Boolean);
+      }
     }
     return [];
   }, [kategori, tingkat, dinKls, config]);

@@ -11,13 +11,13 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
-import { HafalanConfig } from '@/types/setoran';
+import { HafalanConfig, HafalanItemType } from '@/types/setoran';
 import { DEFAULT_HAFALAN_WAJIB } from '@/lib/utils/setoranHelper';
 
 export default function CardAturanMuhafadzoh() {
   const { config, saveConfig, fetchSetoranData } = useMuhafadzohStore();
 
-  const [hafWajibDraft, setHafWajibDraft] = useState<Record<string, string[]>>({});
+  const [hafWajibDraft, setHafWajibDraft] = useState<Record<string, HafalanItemType[]>>({});
   const [penjagaList, setPenjagaList] = useState<string[]>([]);
   const [newPenjagaName, setNewPenjagaName] = useState('');
   const [minBaitPiagam, setMinBaitPiagam] = useState(100);
@@ -148,7 +148,11 @@ export default function CardAturanMuhafadzoh() {
                 <input
                   type="text"
                   data-testid={`input-kitab-${tingkatKey.toLowerCase()}`}
-                  value={items.join(', ')}
+                  value={items
+                    .map((it: any) =>
+                      typeof it === 'object' && it !== null ? it.nama : it
+                    )
+                    .join(', ')}
                   onChange={(e) => handleUpdateKitabList(tingkatKey, e.target.value)}
                   placeholder="Ketik nama kitab dipisah koma..."
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white font-medium text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20"

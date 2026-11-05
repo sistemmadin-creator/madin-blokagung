@@ -48,9 +48,29 @@ export type RiwayatSetoranRawRow = [
   string  // 18: kategori
 ];
 
+export type TargetUnitNumeric = 'baris' | 'halaman' | 'bait' | 'skor' | 'custom';
+
+export interface ItemHafalanDetail {
+  id: string;
+  nama: string;
+  targetType: 'numeric' | 'sentence';
+  // Konfigurasi target angka (baris, halaman, bait, skor 1-100)
+  numericUnit?: TargetUnitNumeric;
+  customUnit?: string;
+  numericStart?: number;
+  numericEnd?: number;
+  numericStep?: number;
+  // Konfigurasi target kalimat (muqodimah, mubtada, khobar, rofa, jer)
+  sentences?: string[];
+  sentenceUnitLabel?: string;
+  keterangan?: string;
+}
+
+export type HafalanItemType = string | ItemHafalanDetail;
+
 export interface HafalanConfig {
-  hafWajib: Record<string, string[]>;
-  hafSunnah: Record<string, string[]>;
-  hafKitab: Record<string, string[]>;
+  hafWajib: Record<string, HafalanItemType[]>;
+  hafSunnah: Record<string, HafalanItemType[]>;
+  hafKitab: Record<string, HafalanItemType[]>;
   penjagaBebas: string[];
 }

@@ -145,6 +145,10 @@ export default function RekapHafalanPage() {
         const rawReq = hafWajibConfig[configKey];
         const requiredList: string[] = Array.isArray(rawReq)
           ? rawReq
+              .map((item: any) =>
+                typeof item === 'object' && item !== null ? item.nama : String(item)
+              )
+              .filter(Boolean)
           : typeof rawReq === 'string'
           ? String(rawReq).split(',').map((s) => s.trim()).filter(Boolean)
           : [];

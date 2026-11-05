@@ -1,4 +1,10 @@
-import { SetoranHafalan, RiwayatSetoranRawRow } from '@/types/setoran';
+import {
+  SetoranHafalan,
+  RiwayatSetoranRawRow,
+  HafalanItemType,
+  ItemHafalanDetail,
+  TargetUnitNumeric,
+} from '@/types/setoran';
 
 export const DEFAULT_HAFALAN_WAJIB: Record<string, string[]> = {
   ULA_1: ["Juz Amma' (Al-Fajr-An-Nass)"],
@@ -222,4 +228,69 @@ export function convertSetoranToRaw(s: SetoranHafalan): RiwayatSetoranRawRow {
     s.item_hafalan || '',
     s.kategori || 'Wajib'
   ];
+}
+
+export function getItemHafalanName(item: HafalanItemType): string {
+  if (!item) return '';
+  if (typeof item === 'string') return item.trim();
+  return (item.nama || '').trim();
+}
+
+export function normalizeToItemDetail(
+  item: HafalanItemType,
+  fallbackIndex = 0
+): ItemHafalanDetail {
+  if (typeof item === 'object' && item !== null && 'targetType' in item) {
+    return {
+      id: item.id || `haf_${Date.now()}_${fallbackIndex}`,
+      nama: item.nama || '',
+      targetType: item.targetType || 'numeric',
+      numericUnit: item.numericUnit || 'baris',
+      customUnit: item.customUnit || '',
+      numericStart: typeof item.numericStart === 'number' ? item.numericStart : 1,
+      numericEnd: typeof item.numericEnd === 'number' ? item.numericEnd : 100,
+      numericStep: typeof item.numericStep === 'number' ? item.numericStep : 1,
+      sentences: Array.isArray(item.sentences) ? item.sentences : [],
+      sentenceUnitLabel: item.sentenceUnitLabel || 'Kalimat',
+      keterangan: item.keterangan || '',
+    };
+  }
+
+  // String legacy conversion
+  const nameStr = typeof item === 'string' ? item : '';
+  return {
+    id: `haf_${Date.now()}_${fallbackIndex}_${Math.random().toString(36).substring(2, 7)}`,
+    nama: nameStr,
+    targetType: 'numeric',
+    numericUnit: 'baris',
+    customUnit: '',
+    numericStart: 1,
+    numericEnd: 100,
+    numericStep: 1,
+    sentences: [],
+    sentenceUnitLabel: 'Kalimat',
+    keterangan: '',
+  };
+}
+
+export function formatTargetPreview(item: ItemHafalanDetail): string {
+  if (!item) return '-';
+  if (item.targetType === 'numeric') {
+    const unitLabel =
+      item.numericUnit === 'custom'
+        ? item.customUnit || 'Item'
+        : item.numericUnit === 'halaman'
+        ? 'Halaman'
+        : item.numericUnit === 'bait'
+        ? 'Bait'
+        : item.numericUnit === 'skor'
+        ? 'Skor'
+        : 'Baris';
+    return `${unitLabel} ${item.numericStart || 1} - ${item.numericEnd || 100}`;
+  }
+
+  const s = item.sentences || [];
+  if (s.length === 0) return '0 Kalimat Target';
+  const preview = s.slice(0, 3).join(', ') + (s.length > 3 ? '...' : '');
+  return `${s.length} ${item.sentenceUnitLabel || 'Kalimat'} (${preview})`;
 }

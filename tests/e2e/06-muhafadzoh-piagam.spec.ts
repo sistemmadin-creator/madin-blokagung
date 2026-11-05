@@ -24,7 +24,8 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
     await expect(page.getByRole('button', { name: 'Akses Penjaga' })).toBeVisible();
 
     // Close settings modal
-    const closeBtn = page.getByRole('button', { name: /Tutup|Batal/i }).or(page.locator('button:has-text("✕")')).first();
+    const modal = page.getByRole('dialog');
+    const closeBtn = modal.getByRole('button', { name: /Tutup|Batal/i }).first();
     if (await closeBtn.isVisible()) {
       await closeBtn.click();
     }
