@@ -27,6 +27,7 @@ import ModalInputSantri from '@/components/modules/santri/ModalInputSantri';
 import ModalDetailSantri from '@/components/modules/santri/ModalDetailSantri';
 import ModalFilterSantri from '@/components/modules/santri/ModalFilterSantri';
 import ModalHideColumns from '@/components/modules/santri/ModalHideColumns';
+import ModalImportExcelSantri from '@/components/modules/santri/ModalImportExcelSantri';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import Dialog from '@/components/ui/Dialog';
 import { usePagePermission } from '@/stores/useRbacStore';
@@ -72,6 +73,7 @@ export default function SantriPage() {
     openFilterModal,
     openHideModal,
     openDetailModal,
+    openImportModal,
     saveSantri,
   } = useSantriStore();
 
@@ -83,7 +85,6 @@ export default function SantriPage() {
     currentAccount,
   } = usePagePermission('santri');
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const deleteDropdownRef = useRef<HTMLDivElement>(null);
 
   const [isHierarchyOpen, setIsHierarchyOpen] = useState(false);
@@ -188,67 +189,6 @@ export default function SantriPage() {
     exportToExcel(filteredData, 'Data_Santri_Madin_Blokagung');
   };
 
-  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const rows = await parseExcelFile(file);
-      if (!Array.isArray(rows) || rows.length === 0) {
-        alert('File Excel kosong atau format tidak sesuai.');
-        return;
-      }
-
-      let successCount = 0;
-      for (const row of rows) {
-        if (row.no_induk && row.nama) {
-          const santriObj: Santri = {
-            no_induk: String(row.no_induk),
-            nama: String(row.nama).toUpperCase(),
-            pa_pi: row.pa_pi === 'PI' ? 'PI' : 'PA',
-            no_biro: row.no_biro ? String(row.no_biro) : undefined,
-            nisn: row.nisn ? String(row.nisn) : undefined,
-            tempat_lahir: row.tempat_lahir,
-            tgl_lahir: row.tgl_lahir ? String(row.tgl_lahir) : undefined,
-            bln_lahir: row.bln_lahir ? String(row.bln_lahir) : undefined,
-            thn_lahir: row.thn_lahir ? String(row.thn_lahir) : undefined,
-            blok: row.blok,
-            asrama: row.asrama,
-            kode: row.kode,
-            kamar: row.kamar,
-            tingkat: row.tingkat,
-            din_kls: row.din_kls ? String(row.din_kls) : undefined,
-            din_bag: row.din_bag,
-            unit: row.unit,
-            jurusan: row.jurusan,
-            semester: row.semester ? String(row.semester) : undefined,
-            kelas: row.kelas ? String(row.kelas) : undefined,
-            bag: row.bag,
-            desa: row.desa,
-            kecamatan: row.kecamatan,
-            kabupaten: row.kabupaten,
-            provinsi: row.provinsi,
-            telepon: row.telepon ? String(row.telepon) : undefined,
-            nik: row.nik ? String(row.nik) : undefined,
-            no_kk: row.no_kk ? String(row.no_kk) : undefined,
-            nama_ayah: row.nama_ayah ? String(row.nama_ayah) : undefined,
-            nik_ayah: row.nik_ayah ? String(row.nik_ayah) : undefined,
-            nama_ibu: row.nama_ibu ? String(row.nama_ibu) : undefined,
-            nik_ibu: row.nik_ibu ? String(row.nik_ibu) : undefined,
-          };
-          await saveSantri(santriObj, false);
-          successCount++;
-        }
-      }
-      alert(`Berhasil mengimpor ${successCount} data santri dari file Excel!`);
-      fetchSantri();
-    } catch (err: unknown) {
-      alert('Gagal mengimpor file: ' + (err instanceof Error ? err.message : String(err)));
-    } finally {
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
   const handleDeleteSelected = async () => {
     setIsDeleteDropdownOpen(false);
     if (selectedNoInduk.length === 0) return;
@@ -304,17 +244,12 @@ export default function SantriPage() {
             <span>Muat Ulang</span>
           </button>
 
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept=".xlsx, .xls"
-            onChange={handleImportExcel}
-            className="hidden"
-          />
           {canCreate && (
             <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
+              type="button"
+              data-testid="btn-open-import-santri"
+              onClick={openImportModal}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5" />
               <span>Impor Excel</span>
@@ -764,6 +699,7 @@ export default function SantriPage() {
       <ModalDetailSantri />
       <ModalFilterSantri />
       <ModalHideColumns />
+      <ModalImportExcelSantri />
       <ModalHierarchyBuilder
         isOpen={isHierarchyOpen}
         onClose={() => setIsHierarchyOpen(false)}

@@ -13,6 +13,31 @@ test.describe('Modul 01: Master Data Santri', () => {
     await expect(page.getByRole('button', { name: /Filter Lanjutan/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Kolom/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Export/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Impor Excel/i })).toBeVisible();
+  });
+
+  test('opens and interacts with Import Excel Santri modal and template download', async ({ page }) => {
+    // Click Impor Excel button
+    const importBtn = page.getByRole('button', { name: /Impor Excel/i });
+    await expect(importBtn).toBeVisible();
+    await importBtn.click();
+
+    // Dialog appears
+    await expect(page.getByRole('heading', { name: /Import Massal Database Santri/i })).toBeVisible();
+    await expect(page.getByText(/Unggah File Spreadsheet/i)).toBeVisible();
+
+    // Verify Template Download button is present and clickable
+    const downloadTemplateBtn = page.getByTestId('btn-unduh-template-santri');
+    await expect(downloadTemplateBtn).toBeVisible();
+
+    // Verify dropzone is present
+    await expect(page.getByText(/Klik atau seret file Excel ke sini/i)).toBeVisible();
+
+    // Close modal via Batal button
+    const batalBtn = page.getByRole('button', { name: 'Batal', exact: true });
+    await expect(batalBtn).toBeVisible();
+    await batalBtn.click();
+    await expect(page.getByRole('heading', { name: /Import Massal Database Santri/i })).toBeHidden();
   });
 
   test('search input filters data dynamically', async ({ page }) => {
@@ -34,7 +59,7 @@ test.describe('Modul 01: Master Data Santri', () => {
     await expect(page.getByPlaceholder(/Nama Lengkap Huruf Kapital/i)).toBeVisible();
 
     // Cancel modal
-    const cancelBtn = page.getByRole('button', { name: /Batal/i });
+    const cancelBtn = page.getByRole('button', { name: 'Batal', exact: true });
     await cancelBtn.click();
     await expect(page.getByRole('heading', { name: /Formulir Pendaftaran Santri Baru/i })).toBeHidden();
   });

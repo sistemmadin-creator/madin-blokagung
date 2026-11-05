@@ -20,6 +20,7 @@ interface SantriState {
   isFilterModalOpen: boolean;
   isHideModalOpen: boolean;
   isDetailModalOpen: boolean;
+  isImportModalOpen: boolean;
 
   // Pagination & Sorting
   page: number;
@@ -51,6 +52,8 @@ interface SantriState {
   closeHideModal: () => void;
   openDetailModal: (santri: Santri) => void;
   closeDetailModal: () => void;
+  openImportModal: () => void;
+  closeImportModal: () => void;
 
   // CRUD
   saveSantri: (
@@ -79,6 +82,7 @@ export const useSantriStore = create<SantriState>((set, get) => ({
   isFilterModalOpen: false,
   isHideModalOpen: false,
   isDetailModalOpen: false,
+  isImportModalOpen: false,
 
   page: 1,
   pageSize: 25,
@@ -177,6 +181,9 @@ export const useSantriStore = create<SantriState>((set, get) => ({
   openDetailModal: (santri) =>
     set({ isDetailModalOpen: true, selectedSantri: santri }),
   closeDetailModal: () => set({ isDetailModalOpen: false, selectedSantri: null }),
+
+  openImportModal: () => set({ isImportModalOpen: true }),
+  closeImportModal: () => set({ isImportModalOpen: false }),
 
   saveSantri: async (data, isEdit, oldNoInduk, skipHistory = false) => {
     try {
