@@ -110,7 +110,7 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
     return { status: 'Alfa', keterangan: '', menitTerlambat: '', namaPengganti: '', isSaved: false };
   };
 
-  it('1. Mengelompokkan kelas PA & PI dalam satu baris dengan separator & saat filter SEMUA', () => {
+  it('1. Memisahkan kelas PA & PI menjadi baris mandiri dengan nomor urut berlanjut saat filter SEMUA', () => {
     const text = generateLaporanWAText({
       tanggal: '2026-11-03',
       sesiHariIni: dummySesi,
@@ -124,9 +124,10 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
     expect(text).toContain('HADIR: 1'); // Fikrul Umam
     expect(text).toContain('ALPA: 2'); // Kuni Nafi'ah & Ahnaf
     expect(text).toContain('🏠 BLOK INDUK');
-    // Penggabungan kelas simetris dengan & serta prefix Ust./Ustz. & pemotongan 14 huruf
-    expect(text).toContain('1. 1 A ULA Ust. FIKRUL UMAM AL ... ✅ & Ustz. KUNI NAFI\'AH 🅰️');
-    expect(text).toContain('2. 1 B ULA Ust. AHNAF HUMAM AZ ... 🅰️');
+    // Pemisahan baris mandiri per asatidz dengan titik tunggal untuk nama yang terpotong
+    expect(text).toContain('1. 1 A ULA Ust. FIKRUL UMAM AL . ✅');
+    expect(text).toContain('2. 1 A ULA Ustz. KUNI NAFI\'AH 🅰️');
+    expect(text).toContain('3. 1 B ULA Ust. AHNAF HUMAM AZ . 🅰️');
   });
 
   it('2. Menyaring hanya sesi Putra saat filter PA dipilih', () => {
@@ -140,7 +141,7 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
 
     expect(text).toContain('ABSENSI DINIYYAH (PUTRA / PA) SELASA, 3 NOVEMBER 2026');
     expect(text).toContain('JUMLAH GURU: 2');
-    expect(text).toContain('1. 1 A ULA Ust. FIKRUL UMAM AL ... ✅');
+    expect(text).toContain('1. 1 A ULA Ust. FIKRUL UMAM AL . ✅');
     expect(text).not.toContain('KUNI NAFI\'AH');
   });
 
@@ -239,22 +240,78 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
     expect(text).not.toContain('🏠 BLOK INDUK\n');
   });
 
-  it('8. Memeriksa fungsi formatNamaAsatidzWA (prefix Ust./Ustz. dan batas 14 huruf)', () => {
-    // 1. Putra <= 14 huruf
+  it('8. Memeriksa fungsi formatNamaAsatidzWA (normalisasi M., titik tunggal, dan nama utuh)', () => {
+    // 1. Putra <= 14 huruf (nama utuh, tanpa titik)
     expect(formatNamaAsatidzWA('AGUNG SETIAJI', 'PA')).toBe('Ust. AGUNG SETIAJI');
+    expect(formatNamaAsatidzWA('AHMAD AFALLAH', 'PA')).toBe('Ust. AHMAD AFALLAH');
 
-    // 2. Putra > 14 huruf
-    expect(formatNamaAsatidzWA('SHOLEHUDDIN AL MALIKUS SHOLEH', 'PA')).toBe('Ust. SHOLEHUDDIN AL ...');
-    expect(formatNamaAsatidzWA('FIKRUL UMAM AL HANIF', 'PA')).toBe('Ust. FIKRUL UMAM AL ...');
+    // 2. Putra > 14 huruf (dipotong 14 karakter dengan titik tunggal .)
+    expect(formatNamaAsatidzWA('SHOLEHUDDIN AL MALIKUS SHOLEH', 'PA')).toBe('Ust. SHOLEHUDDIN AL .');
+    expect(formatNamaAsatidzWA('FIKRUL UMAM AL HANIF', 'PA')).toBe('Ust. FIKRUL UMAM AL .');
+    expect(formatNamaAsatidzWA('Agus M. Ainun Niam', 'PA')).toBe('Ust. Agus M. Ainun .');
 
-    // 3. Putri <= 14 huruf
+    // 3. Normalisasi awalan varian Muhammad/Mohammad/Moch/Moh/Mhd/M -> M.
+    expect(formatNamaAsatidzWA('MOHAMMAD REZA AZIZI', 'PA')).toBe('Ust. M. REZA AZIZI');
+    expect(formatNamaAsatidzWA('MUHAMMAD ABDU AR ROZZAQ', 'PA')).toBe('Ust. M. ABDU AR ROZ .');
+    expect(formatNamaAsatidzWA('MOH. KAVIN AISAR AFIQI', 'PA')).toBe('Ust. M. KAVIN AISAR .');
+    expect(formatNamaAsatidzWA('M ABURIZAL AZIZY', 'PA')).toBe('Ust. M. ABURIZAL AZ .');
+
+    // 4. Putri <= 14 huruf
     expect(formatNamaAsatidzWA("KUNI NAFI'AH", 'PI')).toBe("Ustz. KUNI NAFI'AH");
 
-    // 4. Putri > 14 huruf
-    expect(formatNamaAsatidzWA('DEWI MASYITOH ANNEIRA RAHMA', 'PI')).toBe('Ustz. DEWI MASYITOH ...');
+    // 5. Putri > 14 huruf
+    expect(formatNamaAsatidzWA('DEWI MASYITOH ANNEIRA RAHMA', 'PI')).toBe('Ustz. DEWI MASYITOH .');
 
-    // 5. Nama yang sudah memiliki awalan lama di database (tidak boleh duplikat)
+    // 6. Nama yang sudah memiliki awalan lama di database (tidak boleh duplikat)
     expect(formatNamaAsatidzWA('UST. AHMAD DIMYATI', 'PA')).toBe('Ust. AHMAD DIMYATI');
     expect(formatNamaAsatidzWA('Ustz. SITI MAESAROH', 'PI')).toBe('Ustz. SITI MAESAROH');
+  });
+
+  it('9. Memisahkan kelas yang diajar dua asatidz menjadi baris tersendiri dengan urutan Jam 1 di atas Jam 2', () => {
+    const sesiDuaGuru: Record<JamKbm, SesiJadwalHarian[]> = {
+      1: [
+        createSesi({
+          jamNum: 1,
+          jamKe: 'Jam 1',
+          nama: 'MOH. KAVIN AISAR AFIQI',
+          nia: 'K01',
+          gender: 'PA',
+          tingkat: 'ULA',
+          dinKls: '3',
+          dinBag: 'B',
+          blok: 'BLOK INDUK',
+          kelasMengajar: '3 B ULA (PA)',
+          fan: 'Tauhid',
+        }),
+      ],
+      2: [
+        createSesi({
+          jamNum: 2,
+          jamKe: 'Jam 2',
+          nama: 'AGUS M. AINUN NIAM',
+          nia: 'A09',
+          gender: 'PA',
+          tingkat: 'ULA',
+          dinKls: '3',
+          dinBag: 'B',
+          blok: 'BLOK INDUK',
+          kelasMengajar: '3 B ULA (PA)',
+          fan: 'Tarikh',
+        }),
+      ],
+      3: [],
+      4: [],
+    };
+
+    const text = generateLaporanWAText({
+      tanggal: '2026-11-03',
+      sesiHariIni: sesiDuaGuru,
+      getSesiStatus: () => ({ status: 'Hadir', keterangan: '', menitTerlambat: '', namaPengganti: '', isSaved: true }),
+      selectedJams: [1, 2],
+      filterGender: 'PA',
+    });
+
+    // Guru Jam 1 (Moh. Kavin -> M. Kavin) harus berada di baris 1, dan Guru Jam 2 (Agus M. Ainun) di baris 2
+    expect(text).toContain('1. 3 B ULA Ust. M. KAVIN AISAR . ✅\n2. 3 B ULA Ust. AGUS M. AINUN . ✅');
   });
 });

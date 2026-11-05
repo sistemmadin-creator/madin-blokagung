@@ -742,7 +742,9 @@ export interface GenerateLaporanWAParams {
  * Format nama asatidz untuk laporan WhatsApp:
  * 1. Setiap asatidz putra diawali 'Ust.' dan putri diawali 'Ustz.'
  * 2. Membersihkan gelar/awalan yang mungkin sudah tertulis di master data agar tidak duplikat
- * 3. Membatasi panjang nama maksimal 14 karakter; jika lebih dari 14 huruf, selanjutnya menjadi ' ...'
+ * 3. Normalisasi awalan varian nama Muhammad / Mohammad / Moch / Moh / Mhd / M menjadi 'M.'
+ * 4. Membatasi panjang nama maksimal 14 karakter; jika lebih dari 14 huruf, selanjutnya diberi ' .'
+ *    Pengecualian: jika nama aslinya memang sudah selesai (panjang <= 14 huruf), tidak perlu diberi titik '.'
  */
 export function formatNamaAsatidzWA(
   nama: string,
@@ -751,22 +753,29 @@ export function formatNamaAsatidzWA(
   if (!nama || !nama.trim()) return '-';
 
   // 1. Bersihkan prefix gelar lama jika ada (misal: "Ust.", "Ustadz", "Ustz.", "Ustadzah")
-  const cleanName = nama
+  let cleanName = nama
     .trim()
     .replace(/^(ust(\.|adz)?|ustz(\.|adzah)?)\s+/i, '')
     .trim();
 
-  // 2. Potong maksimal 14 karakter jika melebihi
-  let truncated = cleanName;
+  // 2. Normalisasi awalan varian Muhammad menjadi 'M.'
+  cleanName = cleanName.replace(
+    /^(muhammad|muhamad|mohammad|mohamad|mochammad|mochmad|mochamad|moch|moh|muh|mhd|m)\.?\s+/i,
+    'M. '
+  );
+
+  // 3. Batasi maksimal 14 karakter jika melebihi (dengan titik tunggal '.')
+  let formattedName = cleanName;
   if (cleanName.length > 14) {
-    truncated = cleanName.slice(0, 14).trimEnd() + ' ...';
+    const sliced = cleanName.slice(0, 14).trimEnd();
+    formattedName = sliced.endsWith('.') ? sliced : `${sliced} .`;
   }
 
-  // 3. Tambahkan prefix berdasarkan gender
+  // 4. Tambahkan prefix berdasarkan gender
   const isPI = String(gender || '').trim().toUpperCase() === 'PI';
   const prefix = isPI ? 'Ustz. ' : 'Ust. ';
 
-  return `${prefix}${truncated}`;
+  return `${prefix}${formattedName}`;
 }
 
 export function generateLaporanWAText({
@@ -964,23 +973,33 @@ export function generateLaporanWAText({
       let noUrut = 1;
       kelasKeys.forEach((kKey) => {
         const guruMap = kelasMap[kKey];
-        const listGuruTeks: string[] = [];
+        const guruList = Object.values(guruMap);
 
-        Object.values(guruMap).forEach((gItem) => {
+        // Urutkan asatidz berdasarkan jam mengajar terkecil (Jam 1 di atas Jam 2)
+        guruList.sort((a, b) => {
+          const minJamA = Math.min(...a.sessions.map((s) => s.jam));
+          const minJamB = Math.min(...b.sessions.map((s) => s.jam));
+          if (minJamA !== minJamB) return minJamA - minJamB;
+          return a.guru.localeCompare(b.guru);
+        });
+
+        // Cetak masing-masing asatidz pada baris tersendiri dengan nomor urut berlanjut
+        guruList.forEach((gItem) => {
           const formattedName = formatNamaAsatidzWA(gItem.guru, gItem.gender);
           const firstEmoji = gItem.sessions[0]?.emoji || '❓';
           const isSemuaSama = gItem.sessions.every((se) => se.emoji === firstEmoji);
+
+          let statusTeks = '';
           if (isSemuaSama) {
-            listGuruTeks.push(`${formattedName} ${firstEmoji}`);
+            statusTeks = firstEmoji;
           } else {
             const detailJam = gItem.sessions.map((se) => `J${se.jam}:${se.emoji}`).join(' ');
-            listGuruTeks.push(`${formattedName} (${detailJam})`);
+            statusTeks = `(${detailJam})`;
           }
-        });
 
-        const guruStr = listGuruTeks.join(' & ');
-        out += `${noUrut}. ${kKey} ${guruStr}\n`;
-        noUrut++;
+          out += `${noUrut}. ${kKey} ${formattedName} ${statusTeks}\n`;
+          noUrut++;
+        });
       });
 
       out += `\n`;

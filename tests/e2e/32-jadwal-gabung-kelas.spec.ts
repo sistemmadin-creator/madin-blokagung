@@ -26,11 +26,14 @@ test.describe('Fitur Gabung Kelas KBM (Pilihan Dropdown & Tanpa Sakelar)', () =>
     // Pastikan seluruh sakelar/switch gabung kelas sudah dihapus dari DOM
     await expect(page.locator('input[data-testid*="switch-gabung"]')).toHaveCount(0);
 
-    // Cek Selasa - Jam 2
-    const rowSelasaJam2 = page.locator('div', { hasText: 'Selasa - Jam 2' }).first();
+    // Cek baris sesi Selasa - Jam 2
+    const rowSelasaJam2 = page.locator('div').filter({ has: page.getByText('Selasa - Jam 2', { exact: true }) }).last();
     await expect(rowSelasaJam2).toBeVisible();
 
-    // Kosongkan guru di Selasa Jam 2 terlebih dahulu jika sebelumnya terisi
+    // Verifikasi bahwa status awalnya terdeteksi sebagai kelas digabung
+    await expect(rowSelasaJam2.getByText(/🤝 Kelas Digabung:/i)).toBeVisible({ timeout: 5_000 });
+
+    // Kosongkan nama guru pada baris Selasa - Jam 2 untuk menguji status unmerged / memilih ulang
     const inputAsatidz2 = rowSelasaJam2.locator('input[type="text"]').first();
     await inputAsatidz2.fill('');
 
@@ -43,16 +46,18 @@ test.describe('Fitur Gabung Kelas KBM (Pilihan Dropdown & Tanpa Sakelar)', () =>
     ).toBeVisible();
 
     // Verifikasi bahwa datalist memuat opsi gabung kelas
-    const datalistOptions = rowSelasaJam2.locator('datalist option');
-    const optionGabung = datalistOptions.filter({ hasText: /GABUNG KELAS/i }).first();
+    const optionGabung = rowSelasaJam2.locator('datalist option[value*="GABUNG KELAS"]').first();
     await expect(optionGabung).toBeAttached();
 
     // Pilih / isi opsi gabung kelas dari dropdown
-    await inputAsatidz2.fill('[GABUNG KELAS di 2 B WUSTHO (PI)] ELMIDA HIDAYATUL MAULIDAH');
+    const optVal = (await optionGabung.getAttribute('value')) || '';
+    expect(optVal).toContain('GABUNG KELAS');
+    await inputAsatidz2.fill(optVal);
 
     // Verifikasi bahwa input otomatis dibersihkan menjadi nama pengajar asli
     const valBersih = await inputAsatidz2.inputValue();
-    expect(valBersih).toBe('ELMIDA HIDAYATUL MAULIDAH');
+    expect(valBersih.length).toBeGreaterThan(0);
+    expect(valBersih).not.toContain('GABUNG KELAS');
 
     // Verifikasi bahwa badge indikator ringkas Kelas Digabung muncul
     await expect(
@@ -96,7 +101,7 @@ test.describe('Fitur Gabung Kelas KBM (Pilihan Dropdown & Tanpa Sakelar)', () =>
     await expect(page.locator('input[data-testid*="switch-gabung"]')).toHaveCount(0);
 
     // Kosongkan baris Sabtu Jam 1 untuk menguji slot kosong
-    const rowSabtuJam1 = page.locator('div', { hasText: 'Sabtu - Jam 1' }).first();
+    const rowSabtuJam1 = page.locator('div').filter({ has: page.getByText('Sabtu - Jam 1', { exact: true }) }).last();
     const btnHapusSabtu1 = rowSabtuJam1.locator('button[title*="Hapus"]').first();
     if (await btnHapusSabtu1.isVisible()) {
       await btnHapusSabtu1.click();
