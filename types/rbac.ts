@@ -11,6 +11,7 @@ export type AppPageId =
   | 'fan-pengajar'
   | 'daftar-pendidik'
   | 'setoran'
+  | 'setor-mustahiq'
   | 'rekap-hafalan'
   | 'piagam'
   | 'absensi'
@@ -140,6 +141,14 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     label: 'Setoran Muhafadzoh',
     group: 'PKM. Muhafadzoh',
     routes: ['/setoran'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: true,
+  },
+  {
+    id: 'setor-mustahiq',
+    label: 'Setor Mustahiq',
+    group: 'PKM. Muhafadzoh',
+    routes: ['/setor-mustahiq'],
     supportsEditOverride: true,
     supportsDeleteOverride: true,
   },

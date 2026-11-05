@@ -7,7 +7,7 @@ import {
 } from '@/types/setoran';
 
 export const DEFAULT_HAFALAN_WAJIB: Record<string, string[]> = {
-  ULA_1: ["Juz Amma' (Al-Fajr-An-Nass)"],
+  ULA_1: ["Juz Amma' (An-Naas - Adh-Dhuha)", 'Aqidatul Awam'],
   ULA_2: ["Aurod Fii Sholah Wa ba'daha", 'Tahlil / Yasin'],
   ULA_3: ['Tasrif Istilahi'],
   ULA_4: ['Nadhom Al-Imrithi'],
@@ -258,14 +258,26 @@ export function normalizeToItemDetail(
 
   // String legacy conversion
   const nameStr = typeof item === 'string' ? item : '';
+  const upperName = norm(nameStr);
+  let defaultUnit: TargetUnitNumeric = 'baris';
+  let defaultEnd = 100;
+
+  if (upperName.includes('IMRITHI')) {
+    defaultUnit = 'bait';
+    defaultEnd = 254;
+  } else if (upperName.includes('FIYYAH 350')) {
+    defaultUnit = 'bait';
+    defaultEnd = 500;
+  }
+
   return {
     id: `haf_${Date.now()}_${fallbackIndex}_${Math.random().toString(36).substring(2, 7)}`,
     nama: nameStr,
     targetType: 'numeric',
-    numericUnit: 'baris',
+    numericUnit: defaultUnit,
     customUnit: '',
     numericStart: 1,
-    numericEnd: 100,
+    numericEnd: defaultEnd,
     numericStep: 1,
     sentences: [],
     sentenceUnitLabel: 'Kalimat',

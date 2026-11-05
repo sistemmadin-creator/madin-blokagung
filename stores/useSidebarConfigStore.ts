@@ -69,6 +69,7 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
     group: 'PKM. Muhafadzoh',
     items: [
       { id: 'item-setoran', title: 'Setoran', href: '/setoran', iconName: 'Grid' },
+      { id: 'item-setor-mustahiq', title: 'Setor Mustahiq', href: '/setor-mustahiq', iconName: 'BookOpen' },
       { id: 'item-rekap-hafalan', title: 'Rekap Hafalan', href: '/rekap-hafalan', iconName: 'BarChart2' },
       { id: 'item-piagam', title: 'Cetak Piagam', href: '/piagam', iconName: 'Award' },
     ],
@@ -111,6 +112,40 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
     ],
   },
 ];
+
+function mergeMissingDefaultItems(loadedGroups: ConfigMenuGroup[]): ConfigMenuGroup[] {
+  if (!Array.isArray(loadedGroups) || loadedGroups.length === 0) return DEFAULT_SIDEBAR_GROUPS;
+
+  const existingItemIds = new Set<string>();
+  loadedGroups.forEach((g) => {
+    (g.items || []).forEach((it) => {
+      existingItemIds.add(it.id);
+    });
+  });
+
+  return loadedGroups.map((g) => {
+    const defGroup = DEFAULT_SIDEBAR_GROUPS.find((dg) => dg.id === g.id);
+    if (!defGroup) return g;
+
+    const missingItems = defGroup.items.filter((dit) => !existingItemIds.has(dit.id));
+    if (missingItems.length === 0) return g;
+
+    const updatedItems = [...g.items];
+    missingItems.forEach((mit) => {
+      const defIdx = defGroup.items.findIndex((x) => x.id === mit.id);
+      if (defIdx >= 0 && defIdx <= updatedItems.length) {
+        updatedItems.splice(defIdx, 0, mit);
+      } else {
+        updatedItems.push(mit);
+      }
+    });
+
+    return {
+      ...g,
+      items: updatedItems,
+    };
+  });
+}
 
 export const useSidebarConfigStore = create<SidebarConfigState>()(
   persist(
@@ -337,7 +372,7 @@ export const useSidebarConfigStore = create<SidebarConfigState>()(
 
           if (!error && data?.value?.groups && Array.isArray(data.value.groups)) {
             set({
-              groups: data.value.groups,
+              groups: mergeMissingDefaultItems(data.value.groups),
               lastUpdated: data.value.last_updated,
               cloudSyncStatus: 'synced',
               cloudMessage: 'Data navigasi terbaru berhasil dimuat dari Cloud Supabase.',
@@ -350,6 +385,16 @@ export const useSidebarConfigStore = create<SidebarConfigState>()(
     }),
     {
       name: 'madina_sidebar_config_v1',
+      merge: (persistedState: any, currentState) => {
+        if (!persistedState || !Array.isArray(persistedState.groups)) {
+          return currentState;
+        }
+        return {
+          ...currentState,
+          ...persistedState,
+          groups: mergeMissingDefaultItems(persistedState.groups),
+        };
+      },
     }
   )
 );
