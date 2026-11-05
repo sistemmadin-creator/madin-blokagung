@@ -148,7 +148,7 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     id: 'setor-mustahiq',
     label: 'Setor Mustahiq',
     group: 'PKM. Muhafadzoh',
-    routes: ['/setor-mustahiq'],
+    routes: ['/setor-mustahiq', '/setor-mustahiq/rekap'],
     supportsEditOverride: true,
     supportsDeleteOverride: true,
   },

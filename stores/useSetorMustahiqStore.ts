@@ -334,10 +334,19 @@ export function buildSantriSetorRow(
   tahun: number
 ): SantriSetorMustahiqRow {
   const noInduk = String(santri.no_induk || '').trim();
-  const tingkat = norm(santri.tingkat || 'ULA');
-  const dinKls = norm(santri.din_kls || '1');
-  const dinBag = norm(santri.din_bag || 'A');
-  const paPi = norm(santri.pa_pi || 'PA');
+  const rawTk = norm(santri.tingkat);
+  const tingkat =
+    rawTk.includes('WUSTHO') || rawTk.includes('WUSTHA')
+      ? 'WUSTHO'
+      : rawTk.includes('ULYA')
+      ? 'ULYA'
+      : 'ULA';
+  const rawKls = norm(santri.din_kls);
+  const dinKls = !rawKls || rawKls === '-' ? '1' : rawKls;
+  const rawBag = norm(santri.din_bag);
+  const dinBag = !rawBag || rawBag === '-' ? 'A' : rawBag;
+  const rawPaPi = norm(santri.pa_pi);
+  const paPi = rawPaPi === 'PI' ? 'PI' : 'PA';
   const configKey = `${tingkat}_${dinKls}`;
   const shortKelasBadge = `${dinKls}${dinBag}`;
   const kelasLabel = `${dinKls} ${tingkat} ${dinBag}`;

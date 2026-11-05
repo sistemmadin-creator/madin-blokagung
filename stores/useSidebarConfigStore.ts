@@ -69,7 +69,26 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
     group: 'PKM. Muhafadzoh',
     items: [
       { id: 'item-setoran', title: 'Setoran', href: '/setoran', iconName: 'Grid' },
-      { id: 'item-setor-mustahiq', title: 'Setor Mustahiq', href: '/setor-mustahiq', iconName: 'BookOpen' },
+      {
+        id: 'item-setor-mustahiq',
+        title: 'Setor Mustahiq',
+        href: '/setor-mustahiq',
+        iconName: 'BookOpen',
+        children: [
+          {
+            id: 'sub-setor-kelas',
+            title: 'Setor Kelas',
+            href: '/setor-mustahiq',
+            iconName: 'BookOpen',
+          },
+          {
+            id: 'sub-rekap-setor-mustahiq',
+            title: 'Rekap Setor',
+            href: '/setor-mustahiq/rekap',
+            iconName: 'BarChart2',
+          },
+        ],
+      },
       { id: 'item-rekap-hafalan', title: 'Rekap Hafalan', href: '/rekap-hafalan', iconName: 'BarChart2' },
       { id: 'item-piagam', title: 'Cetak Piagam', href: '/piagam', iconName: 'Award' },
     ],
@@ -143,12 +162,25 @@ function mergeMissingDefaultItems(loadedGroups: ConfigMenuGroup[]): ConfigMenuGr
       });
     }
 
-    // Ensure item-absen-konsorsium is not hidden accidentally
+    // Ensure item-absen-konsorsium is not hidden accidentally and sync missing default children (e.g., Setor Mustahiq submenus)
     const finalItems = updatedItems.map((item) => {
-      if (item.id === 'item-absen-konsorsium' && item.hidden) {
-        return { ...item, hidden: false };
+      let nextItem = item;
+      if (nextItem.id === 'item-absen-konsorsium' && nextItem.hidden) {
+        nextItem = { ...nextItem, hidden: false };
       }
-      return item;
+      const defItem = defGroup.items.find((di) => di.id === nextItem.id);
+      if (defItem?.children && defItem.children.length > 0) {
+        const existingChildren = Array.isArray(nextItem.children) ? nextItem.children : [];
+        const existingSubIds = new Set(existingChildren.map((c) => c.id));
+        const missingSubs = defItem.children.filter((dc) => !existingSubIds.has(dc.id));
+        if (missingSubs.length > 0) {
+          nextItem = {
+            ...nextItem,
+            children: [...existingChildren, ...missingSubs],
+          };
+        }
+      }
+      return nextItem;
     });
 
     return {

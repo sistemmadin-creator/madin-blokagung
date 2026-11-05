@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import {
   BookOpen,
+  BarChart2,
   Search,
   Plus,
   Trash2,
@@ -730,16 +732,35 @@ export default function SetorMustahiqModule() {
           </p>
         </div>
 
-        {canAccessSettings && (
-          <button
-            type="button"
-            onClick={openSettings}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold shadow-sm transition self-start sm:self-auto"
-          >
-            <Settings className="w-4 h-4 text-emerald-700" />
-            <span>Opsi Target Hafalan</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="inline-flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-xs">
+            <Link
+              href="/setor-mustahiq"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs transition-all"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              Setor Kelas
+            </Link>
+            <Link
+              href="/setor-mustahiq/rekap"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all"
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              Rekap Setor
+            </Link>
+          </div>
+
+          {canAccessSettings && (
+            <button
+              type="button"
+              onClick={openSettings}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold shadow-sm transition cursor-pointer"
+            >
+              <Settings className="w-4 h-4 text-emerald-700" />
+              <span className="hidden md:inline">Opsi Target Hafalan</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main Toolbar (Identik dengan LPTQ Gambar 2 & 3) */}

@@ -62,6 +62,7 @@ const SUB_ICON_REGISTRY: Record<string, React.ReactNode> = {
   Sliders: <Sliders className="w-4 h-4 text-emerald-300" />,
   LayoutList: <LayoutList className="w-4 h-4 text-amber-300" />,
   BookOpen: <BookOpen className="w-4 h-4 text-rose-300" />,
+  BarChart2: <BarChart2 className="w-4 h-4 text-emerald-300" />,
   ShieldCheck: <ShieldCheck className="w-4 h-4 text-teal-300" />,
 };
 
@@ -89,6 +90,7 @@ export default function SidebarDesktop() {
 
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
     'Jadwal KBM': true,
+    'Setor Mustahiq': true,
     'Pengaturan': true,
   });
 

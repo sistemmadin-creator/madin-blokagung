@@ -181,6 +181,22 @@ export default function BottomNavMobile() {
             <span>Setoran Muhafadzoh</span>
           </Link>
           <Link
+            href="/setor-mustahiq"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800"
+          >
+            <BookOpen className="w-4 h-4 text-teal-600" />
+            <span>Setor Kelas (Mustahiq)</span>
+          </Link>
+          <Link
+            href="/setor-mustahiq/rekap"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800"
+          >
+            <BarChart2 className="w-4 h-4 text-emerald-700" />
+            <span>Rekap Setor Mustahiq</span>
+          </Link>
+          <Link
             href="/rekap-hafalan"
             onClick={() => setActiveMenu(null)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800"
