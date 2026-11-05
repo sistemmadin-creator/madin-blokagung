@@ -116,6 +116,7 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
 function mergeMissingDefaultItems(loadedGroups: ConfigMenuGroup[]): ConfigMenuGroup[] {
   if (!Array.isArray(loadedGroups) || loadedGroups.length === 0) return DEFAULT_SIDEBAR_GROUPS;
 
+  const existingGroupIds = new Set(loadedGroups.map((g) => g.id));
   const existingItemIds = new Set<string>();
   loadedGroups.forEach((g) => {
     (g.items || []).forEach((it) => {
@@ -123,28 +124,48 @@ function mergeMissingDefaultItems(loadedGroups: ConfigMenuGroup[]): ConfigMenuGr
     });
   });
 
-  return loadedGroups.map((g) => {
+  // 1. Merge missing items into existing groups and ensure essential groups are visible
+  const merged = loadedGroups.map((g) => {
     const defGroup = DEFAULT_SIDEBAR_GROUPS.find((dg) => dg.id === g.id);
     if (!defGroup) return g;
 
     const missingItems = defGroup.items.filter((dit) => !existingItemIds.has(dit.id));
-    if (missingItems.length === 0) return g;
-
     const updatedItems = [...g.items];
-    missingItems.forEach((mit) => {
-      const defIdx = defGroup.items.findIndex((x) => x.id === mit.id);
-      if (defIdx >= 0 && defIdx <= updatedItems.length) {
-        updatedItems.splice(defIdx, 0, mit);
-      } else {
-        updatedItems.push(mit);
+
+    if (missingItems.length > 0) {
+      missingItems.forEach((mit) => {
+        const defIdx = defGroup.items.findIndex((x) => x.id === mit.id);
+        if (defIdx >= 0 && defIdx <= updatedItems.length) {
+          updatedItems.splice(defIdx, 0, { ...mit, hidden: false });
+        } else {
+          updatedItems.push({ ...mit, hidden: false });
+        }
+      });
+    }
+
+    // Ensure item-absen-konsorsium is not hidden accidentally
+    const finalItems = updatedItems.map((item) => {
+      if (item.id === 'item-absen-konsorsium' && item.hidden) {
+        return { ...item, hidden: false };
       }
+      return item;
     });
 
     return {
       ...g,
-      items: updatedItems,
+      hidden: g.id === 'grp-kesiswaan' ? false : g.hidden,
+      items: finalItems,
     };
   });
+
+  // 2. Add any default groups that are completely missing
+  DEFAULT_SIDEBAR_GROUPS.forEach((defG) => {
+    if (!existingGroupIds.has(defG.id)) {
+      merged.push(defG);
+    }
+  });
+
+  return merged;
 }
 
 export const useSidebarConfigStore = create<SidebarConfigState>()(

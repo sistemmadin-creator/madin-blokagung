@@ -8,12 +8,14 @@ import { usePagePermission } from '@/stores/useRbacStore';
 import {
   KelasKonsorsium,
   SesiPresensiKonsorsium,
+  JenisKonsorsium,
 } from '@/types/konsorsium';
 import KartuKelasKonsorsium from '@/components/modules/konsorsium/KartuKelasKonsorsium';
 import ModalBuatKelasKonsorsium from '@/components/modules/konsorsium/ModalBuatKelasKonsorsium';
 import ModalDaftarAsatidzKonsorsium from '@/components/modules/konsorsium/ModalDaftarAsatidzKonsorsium';
 import ModalInputPresensiKonsorsium from '@/components/modules/konsorsium/ModalInputPresensiKonsorsium';
 import ModalRiwayatPresensiKonsorsium from '@/components/modules/konsorsium/ModalRiwayatPresensiKonsorsium';
+import ModalDetailMatriksTahunan from '@/components/modules/konsorsium/ModalDetailMatriksTahunan';
 import {
   BookOpen,
   Plus,
@@ -21,6 +23,7 @@ import {
   CalendarCheck,
   Search,
   RefreshCw,
+  Layers,
 } from 'lucide-react';
 
 const TINGKAT_FILTERS = ['SEMUA', 'ULA', 'WUSTHO', 'ULYA', "ISTI'DAD"];
@@ -42,6 +45,9 @@ export default function AbsenKonsorsiumPage() {
   const { fetchAsatidz, asatidzList } = useAsatidzStore();
   const { canEdit } = usePagePermission('absen-konsorsium');
 
+  // Filter Jenis Konsor State ('SEMUA' | 'Mustahiq/qoh' | 'Munawib/bah')
+  const [filterJenis, setFilterJenis] = useState<'SEMUA' | JenisKonsorsium>('SEMUA');
+
   // Modal States
   const [isModalBuatOpen, setIsModalBuatOpen] = useState(false);
   const [editKelasTarget, setEditKelasTarget] = useState<KelasKonsorsium | null>(null);
@@ -56,20 +62,37 @@ export default function AbsenKonsorsiumPage() {
   const [isModalRiwayatOpen, setIsModalRiwayatOpen] = useState(false);
   const [targetKelasRiwayat, setTargetKelasRiwayat] = useState<KelasKonsorsium | null>(null);
 
+  const [isModalMatriksOpen, setIsModalMatriksOpen] = useState(false);
+  const [targetKelasMatriks, setTargetKelasMatriks] = useState<KelasKonsorsium | null>(null);
+
   useEffect(() => {
     fetchKonsorsiumData();
     if (Object.keys(fanConfig).length === 0) fetchFanData();
     if (asatidzList.length === 0) fetchAsatidz();
   }, [fetchKonsorsiumData, fetchFanData, fetchAsatidz, fanConfig, asatidzList.length]);
 
-  // Filter Kelas Konsorsium
+  // Hitung jumlah kelas per jenis konsor
+  const countsByJenis = useMemo(() => {
+    let mustahiq = 0;
+    let munawib = 0;
+    kelasList.forEach((k) => {
+      if ((k.jenisKonsor || 'Mustahiq/qoh') === 'Mustahiq/qoh') mustahiq++;
+      else munawib++;
+    });
+    return { semua: kelasList.length, mustahiq, munawib };
+  }, [kelasList]);
+
+  // Filter Kelas Konsorsium (Tingkat + Jenis Konsor + Pencarian)
   const filteredKelasList = useMemo(() => {
     return kelasList.filter((k) => {
       const matchTingkat =
         selectedTingkat === 'SEMUA' || k.tingkat === selectedTingkat;
 
+      const currentJenis = k.jenisKonsor || 'Mustahiq/qoh';
+      const matchJenis = filterJenis === 'SEMUA' || currentJenis === filterJenis;
+
       const q = searchKeyword.toLowerCase().trim();
-      if (!q) return matchTingkat;
+      if (!q) return matchTingkat && matchJenis;
 
       // Cari berdasarkan nama kelas, nama pembimbing, atau keterangan
       const matchText =
@@ -84,9 +107,9 @@ export default function AbsenKonsorsiumPage() {
           (a.nama.toLowerCase().includes(q) || a.nia.toLowerCase().includes(q))
       );
 
-      return matchTingkat && (matchText || matchAnggota);
+      return matchTingkat && matchJenis && (matchText || matchAnggota);
     });
-  }, [kelasList, selectedTingkat, searchKeyword, anggotaList]);
+  }, [kelasList, selectedTingkat, filterJenis, searchKeyword, anggotaList]);
 
   // Statistik Ringkasan KPI
   const stats = useMemo(() => {
@@ -113,7 +136,7 @@ export default function AbsenKonsorsiumPage() {
     setIsModalDaftarOpen(true);
   };
 
-  const handleOpenInputPresensi = (kelas: KelasKonsorsium) => {
+  const handleOpenInputPresensi = (kelas: KelasKonsorsium, _tanggal?: string) => {
     setTargetKelasPresensi(kelas);
     setEditSesiTarget(null);
     setIsModalPresensiOpen(true);
@@ -122,6 +145,11 @@ export default function AbsenKonsorsiumPage() {
   const handleOpenLihatRiwayat = (kelas: KelasKonsorsium) => {
     setTargetKelasRiwayat(kelas);
     setIsModalRiwayatOpen(true);
+  };
+
+  const handleOpenDetailMatriks = (kelas: KelasKonsorsium) => {
+    setTargetKelasMatriks(kelas);
+    setIsModalMatriksOpen(true);
   };
 
   const handleEditSesiDariRiwayat = (sesi: SesiPresensiKonsorsium) => {
@@ -144,7 +172,7 @@ export default function AbsenKonsorsiumPage() {
                 Absen Konsorsium
               </h1>
               <p className="text-xs sm:text-sm text-slate-500">
-                Presensi forum konsorsium asatidz berbasis pendaftaran kelas fan pelajaran
+                Presensi forum konsorsium asatidz (Mustahiq/qoh &amp; Munawib/bah) per kelas fan pelajaran
               </p>
             </div>
           </div>
@@ -218,7 +246,58 @@ export default function AbsenKonsorsiumPage() {
         </div>
       </div>
 
-      {/* 3. Toolbar Pencarian & Filter Tingkat */}
+      {/* 3. Pengelompokan Tab Utama Berdasarkan 'Jenis Konsor' */}
+      <div className="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setFilterJenis('SEMUA')}
+          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
+            filterJenis === 'SEMUA'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>Semua Konsorsium</span>
+          <span className={`text-[11px] px-1.5 py-0.2 rounded-full ${filterJenis === 'SEMUA' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
+            {countsByJenis.semua}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFilterJenis('Mustahiq/qoh')}
+          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
+            filterJenis === 'Mustahiq/qoh'
+              ? 'bg-emerald-700 text-white shadow-xs'
+              : 'text-slate-600 hover:text-emerald-900 hover:bg-emerald-50/70'
+          }`}
+        >
+          <span>Konsorsium Mustahiq/qoh</span>
+          <span className="text-[10px] font-normal opacity-90">(Setiap Hari Kamis)</span>
+          <span className={`text-[11px] px-1.5 py-0.2 rounded-full ${filterJenis === 'Mustahiq/qoh' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
+            {countsByJenis.mustahiq}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFilterJenis('Munawib/bah')}
+          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
+            filterJenis === 'Munawib/bah'
+              ? 'bg-teal-700 text-white shadow-xs'
+              : 'text-slate-600 hover:text-teal-900 hover:bg-teal-50/70'
+          }`}
+        >
+          <span>Konsorsium Munawib/bah</span>
+          <span className="text-[10px] font-normal opacity-90">(Setiap Hari Selasa)</span>
+          <span className={`text-[11px] px-1.5 py-0.2 rounded-full ${filterJenis === 'Munawib/bah' ? 'bg-white/20 text-white' : 'bg-teal-100 text-teal-800'}`}>
+            {countsByJenis.munawib}
+          </span>
+        </button>
+      </div>
+
+      {/* 4. Toolbar Pencarian & Filter Tingkat */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs">
         {/* Filter Tingkat Buttons */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
@@ -251,7 +330,7 @@ export default function AbsenKonsorsiumPage() {
         </div>
       </div>
 
-      {/* 4. Daftar Kelas Konsorsium (Kartu / Kelompok Tabel) */}
+      {/* 5. Daftar Kelas Konsorsium (Kartu / Kelompok Tabel) */}
       {filteredKelasList.length === 0 ? (
         <div className="py-16 text-center px-4 rounded-3xl border-2 border-dashed border-slate-200 bg-white flex flex-col items-center justify-center max-w-xl mx-auto space-y-3">
           <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -264,8 +343,8 @@ export default function AbsenKonsorsiumPage() {
           </h3>
           <p className="text-xs sm:text-sm text-slate-500 max-w-md">
             {kelasList.length === 0
-              ? 'Buat kelas konsorsium terlebih dahulu dengan menentukan tingkat kelas, nama kelas (dari fan pelajaran), dan pembimbing kelas.'
-              : 'Coba ubah kata kunci pencarian atau ganti filter tingkat kelas.'}
+              ? 'Buat kelas konsorsium terlebih dahulu dengan menentukan tingkat kelas, jenis konsor (Mustahiq/qoh atau Munawib/bah), nama kelas, dan pembimbing kelas.'
+              : 'Coba ubah kata kunci pencarian, ganti filter tingkat, atau pilih grup jenis konsor yang lain.'}
           </p>
 
           {canEdit && kelasList.length === 0 && (
@@ -289,12 +368,13 @@ export default function AbsenKonsorsiumPage() {
               onInputPresensi={handleOpenInputPresensi}
               onLihatRiwayat={handleOpenLihatRiwayat}
               onEditKelas={handleOpenEditKelas}
+              onLihatDetailMatriks={handleOpenDetailMatriks}
             />
           ))}
         </div>
       )}
 
-      {/* 5. Modals */}
+      {/* 6. Modals */}
       <ModalBuatKelasKonsorsium
         isOpen={isModalBuatOpen}
         onClose={() => setIsModalBuatOpen(false)}
@@ -319,6 +399,13 @@ export default function AbsenKonsorsiumPage() {
         onClose={() => setIsModalRiwayatOpen(false)}
         kelas={targetKelasRiwayat}
         onEditSesi={handleEditSesiDariRiwayat}
+      />
+
+      <ModalDetailMatriksTahunan
+        isOpen={isModalMatriksOpen}
+        onClose={() => setIsModalMatriksOpen(false)}
+        kelas={targetKelasMatriks}
+        onInputPresensi={handleOpenInputPresensi}
       />
     </div>
   );

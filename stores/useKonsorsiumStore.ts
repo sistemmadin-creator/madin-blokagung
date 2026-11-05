@@ -131,10 +131,15 @@ export const useKonsorsiumStore = create<KonsorsiumState>((set, get) => ({
 
     // 3. Set data ke store
     if (loadedPayload) {
+      const sanitizedKelas = (
+        Array.isArray(loadedPayload.kelasList) ? loadedPayload.kelasList : []
+      ).map((k: any) => ({
+        ...k,
+        jenisKonsor: k.jenisKonsor || 'Mustahiq/qoh',
+      }));
+
       set({
-        kelasList: Array.isArray(loadedPayload.kelasList)
-          ? loadedPayload.kelasList
-          : [],
+        kelasList: sanitizedKelas,
         anggotaList: Array.isArray(loadedPayload.anggotaList)
           ? loadedPayload.anggotaList
           : [],

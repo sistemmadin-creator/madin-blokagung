@@ -5,7 +5,7 @@ import Dialog from '@/components/ui/Dialog';
 import { useKonsorsiumStore } from '@/stores/useKonsorsiumStore';
 import { useFanStore } from '@/stores/useFanStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
-import { KelasKonsorsium } from '@/types/konsorsium';
+import { KelasKonsorsium, JenisKonsorsium } from '@/types/konsorsium';
 import { parseFanItemString } from '@/lib/utils/fanHelper';
 import {
   BookOpen,
@@ -36,6 +36,7 @@ export default function ModalBuatKelasKonsorsium({
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
 
   const [tingkat, setTingkat] = useState('ULA');
+  const [jenisKonsor, setJenisKonsor] = useState<JenisKonsorsium>('Mustahiq/qoh');
   const [namaKelas, setNamaKelas] = useState('');
   const [pembimbingNama, setPembimbingNama] = useState('');
   const [pembimbingNia, setPembimbingNia] = useState('');
@@ -59,6 +60,7 @@ export default function ModalBuatKelasKonsorsium({
 
       if (editData) {
         setTingkat(editData.tingkat || 'ULA');
+        setJenisKonsor(editData.jenisKonsor || 'Mustahiq/qoh');
         setNamaKelas(editData.namaKelas || '');
         setPembimbingNama(editData.pembimbingNama || '');
         setPembimbingNia(editData.pembimbingNia || '');
@@ -66,6 +68,7 @@ export default function ModalBuatKelasKonsorsium({
         setPembimbingSearch(editData.pembimbingNama || '');
       } else {
         setTingkat('ULA');
+        setJenisKonsor('Mustahiq/qoh');
         setNamaKelas('');
         setPembimbingNama('');
         setPembimbingNia('');
@@ -163,6 +166,7 @@ export default function ModalBuatKelasKonsorsium({
       if (editData) {
         await updateKelasKonsorsium(editData.id, {
           tingkat,
+          jenisKonsor,
           namaKelas: namaKelas.trim(),
           pembimbingNama: pembimbingNama.trim(),
           pembimbingNia: pembimbingNia.trim(),
@@ -171,6 +175,7 @@ export default function ModalBuatKelasKonsorsium({
       } else {
         await tambahKelasKonsorsium({
           tingkat,
+          jenisKonsor,
           namaKelas: namaKelas.trim(),
           pembimbingNama: pembimbingNama.trim(),
           pembimbingNia: pembimbingNia.trim(),
@@ -224,7 +229,58 @@ export default function ModalBuatKelasKonsorsium({
           </div>
         </div>
 
-        {/* 2. Nama Kelas (Ketik / Pilih dari Fan Pelajaran) */}
+        {/* 2. Jenis Konsor */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+            <span>Jenis Konsor <span className="text-rose-500">*</span></span>
+            <span className="text-[11px] font-normal text-slate-400">
+              {jenisKonsor === 'Mustahiq/qoh' ? 'Pertemuan: Setiap Hari Kamis' : 'Pertemuan: Setiap Hari Selasa'}
+            </span>
+          </label>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => setJenisKonsor('Mustahiq/qoh')}
+              className={`p-3 rounded-xl border text-left transition-all ${
+                jenisKonsor === 'Mustahiq/qoh'
+                  ? 'bg-emerald-50/80 border-emerald-600 ring-1 ring-emerald-600'
+                  : 'bg-white border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold text-slate-800">Mustahiq/qoh</span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                  Hari Kamis
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Konsorsium forum mustahiq/mustahiqoh
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setJenisKonsor('Munawib/bah')}
+              className={`p-3 rounded-xl border text-left transition-all ${
+                jenisKonsor === 'Munawib/bah'
+                  ? 'bg-teal-50/80 border-teal-600 ring-1 ring-teal-600'
+                  : 'bg-white border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold text-slate-800">Munawib/bah</span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">
+                  Hari Selasa
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Konsorsium forum munawib/munawibah
+              </p>
+            </button>
+          </div>
+        </div>
+
+        {/* 3. Nama Kelas (Ketik / Pilih dari Fan Pelajaran) */}
         <div className="relative" ref={fanDropdownRef}>
           <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5">

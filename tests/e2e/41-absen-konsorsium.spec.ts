@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Modul: Absen Konsorsium', () => {
-  test('Navigasi ke Absen Konsorsium, buat kelas konsorsium, uji modal daftar asatidz & input presensi', async ({ page }) => {
+  test('Navigasi, buat kelas dengan jenis konsor, verifikasi kolom 1..5, switcher bulan, detail matriks tahunan, & input presensi', async ({
+    page,
+  }) => {
     // 1. Kunjungi halaman /absen-konsorsium
     await page.goto('/absen-konsorsium');
 
@@ -10,6 +12,11 @@ test.describe('Modul: Absen Konsorsium', () => {
     await expect(page.getByText(/Total Kelas Konsorsium/i)).toBeVisible();
     await expect(page.getByText(/Asatidz Terdaftar Aktif/i)).toBeVisible();
     await expect(page.getByText(/Sesi Pertemuan Tercatat/i)).toBeVisible();
+
+    // Verifikasi Tab Pengelompokan Jenis Konsor
+    await expect(page.getByRole('button', { name: /Semua Konsorsium/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Konsorsium Mustahiq\/qoh/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Konsorsium Munawib\/bah/i })).toBeVisible();
 
     // 3. Verifikasi Tombol + Buat Kelas Konsorsium
     const btnBuatKelas = page.getByRole('button', { name: /\+ Buat Kelas Konsorsium/i });
@@ -24,11 +31,14 @@ test.describe('Modul: Absen Konsorsium', () => {
     // Verifikasi Tingkat Buttons
     await expect(dialogBuat.getByRole('button', { name: 'ULA', exact: true })).toBeVisible();
     await expect(dialogBuat.getByRole('button', { name: 'WUSTHO', exact: true })).toBeVisible();
-
-    // Isi Form Buat Kelas
     await dialogBuat.getByRole('button', { name: 'ULA', exact: true }).click();
 
-    // 4. Pilih Fan dari suggestion chip Cepat
+    // Verifikasi & Pilih Jenis Konsor
+    await expect(dialogBuat.getByText(/Mustahiq\/qoh/i)).toBeVisible();
+    await expect(dialogBuat.getByText(/Munawib\/bah/i)).toBeVisible();
+    await dialogBuat.getByRole('button', { name: /Mustahiq\/qoh/i }).click();
+
+    // Pilih Fan dari suggestion chip Cepat
     await dialogBuat.getByRole('button', { name: 'Fiqih', exact: true }).click();
 
     // Isi Pembimbing
@@ -39,7 +49,7 @@ test.describe('Modul: Absen Konsorsium', () => {
     // Isi Keterangan (focus textarea closes pembimbing dropdown)
     const textareaKet = dialogBuat.locator('textarea');
     await textareaKet.focus();
-    await textareaKet.fill('Jadwal Pertemuan Malam Rabu');
+    await textareaKet.fill('Jadwal Pertemuan Setiap Kamis');
 
     // Submit Buat Kelas
     const btnSubmit = dialogBuat.getByRole('button', { name: /Buat Kelas Konsorsium/i });
@@ -47,11 +57,21 @@ test.describe('Modul: Absen Konsorsium', () => {
     await expect(dialogBuat).not.toBeVisible();
 
     // 5. Verifikasi Kartu Kelas Muncul di Halaman
-    await expect(page.getByText('Fiqih', { exact: true })).toBeVisible();
-    await expect(page.getByText(/Ust\. Ahmad E2E/i)).toBeVisible();
+    const kartu = page.locator('div.group\\/card').first();
+    await expect(kartu).toBeVisible();
+    await expect(kartu.getByText('Fiqih', { exact: true })).toBeVisible();
+    await expect(kartu.getByText(/Ust\. Ahmad E2E/i)).toBeVisible();
+    await expect(kartu.getByText('Mustahiq/qoh', { exact: true })).toBeVisible();
+
+    // Verifikasi Kolom Pertemuan 1..4 (Hari Kamis) di kartu
+    const headers = kartu.getByRole('columnheader');
+    await expect(headers.filter({ hasText: /^1/ })).toBeVisible();
+    await expect(headers.filter({ hasText: /^2/ })).toBeVisible();
+    await expect(headers.filter({ hasText: /^3/ })).toBeVisible();
+    await expect(headers.filter({ hasText: /^4/ })).toBeVisible();
 
     // 6. Uji Tombol + Daftarkan Asatidz pada Kartu
-    const btnDaftar = page.getByRole('button', { name: /\+ Daftarkan Asatidz/i }).first();
+    const btnDaftar = kartu.getByRole('button', { name: /\+ Daftarkan Asatidz/i });
     await expect(btnDaftar).toBeVisible();
     await btnDaftar.click();
 
@@ -64,17 +84,19 @@ test.describe('Modul: Absen Konsorsium', () => {
     await btnBatalDaftar.click();
     await expect(dialogDaftar).not.toBeVisible();
 
-    // 7. Uji Tombol Riwayat pada Kartu
-    const btnRiwayat = page.getByRole('button', { name: /Riwayat/i }).first();
-    await expect(btnRiwayat).toBeVisible();
-    await btnRiwayat.click();
+    // 7. Klik Kartu -> Buka Detail Matriks Tahunan (Juli s/d Juni)
+    const btnMatriks = kartu.getByTitle('Klik untuk membuka Detail Matriks Tahunan');
+    await btnMatriks.click();
 
-    const dialogRiwayat = page.getByRole('dialog');
-    await expect(dialogRiwayat).toBeVisible();
-    await expect(dialogRiwayat.getByRole('heading', { name: /Riwayat Pertemuan/i })).toBeVisible();
+    const dialogMatriks = page.getByRole('dialog');
+    await expect(dialogMatriks).toBeVisible();
+    await expect(dialogMatriks.getByRole('heading', { name: /Detail Matriks Absensi/i })).toBeVisible();
+    await expect(dialogMatriks.getByText(/Tahun Ajaran/i).first()).toBeVisible();
+    await expect(dialogMatriks.getByRole('button', { name: /Export Matriks Excel/i })).toBeVisible();
 
-    const btnTutupRiwayat = dialogRiwayat.getByRole('button', { name: 'Tutup', exact: true });
-    await btnTutupRiwayat.click();
-    await expect(dialogRiwayat).not.toBeVisible();
+    // Tutup Modal Matriks
+    const btnTutupMatriks = dialogMatriks.getByRole('button', { name: 'Tutup', exact: true });
+    await btnTutupMatriks.click();
+    await expect(dialogMatriks).not.toBeVisible();
   });
 });

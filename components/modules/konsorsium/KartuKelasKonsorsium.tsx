@@ -4,9 +4,13 @@ import React, { useState, useMemo } from 'react';
 import {
   KelasKonsorsium,
   AnggotaKonsorsium,
-  SesiPresensiKonsorsium,
 } from '@/types/konsorsium';
 import { useKonsorsiumStore } from '@/stores/useKonsorsiumStore';
+import {
+  getDaftarPertemuanBulan,
+  NAMA_BULAN_IND,
+  getHariNamaKonsorsium,
+} from '@/lib/utils/konsorsiumHelper';
 import {
   Users,
   UserPlus,
@@ -18,17 +22,18 @@ import {
   UserCheck,
   BookOpen,
   Search,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
 } from 'lucide-react';
 
 interface KartuKelasKonsorsiumProps {
   kelas: KelasKonsorsium;
   onDaftarkanAsatidz: (kelas: KelasKonsorsium) => void;
-  onInputPresensi: (kelas: KelasKonsorsium) => void;
+  onInputPresensi: (kelas: KelasKonsorsium, tanggal?: string) => void;
   onLihatRiwayat: (kelas: KelasKonsorsium) => void;
   onEditKelas: (kelas: KelasKonsorsium) => void;
+  onLihatDetailMatriks: (kelas: KelasKonsorsium) => void;
 }
 
 export default function KartuKelasKonsorsium({
@@ -37,6 +42,7 @@ export default function KartuKelasKonsorsium({
   onInputPresensi,
   onLihatRiwayat,
   onEditKelas,
+  onLihatDetailMatriks,
 }: KartuKelasKonsorsiumProps) {
   const { anggotaList, sesiList, keluarkanAnggotaKonsorsium, hapusKelasKonsorsium } =
     useKonsorsiumStore();
@@ -44,18 +50,24 @@ export default function KartuKelasKonsorsium({
   const [searchMember, setSearchMember] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // State Bulan Aktif (Default otomatis ke bulan & tahun kalender saat ini)
+  const now = new Date();
+  const [activeYear, setActiveYear] = useState(now.getFullYear());
+  const [activeMonth, setActiveMonth] = useState(now.getMonth() + 1); // 1-12
+
   // Anggota terdaftar pada kelas ini
   const enrolledAnggota = useMemo(() => {
     return anggotaList.filter((a) => a.kelasId === kelas.id);
   }, [anggotaList, kelas.id]);
 
-  // Sesi terakhir pertemuan kelas ini untuk melihat kehadiran terakhir
-  const sesiTerakhir = useMemo(() => {
-    const list = sesiList
-      .filter((s) => s.kelasId === kelas.id)
-      .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
-    return list[0] || null;
-  }, [sesiList, kelas.id]);
+  // Hitung kolom pertemuan (1, 2, 3, 4, [5]) sesuai bulan aktif & jenis konsorsium
+  const pertemuanBulan = useMemo(() => {
+    return getDaftarPertemuanBulan(
+      activeYear,
+      activeMonth,
+      kelas.jenisKonsor || 'Mustahiq/qoh'
+    );
+  }, [activeYear, activeMonth, kelas.jenisKonsor]);
 
   // Filter anggota berdasarkan pencarian dalam kartu
   const filteredAnggota = useMemo(() => {
@@ -67,18 +79,39 @@ export default function KartuKelasKonsorsium({
     );
   }, [enrolledAnggota, searchMember]);
 
-  // Dapatkan status presensi terakhir asatidz
-  const getStatusTerakhir = (nia: string) => {
-    if (!sesiTerakhir) return null;
-    const record = sesiTerakhir.records.find((r) => r.nia === nia);
-    if (!record) return null;
-    return {
-      status: record.status,
-      tanggal: sesiTerakhir.tanggal,
-    };
+  // Navigasi switcher bulan
+  const handlePrevMonth = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (activeMonth === 1) {
+      setActiveMonth(12);
+      setActiveYear((y) => y - 1);
+    } else {
+      setActiveMonth((m) => m - 1);
+    }
   };
 
-  const handleDeleteKelas = () => {
+  const handleNextMonth = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (activeMonth === 12) {
+      setActiveMonth(1);
+      setActiveYear((y) => y + 1);
+    } else {
+      setActiveMonth((m) => m + 1);
+    }
+  };
+
+  // Lookup status presensi anggota per tanggal tertentu
+  const getStatusPresensi = (nia: string, tanggal: string) => {
+    const sesi = sesiList.find(
+      (s) => s.kelasId === kelas.id && s.tanggal === tanggal
+    );
+    if (!sesi) return null;
+    const rec = sesi.records.find((r) => r.nia === nia);
+    return rec ? rec.status : null;
+  };
+
+  const handleDeleteKelas = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (
       confirm(
         `Hapus kelas konsorsium "${kelas.namaKelas}"? Seluruh daftar anggota dan riwayat absen di kelas ini akan ikut terhapus.`
@@ -88,7 +121,8 @@ export default function KartuKelasKonsorsium({
     }
   };
 
-  const handleKeluarkanAnggota = (anggota: AnggotaKonsorsium) => {
+  const handleKeluarkanAnggota = (e: React.MouseEvent, anggota: AnggotaKonsorsium) => {
+    e.stopPropagation();
     if (
       confirm(
         `Keluarkan ${anggota.nama} (NIA: ${anggota.nia}) dari kelas konsorsium ${kelas.namaKelas}?`
@@ -98,17 +132,31 @@ export default function KartuKelasKonsorsium({
     }
   };
 
+  const hariJadwal = getHariNamaKonsorsium(kelas.jenisKonsor || 'Mustahiq/qoh');
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col">
+    <div
+      onClick={() => onLihatDetailMatriks(kelas)}
+      className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all duration-200 overflow-hidden flex flex-col cursor-pointer group/card"
+    >
       {/* 1. Header Kartu Kelas Konsorsium */}
-      <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 via-white to-slate-50/50">
+      <div className="p-4 sm:p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 via-white to-slate-50/50">
         <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
+          <div className="space-y-1 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
                 {kelas.tingkat}
               </span>
-              <h3 className="text-base font-bold text-slate-800 tracking-tight flex items-center gap-1.5">
+              <span
+                className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${
+                  kelas.jenisKonsor === 'Mustahiq/qoh'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : 'bg-teal-50 text-teal-800 border-teal-300'
+                }`}
+              >
+                {kelas.jenisKonsor || 'Mustahiq/qoh'}
+              </span>
+              <h3 className="text-base font-bold text-slate-800 tracking-tight flex items-center gap-1.5 group-hover/card:text-emerald-800 transition-colors">
                 <BookOpen className="w-4 h-4 text-emerald-700" />
                 <span>{kelas.namaKelas}</span>
               </h3>
@@ -125,6 +173,10 @@ export default function KartuKelasKonsorsium({
                   ({kelas.pembimbingNia})
                 </span>
               )}
+              <span className="text-slate-300">•</span>
+              <span className="text-slate-500 font-medium">
+                Jadwal: <strong>Setiap {hariJadwal}</strong>
+              </span>
             </div>
 
             {kelas.keterangan && (
@@ -134,59 +186,89 @@ export default function KartuKelasKonsorsium({
             )}
           </div>
 
-          {/* Menu Dropdown Opsi Kelas */}
-          <div className="relative">
+          {/* Opsi Menu & Tombol Buka Matriks */}
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
-              onClick={() => setIsMenuOpen((prev) => !prev)}
-              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              onClick={() => onLihatDetailMatriks(kelas)}
+              className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+              title="Klik untuk membuka Detail Matriks Tahunan"
             >
-              <MoreVertical className="w-4 h-4" />
+              <Maximize2 className="w-4 h-4" />
             </button>
 
-            {isMenuOpen && (
-              <div
-                className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1 text-xs"
-                onMouseLeave={() => setIsMenuOpen(false)}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen((prev) => !prev)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    onEditKelas(kelas);
-                  }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2"
+                <MoreVertical className="w-4 h-4" />
+              </button>
+
+              {isMenuOpen && (
+                <div
+                  className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1 text-xs"
+                  onMouseLeave={() => setIsMenuOpen(false)}
                 >
-                  <Edit3 className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Ubah Kelas</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    handleDeleteKelas();
-                  }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-rose-50 text-rose-600 flex items-center gap-2"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Hapus Kelas</span>
-                </button>
-              </div>
-            )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      setIsMenuOpen(false);
+                      onEditKelas(kelas);
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Ubah Kelas</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      setIsMenuOpen(false);
+                      handleDeleteKelas(e);
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-rose-50 text-rose-600 flex items-center gap-2"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Hapus Kelas</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Action Toolbar Kelas Konsorsium */}
-        <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-slate-400" />
-              <span>{enrolledAnggota.length} Asatidz Terdaftar</span>
+        {/* Action Toolbar Kelas & Switcher Bulan */}
+        <div
+          className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Switcher Bulan Aktif */}
+          <div className="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-xl border border-slate-200 text-xs">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              className="p-1 text-slate-500 hover:text-slate-800 hover:bg-white rounded transition-colors"
+              title="Bulan Sebelumnya"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <span className="font-semibold text-slate-800 px-1 min-w-[110px] text-center">
+              {NAMA_BULAN_IND[activeMonth - 1]} {activeYear}
             </span>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="p-1 text-slate-500 hover:text-slate-800 hover:bg-white rounded transition-colors"
+              title="Bulan Berikutnya"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
 
+          {/* Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Tombol Utama: Daftar Asatidz */}
             <button
               type="button"
               onClick={() => onDaftarkanAsatidz(kelas)}
@@ -196,7 +278,6 @@ export default function KartuKelasKonsorsium({
               <span>+ Daftarkan Asatidz</span>
             </button>
 
-            {/* Tombol: Input Presensi */}
             <button
               type="button"
               onClick={() => onInputPresensi(kelas)}
@@ -207,7 +288,6 @@ export default function KartuKelasKonsorsium({
               <span>Input Absensi</span>
             </button>
 
-            {/* Tombol: Riwayat Absen */}
             <button
               type="button"
               onClick={() => onLihatRiwayat(kelas)}
@@ -221,10 +301,10 @@ export default function KartuKelasKonsorsium({
         </div>
       </div>
 
-      {/* 2. Embedded Tabel Asatidz Terdaftar */}
+      {/* 2. Embedded Tabel Asatidz dengan Kolom 1..5 */}
       <div className="p-4 flex-1 flex flex-col">
         {enrolledAnggota.length > 5 && (
-          <div className="mb-3 relative">
+          <div className="mb-3 relative" onClick={(e) => e.stopPropagation()}>
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -236,97 +316,127 @@ export default function KartuKelasKonsorsium({
           </div>
         )}
 
-        {enrolledAnggota.length === 0 ? (
-          <div className="py-8 text-center px-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 flex-1 flex flex-col items-center justify-center">
-            <Users className="w-8 h-8 text-slate-300 mb-2" />
-            <p className="text-xs text-slate-500 font-medium">
-              Belum ada asatidz yang didaftarkan ke kelas ini.
-            </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Klik tombol &quot;+ Daftarkan Asatidz&quot; di atas untuk memasukkan pengajar.
-            </p>
-            <button
-              type="button"
-              onClick={() => onDaftarkanAsatidz(kelas)}
-              className="mt-3 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center gap-1.5"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>Daftarkan Sekarang</span>
-            </button>
-          </div>
-        ) : (
-          <div className="border border-slate-200/80 rounded-xl overflow-hidden overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200/80 text-[10px]">
-                <tr>
-                  <th className="py-2 px-3 w-8 text-center">No</th>
-                  <th className="py-2 px-3 w-24">NIA</th>
-                  <th className="py-2 px-3">Nama Asatidz</th>
-                  <th className="py-2 px-3 w-32">Kehadiran Terakhir</th>
-                  <th className="py-2 px-3 w-16 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredAnggota.map((a, idx) => {
-                  const lastAbsen = getStatusTerakhir(a.nia);
+        <div className="border border-slate-200/80 rounded-xl overflow-hidden overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50/90 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200/80 text-[10px]">
+              <tr>
+                <th className="py-2 px-2.5 w-8 text-center">No</th>
+                <th className="py-2 px-2.5 w-20">NIA</th>
+                <th className="py-2 px-2.5">Nama Asatidz</th>
 
-                  return (
-                    <tr
-                      key={a.id}
-                      className="hover:bg-slate-50/70 transition-colors group"
-                    >
-                      <td className="py-2 px-3 text-center text-slate-400">
-                        {idx + 1}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-slate-600 font-medium text-[11px]">
-                        {a.nia}
-                      </td>
-                      <td className="py-2 px-3 font-medium text-slate-800">
-                        {a.nama}
-                      </td>
-                      <td className="py-2 px-3">
-                        {lastAbsen ? (
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold ${
-                              lastAbsen.status === 'Hadir'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : lastAbsen.status === 'Izin'
-                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                : lastAbsen.status === 'Sakit'
-                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                : lastAbsen.status === 'Alfa'
-                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                : 'bg-orange-50 text-orange-700 border border-orange-200'
-                            }`}
-                          >
-                            <span>{lastAbsen.status}</span>
-                            <span className="text-slate-400 font-normal">
-                              ({lastAbsen.tanggal.slice(5)})
-                            </span>
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-slate-400 italic">
-                            Belum ada absen
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleKeluarkanAnggota(a)}
-                          className="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors"
-                          title="Keluarkan dari kelas konsorsium ini"
+                {/* Kolom Pertemuan 1, 2, 3, 4, [5] */}
+                {pertemuanBulan.map((p) => (
+                  <th
+                    key={p.tanggal}
+                    className="py-1.5 px-1.5 text-center min-w-[42px] border-l border-slate-200/80"
+                    title={p.fullFormatted}
+                  >
+                    <div className="font-bold text-slate-700">{p.ke}</div>
+                    <div className="text-[9px] text-slate-400 font-mono -mt-0.5">
+                      {p.labelTanggal}
+                    </div>
+                  </th>
+                ))}
+
+                <th className="py-2 px-2 text-center w-12 border-l border-slate-200/80">
+                  Aksi
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {enrolledAnggota.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={4 + pertemuanBulan.length}
+                    className="py-8 text-center px-4 bg-slate-50/40"
+                  >
+                    <div className="flex flex-col items-center justify-center">
+                      <Users className="w-8 h-8 text-slate-300 mb-2" />
+                      <p className="text-xs text-slate-500 font-medium">
+                        Belum ada asatidz yang didaftarkan ke kelas ini.
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Klik tombol &quot;+ Daftarkan Asatidz&quot; untuk menambahkan anggota.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredAnggota.map((a, idx) => (
+                  <tr
+                    key={a.id}
+                    className="hover:bg-slate-50/80 transition-colors group"
+                  >
+                    <td className="py-2 px-2.5 text-center text-slate-400 font-mono text-[11px]">
+                      {idx + 1}
+                    </td>
+                    <td className="py-2 px-2.5 font-mono text-slate-600 font-medium text-[11px]">
+                      {a.nia}
+                    </td>
+                    <td className="py-2 px-2.5 font-medium text-slate-800">
+                      {a.nama}
+                    </td>
+
+                    {/* Sel Pertemuan 1..5 */}
+                    {pertemuanBulan.map((p) => {
+                      const st = getStatusPresensi(a.nia, p.tanggal);
+                      return (
+                        <td
+                          key={p.tanggal}
+                          className="py-1.5 px-1.5 text-center border-l border-slate-100"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                          {st === 'Hadir' ? (
+                            <span className="inline-block w-5 h-5 leading-5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800" title={`Hadir (${p.fullFormatted})`}>
+                              H
+                            </span>
+                          ) : st === 'Izin' ? (
+                            <span className="inline-block w-5 h-5 leading-5 rounded text-[10px] font-bold bg-amber-100 text-amber-800" title={`Izin (${p.fullFormatted})`}>
+                              I
+                            </span>
+                          ) : st === 'Sakit' ? (
+                            <span className="inline-block w-5 h-5 leading-5 rounded text-[10px] font-bold bg-blue-100 text-blue-800" title={`Sakit (${p.fullFormatted})`}>
+                              S
+                            </span>
+                          ) : st === 'Alfa' ? (
+                            <span className="inline-block w-5 h-5 leading-5 rounded text-[10px] font-bold bg-rose-100 text-rose-800" title={`Alfa (${p.fullFormatted})`}>
+                              A
+                            </span>
+                          ) : st === 'Terlambat' ? (
+                            <span className="inline-block w-5 h-5 leading-5 rounded text-[10px] font-bold bg-orange-100 text-orange-800" title={`Terlambat (${p.fullFormatted})`}>
+                              T
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 font-mono text-xs">-</span>
+                          )}
+                        </td>
+                      );
+                    })}
+
+                    <td
+                      className="py-2 px-2 text-center border-l border-slate-100"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => handleKeluarkanAnggota(e, a)}
+                        className="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors"
+                        title="Keluarkan dari kelas konsorsium ini"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-2 text-right">
+          <span className="text-[10px] text-slate-400 group-hover/card:text-emerald-700 transition-colors font-medium">
+            💡 Klik kartu untuk melihat Matriks 1 Tahun Ajaran (Juli s/d Juni) &rarr;
+          </span>
+        </div>
       </div>
     </div>
   );

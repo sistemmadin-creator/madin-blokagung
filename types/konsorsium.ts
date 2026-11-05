@@ -1,5 +1,7 @@
 export type TingkatKonsorsium = 'ULA' | 'WUSTHO' | 'ULYA' | 'ISTI\'DAD';
 
+export type JenisKonsorsium = 'Mustahiq/qoh' | 'Munawib/bah';
+
 export type StatusAbsenKonsorsium =
   | 'Hadir'
   | 'Izin'
@@ -10,6 +12,7 @@ export type StatusAbsenKonsorsium =
 export interface KelasKonsorsium {
   id: string;
   tingkat: string; // 'ULA' | 'WUSTHO' | 'ULYA' | 'ISTI\'DAD'
+  jenisKonsor: JenisKonsorsium; // 'Mustahiq/qoh' (Kamis) | 'Munawib/bah' (Selasa)
   namaKelas: string; // Diambil dari Fan Pelajaran / Ketik Bebas
   kitabRujukan?: string;
   pembimbingNama: string;
@@ -47,6 +50,9 @@ export interface SesiPresensiKonsorsium {
   kelasId: string;
   tanggal: string; // YYYY-MM-DD
   hari?: string;
+  tahun?: number;
+  bulan?: number; // 1 - 12
+  pertemuanKe?: number; // 1, 2, 3, 4, 5
   topikBahasan?: string;
   notulen?: string;
   diinputOleh?: string;
@@ -58,4 +64,12 @@ export interface KonsorsiumDataPayload {
   kelasList: KelasKonsorsium[];
   anggotaList: AnggotaKonsorsium[];
   sesiList: SesiPresensiKonsorsium[];
+}
+
+export interface PertemuanInfo {
+  ke: number; // 1, 2, 3, 4, 5
+  tanggal: string; // YYYY-MM-DD
+  labelTanggal: string; // DD/MM (contoh: 05/11)
+  hariNama: string; // "Kamis" atau "Selasa"
+  fullFormatted: string; // "Kamis, 05 Nov 2026"
 }
