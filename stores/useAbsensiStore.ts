@@ -318,6 +318,85 @@ interface AbsensiState {
 
 const initialDate = getDefaultTanggalAbsensi();
 
+function extractLiburMapFromKalenderPayload(
+  kalenderVal: any,
+  manualLiburVal?: Record<string, HariLiburInfo> | null
+): Record<string, HariLiburInfo> | null {
+  if (
+    !kalenderVal ||
+    typeof kalenderVal !== 'object' ||
+    !kalenderVal.agendaMapByTA ||
+    typeof kalenderVal.agendaMapByTA !== 'object'
+  ) {
+    return null;
+  }
+
+  const out: Record<string, HariLiburInfo> = {};
+
+  // 1. Masukkan hari libur manual yang diinput langsung dari menu Absensi (bukan hasil sinkronisasi otomatis Kalender)
+  if (manualLiburVal && typeof manualLiburVal === 'object') {
+    Object.entries(manualLiburVal).forEach(([tgl, info]) => {
+      if (!info || !tgl) return;
+      if (
+        info.diinputOleh === 'Sinkron Kalender Kegiatan' ||
+        info.diinputOleh === 'Kalender Kegiatan' ||
+        info.diinputOleh === 'PKM. Kurikulum'
+      ) {
+        return;
+      }
+      out[tgl] = info;
+    });
+  }
+
+  // 2. Masukkan seluruh tanggal yang masih aktif dan berstatus isLiburKbm === true pada Kalender Kegiatan
+  Object.values(
+    kalenderVal.agendaMapByTA as Record<string, Record<string, any>>
+  ).forEach((taMap) => {
+    if (!taMap || typeof taMap !== 'object') return;
+    Object.values(taMap).forEach((item) => {
+      if (!item || !item.tanggalMasehi) return;
+      if (item.isLiburKbm) {
+        out[item.tanggalMasehi] = {
+          tanggal: item.tanggalMasehi,
+          hari: getNamaHariDariTgl(item.tanggalMasehi),
+          kategori: item.kategoriLibur || 'Libur Pondok',
+          keterangan: `[${item.kode}] ${item.namaKegiatan}${
+            item.catatan ? ` - ${item.catatan}` : ''
+          }`,
+          waktuUpdate: item.updatedAt || '-',
+          diinputOleh: 'Sinkron Kalender Kegiatan',
+        };
+      } else {
+        delete out[item.tanggalMasehi];
+      }
+    });
+  });
+
+  return out;
+}
+
+function getInitialSyncedLiburMap(): Record<string, HariLiburInfo> {
+  if (typeof window !== 'undefined') {
+    try {
+      const lsLibRaw = localStorage.getItem(LS_CACHE_LIBUR);
+      const lsKalRaw = localStorage.getItem('MADIN_KALENDER_KEGIATAN_CACHE_V3');
+      const parsedLib = lsLibRaw ? JSON.parse(lsLibRaw) : null;
+      const parsedKal = lsKalRaw ? JSON.parse(lsKalRaw) : null;
+
+      if (parsedKal) {
+        const synced = extractLiburMapFromKalenderPayload(parsedKal, parsedLib);
+        if (synced) return synced;
+      }
+      if (parsedLib && typeof parsedLib === 'object') {
+        return parsedLib;
+      }
+    } catch {
+      // Abaikan bila gagal parse LocalStorage
+    }
+  }
+  return buildDefaultLiburMapFromKalender();
+}
+
 export const useAbsensiStore = create<AbsensiState>((set, get) => ({
   selectedDate: initialDate,
   hari: getNamaHariDariTgl(initialDate),
@@ -326,7 +405,7 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
 
   rawBucketMap: {},
   absensiMapByDate: {},
-  liburMapByDate: buildDefaultLiburMapFromKalender(),
+  liburMapByDate: getInitialSyncedLiburMap(),
 
   sesiHariIni: { 1: [], 2: [], 3: [], 4: [] },
   savedRecords: {},
@@ -388,10 +467,7 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
     set({ isLoading: true });
     try {
       let mergedRaw: Record<string, any> = {};
-      let mergedLibur: Record<string, HariLiburInfo> = {
-        ...buildDefaultLiburMapFromKalender(),
-        ...(get().liburMapByDate || {}),
-      };
+      let mergedLibur: Record<string, HariLiburInfo> = getInitialSyncedLiburMap();
 
       // Baca cache LocalStorage terlebih dahulu bila tidak forceRefresh
       if (!isForce && typeof window !== 'undefined') {
@@ -400,10 +476,7 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
           const lsLib = localStorage.getItem(LS_CACHE_LIBUR);
           if (lsAbs) mergedRaw = JSON.parse(lsAbs) || {};
           if (lsLib) {
-            mergedLibur = {
-              ...mergedLibur,
-              ...(JSON.parse(lsLib) || {}),
-            };
+            mergedLibur = JSON.parse(lsLib) || {};
           }
         } catch {
           // Abaikan bila gagal parse LocalStorage
@@ -424,14 +497,22 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       const { data: rows, error } = await supabase
         .from('app_settings')
         .select('key, value')
-        .in('key', [KEY_DB_ABSENSI, KEY_DB_LIBUR, 'KEY_DB_ABSENSI', 'KEY_DB_LIBUR']);
+        .in('key', [
+          KEY_DB_ABSENSI,
+          KEY_DB_LIBUR,
+          'MADIN_KALENDER_KEGIATAN_V3',
+          'KEY_DB_ABSENSI',
+          'KEY_DB_LIBUR',
+        ]);
 
       if (!error && rows) {
-        // Utamakan KEY_DB_ABSENSI & KEY_DB_LIBUR resmi, namun dukung fallback legacy
+        // Utamakan KEY_DB_ABSENSI & KEY_DB_LIBUR resmi, serta sinkronkan dengan MADIN_KALENDER_KEGIATAN_V3
         const legacyAbsRow = rows.find((r) => r.key === 'KEY_DB_ABSENSI');
         const mainAbsRow = rows.find((r) => r.key === KEY_DB_ABSENSI);
-        const legacyLibRow = rows.find((r) => r.key === 'KEY_DB_LIBUR');
         const mainLibRow = rows.find((r) => r.key === KEY_DB_LIBUR);
+        const kalenderRow = rows.find(
+          (r) => r.key === 'MADIN_KALENDER_KEGIATAN_V3'
+        );
 
         const parseVal = (v: unknown) => {
           if (!v) return {};
@@ -449,11 +530,27 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
           ...parseVal(legacyAbsRow?.value),
           ...parseVal(mainAbsRow?.value),
         };
-        mergedLibur = {
-          ...mergedLibur,
-          ...parseVal(legacyLibRow?.value),
-          ...parseVal(mainLibRow?.value),
-        };
+
+        const parsedMainLib = mainLibRow
+          ? (parseVal(mainLibRow.value) as Record<string, HariLiburInfo>)
+          : null;
+        const parsedKalender = kalenderRow
+          ? parseVal(kalenderRow.value)
+          : null;
+
+        if (parsedKalender) {
+          const syncedFromKalender = extractLiburMapFromKalenderPayload(
+            parsedKalender,
+            parsedMainLib
+          );
+          if (syncedFromKalender) {
+            mergedLibur = syncedFromKalender;
+          } else if (parsedMainLib) {
+            mergedLibur = parsedMainLib;
+          }
+        } else if (parsedMainLib) {
+          mergedLibur = parsedMainLib;
+        }
 
         if (typeof window !== 'undefined') {
           try {
@@ -1175,6 +1272,49 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem(LS_CACHE_LIBUR, JSON.stringify(current));
+          // Jika status libur dibatalkan dari menu Absensi, nonaktifkan juga bendera isLiburKbm di cache Kalender Kegiatan
+          if (!info) {
+            const lsKalRaw = localStorage.getItem('MADIN_KALENDER_KEGIATAN_CACHE_V3');
+            if (lsKalRaw) {
+              const parsedKal = JSON.parse(lsKalRaw);
+              if (parsedKal?.agendaMapByTA && typeof parsedKal.agendaMapByTA === 'object') {
+                let kalUpdated = false;
+                Object.values(parsedKal.agendaMapByTA as Record<string, Record<string, any>>).forEach((taMap) => {
+                  if (taMap && taMap[date] && taMap[date].isLiburKbm) {
+                    taMap[date] = { ...taMap[date], isLiburKbm: false };
+                    kalUpdated = true;
+                  }
+                });
+                if (kalUpdated) {
+                  localStorage.setItem('MADIN_KALENDER_KEGIATAN_CACHE_V3', JSON.stringify(parsedKal));
+                  await supabase
+                    .from('app_settings')
+                    .upsert({ key: 'MADIN_KALENDER_KEGIATAN_V3', value: parsedKal }, { onConflict: 'key' });
+                }
+              }
+            }
+            const kalStore = (window as any).useKalenderStore;
+            if (kalStore && typeof kalStore.getState === 'function') {
+              const kState = kalStore.getState();
+              if (kState?.agendaMapByTA) {
+                const nextAgendaByTA = { ...kState.agendaMapByTA };
+                let storeUpdated = false;
+                Object.keys(nextAgendaByTA).forEach((ta) => {
+                  const taMap = nextAgendaByTA[ta];
+                  if (taMap && taMap[date]?.isLiburKbm) {
+                    nextAgendaByTA[ta] = {
+                      ...taMap,
+                      [date]: { ...taMap[date], isLiburKbm: false },
+                    };
+                    storeUpdated = true;
+                  }
+                });
+                if (storeUpdated && typeof kalStore.setState === 'function') {
+                  kalStore.setState({ agendaMapByTA: nextAgendaByTA });
+                }
+              }
+            }
+          }
         } catch {
           // Abaikan
         }

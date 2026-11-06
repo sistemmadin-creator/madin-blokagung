@@ -89,7 +89,7 @@ test.describe('Kalender Kegiatan (TA 2026/2027), Pengaturan Tahun Ajaran Global 
       countAfterFirstDelete - 2
     );
 
-    // 3c. Klik "Hapus Semua" -> konfirmasi modal -> pastikan tabel kosong -> klik "Pulihkan Jadwal Standar"
+    // 3c. Klik "Hapus Semua" -> konfirmasi modal -> pastikan tabel kosong -> verifikasi /absensi & /absen-cepat tidak lagi libur
     await page.getByTestId('btn-hapus-semua-agenda').click();
     const modalHapusSemua = page.getByTestId(
       'modal-konfirmasi-hapus-semua-agenda'
@@ -99,6 +99,31 @@ test.describe('Kalender Kegiatan (TA 2026/2027), Pengaturan Tahun Ajaran Global 
     await expect(modalHapusSemua).toBeHidden();
 
     await expect(page.getByTestId('empty-rincian-agenda-row')).toBeVisible();
+    await expect(page.getByTestId('kpi-total-hari-libur-kbm')).toContainText('0');
+
+    // Verifikasi lintas halaman 1: Buka /absensi pada tanggal 2026-11-08 (sebelumnya Daur Awwal), pastikan TIDAK ada banner KBM Diliburkan
+    await page.goto('/absensi');
+    await expect(
+      page.getByRole('heading', { name: 'Absensi Asatidz' })
+    ).toBeVisible({ timeout: 20000 });
+    const dateInputAbsensi = page.locator('input[type="date"]').first();
+    await dateInputAbsensi.fill('2026-11-08');
+    await expect(page.getByText(/\[DA\] Daur Awwal/i)).toHaveCount(0);
+    await expect(page.getByText(/KBM Diliburkan:/i)).toHaveCount(0);
+
+    // Verifikasi lintas halaman 2: Buka /absen-cepat pada tanggal 2026-11-08, pastikan TIDAK ada Hari Libur / Event: Ujian / Ikhtibar
+    await page.goto('/absen-cepat');
+    await expect(
+      page.getByRole('heading', { name: 'Absen Cepat' })
+    ).toBeVisible({ timeout: 20000 });
+    const dateInputAbsenCepat = page.locator('input[type="date"]').first();
+    await dateInputAbsenCepat.fill('2026-11-08');
+    await expect(page.getByText(/\[DA\] Daur Awwal/i)).toHaveCount(0);
+    await expect(page.getByText(/Hari Libur \/ Event:/i)).toHaveCount(0);
+
+    // Kembali ke /kalender-kegiatan dan klik "Pulihkan Jadwal Standar"
+    await page.goto('/kalender-kegiatan');
+    await expect(heading).toBeVisible({ timeout: 20000 });
 
     const btnPulihkan = page.getByTestId('btn-pulihkan-agenda-standar');
     await expect(btnPulihkan).toBeVisible();

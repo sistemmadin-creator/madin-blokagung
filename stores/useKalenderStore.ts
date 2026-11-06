@@ -880,3 +880,7 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
     return count;
   },
 }));
+
+if (typeof window !== 'undefined') {
+  (window as any).useKalenderStore = useKalenderStore;
+}
