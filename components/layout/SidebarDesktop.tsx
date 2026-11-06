@@ -71,6 +71,7 @@ export default function SidebarDesktop() {
   const { isSidebarCollapsed, toggleSidebarCollapse } = useAppStore();
   const { groups } = useSidebarConfigStore();
   const currentAccount = useRbacStore((s) => s.currentAccount);
+  const isAppSecurityEnabled = useRbacStore((s) => s.isAppSecurityEnabled);
   const [mounted, setMounted] = useState(false);
 
   const isMasterAdmin =
@@ -81,7 +82,7 @@ export default function SidebarDesktop() {
   const isHrefPermitted = (href?: string, subId?: string): boolean => {
     if (!href) return true;
     if (subId === 'sub-akun' || href.includes('tab=akun')) {
-      return isMasterAdmin;
+      return isMasterAdmin && isAppSecurityEnabled;
     }
     const pageId = resolvePageIdFromPathname(href);
     if (!pageId) return true;

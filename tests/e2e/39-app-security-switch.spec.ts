@@ -40,6 +40,10 @@ test.describe('Phase 3: Saklar Keamanan Aplikasi MADINA Blokagung (Konfirmasi 3x
       { timeout: 20000 }
     );
 
+    // Verifikasi ketika keamanan AKTIF, pengaturan 'Kelola Akun & Otoritas' tampil
+    await expect(page.getByTestId('tab-akun')).toBeVisible();
+    await expect(page.getByTestId('btn-tambah-akun')).toBeVisible();
+
     // 3. Klik tombol Nonaktifkan Keamanan Aplikasi -> Buka Modal Konfirmasi 3 Tahap
     await page.getByTestId('btn-trigger-security-switch').click();
 
@@ -74,6 +78,13 @@ test.describe('Phase 3: Saklar Keamanan Aplikasi MADINA Blokagung (Konfirmasi 3x
       'NON-AKTIF (Mode Input Data Tanpa Login)',
       { timeout: 20000 }
     );
+
+    // Verifikasi ketika Keamanan & Akun sedang terbuka (NON-AKTIF / Mode Input Terbuka),
+    // pengaturan 'Kelola Akun & Otoritas' (tab, daftar akun, kartu di Tinjauan Pengaturan) disembunyikan
+    await expect(page.getByTestId('tab-akun')).toHaveCount(0);
+    await expect(page.getByTestId('btn-tambah-akun')).toHaveCount(0);
+    await page.getByTestId('tab-overview').click();
+    await expect(page.getByTestId('card-open-akun-tab')).toHaveCount(0);
 
     // 4. Logout dari Master Admin agar tidak ada sesi login sama sekali
     await page.getByRole('button', { name: /Master Administrator/i }).click();

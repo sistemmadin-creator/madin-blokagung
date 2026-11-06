@@ -23,7 +23,7 @@ import CardAturanMuhafadzoh from '@/components/modules/settings/CardAturanMuhafa
 import CardAturanPiagam from '@/components/modules/settings/CardAturanPiagam';
 import CardPengaturanNotifikasi from '@/components/modules/settings/CardPengaturanNotifikasi';
 import AccountAuthorityManager from '@/components/modules/settings/AccountAuthorityManager';
-import { usePagePermission } from '@/stores/useRbacStore';
+import { usePagePermission, useRbacStore } from '@/stores/useRbacStore';
 import { BellRing } from 'lucide-react';
 
 type TabKey = 'overview' | 'akun' | 'sidebar' | 'hierarki' | 'audit' | 'akademik' | 'muhafadzoh' | 'piagam' | 'notifikasi';
@@ -33,11 +33,17 @@ function PengaturanContent() {
   const router = useRouter();
   const tabParam = (searchParams.get('tab') as TabKey) || 'overview';
   const { isMasterAdmin } = usePagePermission('pengaturan');
+  const isAppSecurityEnabled = useRbacStore((s) => s.isAppSecurityEnabled);
+  const fetchAppSecurityStatus = useRbacStore((s) => s.fetchAppSecurityStatus);
 
   const [activeTab, setActiveTab] = useState<TabKey>(tabParam);
   const [showHierarchyModal, setShowHierarchyModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [showHierarkiKbmModal, setShowHierarkiKbmModal] = useState(false);
+
+  useEffect(() => {
+    void fetchAppSecurityStatus();
+  }, [fetchAppSecurityStatus]);
 
   useEffect(() => {
     if (tabParam) {
@@ -49,6 +55,8 @@ function PengaturanContent() {
     setActiveTab(tab);
     router.push(`/pengaturan?tab=${tab}`);
   };
+
+  const canShowKelolaAkun = isMasterAdmin && isAppSecurityEnabled;
 
   const allTabs: { key: TabKey; label: string; icon: React.ReactNode; testId: string; masterOnly?: boolean }[] = [
     { key: 'overview', label: 'Tinjauan Pengaturan', icon: <Settings className="w-4 h-4" />, testId: 'tab-overview' },
@@ -62,7 +70,10 @@ function PengaturanContent() {
     { key: 'notifikasi', label: 'Notifikasi HP (Push)', icon: <BellRing className="w-4 h-4 text-emerald-600" />, testId: 'tab-notifikasi' },
   ];
 
-  const tabs = allTabs.filter((t) => !t.masterOnly || isMasterAdmin);
+  const tabs = allTabs.filter((t) => {
+    if (t.key === 'akun') return canShowKelolaAkun;
+    return !t.masterOnly || isMasterAdmin;
+  });
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
@@ -151,8 +162,8 @@ function PengaturanContent() {
         <div className="space-y-6 animate-fade-in">
           {/* Grid Pilar Pengaturan */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {/* Pilar 0: Kelola Akun & Otoritas (Khusus Master Admin) */}
-            {isMasterAdmin && (
+            {/* Pilar 0: Kelola Akun & Otoritas (Khusus Master Admin saat Keamanan Aktif) */}
+            {canShowKelolaAkun && (
               <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between group">
                 <div>
                   <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center mb-3">

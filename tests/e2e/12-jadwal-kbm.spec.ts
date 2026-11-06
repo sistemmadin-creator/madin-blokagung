@@ -411,4 +411,78 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
     expect(sheetValidation.bgD).toBe('rgb(243, 232, 255)');
     expect(sheetValidation.colD).toBe('rgb(107, 33, 168)');
   });
+
+  test('9.0 Mode Default HP (Fit-to-Screen) & Klik Judul untuk Layar Penuh Hanya Tabel', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto('/jadwal-kbm');
+
+    const table = page.locator('#tableJadwalKBM');
+    await expect(table).toBeVisible({ timeout: 15_000 });
+    await expect(table.locator('tbody tr td.cell-klik-kelas').first()).toBeVisible({ timeout: 15_000 });
+
+    // Verifikasi pada ukuran HP (375px), seluruh lebar tabel (NO s/d LOKAL) muat dalam lebar kartu tanpa terpotong
+    const fitMetrics = await page.evaluate(() => {
+      const wrapper = document.getElementById('tableJadwalKBMWrapper');
+      const tableEl = document.getElementById('tableJadwalKBM');
+      const noTh = Array.from(document.querySelectorAll('#tableJadwalKBM th')).find(
+        (el) => el.textContent?.trim() === 'NO'
+      );
+      const lokalTh = Array.from(document.querySelectorAll('#tableJadwalKBM th')).find(
+        (el) => el.textContent?.trim() === 'LOKAL'
+      );
+      if (!wrapper || !tableEl || !noTh || !lokalTh) return null;
+      const wrapperRect = wrapper.getBoundingClientRect();
+      const tableRect = tableEl.getBoundingClientRect();
+      const noRect = noTh.getBoundingClientRect();
+      const lokalRect = lokalTh.getBoundingClientRect();
+      return {
+        wrapperWidth: wrapperRect.width,
+        tableVisualWidth: tableRect.width,
+        noLeft: noRect.left,
+        lokalRight: lokalRect.right,
+        wrapperRight: wrapperRect.right,
+        transformStyle: tableEl.style.transform,
+      };
+    });
+
+    expect(fitMetrics).not.toBeNull();
+    expect(fitMetrics!.transformStyle).toContain('scale(');
+    expect(fitMetrics!.tableVisualWidth).toBeLessThanOrEqual(fitMetrics!.wrapperWidth + 2);
+    expect(fitMetrics!.lokalRight).toBeLessThanOrEqual(fitMetrics!.wrapperRight + 2);
+
+    // Klik tulisan 'JADWAL KBM MADRASAH DINIYYAH AL AMIRIYYAH' -> Langsung full layar hanya menampilkan tabel saja
+    const titleTrigger = page.getByTestId('title-fullscreen-jadwal-kbm');
+    await expect(titleTrigger).toBeVisible();
+    await titleTrigger.click();
+
+    const exitBtn = page.getByTestId('btn-exit-fullscreen-jadwal');
+    await expect(exitBtn).toBeVisible();
+
+    const fullscreenState = await page.evaluate(() => {
+      const hasBodyClass = document.body.classList.contains('fullscreen-jadwal-kbm');
+      const headerEl = document.querySelector('header');
+      const filterCard = document.querySelector('.no-print-kbm');
+      const headerHidden = headerEl ? window.getComputedStyle(headerEl).display === 'none' : true;
+      const filterHidden = filterCard ? window.getComputedStyle(filterCard).display === 'none' : true;
+      return { hasBodyClass, headerHidden, filterHidden };
+    });
+
+    expect(fullscreenState.hasBodyClass).toBe(true);
+    expect(fullscreenState.headerHidden).toBe(true);
+    expect(fullscreenState.filterHidden).toBe(true);
+    await expect(titleTrigger).toBeHidden();
+    await expect(table).toBeVisible();
+
+    // Keluar dari mode layar penuh dengan tombol melayang (X / Tutup)
+    await exitBtn.click();
+    await expect(exitBtn).toBeHidden();
+    await expect(titleTrigger).toBeVisible();
+
+    // Masuk lagi lalu keluar menggunakan tombol Escape / Back
+    await titleTrigger.click();
+    await expect(exitBtn).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(exitBtn).toBeHidden();
+    await expect(titleTrigger).toBeVisible();
+  });
 });

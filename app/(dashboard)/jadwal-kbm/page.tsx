@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useJadwalStore, LIST_HARI } from '@/stores/useJadwalStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
@@ -163,6 +163,112 @@ export default function JadwalKbmPage() {
     });
     return { totalSlot, terisi };
   }, [listTampil]);
+
+  // Mode Layar Penuh Tabel & Auto-Fit Skala Default pada HP
+  const [isTableFullscreen, setIsTableFullscreen] = useState<boolean>(false);
+  const [mobileFitScale, setMobileFitScale] = useState<number>(1);
+  const [mobileScaledHeight, setMobileScaledHeight] = useState<number | null>(null);
+  const tableWrapperRef = useRef<HTMLDivElement | null>(null);
+  const tableRef = useRef<HTMLTableElement | null>(null);
+
+  const recalculateMobileTableScale = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (window.innerWidth >= 768) {
+      setMobileFitScale(1);
+      setMobileScaledHeight(null);
+      return;
+    }
+
+    const wrapperEl = tableWrapperRef.current;
+    const tableEl = tableRef.current;
+    if (!wrapperEl || !tableEl) return;
+
+    const availableWidth = wrapperEl.clientWidth;
+    const naturalWidth = Math.max(1320, tableEl.offsetWidth || 1320);
+    const naturalHeight = tableEl.offsetHeight || 0;
+
+    if (availableWidth > 0 && availableWidth < naturalWidth) {
+      const nextScale = availableWidth / naturalWidth;
+      setMobileFitScale(nextScale);
+      setMobileScaledHeight(naturalHeight > 0 ? Math.ceil(naturalHeight * nextScale) : null);
+    } else {
+      setMobileFitScale(1);
+      setMobileScaledHeight(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    recalculateMobileTableScale();
+
+    const wrapperEl = tableWrapperRef.current;
+    const tableEl = tableRef.current;
+    let observer: ResizeObserver | null = null;
+
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => {
+        recalculateMobileTableScale();
+      });
+      if (wrapperEl) observer.observe(wrapperEl);
+      if (tableEl) observer.observe(tableEl);
+    }
+
+    window.addEventListener('resize', recalculateMobileTableScale);
+    return () => {
+      window.removeEventListener('resize', recalculateMobileTableScale);
+      if (observer) observer.disconnect();
+    };
+  }, [recalculateMobileTableScale, listTampil.length, isTableFullscreen]);
+
+  const handleEnterFullscreen = useCallback(() => {
+    if (isTableFullscreen) return;
+    setIsTableFullscreen(true);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ jadwalKbmFullscreen: true }, '');
+    }
+  }, [isTableFullscreen]);
+
+  const handleExitFullscreen = useCallback(() => {
+    setIsTableFullscreen(false);
+    if (typeof window !== 'undefined' && window.history.state?.jadwalKbmFullscreen) {
+      window.history.back();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (isTableFullscreen) {
+        document.body.classList.add('fullscreen-jadwal-kbm');
+      } else {
+        document.body.classList.remove('fullscreen-jadwal-kbm');
+      }
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.body.classList.remove('fullscreen-jadwal-kbm');
+      }
+    };
+  }, [isTableFullscreen]);
+
+  useEffect(() => {
+    if (!isTableFullscreen) return;
+
+    const handlePopState = () => {
+      setIsTableFullscreen(false);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleExitFullscreen();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isTableFullscreen, handleExitFullscreen]);
 
   // Click on Class code (Single Click -> Detail, Double Click / Pencil -> Input)
   const handleKlsClick = (k: KelasKbmItem) => {
@@ -512,9 +618,43 @@ export default function JadwalKbmPage() {
       </div>
 
       {/* 2. Area Tabel Dokumen Resmi Jadwal KBM */}
-      <div className="card-panel border-0 p-4 md:p-6 shadow-sm" id="areaPrintKBM">
-        <div className="text-center mb-4">
-          <h5 className="font-bold text-sm md:text-base text-slate-800 uppercase tracking-wide m-0">
+      <div
+        className={
+          isTableFullscreen
+            ? 'fixed inset-0 z-40 bg-white p-1.5 sm:p-3 overflow-y-auto overflow-x-hidden m-0 rounded-none border-0'
+            : 'card-panel border-0 p-4 md:p-6 shadow-sm'
+        }
+        id="areaPrintKBM"
+      >
+        {isTableFullscreen && (
+          <button
+            type="button"
+            data-testid="btn-exit-fullscreen-jadwal"
+            onClick={handleExitFullscreen}
+            aria-label="Tutup tampilan layar penuh"
+            title="Kembali ke tampilan normal (Esc)"
+            className="fixed top-2.5 right-2.5 z-[45] inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white text-[11px] font-bold shadow-md backdrop-blur-xs transition active:scale-95 cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Tutup</span>
+          </button>
+        )}
+
+        <div className={isTableFullscreen ? 'hidden' : 'text-center mb-4'}>
+          <h5
+            role="button"
+            tabIndex={0}
+            data-testid="title-fullscreen-jadwal-kbm"
+            onClick={handleEnterFullscreen}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleEnterFullscreen();
+              }
+            }}
+            title="Klik untuk tampilan layar penuh hanya tabel"
+            className="inline-block font-bold text-sm md:text-base text-slate-800 hover:text-emerald-700 uppercase tracking-wide m-0 cursor-pointer select-none transition-colors"
+          >
             JADWAL KBM MADRASAH DINIYYAH AL AMIRIYYAH
           </h5>
           <h6 className="font-bold text-slate-500 text-xs md:text-sm m-0 mt-1">
@@ -522,13 +662,36 @@ export default function JadwalKbmPage() {
           </h6>
         </div>
 
-        <div className="table-responsive overflow-x-auto rounded-xl border border-slate-200 shadow-xs bg-white">
-          <table className="tabel-kbm-resmi w-full min-w-[1320px]" id="tableJadwalKBM">
+        <div
+          ref={tableWrapperRef}
+          id="tableJadwalKBMWrapper"
+          className="table-responsive overflow-x-auto rounded-xl border border-slate-200 shadow-xs bg-white"
+          style={
+            mobileFitScale < 1 && mobileScaledHeight
+              ? { height: mobileScaledHeight, overflowX: 'hidden', overflowY: 'hidden' }
+              : undefined
+          }
+        >
+          <table
+            ref={tableRef}
+            className="tabel-kbm-resmi w-full min-w-[1320px]"
+            id="tableJadwalKBM"
+            style={
+              mobileFitScale < 1
+                ? {
+                    width: 1320,
+                    minWidth: 1320,
+                    transform: `scale(${mobileFitScale})`,
+                    transformOrigin: 'top left',
+                  }
+                : undefined
+            }
+          >
             <thead>
               {/* Baris Header 1 */}
               <tr>
-                <th rowSpan={2} className="sticky left-0 z-30 bg-[#e2e8f0]" style={{ width: 38, minWidth: 38 }}>NO</th>
-                <th rowSpan={2} className="sticky left-[38px] z-30 bg-[#e2e8f0] border-r-2 border-r-slate-400" style={{ width: 70, minWidth: 70 }}>KLS</th>
+                <th rowSpan={2} className="md:sticky md:left-0 z-30 bg-[#e2e8f0]" style={{ width: 38, minWidth: 38 }}>NO</th>
+                <th rowSpan={2} className="md:sticky md:left-[38px] z-30 bg-[#e2e8f0] border-r-2 border-r-slate-400" style={{ width: 70, minWidth: 70 }}>KLS</th>
                 <th rowSpan={2} style={{ width: 45, minWidth: 45 }}>PI/PA</th>
                 <th rowSpan={2} style={{ width: 75, minWidth: 75 }}>TINGKAT</th>
                 <th rowSpan={2} style={{ width: 35, minWidth: 35 }}>JAM</th>
@@ -583,7 +746,7 @@ export default function JadwalKbmPage() {
                       <tr className={rowGenderClass}>
                         <td
                           rowSpan={2}
-                          className={`text-center font-bold cell-klik-kelas cursor-pointer sticky left-0 z-10 ${stickyCellBg} hover:bg-emerald-50/50`}
+                          className={`text-center font-bold cell-klik-kelas cursor-pointer md:sticky md:left-0 z-10 ${stickyCellBg} hover:bg-emerald-50/50`}
                           style={{ width: 38, minWidth: 38 }}
                           onClick={() => handleKlsClick(k)}
                           onDoubleClick={() => handleKlsDoubleClick(k)}
@@ -593,7 +756,7 @@ export default function JadwalKbmPage() {
                         </td>
                         <td
                           rowSpan={2}
-                          className={`text-center font-bold text-emerald-700 cell-klik-kelas cursor-pointer sticky left-[38px] z-10 ${stickyCellBg} border-r-2 border-r-slate-300 hover:bg-emerald-50/60 transition-colors`}
+                          className={`text-center font-bold text-emerald-700 cell-klik-kelas cursor-pointer md:sticky md:left-[38px] z-10 ${stickyCellBg} border-r-2 border-r-slate-300 hover:bg-emerald-50/60 transition-colors`}
                           style={{ width: 70, minWidth: 70 }}
                           onClick={() => handleKlsClick(k)}
                           onDoubleClick={() => handleKlsDoubleClick(k)}

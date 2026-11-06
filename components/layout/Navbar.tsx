@@ -275,7 +275,7 @@ export default function Navbar() {
                       </Link>
                     </div>
 
-                    {isMasterAdmin && (
+                    {isMasterAdmin && isAppSecurityEnabled && (
                       <Link
                         href="/pengaturan?tab=akun"
                         onClick={() => setDropdownOpen(false)}

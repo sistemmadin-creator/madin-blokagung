@@ -302,6 +302,20 @@
   line-height: 1.2;
 }
 
+/* Mode Layar Penuh Tabel Jadwal KBM */
+body.fullscreen-jadwal-kbm header,
+body.fullscreen-jadwal-kbm aside,
+body.fullscreen-jadwal-kbm nav,
+body.fullscreen-jadwal-kbm .no-print-kbm {
+  display: none !important;
+}
+
+body.fullscreen-jadwal-kbm main {
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+
 /* Isolasi Cetak Dokumen Resmi */
 @media print {
   header,
@@ -433,9 +447,15 @@
   }
 
   /* Aturan Cetak Khusus Jadwal KBM Per Kelas & Hari KBM */
+  body.printing-jadwal-kbm #tableJadwalKBMWrapper {
+    height: auto !important;
+    overflow: visible !important;
+  }
   body.printing-jadwal-kbm .tabel-kbm-resmi,
   body.printing-hari-kbm .tabel-kbm-resmi {
     width: 100% !important;
+    min-width: 0 !important;
+    transform: none !important;
     border-collapse: collapse !important;
     font-size: 7.5pt !important;
     -webkit-print-color-adjust: exact !important;
