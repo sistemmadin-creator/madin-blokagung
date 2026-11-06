@@ -1,16 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
-import { BarChart2, Info, CheckCircle2, AlertTriangle, XOctagon } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { BarChart2, CheckCircle2 } from 'lucide-react';
 import { TimeRangeFilter } from './DashboardHeader';
-
-interface ChartPoint {
-  label: string;
-  hadir: number;
-  izin: number;
-  alfa: number;
-  total: number;
-}
+import {
+  buildMonthlyDailyChartPoints,
+  buildWeeklyChartPoints,
+  ChartPoint,
+} from '@/stores/useDashboardStore';
 
 interface AbsensiTrendLineChartProps {
   timeRange: TimeRangeFilter;
@@ -25,8 +22,7 @@ export default function AbsensiTrendLineChart({
 }: AbsensiTrendLineChartProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  // Data dinamis berdasarkan filter rentang waktu
-  const getChartData = (): ChartPoint[] => {
+  const data: ChartPoint[] = useMemo(() => {
     if (externalPoints && externalPoints.length > 0) {
       return externalPoints;
     }
@@ -39,21 +35,9 @@ export default function AbsensiTrendLineChart({
           { label: 'Jam 4', hadir: 96, izin: 3, alfa: 1, total: 100 },
         ];
       case 'seminggu':
-        return [
-          { label: 'Sabtu', hadir: 97, izin: 2, alfa: 1, total: 100 },
-          { label: 'Ahad', hadir: 98, izin: 2, alfa: 0, total: 100 },
-          { label: 'Senin', hadir: 96, izin: 3, alfa: 1, total: 100 },
-          { label: 'Selasa', hadir: 95, izin: 3, alfa: 2, total: 100 },
-          { label: 'Rabu', hadir: 97, izin: 2, alfa: 1, total: 100 },
-          { label: 'Kamis', hadir: 94, izin: 4, alfa: 2, total: 100 },
-        ];
+        return buildWeeklyChartPoints();
       case 'sebulan':
-        return [
-          { label: 'Pekan 1', hadir: 96, izin: 3, alfa: 1, total: 100 },
-          { label: 'Pekan 2', hadir: 98, izin: 2, alfa: 0, total: 100 },
-          { label: 'Pekan 3', hadir: 95, izin: 4, alfa: 1, total: 100 },
-          { label: 'Pekan 4', hadir: 97, izin: 2, alfa: 1, total: 100 },
-        ];
+        return buildMonthlyDailyChartPoints();
       case 'setahun':
         return [
           { label: 'Jul', hadir: 98, izin: 2, alfa: 0, total: 100 },
@@ -72,19 +56,17 @@ export default function AbsensiTrendLineChart({
       default:
         return [];
     }
-  };
-
-  const data = getChartData();
+  }, [externalPoints, timeRange]);
 
   // Koordinat SVG
-  const chartWidth = 600;
-  const chartHeight = 220;
-  const paddingX = 40;
-  const paddingY = 30;
+  const chartWidth = 640;
+  const chartHeight = timeRange === 'sebulan' ? 245 : 230;
+  const paddingX = 42;
+  const paddingTop = 24;
+  const paddingBottom = timeRange === 'sebulan' ? 54 : 42;
   const availableWidth = chartWidth - paddingX * 2;
-  const availableHeight = chartHeight - paddingY * 2;
+  const availableHeight = chartHeight - paddingTop - paddingBottom;
 
-  // Skala sumbu Y: 80% s/d 100% agar fluktuasi terlihat jelas dan bermakna
   const minY = 80;
   const maxY = 100;
 
@@ -96,18 +78,66 @@ export default function AbsensiTrendLineChart({
   const getY = (val: number) => {
     const clamped = Math.max(minY, Math.min(maxY, val));
     const normalized = (clamped - minY) / (maxY - minY);
-    return chartHeight - paddingY - normalized * availableHeight;
+    return chartHeight - paddingBottom - normalized * availableHeight;
   };
 
-  // Bangun path garis Hadir
   const hadirPoints = data.map((d, i) => `${getX(i)},${getY(d.hadir)}`);
-  const hadirPath = `M${hadirPoints.join(' L')}`;
+  const hadirPath = hadirPoints.length > 0 ? `M${hadirPoints.join(' L')}` : '';
+  const hadirAreaPath =
+    hadirPoints.length > 0
+      ? `${hadirPath} L${getX(data.length - 1)},${
+          chartHeight - paddingBottom
+        } L${getX(0)},${chartHeight - paddingBottom} Z`
+      : '';
 
-  // Bangun area fill hadir
-  const hadirAreaPath = `${hadirPath} L${getX(data.length - 1)},${chartHeight - paddingY} L${getX(0)},${chartHeight - paddingY} Z`;
+  // Kelompok Pekan 1 s/d Pekan 4 khusus mode 30 Hari (sebulan)
+  const pekanSegments = useMemo(() => {
+    if (timeRange !== 'sebulan' || data.length === 0) return [];
+    const groups: Array<{
+      pekan: 'Pekan 1' | 'Pekan 2' | 'Pekan 3' | 'Pekan 4';
+      startIndex: number;
+      endIndex: number;
+      startDateLabel: string;
+      endDateLabel: string;
+      avgHadir: number;
+    }> = [];
+
+    const pekanNames: Array<'Pekan 1' | 'Pekan 2' | 'Pekan 3' | 'Pekan 4'> = [
+      'Pekan 1',
+      'Pekan 2',
+      'Pekan 3',
+      'Pekan 4',
+    ];
+
+    pekanNames.forEach((pk) => {
+      const indices: number[] = [];
+      data.forEach((pt, idx) => {
+        if (pt.pekanLabel === pk) indices.push(idx);
+      });
+      if (indices.length > 0) {
+        const firstIdx = indices[0];
+        const lastIdx = indices[indices.length - 1];
+        const sumHadir = indices.reduce((acc, i) => acc + data[i].hadir, 0);
+        const avg = Math.round((sumHadir / indices.length) * 10) / 10;
+        groups.push({
+          pekan: pk,
+          startIndex: firstIdx,
+          endIndex: lastIdx,
+          startDateLabel: data[firstIdx].label,
+          endDateLabel: data[lastIdx].label,
+          avgHadir: avg,
+        });
+      }
+    });
+
+    return groups;
+  }, [data, timeRange]);
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
+    <div
+      data-testid="dashboard-attendance-chart"
+      className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between h-full"
+    >
       <div>
         {/* Header Widget */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
@@ -121,7 +151,8 @@ export default function AbsensiTrendLineChart({
               </h3>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Tingkat kehadiran guru per sesi mengajar pada rentang {timeRange.replace('_', ' ')}
+              Tingkat kehadiran guru per sesi mengajar pada rentang{' '}
+              {timeRange.replace('_', ' ')}
             </p>
           </div>
 
@@ -143,7 +174,7 @@ export default function AbsensiTrendLineChart({
         </div>
 
         {/* Canvas SVG Linechart */}
-        <div className="relative w-full h-[220px] select-none">
+        <div className="relative w-full h-[240px] select-none">
           <svg
             viewBox={`0 0 ${chartWidth} ${chartHeight}`}
             className="w-full h-full overflow-visible"
@@ -190,33 +221,90 @@ export default function AbsensiTrendLineChart({
               );
             })}
 
+            {/* Pembatas Vertikal & Label Pekan 1 s/d Pekan 4 pada Sumbu Horizontal (Mode 30 Hari) */}
+            {timeRange === 'sebulan' &&
+              pekanSegments.map((seg, idx) => {
+                const startX = getX(seg.startIndex);
+                const endX = getX(seg.endIndex);
+                const centerX = (startX + endX) / 2;
+                const dividerX =
+                  idx > 0
+                    ? (getX(seg.startIndex - 1) + startX) / 2
+                    : null;
+
+                return (
+                  <g
+                    key={seg.pekan}
+                    data-testid={`chart-pekan-group-${idx + 1}`}
+                  >
+                    {dividerX !== null && (
+                      <line
+                        x1={dividerX}
+                        y1={paddingTop}
+                        x2={dividerX}
+                        y2={chartHeight - 10}
+                        stroke="#cbd5e1"
+                        strokeDasharray="3 3"
+                        strokeWidth="1"
+                      />
+                    )}
+                    {/* Garis Rentang Pekan di Bawah Indikator Tanggal */}
+                    <line
+                      x1={startX}
+                      y1={chartHeight - 22}
+                      x2={endX}
+                      y2={chartHeight - 22}
+                      stroke="#0f766e"
+                      strokeOpacity="0.35"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    {/* Label Pekan 1 s/d Pekan 4 beserta rentang tanggal */}
+                    <text
+                      x={centerX}
+                      y={chartHeight - 7}
+                      textAnchor="middle"
+                      className="text-[10px] fill-teal-900 font-extrabold"
+                    >
+                      {seg.pekan} ({seg.startDateLabel} - {seg.endDateLabel})
+                    </text>
+                  </g>
+                );
+              })}
+
             {/* Area Transparan Bawah Hadir */}
-            <path d={hadirAreaPath} fill="url(#hadirGradient)" />
+            {hadirAreaPath && (
+              <path d={hadirAreaPath} fill="url(#hadirGradient)" />
+            )}
 
             {/* Garis Linechart Utama (Hadir) */}
-            <path
-              d={hadirPath}
-              fill="none"
-              stroke="#0f766e"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            {hadirPath && (
+              <path
+                d={hadirPath}
+                fill="none"
+                stroke="#0f766e"
+                strokeWidth={timeRange === 'sebulan' ? '2' : '2.5'}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
 
-            {/* Titik Data Poin & Interaktivitas */}
+            {/* Titik Data Poin & Label Sumbu Horizontal (X) */}
             {data.map((d, i) => {
               const cx = getX(i);
               const cy = getY(d.hadir);
               const isHovered = hoveredIndex === i;
+              const isMonthly = timeRange === 'sebulan';
+              const isWeekly = timeRange === 'seminggu';
 
               return (
-                <g key={d.label}>
-                  {/* Invisible larger hit area for reliable hover and mobile tap */}
+                <g key={`${d.label}-${i}`}>
+                  {/* Area sentuh hover / klik */}
                   <circle
                     data-testid={`chart-point-${i}`}
                     cx={cx}
                     cy={cy}
-                    r={16}
+                    r={isMonthly ? 9 : 16}
                     fill="transparent"
                     className="cursor-pointer"
                     onMouseEnter={() => setHoveredIndex(i)}
@@ -228,21 +316,75 @@ export default function AbsensiTrendLineChart({
                   <circle
                     cx={cx}
                     cy={cy}
-                    r={isHovered ? 6 : 4}
-                    className="pointer-events-none transition-all fill-white stroke-teal-700 stroke-2 hover:stroke-[3]"
+                    r={isHovered ? 5.5 : isMonthly ? 2.8 : 4}
+                    className="pointer-events-none transition-all fill-white stroke-teal-700 stroke-2"
                   />
 
-                  {/* Label Sumbu X */}
-                  <text
-                    x={cx}
-                    y={chartHeight - 8}
-                    textAnchor="middle"
-                    className={`text-[10px] font-semibold transition-colors ${
-                      isHovered ? 'fill-teal-800 font-bold' : 'fill-slate-500'
-                    }`}
-                  >
-                    {d.label}
-                  </text>
+                  {/* Sumbu Horizontal Mode 7 Hari: Nama Hari + Tanggal di Bawahnya */}
+                  {isWeekly && (
+                    <g data-testid={`chart-xaxis-weekly-${i}`}>
+                      <text
+                        x={cx}
+                        y={chartHeight - 22}
+                        textAnchor="middle"
+                        className={`text-[10px] font-bold transition-colors ${
+                          isHovered ? 'fill-teal-800' : 'fill-slate-700'
+                        }`}
+                      >
+                        {d.label}
+                      </text>
+                      <text
+                        x={cx}
+                        y={chartHeight - 8}
+                        textAnchor="middle"
+                        className={`text-[9.5px] font-semibold transition-colors ${
+                          isHovered ? 'fill-teal-700 font-bold' : 'fill-slate-400'
+                        }`}
+                      >
+                        {d.subLabel}
+                      </text>
+                    </g>
+                  )}
+
+                  {/* Sumbu Horizontal Mode 30 Hari: Indikator Tiap Tanggal (01..31) di Atas Baris Pekan 1-4 */}
+                  {isMonthly && (
+                    <g data-testid={`chart-xaxis-monthly-date-${i}`}>
+                      <line
+                        x1={cx}
+                        y1={chartHeight - paddingBottom}
+                        x2={cx}
+                        y2={chartHeight - paddingBottom + 4}
+                        stroke={isHovered ? '#0f766e' : '#cbd5e1'}
+                        strokeWidth={isHovered ? '1.5' : '1'}
+                      />
+                      <text
+                        x={cx}
+                        y={chartHeight - 31}
+                        textAnchor="middle"
+                        className={`text-[8px] transition-colors ${
+                          isHovered
+                            ? 'fill-teal-800 font-extrabold'
+                            : 'fill-slate-500 font-semibold'
+                        }`}
+                      >
+                        {d.dayNumber || d.label}
+                      </text>
+                    </g>
+                  )}
+
+                  {/* Sumbu Horizontal Mode Hari Ini & 1 Tahun */}
+                  {!isWeekly && !isMonthly && (
+                    <text
+                      x={cx}
+                      y={chartHeight - 12}
+                      textAnchor="middle"
+                      className={`text-[10px] font-semibold transition-colors ${
+                        isHovered ? 'fill-teal-800 font-bold' : 'fill-slate-500'
+                      }`}
+                    >
+                      {d.label}
+                    </text>
+                  )}
                 </g>
               );
             })}
@@ -257,33 +399,98 @@ export default function AbsensiTrendLineChart({
                 top: `${getY(data[hoveredIndex].hadir) - 10}px`,
               }}
             >
-              <div className="font-bold border-b border-slate-700 pb-1 mb-1 text-amber-300">
-                {data[hoveredIndex].label}
+              <div className="font-bold border-b border-slate-700 pb-1 mb-1 text-amber-300 whitespace-nowrap">
+                {data[hoveredIndex].fullDateLabel ||
+                  (data[hoveredIndex].subLabel
+                    ? `${data[hoveredIndex].label} (${data[hoveredIndex].subLabel})`
+                    : data[hoveredIndex].label)}
               </div>
               <div className="flex items-center justify-between gap-3 text-[11px]">
                 <span className="text-slate-300">Tingkat Hadir:</span>
-                <span className="font-bold text-emerald-400">{data[hoveredIndex].hadir}%</span>
+                <span className="font-bold text-emerald-400">
+                  {data[hoveredIndex].hadir}%
+                </span>
               </div>
               <div className="flex items-center justify-between gap-3 text-[11px]">
                 <span className="text-slate-300">Izin / Sakit:</span>
-                <span className="font-bold text-amber-300">{data[hoveredIndex].izin}%</span>
+                <span className="font-bold text-amber-300">
+                  {data[hoveredIndex].izin}%
+                </span>
               </div>
               <div className="flex items-center justify-between gap-3 text-[11px]">
                 <span className="text-slate-300">Alfa:</span>
-                <span className="font-bold text-rose-400">{data[hoveredIndex].alfa}%</span>
+                <span className="font-bold text-rose-400">
+                  {data[hoveredIndex].alfa}%
+                </span>
               </div>
             </div>
           )}
         </div>
+
+        {/* Strip Indikator Hari & Tanggal saat Filter 7 Hari Aktif */}
+        {timeRange === 'seminggu' && data.length > 0 && (
+          <div
+            data-testid="chart-weekly-date-strip"
+            className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-2 pt-2 border-t border-slate-100"
+          >
+            {data.map((pt, idx) => (
+              <div
+                key={`${pt.label}-${idx}`}
+                data-testid={`chart-weekly-badge-${idx}`}
+                className="px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 flex flex-col items-center text-center"
+              >
+                <span className="text-[11px] font-extrabold text-slate-800">
+                  {pt.label}
+                </span>
+                <span className="text-[10px] font-semibold text-teal-700">
+                  {pt.subLabel}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Strip Ringkasan Pekan 1 s/d Pekan 4 saat Filter 30 Hari Aktif */}
+        {timeRange === 'sebulan' && pekanSegments.length > 0 && (
+          <div
+            data-testid="chart-pekan-summary-strip"
+            className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 pt-2 border-t border-slate-100"
+          >
+            {pekanSegments.map((seg, idx) => (
+              <div
+                key={seg.pekan}
+                data-testid={`chart-pekan-badge-${idx + 1}`}
+                className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 flex items-center justify-between text-[11px]"
+              >
+                <div>
+                  <span className="font-extrabold text-slate-800 block">
+                    {seg.pekan}
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    {seg.startDateLabel} - {seg.endDateLabel}
+                  </span>
+                </div>
+                <span className="font-extrabold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200/60">
+                  {seg.avgHadir}%
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Ringkasan Kesimpulan Cepat */}
       <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
         <div className="flex items-center gap-1.5">
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          <span>Rata-rata kehadiran berada di level <strong>{avgHadir}%</strong> (di atas target 90%)</span>
+          <span>
+            Rata-rata kehadiran berada di level <strong>{avgHadir}%</strong> (di
+            atas target 90%)
+          </span>
         </div>
-        <span className="text-slate-400 text-[11px]">Sumber: Presensi Harian Asatidz</span>
+        <span className="text-slate-400 text-[11px]">
+          Sumber: Presensi Harian Asatidz
+        </span>
       </div>
     </div>
   );

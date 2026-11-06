@@ -11,10 +11,136 @@ import { WartaBerita } from '@/types/berita';
 
 export interface ChartPoint {
   label: string;
+  subLabel?: string;
+  dayNumber?: string;
+  fullDateLabel?: string;
+  pekanLabel?: 'Pekan 1' | 'Pekan 2' | 'Pekan 3' | 'Pekan 4';
   hadir: number;
   izin: number;
   alfa: number;
   total: number;
+}
+
+const BULAN_PENDEK_ID = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+] as const;
+
+const HARI_NAMA_ID = [
+  'Ahad',
+  'Senin',
+  'Selasa',
+  'Rabu',
+  'Kamis',
+  'Jumat',
+  'Sabtu',
+] as const;
+
+/**
+ * Menghasilkan 6 hari KBM aktif terakhir (Sabtu s/d Kamis) lengkap dengan tanggalnya
+ * untuk filter 7 Hari (seminggu).
+ */
+export function buildWeeklyChartPoints(baseDate: Date = new Date()): ChartPoint[] {
+  const presetStats = [
+    { hadir: 97, izin: 2, alfa: 1 },
+    { hadir: 98, izin: 2, alfa: 0 },
+    { hadir: 96, izin: 3, alfa: 1 },
+    { hadir: 95, izin: 3, alfa: 2 },
+    { hadir: 97, izin: 2, alfa: 1 },
+    { hadir: 94, izin: 4, alfa: 2 },
+  ];
+
+  // Cari hari Sabtu terakhir sebagai awal siklus pekan KBM Madin (Sabtu - Kamis)
+  const dayOfWeek = baseDate.getDay(); // 0=Ahad .. 6=Sabtu
+  const daysSinceSaturday = (dayOfWeek + 1) % 7;
+  const saturdayDate = new Date(baseDate);
+  saturdayDate.setDate(baseDate.getDate() - daysSinceSaturday);
+
+  return presetStats.map((st, idx) => {
+    const d = new Date(saturdayDate);
+    d.setDate(saturdayDate.getDate() + idx);
+    const hariNama = HARI_NAMA_ID[d.getDay()] || 'Hari';
+    const tglStr = String(d.getDate()).padStart(2, '0');
+    const blnStr = BULAN_PENDEK_ID[d.getMonth()] || '';
+    const thnStr = d.getFullYear();
+    const shortDate = `${tglStr} ${blnStr}`;
+
+    return {
+      label: hariNama,
+      subLabel: shortDate,
+      dayNumber: tglStr,
+      fullDateLabel: `${hariNama}, ${tglStr} ${blnStr} ${thnStr}`,
+      hadir: st.hadir,
+      izin: st.izin,
+      alfa: st.alfa,
+      total: 100,
+    };
+  });
+}
+
+/**
+ * Menghasilkan 30 titik tanggal harian selama 30 hari terakhir
+ * yang dikelompokkan ke dalam Pekan 1 s/d Pekan 4 untuk filter 30 Hari (sebulan).
+ */
+export function buildMonthlyDailyChartPoints(
+  baseDate: Date = new Date()
+): ChartPoint[] {
+  const patternHadir = [
+    96, 97, 96, 95, 97, 96, 95, // Pekan 1 (rata-rata ~96%)
+    98, 97, 98, 99, 98, 97, 98, // Pekan 2 (rata-rata ~98%)
+    95, 94, 96, 95, 94, 96, 95, // Pekan 3 (rata-rata ~95%)
+    97, 96, 98, 97, 97, 96, 98, 97, 97, // Pekan 4 (rata-rata ~97%)
+  ];
+
+  const points: ChartPoint[] = [];
+  for (let i = 0; i < 30; i++) {
+    const offset = 29 - i;
+    const d = new Date(baseDate);
+    d.setDate(baseDate.getDate() - offset);
+
+    const hariNama = HARI_NAMA_ID[d.getDay()] || 'Hari';
+    const tglStr = String(d.getDate()).padStart(2, '0');
+    const blnStr = BULAN_PENDEK_ID[d.getMonth()] || '';
+    const thnStr = d.getFullYear();
+    const shortDate = `${tglStr} ${blnStr}`;
+
+    const pekanLabel: 'Pekan 1' | 'Pekan 2' | 'Pekan 3' | 'Pekan 4' =
+      i < 7
+        ? 'Pekan 1'
+        : i < 14
+        ? 'Pekan 2'
+        : i < 21
+        ? 'Pekan 3'
+        : 'Pekan 4';
+
+    const hadir = patternHadir[i] ?? 96;
+    const alfa = hadir <= 94 ? 2 : hadir <= 97 ? 1 : 0;
+    const izin = Math.max(0, 100 - hadir - alfa);
+
+    points.push({
+      label: shortDate,
+      subLabel: pekanLabel,
+      dayNumber: tglStr,
+      fullDateLabel: `${hariNama}, ${tglStr} ${blnStr} ${thnStr} (${pekanLabel})`,
+      pekanLabel,
+      hadir,
+      izin,
+      alfa,
+      total: 100,
+    });
+  }
+
+  return points;
 }
 
 export interface JenjangHafalanStat {
@@ -207,7 +333,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     let deltaKehadiran = '+1.4% vs kemarin';
     let deltaSetoran = '+12 setoran hari ini';
     let deltaSantri = '+38 santri';
-    let isUp = true;
+    const isUp = true;
     let kehadiranPct = 96.8;
 
     switch (range) {
@@ -224,26 +350,14 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         break;
 
       case 'seminggu':
-        newChartPoints = [
-          { label: 'Sabtu', hadir: 97, izin: 2, alfa: 1, total: 100 },
-          { label: 'Ahad', hadir: 98, izin: 2, alfa: 0, total: 100 },
-          { label: 'Senin', hadir: 96, izin: 3, alfa: 1, total: 100 },
-          { label: 'Selasa', hadir: 95, izin: 3, alfa: 2, total: 100 },
-          { label: 'Rabu', hadir: 97, izin: 2, alfa: 1, total: 100 },
-          { label: 'Kamis', hadir: 94, izin: 4, alfa: 2, total: 100 },
-        ];
+        newChartPoints = buildWeeklyChartPoints();
         kehadiranPct = 96.2;
         deltaKehadiran = '+2.1% vs pekan lalu';
         deltaSetoran = '+84 setoran pekan ini';
         break;
 
       case 'sebulan':
-        newChartPoints = [
-          { label: 'Pekan 1', hadir: 96, izin: 3, alfa: 1, total: 100 },
-          { label: 'Pekan 2', hadir: 98, izin: 2, alfa: 0, total: 100 },
-          { label: 'Pekan 3', hadir: 95, izin: 4, alfa: 1, total: 100 },
-          { label: 'Pekan 4', hadir: 97, izin: 2, alfa: 1, total: 100 },
-        ];
+        newChartPoints = buildMonthlyDailyChartPoints();
         kehadiranPct = 96.5;
         deltaKehadiran = '+1.8% vs bulan lalu';
         deltaSetoran = '+320 setoran sebulan';
@@ -285,19 +399,24 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     }));
   },
 
-  recomputeAggregates: ({ santri, asatidz, absensi, setoran, formasi, posts }) => {
+  recomputeAggregates: ({ santri, absensi, setoran, formasi, posts }) => {
     // 1. Santri
     const totalSantri = santri.length > 0 ? santri.length : 5412;
-    const santriPa = santri.length > 0
-      ? santri.filter((s) => String(s.pa_pi).toUpperCase() === 'PA').length
-      : Math.round(totalSantri * 0.525);
+    const santriPa =
+      santri.length > 0
+        ? santri.filter((s) => String(s.pa_pi).toUpperCase() === 'PA').length
+        : Math.round(totalSantri * 0.525);
     const santriPi = totalSantri - santriPa;
 
     // 2. Formasi
     const totalRombel = formasi.length > 0 ? formasi.length : 161;
-    const kelasUnggulanCount = formasi.length > 0
-      ? formasi.filter((f) => f.is_unggulan || f.tingkat?.toLowerCase().includes('unggulan')).length
-      : 12;
+    const kelasUnggulanCount =
+      formasi.length > 0
+        ? formasi.filter(
+            (f) =>
+              f.is_unggulan || f.tingkat?.toLowerCase().includes('unggulan')
+          ).length
+        : 12;
 
     // 3. Setoran
     const totalSetoran = setoran.length > 0 ? setoran.length : 3840;
@@ -311,10 +430,18 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     if (absensi.length > 0) {
       const validRows = absensi.filter((r) => r.status);
       if (validRows.length > 0) {
-        hadirCount = validRows.filter((r) => r.status === 'Hadir' || r.status === 'Terlambat' || r.status === 'Digantikan').length;
+        hadirCount = validRows.filter(
+          (r) =>
+            r.status === 'Hadir' ||
+            r.status === 'Terlambat' ||
+            r.status === 'Digantikan'
+        ).length;
         alfaCount = validRows.filter((r) => r.status === 'Alfa').length;
-        izinCount = validRows.filter((r) => r.status === 'Izin' || r.status === 'Sakit').length;
-        kehadiranGuruPct = Math.round((hadirCount / validRows.length) * 1000) / 10;
+        izinCount = validRows.filter(
+          (r) => r.status === 'Izin' || r.status === 'Sakit'
+        ).length;
+        kehadiranGuruPct =
+          Math.round((hadirCount / validRows.length) * 1000) / 10;
       }
     }
 
@@ -329,11 +456,20 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     let ugTuntas = 324;
 
     if (santri.length > 0) {
-      const normTingkat = (s: Santri) => String(s.tingkat || s.kelas || '').toUpperCase();
-      const ulaSantri = santri.filter((s) => normTingkat(s).includes('ULA') && !normTingkat(s).includes('UNGGULAN'));
-      const wusthoSantri = santri.filter((s) => normTingkat(s).includes('WUSTHO'));
+      const normTingkat = (s: Santri) =>
+        String(s.tingkat || s.kelas || '').toUpperCase();
+      const ulaSantri = santri.filter(
+        (s) =>
+          normTingkat(s).includes('ULA') && !normTingkat(s).includes('UNGGULAN')
+      );
+      const wusthoSantri = santri.filter((s) =>
+        normTingkat(s).includes('WUSTHO')
+      );
       const ulyaSantri = santri.filter((s) => normTingkat(s).includes('ULYA'));
-      const ugSantri = santri.filter((s) => normTingkat(s).includes('UNGGULAN') || normTingkat(s).includes('(UG)'));
+      const ugSantri = santri.filter(
+        (s) =>
+          normTingkat(s).includes('UNGGULAN') || normTingkat(s).includes('(UG)')
+      );
 
       if (ulaSantri.length > 0) {
         ulaTotal = ulaSantri.length;

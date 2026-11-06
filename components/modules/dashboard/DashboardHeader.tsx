@@ -122,6 +122,8 @@ export default function DashboardHeader({
                 <button
                   key={tab.key}
                   type="button"
+                  data-testid={`dashboard-filter-${tab.key}`}
+                  aria-pressed={isActive}
                   onClick={() => setTimeRange(tab.key)}
                   className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     isActive
