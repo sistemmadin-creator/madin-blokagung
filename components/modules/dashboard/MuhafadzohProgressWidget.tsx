@@ -2,7 +2,14 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Award, BookMarked, ArrowUpRight, CheckCircle2, ChevronRight } from 'lucide-react';
+import {
+  Award,
+  ArrowUpRight,
+  CheckCircle2,
+  ChevronRight,
+  QrCode,
+  MessageCircle,
+} from 'lucide-react';
 import { TimeRangeFilter } from './DashboardHeader';
 
 interface JenjangHafalan {
@@ -22,7 +29,6 @@ interface MuhafadzohProgressWidgetProps {
 }
 
 export default function MuhafadzohProgressWidget({
-  timeRange,
   stats: externalStats,
 }: MuhafadzohProgressWidgetProps) {
   const defaultJenjangList: JenjangHafalan[] = [
@@ -60,7 +66,10 @@ export default function MuhafadzohProgressWidget({
     },
   ];
 
-  const jenjangList = externalStats && externalStats.length > 0 ? externalStats : defaultJenjangList;
+  const jenjangList =
+    externalStats && externalStats.length > 0
+      ? externalStats
+      : defaultJenjangList;
   const totalTuntas = jenjangList.reduce((acc, curr) => acc + curr.tuntas, 0);
 
   return (
@@ -70,7 +79,7 @@ export default function MuhafadzohProgressWidget({
         <div className="flex items-center justify-between mb-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="p-1 rounded-md bg-amber-50 text-amber-700">
+              <span className="p-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200/60">
                 <Award className="w-4 h-4" />
               </span>
               <h3 className="text-base font-bold text-slate-900 tracking-tight">
@@ -78,7 +87,7 @@ export default function MuhafadzohProgressWidget({
               </h3>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Capaian setoran hafalan wajib per jenjang semester ini
+              Capaian setoran hafalan wajib, Setor Mustahiq & Rapor Digital WA
             </p>
           </div>
 
@@ -92,19 +101,29 @@ export default function MuhafadzohProgressWidget({
         </div>
 
         {/* Daftar Progress Bar per Jenjang */}
-        <div className="space-y-3.5 my-2">
+        <div className="space-y-3 my-2">
           {jenjangList.map((item) => (
-            <div key={item.nama} className="p-3 rounded-xl bg-slate-50/80 border border-slate-200/50">
+            <div
+              key={item.nama}
+              className="p-3 rounded-xl bg-slate-50/80 border border-slate-200/50"
+            >
               <div className="flex items-center justify-between text-xs mb-1.5">
                 <div>
-                  <span className="font-bold text-slate-800 mr-2">{item.nama}</span>
-                  <span className="text-[11px] text-slate-500">({item.kitab})</span>
+                  <span className="font-bold text-slate-800 mr-2">
+                    {item.nama}
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    ({item.kitab})
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-slate-500 text-[11px]">
-                    {item.tuntas.toLocaleString('id-ID')} / {item.totalSantri.toLocaleString('id-ID')} Santri
+                    {item.tuntas.toLocaleString('id-ID')} /{' '}
+                    {item.totalSantri.toLocaleString('id-ID')} Santri
                   </span>
-                  <span className="font-extrabold text-slate-900">{item.pct}%</span>
+                  <span className="font-extrabold text-slate-900">
+                    {item.pct}%
+                  </span>
                 </div>
               </div>
 
@@ -117,6 +136,33 @@ export default function MuhafadzohProgressWidget({
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Strip Pintasan Baru: Setor Mustahiq Barcode & Kirim WA Rapor */}
+        <div className="grid grid-cols-2 gap-2.5 mt-3">
+          <Link
+            href="/setor-mustahiq"
+            data-testid="dashboard-muhafadzoh-setor-mustahiq"
+            className="p-2.5 rounded-xl bg-emerald-50/80 hover:bg-emerald-100/80 border border-emerald-200/80 flex items-center justify-between text-xs font-bold text-emerald-900 transition-colors"
+          >
+            <span className="flex items-center gap-1.5">
+              <QrCode className="w-4 h-4 text-emerald-700" />
+              <span>Setor & Barcode</span>
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-emerald-700" />
+          </Link>
+
+          <Link
+            href="/kirim-wa"
+            data-testid="dashboard-muhafadzoh-kirim-wa"
+            className="p-2.5 rounded-xl bg-amber-50/80 hover:bg-amber-100/80 border border-amber-200/80 flex items-center justify-between text-xs font-bold text-amber-900 transition-colors"
+          >
+            <span className="flex items-center gap-1.5">
+              <MessageCircle className="w-4 h-4 text-amber-700" />
+              <span>Kirim WA Rapor</span>
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-amber-700" />
+          </Link>
         </div>
       </div>
 
