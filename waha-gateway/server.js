@@ -17,6 +17,20 @@ const app = express();
 const PORT = process.env.PORT || 3008;
 const AUTH_DIR = path.join(__dirname, 'auth_info_baileys');
 
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Private-Network', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, X-Api-Key, Accept, x-waha-target, x-api-key'
+  );
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
+
 app.use(
   cors({
     origin: '*',

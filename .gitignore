@@ -2,9 +2,14 @@
 
 # dependencies
 /node_modules
+node_modules/
 /.pnp
 .pnp.js
 .yarn/install-state.gz
+
+# waha-gateway whatsapp session & auth credentials (jangan di-commit ke git!)
+waha-gateway/auth_info_baileys/
+waha-gateway/node_modules/
 
 # testing
 /coverage

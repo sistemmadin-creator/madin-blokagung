@@ -7,6 +7,12 @@ echo ========================================================
 echo.
 cd /d "%~dp0waha-gateway"
 
+if not exist "node_modules" (
+  echo Menginstal paket pendukung WhatsApp Gateway untuk pertama kali...
+  call npm install
+  echo.
+)
+
 echo Menjalankan Server Gateway di Port 3008...
 start "WAHA Gateway Server" cmd /k "node server.js"
 

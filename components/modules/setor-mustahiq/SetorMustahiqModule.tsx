@@ -26,6 +26,7 @@ import {
   Lock,
   Layers,
   MessageSquare,
+  QrCode,
 } from 'lucide-react';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
@@ -42,6 +43,7 @@ import {
 import { SantriSetorMustahiqRow, MateriOptionWithStatus } from '@/types/setor-mustahiq';
 import { formatTargetPreview, norm } from '@/lib/utils/setoranHelper';
 import ModalSettingsHafalan from '@/components/modules/setoran/ModalSettingsHafalan';
+import ModalBarcodeSetorMustahiq from '@/components/modules/setor-mustahiq/ModalBarcodeSetorMustahiq';
 
 const CARDS_PER_PAGE = 6;
 const TABLE_PAGE_SIZE = 30;
@@ -124,6 +126,10 @@ export default function SetorMustahiqModule() {
   // Quick Input Setoran Modal ('+' button in toolbar)
   const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
   const [quickSearchSantri, setQuickSearchSantri] = useState('');
+
+  // Modal Input Lewat Barcode
+  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
+  const autoOpenedFromQueryRef = React.useRef<string | null>(null);
 
   // Load initial data
   useEffect(() => {
@@ -504,6 +510,29 @@ export default function SetorMustahiqModule() {
     setTglSetor(new Date().toISOString().split('T')[0]);
   };
 
+  // Auto-open Modal Detail Setoran (Gambar 2) ketika halaman dibuka dari hasil scan barcode (?santri=...)
+  useEffect(() => {
+    if (typeof window === 'undefined' || allRows.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const santriParam = params.get('santri')?.trim();
+    const tahunParam = params.get('tahun')?.trim();
+
+    if (tahunParam && /^\d{4}$/.test(tahunParam)) {
+      const parsedYear = Number(tahunParam);
+      if (parsedYear !== tahun) {
+        setTahun(parsedYear);
+      }
+    }
+
+    if (santriParam && autoOpenedFromQueryRef.current !== santriParam) {
+      const matched = allRows.find((r) => norm(r.no_induk) === norm(santriParam));
+      if (matched) {
+        autoOpenedFromQueryRef.current = santriParam;
+        handleOpenDetailModal(matched.no_induk);
+      }
+    }
+  }, [allRows, tahun]);
+
   const handleOpenGantiHafalanModal = (noInduk: string) => {
     const row = allRows.find((r) => norm(r.no_induk) === norm(noInduk));
     if (!row) return;
@@ -843,7 +872,19 @@ export default function SetorMustahiqModule() {
         </div>
 
         {/* Action Buttons Right */}
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex flex-wrap items-center gap-2 ml-auto">
+          {/* Tombol Input Lewat Barcode */}
+          <button
+            type="button"
+            data-testid="btn-input-lewat-barcode"
+            onClick={() => setIsBarcodeModalOpen(true)}
+            title="Buka katalog kartu barcode santri untuk input setoran lewat scan kamera"
+            className="inline-flex items-center gap-1.5 px-3.5 h-10 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold transition-all cursor-pointer shadow-xs"
+          >
+            <QrCode className="w-4 h-4 text-emerald-700 shrink-0" />
+            <span>Input Lewat Barcode</span>
+          </button>
+
           {/* Filter Button */}
           <button
             type="button"
@@ -2037,7 +2078,7 @@ export default function SetorMustahiqModule() {
                     .filter((k) => filterTingkat === 'ALL' || k.tingkat === filterTingkat)
                     .map((k) => (
                       <option key={k.key} value={k.key}>
-                        {k.shortBadge} — {k.label}
+                        {k.shortBadge} - {k.label}
                       </option>
                     ))}
                 </select>
@@ -2215,6 +2256,15 @@ export default function SetorMustahiqModule() {
           </div>
         </div>
       )}
+
+      {/* Modal Input Lewat Barcode */}
+      <ModalBarcodeSetorMustahiq
+        isOpen={isBarcodeModalOpen}
+        onClose={() => setIsBarcodeModalOpen(false)}
+        allRows={allRows}
+        tahun={tahun}
+        lockedMustahiqClass={lockedMustahiqClass}
+      />
 
       {/* Modal Pengaturan Target Muhafadzoh */}
       <ModalSettingsHafalan />
