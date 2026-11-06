@@ -26,8 +26,8 @@ import {
   generateAgendaTahunAjaran,
 } from '@/lib/utils/kalenderHijriyahHelper';
 
-export const KEY_DB_KALENDER = 'MADIN_KALENDER_KEGIATAN_V1';
-export const LS_CACHE_KALENDER = 'MADIN_KALENDER_KEGIATAN_CACHE_V1';
+export const KEY_DB_KALENDER = 'MADIN_KALENDER_KEGIATAN_V2';
+export const LS_CACHE_KALENDER = 'MADIN_KALENDER_KEGIATAN_CACHE_V2';
 
 function buildDefaultAturanLibur(): Record<KodeKegiatanKalender, boolean> {
   const map = {} as Record<KodeKegiatanKalender, boolean>;
@@ -206,7 +206,7 @@ async function pushAgendaLiburToAbsensiStore(
 
 export const useKalenderStore = create<KalenderState>((set, get) => ({
   modeKalender: 'MASEHI',
-  activeTahunAjaran: '2025/2026',
+  activeTahunAjaran: '2026/2027',
   hijriOffsetByTA: {
     '2025/2026': 0,
     '2026/2027': 0,
@@ -231,7 +231,7 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
       const cfg =
         DAFTAR_TAHUN_AJARAN_KALENDER.find(
           (c) => c.tahunAjaranMasehi === taMasehi
-        ) || DAFTAR_TAHUN_AJARAN_KALENDER[0];
+        ) || DAFTAR_TAHUN_AJARAN_KALENDER[1];
       const offset = hijriOffsetByTA[taMasehi] ?? 0;
       nextAgendaByTA[taMasehi] = generateAgendaTahunAjaran(
         { ...cfg, hijriOffsetDays: offset },
@@ -243,6 +243,13 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
       activeTahunAjaran: taMasehi,
       agendaMapByTA: nextAgendaByTA,
     });
+
+    void persistKalenderState({
+      activeTahunAjaran: taMasehi,
+      hijriOffsetByTA,
+      aturanLiburByKode,
+      agendaMapByTA: nextAgendaByTA,
+    });
   },
 
   getCurrentTAConfig: () => {
@@ -250,7 +257,7 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
     const base =
       DAFTAR_TAHUN_AJARAN_KALENDER.find(
         (c) => c.tahunAjaranMasehi === activeTahunAjaran
-      ) || DAFTAR_TAHUN_AJARAN_KALENDER[0];
+      ) || DAFTAR_TAHUN_AJARAN_KALENDER[1];
     return {
       ...base,
       hijriOffsetDays: hijriOffsetByTA[activeTahunAjaran] ?? 0,
@@ -359,7 +366,7 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
       }
     });
 
-    const activeTA = loaded?.activeTahunAjaran || '2025/2026';
+    const activeTA = loaded?.activeTahunAjaran || '2026/2027';
 
     set({
       activeTahunAjaran: activeTA,
