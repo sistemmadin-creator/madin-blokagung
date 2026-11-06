@@ -27,6 +27,7 @@ import {
   LayoutList,
   ShieldCheck,
   MessageSquare,
+  FileText,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { useSidebarConfigStore, DEFAULT_SIDEBAR_GROUPS } from '@/stores/useSidebarConfigStore';
@@ -56,6 +57,7 @@ const ICON_REGISTRY: Record<string, React.ReactNode> = {
   ShieldCheck: <ShieldCheck className="w-5 h-5 flex-shrink-0" />,
   BookOpen: <BookOpen className="w-5 h-5 flex-shrink-0" />,
   MessageSquare: <MessageSquare className="w-5 h-5 flex-shrink-0" />,
+  FileText: <FileText className="w-5 h-5 flex-shrink-0" />,
 };
 
 const SUB_ICON_REGISTRY: Record<string, React.ReactNode> = {

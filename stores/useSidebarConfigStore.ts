@@ -24,6 +24,7 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
     items: [
       { id: 'item-santri', title: 'Data Santri', href: '/santri', iconName: 'Users' },
       { id: 'item-asatidz', title: 'Data Asatidz', href: '/asatidz', iconName: 'UserCheck' },
+      { id: 'item-catatan', title: 'Catatan', href: '/catatan', iconName: 'FileText' },
     ],
   },
   {

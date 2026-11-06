@@ -4,6 +4,7 @@ export type AppPageId =
   | 'dashboard'
   | 'santri'
   | 'asatidz'
+  | 'catatan'
   | 'jadwal-kbm'
   | 'hari-kbm'
   | 'formasi'
@@ -86,6 +87,14 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     label: 'Data Asatidz',
     group: 'Utama',
     routes: ['/asatidz'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: true,
+  },
+  {
+    id: 'catatan',
+    label: 'Catatan & To-Do List',
+    group: 'Utama',
+    routes: ['/catatan'],
     supportsEditOverride: true,
     supportsDeleteOverride: true,
   },

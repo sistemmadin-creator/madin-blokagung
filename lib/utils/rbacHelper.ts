@@ -131,6 +131,7 @@ export function resolvePageIdFromPathname(pathname: string): AppPageId | null {
   if (clean === '/dashboard') return 'dashboard';
   if (clean.startsWith('/santri')) return 'santri';
   if (clean.startsWith('/asatidz')) return 'asatidz';
+  if (clean.startsWith('/catatan')) return 'catatan';
   if (clean.startsWith('/jadwal-kbm')) return 'jadwal-kbm';
   if (clean.startsWith('/hari-kbm')) return 'hari-kbm';
   if (clean.startsWith('/formasi')) return 'formasi';
