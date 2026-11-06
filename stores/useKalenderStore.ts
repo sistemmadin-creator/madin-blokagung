@@ -160,12 +160,18 @@ async function persistKalenderState(payload: KalenderPersistedPayload) {
  */
 async function pushAgendaLiburToAbsensiStore(
   agendaMapByTA: Record<string, Record<string, AgendaKalenderItem>>,
-  actorName = 'Kalender Kegiatan'
+  actorName = 'Kalender Kegiatan',
+  removedDates: string[] = []
 ): Promise<number> {
   const absensiState = useAbsensiStore.getState();
   const currentLiburMap: Record<string, HariLiburInfo> = {
     ...(absensiState.liburMapByDate || {}),
   };
+
+  // Bersihkan tanggal yang baru saja dihapus dari Kalender Kegiatan
+  removedDates.forEach((tgl) => {
+    delete currentLiburMap[tgl];
+  });
 
   // Bersihkan entri lama yang berasal dari sinkronisasi otomatis Kalender Kegiatan
   Object.keys(currentLiburMap).forEach((tgl) => {
@@ -577,7 +583,6 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
 
     for (const tgl of tanggalYMDList) {
       delete currentTAMap[tgl];
-      await useAbsensiStore.getState().setHariLibur(tgl, null, actorName, true);
     }
 
     const nextAgendaByTA = {
@@ -593,8 +598,10 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
     };
 
     set({ agendaMapByTA: nextAgendaByTA });
-    await persistKalenderState(nextSnapshot);
-    await pushAgendaLiburToAbsensiStore(nextAgendaByTA, actorName);
+    await Promise.all([
+      persistKalenderState(nextSnapshot),
+      pushAgendaLiburToAbsensiStore(nextAgendaByTA, actorName, tanggalYMDList),
+    ]);
     set({ lastSyncedAt: formatWaktuSekarangWIB() });
 
     useUndoRedoStore.getState().recordAction({
@@ -619,7 +626,11 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
           agendaMapByTA: nextSnapshot.agendaMapByTA,
         });
         await persistKalenderState(nextSnapshot);
-        await pushAgendaLiburToAbsensiStore(nextSnapshot.agendaMapByTA, actorName);
+        await pushAgendaLiburToAbsensiStore(
+          nextSnapshot.agendaMapByTA,
+          actorName,
+          tanggalYMDList
+        );
         return true;
       },
     });
@@ -631,7 +642,9 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
   ) => {
     localMutationCounter++;
     const prev = get();
-    const targetTA = taMasehi || prev.activeTahunAjaran;
+    const targetTA = sanitizeTahunAjaranMasehi(
+      taMasehi || prev.activeTahunAjaran
+    );
     const prevSnapshot: KalenderPersistedPayload = {
       activeTahunAjaran: prev.activeTahunAjaran,
       hijriOffsetByTA: { ...prev.hijriOffsetByTA },
@@ -639,10 +652,19 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
       agendaMapByTA: JSON.parse(JSON.stringify(prev.agendaMapByTA)),
     };
 
-    const existingDates = Object.keys(prev.agendaMapByTA[targetTA] || {});
-    for (const tgl of existingDates) {
-      await useAbsensiStore.getState().setHariLibur(tgl, null, actorName, true);
-    }
+    const cfg = get().getCurrentTAConfig();
+    const minDate = `${cfg.startYearMasehi}-05-20`;
+    const maxDate = `${cfg.startYearMasehi + 1}-07-05`;
+    const liburKeysInTA = Object.keys(
+      useAbsensiStore.getState().liburMapByDate || {}
+    ).filter((tgl) => tgl >= minDate && tgl <= maxDate);
+
+    const existingDates = Array.from(
+      new Set([
+        ...Object.keys(prev.agendaMapByTA[targetTA] || {}),
+        ...liburKeysInTA,
+      ])
+    );
 
     const nextAgendaByTA = {
       ...prev.agendaMapByTA,
@@ -658,7 +680,11 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
 
     set({ agendaMapByTA: nextAgendaByTA });
     await persistKalenderState(nextSnapshot);
-    await pushAgendaLiburToAbsensiStore(nextAgendaByTA, actorName);
+    await pushAgendaLiburToAbsensiStore(
+      nextAgendaByTA,
+      actorName,
+      existingDates
+    );
     set({ lastSyncedAt: formatWaktuSekarangWIB() });
 
     useUndoRedoStore.getState().recordAction({

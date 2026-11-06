@@ -1183,12 +1183,12 @@ export function KalenderKegiatanModule() {
                 type="button"
                 data-testid="btn-konfirmasi-hapus-semua-agenda"
                 onClick={async () => {
+                  setSelectedAgendaDates([]);
+                  setIsConfirmClearAllOpen(false);
                   await clearAllAgendaTahunAjaran(
                     activeTahunAjaran,
                     currentAccount?.full_name || 'PKM. Kurikulum'
                   );
-                  setSelectedAgendaDates([]);
-                  setIsConfirmClearAllOpen(false);
                   showToast(
                     `Seluruh agenda Tahun Ajaran ${activeTahunAjaran} telah dikosongkan.`
                   );
