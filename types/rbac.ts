@@ -43,6 +43,8 @@ export interface SpecialAuthorities {
   hide_edit_pages: AppPageId[];
   // Daftar halaman yang tombol Hapusnya disembunyikan (walau akses halaman 'edit')
   hide_delete_pages: AppPageId[];
+  // Saklar Otoritas Spesial: mengikat sesi perangkat tetap (tanpa login ulang sampai Logout sendiri) & langsung masuk ke halaman /absen-cepat
+  persistent_absen_cepat?: boolean;
 }
 
 export type PagePermissionsMap = Record<AppPageId, PageAccessMode>;

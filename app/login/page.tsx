@@ -1,23 +1,58 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertCircle, Eye, EyeOff, Lock, User, ArrowLeft } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Lock, User, ArrowLeft, Smartphone } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { resolveLoginEmail, sanitizeNextPath, extractUserProfile } from '@/lib/utils/authHelper';
 import { logActivity } from '@/lib/utils/audit';
+import { normalizeSpecialAuthorities } from '@/lib/utils/rbacHelper';
+import {
+  clearPersistentDeviceSession,
+  hasPersistentDeviceSession,
+  restorePersistentDeviceSession,
+  savePersistentDeviceSession,
+} from '@/lib/utils/deviceSessionVault';
 
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = sanitizeNextPath(searchParams.get('next'));
+  const rawNextParam = searchParams.get('next');
+  const nextPath = sanitizeNextPath(rawNextParam);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRestoringDeviceSession, setIsRestoringDeviceSession] = useState(false);
+
+  // Jika perangkat ini memiliki sesi Otoritas Spesial (Perangkat Tetap Absen Cepat) yang aktif,
+  // pulihkan sesi secara otomatis tanpa perlu mengetik username & kata sandi lagi.
+  useEffect(() => {
+    let active = true;
+    if (!hasPersistentDeviceSession()) return;
+
+    setIsRestoringDeviceSession(true);
+    restorePersistentDeviceSession()
+      .then((res) => {
+        if (!active) return;
+        if (res.restored) {
+          router.replace(res.targetPath || '/absen-cepat');
+          router.refresh();
+        } else {
+          setIsRestoringDeviceSession(false);
+        }
+      })
+      .catch(() => {
+        if (active) setIsRestoringDeviceSession(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -46,13 +81,54 @@ function LoginFormContent() {
         return;
       }
 
+      // Periksa apakah akun yang login memiliki Otoritas Spesial: Sesi Perangkat Tetap & Langsung ke Absen Cepat
+      const appMeta = (data.user.app_metadata || {}) as Record<string, unknown>;
+      let isPersistentAbsenCepat = Boolean(
+        normalizeSpecialAuthorities(
+          appMeta.special_authorities as Record<string, unknown> | undefined
+        ).persistent_absen_cepat
+      );
+
+      const { data: accRow } = await supabase
+        .from('user_accounts')
+        .select('special_authorities')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
+      if (accRow?.special_authorities) {
+        isPersistentAbsenCepat = Boolean(
+          normalizeSpecialAuthorities(
+            accRow.special_authorities as Record<string, unknown>
+          ).persistent_absen_cepat
+        );
+      }
+
+      if (isPersistentAbsenCepat) {
+        savePersistentDeviceSession({
+          userId: data.user.id,
+          username: trimmedUser.toLowerCase(),
+          email,
+          password,
+          accessToken: data.session?.access_token,
+          refreshToken: data.session?.refresh_token,
+        });
+      } else {
+        clearPersistentDeviceSession();
+      }
+
       const profile = extractUserProfile(data.user);
       await logActivity(
         'LOGIN SISTEM',
-        `Masuk ke ruang kerja internal sebagai ${profile?.fullName || trimmedUser} (${profile?.roleLabel || 'Pengurus'})`
+        `Masuk ke ruang kerja internal sebagai ${profile?.fullName || trimmedUser} (${profile?.roleLabel || 'Pengurus'})${
+          isPersistentAbsenCepat ? ' [Otoritas Spesial Perangkat Tetap -> Absen Cepat]' : ''
+        }`
       );
 
-      router.replace(nextPath);
+      const finalTarget = isPersistentAbsenCepat
+        ? '/absen-cepat'
+        : nextPath;
+
+      router.replace(finalTarget);
       router.refresh();
     } catch {
       setErrorMsg(
@@ -90,6 +166,20 @@ function LoginFormContent() {
           Gunakan akun resmi pengurus yang terdaftar untuk mengakses database santri, dewan asatidz, jadwal KBM, dan muhafadzoh.
         </p>
       </div>
+
+      {isRestoringDeviceSession && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="banner-restoring-device-session"
+          className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-950 flex items-center gap-2.5 text-xs font-semibold leading-relaxed"
+        >
+          <Smartphone className="w-4 h-4 text-emerald-700 shrink-0 animate-pulse" />
+          <span>
+            Sesi perangkat tetap terdeteksi. Mengarahkan langsung ke halaman Absen Cepat...
+          </span>
+        </div>
+      )}
 
       {errorMsg && (
         <div

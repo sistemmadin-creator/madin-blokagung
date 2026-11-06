@@ -878,8 +878,8 @@ export function KalenderKegiatanModule() {
               </button>
             )}
 
-            {/* Tombol Pulihkan Jadwal Standar bila tabel kosong */}
-            {(canDelete || canEdit) && sortedAgendaList.length === 0 && (
+            {/* Tombol Pulihkan Jadwal Standar */}
+            {(canDelete || canEdit) && (
               <button
                 type="button"
                 data-testid="btn-pulihkan-agenda-standar"

@@ -49,14 +49,45 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname, search } = request.nextUrl;
+  const hasPersistentCookie =
+    request.cookies.get('madin_persistent_absen_cepat')?.value === '1';
+
+  const appMeta = (user?.app_metadata || {}) as Record<string, unknown>;
+  const specialAuth = (appMeta.special_authorities || {}) as Record<
+    string,
+    unknown
+  >;
+  const isUserPersistentAbsenCepat =
+    specialAuth.persistent_absen_cepat === true || hasPersistentCookie;
 
   if (pathname === '/login') {
     if (user) {
-      const targetPath = sanitizeNextPath(request.nextUrl.searchParams.get('next'));
+      const rawNext = request.nextUrl.searchParams.get('next');
+      const targetPath = isUserPersistentAbsenCepat
+        ? rawNext && rawNext !== '/dashboard'
+          ? sanitizeNextPath(rawNext)
+          : '/absen-cepat'
+        : sanitizeNextPath(rawNext);
       const redirectUrl = new URL(targetPath, request.url);
       return NextResponse.redirect(redirectUrl);
     }
     return supabaseResponse;
+  }
+
+  // Jika pengguna di perangkat dengan Otoritas Spesial Absen Cepat membuka URL utama "/" (tanpa ?public=1)
+  if (
+    pathname === '/' &&
+    request.nextUrl.searchParams.get('public') !== '1' &&
+    isUserPersistentAbsenCepat
+  ) {
+    if (user) {
+      const redirectUrl = new URL('/absen-cepat', request.url);
+      return NextResponse.redirect(redirectUrl);
+    }
+    if (hasPersistentCookie) {
+      const restoreUrl = new URL('/login?next=%2Fabsen-cepat', request.url);
+      return NextResponse.redirect(restoreUrl);
+    }
   }
 
   if (isPublicPathname(pathname)) {

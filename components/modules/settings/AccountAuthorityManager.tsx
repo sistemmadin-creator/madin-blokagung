@@ -17,6 +17,8 @@ import {
   Settings,
   AlertCircle,
   CheckCircle2,
+  Zap,
+  Smartphone,
 } from 'lucide-react';
 import { useRbacStore, UpsertAccountInput } from '@/stores/useRbacStore';
 import {
@@ -72,6 +74,7 @@ export default function AccountAuthorityManager() {
     useState<PengaturanAuthorityStatus>('aktif');
   const [hideEditPages, setHideEditPages] = useState<AppPageId[]>([]);
   const [hideDeletePages, setHideDeletePages] = useState<AppPageId[]>([]);
+  const [persistentAbsenCepat, setPersistentAbsenCepat] = useState(false);
 
   const [formError, setFormError] = useState<string | null>(null);
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
@@ -121,6 +124,7 @@ export default function AccountAuthorityManager() {
     setPengaturanStatus(defaults.pengaturan_status);
     setHideEditPages([]);
     setHideDeletePages([]);
+    setPersistentAbsenCepat(false);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -148,6 +152,7 @@ export default function AccountAuthorityManager() {
     setPengaturanStatus(sa.pengaturan_status || 'aktif');
     setHideEditPages([...(sa.hide_edit_pages || [])]);
     setHideDeletePages([...(sa.hide_delete_pages || [])]);
+    setPersistentAbsenCepat(Boolean(sa.persistent_absen_cepat));
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -228,6 +233,10 @@ export default function AccountAuthorityManager() {
         pengaturanStatus === 'non_aktif'
           ? 'sembunyikan'
           : pagePermissions.pengaturan,
+      'absen-cepat':
+        persistentAbsenCepat && pagePermissions['absen-cepat'] === 'sembunyikan'
+          ? 'edit'
+          : pagePermissions['absen-cepat'],
     };
 
     const payload: UpsertAccountInput = {
@@ -246,6 +255,7 @@ export default function AccountAuthorityManager() {
         pengaturan_status: pengaturanStatus,
         hide_edit_pages: hideEditPages,
         hide_delete_pages: hideDeletePages,
+        persistent_absen_cepat: persistentAbsenCepat,
       },
     };
 
@@ -430,6 +440,38 @@ export default function AccountAuthorityManager() {
                         Edit Off: {sa.hide_edit_pages.length} hal · Hapus Off: {sa.hide_delete_pages.length} hal
                       </span>
                     </div>
+                  </div>
+
+                  {/* Indikator Otoritas Spesial Perangkat Tetap & Langsung ke Absen Cepat */}
+                  <div
+                    data-testid={`badge-persistent-absen-cepat-${acc.username}`}
+                    className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-[11px] ${
+                      sa.persistent_absen_cepat
+                        ? 'bg-amber-50/90 border-amber-300 text-amber-950'
+                        : 'bg-slate-50/70 border-slate-200/80 text-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Smartphone
+                        className={`w-3.5 h-3.5 shrink-0 ${
+                          sa.persistent_absen_cepat ? 'text-amber-700' : 'text-slate-400'
+                        }`}
+                      />
+                      <span className="font-semibold truncate">
+                        Otoritas Spesial (Perangkat Tetap Absen Cepat):
+                      </span>
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 ${
+                        sa.persistent_absen_cepat
+                          ? 'bg-emerald-700 text-white'
+                          : 'bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {sa.persistent_absen_cepat
+                        ? 'Aktif -> /absen-cepat'
+                        : 'Non-Aktif'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -663,6 +705,87 @@ export default function AccountAuthorityManager() {
                         <option value="master_admin">Master Admin (Penuh)</option>
                       </select>
                     </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* PANEL SAKLAR OTORITAS SPESIAL: PERANGKAT TETAP & LANGSUNG KE ABSEN CEPAT (OPSI A) */}
+              <section
+                data-testid="panel-otoritas-spesial-absen-cepat"
+                className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+                  persistentAbsenCepat
+                    ? 'bg-amber-50/80 border-amber-300 shadow-xs'
+                    : 'bg-white border-slate-200'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                    <div
+                      className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 transition ${
+                        persistentAbsenCepat
+                          ? 'bg-amber-500 border-amber-600 text-white shadow-xs'
+                          : 'bg-slate-100 border-slate-200 text-slate-500'
+                      }`}
+                    >
+                      <Zap className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-[10px] font-extrabold uppercase tracking-wider">
+                          Otoritas Spesial
+                        </span>
+                        <span
+                          data-testid="status-label-persistent-absen-cepat"
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            persistentAbsenCepat
+                              ? 'bg-emerald-700 text-white'
+                              : 'bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          {persistentAbsenCepat
+                            ? 'AKTIF: Perangkat Tetap -> /absen-cepat'
+                            : 'NON-AKTIF (Login Normal)'}
+                        </span>
+                      </div>
+                      <h4 className="mt-1 text-xs sm:text-sm font-extrabold text-slate-900">
+                        Sesi Perangkat Tetap &amp; Pintasan Langsung ke Halaman Absen Cepat
+                      </h4>
+                      <p className="mt-1 text-[11px] text-slate-600 leading-relaxed">
+                        Jika saklar ini diaktifkan, akun <strong>@{username || 'pengurus'}</strong> cukup memasukkan username dan kata sandi <strong>1 kali saja</strong> pada perangkat yang sama, tidak perlu login ulang lagi sampai ia menekan tombol <strong>Keluar (Logout)</strong> sendiri, serta otomatis langsung masuk ke halaman <strong>Absen Cepat (<code>/absen-cepat</code>)</strong>.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 self-start sm:self-center shrink-0">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={persistentAbsenCepat}
+                      aria-label="Saklar Otoritas Spesial Sesi Perangkat Tetap Absen Cepat"
+                      data-testid="switch-persistent-absen-cepat"
+                      onClick={() => {
+                        const nextVal = !persistentAbsenCepat;
+                        setPersistentAbsenCepat(nextVal);
+                        if (nextVal) {
+                          setPagePermissions((prev) => ({
+                            ...prev,
+                            'absen-cepat': 'edit',
+                          }));
+                        }
+                      }}
+                      className={`relative inline-flex h-8 w-15 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#0b5751] focus:ring-offset-2 ${
+                        persistentAbsenCepat ? 'bg-[#0b5751]' : 'bg-slate-300'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          persistentAbsenCepat ? 'translate-x-7' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                    <span className="text-xs font-extrabold text-slate-800 min-w-[64px]">
+                      {persistentAbsenCepat ? 'Aktif (ON)' : 'Mati (OFF)'}
+                    </span>
                   </div>
                 </div>
               </section>

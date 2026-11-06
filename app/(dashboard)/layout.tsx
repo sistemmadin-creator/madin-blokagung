@@ -17,6 +17,14 @@ import {
   getFirstAllowedRoute,
   resolvePageIdFromPathname,
 } from '@/lib/utils/rbacHelper';
+import {
+  clearPersistentDeviceSession,
+  getPersistentDeviceSession,
+  hasPersistentDeviceSession,
+  restorePersistentDeviceSession,
+  savePersistentDeviceSession,
+  setPersistentAbsenCepatCookie,
+} from '@/lib/utils/deviceSessionVault';
 import { supabase } from '@/lib/supabase/client';
 import { ShieldAlert } from 'lucide-react';
 
@@ -40,9 +48,20 @@ export default function DashboardLayout({
     Promise.all([
       supabase.auth.getUser(),
       fetchAppSecurityStatus(),
-    ]).then(([{ data: { user } }, isSecurityEnabled]) => {
+    ]).then(async ([{ data: { user } }, isSecurityEnabled]) => {
       if (!isMounted) return;
       if (!user && isSecurityEnabled) {
+        if (hasPersistentDeviceSession()) {
+          const restored = await restorePersistentDeviceSession();
+          if (!isMounted) return;
+          if (restored.restored) {
+            await fetchCurrentAccount();
+            if (pathname === '/dashboard') {
+              router.replace('/absen-cepat');
+            }
+            return;
+          }
+        }
         const nextQuery = pathname ? `?next=${encodeURIComponent(pathname)}` : '';
         router.replace(`/login${nextQuery}`);
       } else if (user) {
@@ -56,6 +75,13 @@ export default function DashboardLayout({
       if (event === 'SIGNED_OUT' || !session) {
         const isSecurityEnabled = await fetchAppSecurityStatus();
         if (isSecurityEnabled) {
+          if (event !== 'SIGNED_OUT' && hasPersistentDeviceSession()) {
+            const restored = await restorePersistentDeviceSession();
+            if (restored.restored) {
+              fetchCurrentAccount();
+              return;
+            }
+          }
           router.replace('/login');
           router.refresh();
         }
@@ -97,6 +123,43 @@ export default function DashboardLayout({
       supabase.removeChannel(rbacChannel);
     };
   }, [pathname, router, fetchCurrentAccount, fetchAppSecurityStatus]);
+
+  // Sinkronisasi sesi perangkat tetap & redirect otomatis ke /absen-cepat ketika currentAccount termuat
+  useEffect(() => {
+    if (!currentAccount) return;
+
+    const isPersistent =
+      currentAccount.special_authorities?.persistent_absen_cepat === true;
+
+    if (isPersistent) {
+      setPersistentAbsenCepatCookie(true);
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user?.id === currentAccount.id) {
+          savePersistentDeviceSession({
+            userId: currentAccount.id,
+            username: currentAccount.username,
+            email: currentAccount.email,
+            accessToken: session.access_token,
+            refreshToken: session.refresh_token,
+          });
+        }
+      });
+
+      // Jika mendarat di /dashboard dan memiliki Otoritas Spesial Absen Cepat, langsung arahkan ke /absen-cepat
+      if (
+        pathname === '/dashboard' &&
+        (currentAccount.role !== 'master_admin' ||
+          !canViewPage(currentAccount, 'dashboard', '/dashboard'))
+      ) {
+        router.replace('/absen-cepat');
+      }
+    } else {
+      const existingVault = getPersistentDeviceSession();
+      if (existingVault && existingVault.userId === currentAccount.id) {
+        clearPersistentDeviceSession();
+      }
+    }
+  }, [currentAccount, pathname, router]);
 
   const currentPageId = resolvePageIdFromPathname(pathname || '');
   const isRouteAllowed =

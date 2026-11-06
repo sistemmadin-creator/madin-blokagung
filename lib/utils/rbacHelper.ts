@@ -25,6 +25,7 @@ export function createDefaultSpecialAuthorities(): SpecialAuthorities {
     pengaturan_status: 'aktif',
     hide_edit_pages: [],
     hide_delete_pages: [],
+    persistent_absen_cepat: false,
   };
 }
 
@@ -85,6 +86,8 @@ export function normalizeSpecialAuthorities(
       .filter((p): p is AppPageId => validPageIds.has(p));
   }
 
+  base.persistent_absen_cepat = raw.persistent_absen_cepat === true;
+
   return base;
 }
 
@@ -99,15 +102,28 @@ export function normalizeUserAccountRecord(
         'edit'
       );
 
+  const rawSpecial = raw.special_authorities as unknown as
+    | Record<string, unknown>
+    | undefined;
   const specialAuthorities = isMaster
-    ? createDefaultSpecialAuthorities()
-    : normalizeSpecialAuthorities(
-        raw.special_authorities as unknown as Record<string, unknown> | undefined
-      );
+    ? {
+        ...createDefaultSpecialAuthorities(),
+        persistent_absen_cepat: rawSpecial?.persistent_absen_cepat === true,
+      }
+    : normalizeSpecialAuthorities(rawSpecial);
 
   // Sinkronkan otoritas pengaturan_status dengan akses halaman pengaturan
   if (!isMaster && specialAuthorities.pengaturan_status === 'non_aktif') {
     pagePermissions.pengaturan = 'sembunyikan';
+  }
+
+  // Pastikan halaman Absen Cepat tidak tersembunyi jika Otoritas Spesial Absen Cepat aktif
+  if (
+    !isMaster &&
+    specialAuthorities.persistent_absen_cepat &&
+    pagePermissions['absen-cepat'] === 'sembunyikan'
+  ) {
+    pagePermissions['absen-cepat'] = 'edit';
   }
 
   return {
@@ -193,6 +209,9 @@ export function canViewPage(
 }
 
 export function getFirstAllowedRoute(account: UserAccountRecord | null): string {
+  if (account?.special_authorities?.persistent_absen_cepat === true) {
+    return '/absen-cepat';
+  }
   if (!account || account.role === 'master_admin') return '/dashboard';
   for (const page of APP_PAGE_CATALOG) {
     if (canViewPage(account, page.id, page.routes[0])) {

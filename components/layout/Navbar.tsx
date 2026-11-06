@@ -13,6 +13,7 @@ import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
 import NotificationBellPrompt from '@/components/common/NotificationBellPrompt';
 import { supabase } from '@/lib/supabase/client';
 import { extractUserProfile, type ActiveUserProfile } from '@/lib/utils/authHelper';
+import { clearPersistentDeviceSession } from '@/lib/utils/deviceSessionVault';
 import { logActivity } from '@/lib/utils/audit';
 
 export default function Navbar() {
@@ -80,6 +81,7 @@ export default function Navbar() {
         'LOGOUT SISTEM',
         `Mengakhiri sesi kerja internal (${currentAccount?.username || activeProfile?.username || 'admin'})`
       );
+      clearPersistentDeviceSession();
       clearCurrentAccount();
       await supabase.auth.signOut();
     } finally {

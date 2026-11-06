@@ -63,14 +63,13 @@ export default function CardPengaturanTahunAjaran() {
   const handleApplyGlobalTA = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    setKalenderTA(selectedTA);
     await setGlobalTahunAjaran({
       activeTahunAjaran: selectedTA,
       semesterAktif: selectedSemester,
       hijriOffsetDays: selectedOffset,
       actorName: 'Master Administrator',
     });
-
-    setKalenderTA(selectedTA);
     if (selectedOffset !== hijriOffsetDays) {
       await regenerateTahunAjaranOtomatis(
         selectedTA,

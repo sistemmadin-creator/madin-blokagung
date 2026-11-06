@@ -361,10 +361,6 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
 
   fetchKalenderData: async () => {
     const fetchStartMutationCount = localMutationCounter;
-    set({ isLoading: true });
-    await useTahunAjaranStore.getState().fetchGlobalTahunAjaran();
-    const globalTAState = useTahunAjaranStore.getState();
-
     let loaded: Partial<KalenderPersistedPayload> | null = null;
 
     if (typeof window !== 'undefined') {
@@ -373,10 +369,42 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
         if (cached) {
           loaded = JSON.parse(cached);
         }
+        const cachedGlobalTA = localStorage.getItem(
+          'MADIN_GLOBAL_TAHUN_AJARAN_CACHE_V1'
+        );
+        if (cachedGlobalTA) {
+          const parsedGlobal = JSON.parse(cachedGlobalTA) as {
+            activeTahunAjaran?: string;
+          };
+          if (parsedGlobal?.activeTahunAjaran) {
+            set({
+              activeTahunAjaran: sanitizeTahunAjaranMasehi(
+                parsedGlobal.activeTahunAjaran
+              ),
+              isLoading: true,
+            });
+          } else {
+            set({ isLoading: true });
+          }
+        } else if (loaded?.activeTahunAjaran) {
+          set({
+            activeTahunAjaran: sanitizeTahunAjaranMasehi(
+              loaded.activeTahunAjaran
+            ),
+            isLoading: true,
+          });
+        } else {
+          set({ isLoading: true });
+        }
       } catch {
-        // Abaikan
+        set({ isLoading: true });
       }
+    } else {
+      set({ isLoading: true });
     }
+
+    await useTahunAjaranStore.getState().fetchGlobalTahunAjaran();
+    const globalTAState = useTahunAjaranStore.getState();
 
     try {
       const { data } = await supabase
@@ -786,6 +814,7 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
     hijriOffsetDays,
     actorName = 'PKM. Kurikulum'
   ) => {
+    localMutationCounter++;
     const prev = get();
     const cleanTA = sanitizeTahunAjaranMasehi(taMasehi);
     const [startStr] = cleanTA.split('/');
