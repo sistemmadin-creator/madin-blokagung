@@ -103,7 +103,26 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
       { id: 'item-absensi', title: 'Absensi Asatidz', href: '/absensi', iconName: 'ClipboardCheck' },
       { id: 'item-absen-cepat', title: 'Absen Cepat', href: '/absen-cepat', iconName: 'Zap' },
       { id: 'item-absen-konsorsium', title: 'Absen Konsorsium', href: '/absen-konsorsium', iconName: 'BookOpen' },
-      { id: 'item-rekap-absensi', title: 'Rekap Absensi', href: '/rekap-absensi', iconName: 'BarChart2' },
+      {
+        id: 'item-rekap-absensi',
+        title: 'Rekap Absensi',
+        href: '/rekap-absensi',
+        iconName: 'BarChart2',
+        children: [
+          {
+            id: 'sub-rekap-asatidz',
+            title: 'Rekap Per Asatidz',
+            href: '/rekap-absensi',
+            iconName: 'BarChart2',
+          },
+          {
+            id: 'sub-rekap-status',
+            title: 'Rekap Status',
+            href: '/rekap-absensi/status',
+            iconName: 'ClipboardCheck',
+          },
+        ],
+      },
     ],
   },
   {

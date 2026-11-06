@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import * as XLSX from 'xlsx';
 import {
   BarChart2,
+  ClipboardCheck,
   RefreshCw,
   Search,
   Printer,
@@ -1055,6 +1057,26 @@ export default function RekapAbsensiPage() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Sub-Menu Tab Switcher: Rekap Per Asatidz vs Rekap Status */}
+        <div className="flex flex-wrap items-center gap-2 pt-3.5 mt-3.5 border-t border-slate-100">
+          <Link
+            href="/rekap-absensi"
+            data-testid="subtab-rekap-per-asatidz"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-extrabold bg-[#0b5751] text-white shadow-xs"
+          >
+            <BarChart2 className="w-3.5 h-3.5 text-emerald-300" />
+            <span>Rekap Per Asatidz (Individu)</span>
+          </Link>
+          <Link
+            href="/rekap-absensi/status"
+            data-testid="subtab-rekap-status"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+          >
+            <ClipboardCheck className="w-3.5 h-3.5 text-[#0b5751]" />
+            <span>Rekap Status (Semua, Ula, Wustho, Ulya)</span>
+          </Link>
         </div>
       </div>
 

@@ -304,7 +304,15 @@ export default function BottomNavMobile() {
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800"
           >
             <BarChart2 className="w-4 h-4 text-teal-600" />
-            <span>Rekap Absensi &amp; WhatsApp</span>
+            <span>Rekap Absensi (Per Asatidz)</span>
+          </Link>
+          <Link
+            href="/rekap-absensi/status"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800"
+          >
+            <ClipboardCheck className="w-4 h-4 text-amber-600" />
+            <span>Rekap Status (Semua / Ula / Wustho / Ulya)</span>
           </Link>
         </div>
       )}

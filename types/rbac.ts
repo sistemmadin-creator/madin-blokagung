@@ -227,9 +227,9 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
   },
   {
     id: 'rekap-absensi',
-    label: 'Rekap Absensi',
+    label: 'Rekap Absensi (Per Asatidz & Rekap Status)',
     group: 'PKM. Kesiswaan',
-    routes: ['/rekap-absensi'],
+    routes: ['/rekap-absensi', '/rekap-absensi/status'],
     supportsEditOverride: false,
     supportsDeleteOverride: false,
   },
