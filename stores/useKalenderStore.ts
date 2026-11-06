@@ -7,6 +7,7 @@ import {
   KEY_DB_LIBUR,
   LS_CACHE_LIBUR,
 } from '@/stores/useAbsensiStore';
+import { useTahunAjaranStore } from '@/stores/useTahunAjaranStore';
 import { HariLiburInfo } from '@/types/absensi';
 import {
   formatWaktuSekarangWIB,
@@ -26,8 +27,8 @@ import {
   generateAgendaTahunAjaran,
 } from '@/lib/utils/kalenderHijriyahHelper';
 
-export const KEY_DB_KALENDER = 'MADIN_KALENDER_KEGIATAN_V2';
-export const LS_CACHE_KALENDER = 'MADIN_KALENDER_KEGIATAN_CACHE_V2';
+export const KEY_DB_KALENDER = 'MADIN_KALENDER_KEGIATAN_V3';
+export const LS_CACHE_KALENDER = 'MADIN_KALENDER_KEGIATAN_CACHE_V3';
 
 function buildDefaultAturanLibur(): Record<KodeKegiatanKalender, boolean> {
   const map = {} as Record<KodeKegiatanKalender, boolean>;
@@ -39,12 +40,27 @@ function buildDefaultAturanLibur(): Record<KodeKegiatanKalender, boolean> {
   return map;
 }
 
+function getAllKnownTahunAjaranConfigs(): TahunAjaranKalenderConfig[] {
+  const globalList = useTahunAjaranStore.getState().daftarTahunAjaran;
+  if (Array.isArray(globalList) && globalList.length > 0) {
+    return globalList;
+  }
+  return DAFTAR_TAHUN_AJARAN_KALENDER;
+}
+
+function sanitizeTahunAjaranMasehi(rawTA?: string): string {
+  if (!rawTA || rawTA === '2025/2026' || rawTA === '2024/2025') {
+    return '2026/2027';
+  }
+  return rawTA;
+}
+
 function buildInitialAgendaMapByTA(
   aturanLibur: Record<KodeKegiatanKalender, boolean>,
   offsets: Record<string, number> = {}
 ): Record<string, Record<string, AgendaKalenderItem>> {
   const result: Record<string, Record<string, AgendaKalenderItem>> = {};
-  DAFTAR_TAHUN_AJARAN_KALENDER.forEach((cfg) => {
+  getAllKnownTahunAjaranConfigs().forEach((cfg) => {
     const offset = offsets[cfg.tahunAjaranMasehi] ?? cfg.hijriOffsetDays;
     result[cfg.tahunAjaranMasehi] = generateAgendaTahunAjaran(
       { ...cfg, hijriOffsetDays: offset },
@@ -90,6 +106,14 @@ interface KalenderState {
   }) => Promise<void>;
 
   deleteAgendaTanggal: (tanggalYMD: string, actorName?: string) => Promise<void>;
+  deleteMultipleAgendaTanggal: (
+    tanggalYMDList: string[],
+    actorName?: string
+  ) => Promise<void>;
+  clearAllAgendaTahunAjaran: (
+    taMasehi?: string,
+    actorName?: string
+  ) => Promise<void>;
 
   updateAturanLiburKode: (
     nextAturan: Record<KodeKegiatanKalender, boolean>,
@@ -108,6 +132,7 @@ interface KalenderState {
 
 const initialAturan = buildDefaultAturanLibur();
 const initialAgendaByTA = buildInitialAgendaMapByTA(initialAturan, {});
+let localMutationCounter = 0;
 
 async function persistKalenderState(payload: KalenderPersistedPayload) {
   if (typeof window !== 'undefined') {
@@ -147,7 +172,8 @@ async function pushAgendaLiburToAbsensiStore(
     const info = currentLiburMap[tgl];
     if (
       info?.diinputOleh === 'Sinkron Kalender Kegiatan' ||
-      info?.diinputOleh === 'Kalender Kegiatan'
+      info?.diinputOleh === 'Kalender Kegiatan' ||
+      info?.diinputOleh === 'PKM. Kurikulum'
     ) {
       delete currentLiburMap[tgl];
     }
@@ -168,11 +194,10 @@ async function pushAgendaLiburToAbsensiStore(
             item.catatan ? ` - ${item.catatan}` : ''
           }`,
           waktuUpdate: waktu,
-          diinputOleh: actorName || 'Sinkron Kalender Kegiatan',
+          diinputOleh: 'Sinkron Kalender Kegiatan',
         };
         syncedCount++;
       } else {
-        // Jika tanggal tersebut sebelumnya ada di liburMap dari sinkron kalender dan kini diubah menjadi Masuk, pastikan terhapus
         if (currentLiburMap[item.tanggalMasehi]) {
           delete currentLiburMap[item.tanggalMasehi];
         }
@@ -208,10 +233,10 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
   modeKalender: 'MASEHI',
   activeTahunAjaran: '2026/2027',
   hijriOffsetByTA: {
-    '2025/2026': 0,
     '2026/2027': 0,
     '2027/2028': 0,
     '2028/2029': 0,
+    '2029/2030': 0,
   },
   aturanLiburByKode: initialAturan,
   agendaMapByTA: initialAgendaByTA,
@@ -224,28 +249,45 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
   },
 
   setActiveTahunAjaran: (taMasehi) => {
+    localMutationCounter++;
+    const cleanTA = sanitizeTahunAjaranMasehi(taMasehi);
     const { agendaMapByTA, aturanLiburByKode, hijriOffsetByTA } = get();
     const nextAgendaByTA = { ...agendaMapByTA };
 
-    if (!nextAgendaByTA[taMasehi]) {
-      const cfg =
-        DAFTAR_TAHUN_AJARAN_KALENDER.find(
-          (c) => c.tahunAjaranMasehi === taMasehi
-        ) || DAFTAR_TAHUN_AJARAN_KALENDER[1];
-      const offset = hijriOffsetByTA[taMasehi] ?? 0;
-      nextAgendaByTA[taMasehi] = generateAgendaTahunAjaran(
+    if (!nextAgendaByTA[cleanTA]) {
+      const allConfigs = getAllKnownTahunAjaranConfigs();
+      const [startStr] = cleanTA.split('/');
+      const startYr = parseInt(startStr, 10) || 2026;
+      const startHijri = startYr - 579;
+      const cfg = allConfigs.find((c) => c.tahunAjaranMasehi === cleanTA) || {
+        tahunAjaranMasehi: cleanTA,
+        tahunAjaranHijriyah: `${startHijri}/${startHijri + 1}`,
+        startYearMasehi: startYr,
+        startYearHijriyah: startHijri,
+        hijriOffsetDays: 0,
+      };
+      const offset = hijriOffsetByTA[cleanTA] ?? 0;
+      nextAgendaByTA[cleanTA] = generateAgendaTahunAjaran(
         { ...cfg, hijriOffsetDays: offset },
         aturanLiburByKode
       );
     }
 
     set({
-      activeTahunAjaran: taMasehi,
+      activeTahunAjaran: cleanTA,
       agendaMapByTA: nextAgendaByTA,
     });
 
+    // Sinkronkan juga ke useTahunAjaranStore global
+    if (useTahunAjaranStore.getState().activeTahunAjaran !== cleanTA) {
+      void useTahunAjaranStore.getState().setGlobalTahunAjaran({
+        activeTahunAjaran: cleanTA,
+        actorName: 'Kalender Kegiatan',
+      });
+    }
+
     void persistKalenderState({
-      activeTahunAjaran: taMasehi,
+      activeTahunAjaran: cleanTA,
       hijriOffsetByTA,
       aturanLiburByKode,
       agendaMapByTA: nextAgendaByTA,
@@ -254,30 +296,46 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
 
   getCurrentTAConfig: () => {
     const { activeTahunAjaran, hijriOffsetByTA } = get();
-    const base =
-      DAFTAR_TAHUN_AJARAN_KALENDER.find(
-        (c) => c.tahunAjaranMasehi === activeTahunAjaran
-      ) || DAFTAR_TAHUN_AJARAN_KALENDER[1];
+    const cleanTA = sanitizeTahunAjaranMasehi(activeTahunAjaran);
+    const allConfigs = getAllKnownTahunAjaranConfigs();
+    const [startStr] = cleanTA.split('/');
+    const startYr = parseInt(startStr, 10) || 2026;
+    const startHijri = startYr - 579;
+
+    const base = allConfigs.find((c) => c.tahunAjaranMasehi === cleanTA) || {
+      tahunAjaranMasehi: cleanTA,
+      tahunAjaranHijriyah: `${startHijri}/${startHijri + 1}`,
+      startYearMasehi: startYr,
+      startYearHijriyah: startHijri,
+      hijriOffsetDays: 0,
+    };
     return {
       ...base,
-      hijriOffsetDays: hijriOffsetByTA[activeTahunAjaran] ?? 0,
+      hijriOffsetDays: hijriOffsetByTA[cleanTA] ?? 0,
     };
   },
 
   getCurrentAgendaMap: () => {
     const { activeTahunAjaran, agendaMapByTA } = get();
+    const cleanTA = sanitizeTahunAjaranMasehi(activeTahunAjaran);
     const cfg = get().getCurrentTAConfig();
     const minDate = `${cfg.startYearMasehi}-05-20`;
     const maxDate = `${cfg.startYearMasehi + 1}-07-05`;
 
-    const baseMap = { ...(agendaMapByTA[activeTahunAjaran] || {}) };
+    const baseMap = { ...(agendaMapByTA[cleanTA] || {}) };
 
-    // Gabungkan juga hari libur manual yang diinput langsung dari halaman Absensi Asatidz (Gambar 3) pada rentang TA aktif
+    // Gabungkan juga hari libur manual yang diinput langsung dari halaman Absensi Asatidz pada rentang TA aktif
     const liburMap = useAbsensiStore.getState().liburMapByDate || {};
     Object.entries(liburMap).forEach(([tgl, info]) => {
       if (!info) return;
       if (tgl < minDate || tgl > maxDate) return;
-      if (info.diinputOleh === 'Sinkron Kalender Kegiatan') return;
+      if (
+        info.diinputOleh === 'Sinkron Kalender Kegiatan' ||
+        info.diinputOleh === 'Kalender Kegiatan' ||
+        info.diinputOleh === 'PKM. Kurikulum'
+      ) {
+        return;
+      }
       if (!baseMap[tgl]) {
         baseMap[tgl] = {
           tanggalMasehi: tgl,
@@ -296,7 +354,11 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
   },
 
   fetchKalenderData: async () => {
+    const fetchStartMutationCount = localMutationCounter;
     set({ isLoading: true });
+    await useTahunAjaranStore.getState().fetchGlobalTahunAjaran();
+    const globalTAState = useTahunAjaranStore.getState();
+
     let loaded: Partial<KalenderPersistedPayload> | null = null;
 
     if (typeof window !== 'undefined') {
@@ -330,16 +392,22 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
       // Gunakan fallback cache / default
     }
 
+    // Jika pengguna sudah melakukan aksi hapus/ubah saat fetch sedang berlangsung, jangan timpa state terbaru
+    if (localMutationCounter !== fetchStartMutationCount) {
+      set({ isLoading: false, lastSyncedAt: formatWaktuSekarangWIB() });
+      return;
+    }
+
     const mergedAturan: Record<KodeKegiatanKalender, boolean> = {
       ...buildDefaultAturanLibur(),
       ...(loaded?.aturanLiburByKode || {}),
     };
 
     const mergedOffsets: Record<string, number> = {
-      '2025/2026': 0,
       '2026/2027': 0,
       '2027/2028': 0,
       '2028/2029': 0,
+      '2029/2030': 0,
       ...(loaded?.hijriOffsetByTA || {}),
     };
 
@@ -355,18 +423,23 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
       ...(loaded?.agendaMapByTA || {}),
     };
 
-    // Pastikan setiap TA di DAFTAR_TAHUN_AJARAN_KALENDER terisi
-    DAFTAR_TAHUN_AJARAN_KALENDER.forEach((cfg) => {
+    // Hapus kunci lama 2025/2026 agar tidak mencemari sinkronisasi
+    delete mergedAgendaByTA['2025/2026'];
+
+    getAllKnownTahunAjaranConfigs().forEach((cfg) => {
       if (
-        !mergedAgendaByTA[cfg.tahunAjaranMasehi] ||
-        Object.keys(mergedAgendaByTA[cfg.tahunAjaranMasehi]).length === 0
+        !mergedAgendaByTA[cfg.tahunAjaranMasehi] &&
+        loaded?.agendaMapByTA?.[cfg.tahunAjaranMasehi] === undefined
       ) {
         mergedAgendaByTA[cfg.tahunAjaranMasehi] =
           defaultAgendaByTA[cfg.tahunAjaranMasehi];
       }
     });
 
-    const activeTA = loaded?.activeTahunAjaran || '2026/2027';
+    // Prioritaskan Tahun Ajaran Global dari Pengaturan (dan koreksi paksa 2025/2026 ke 2026/2027)
+    const activeTA = sanitizeTahunAjaranMasehi(
+      globalTAState.activeTahunAjaran || loaded?.activeTahunAjaran
+    );
 
     set({
       activeTahunAjaran: activeTA,
@@ -376,7 +449,6 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
       isLoading: false,
     });
 
-    // Pastikan data absensi libur langsung tersinkron
     await pushAgendaLiburToAbsensiStore(
       mergedAgendaByTA,
       'Sinkron Kalender Kegiatan'
@@ -394,6 +466,7 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
     catatan,
     actorName = 'PKM. Kurikulum',
   }) => {
+    localMutationCounter++;
     const prev = get();
     const prevSnapshot: KalenderPersistedPayload = {
       activeTahunAjaran: prev.activeTahunAjaran,
@@ -481,30 +554,144 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
   },
 
   deleteAgendaTanggal: async (tanggalYMD, actorName = 'PKM. Kurikulum') => {
+    await get().deleteMultipleAgendaTanggal([tanggalYMD], actorName);
+  },
+
+  deleteMultipleAgendaTanggal: async (
+    tanggalYMDList,
+    actorName = 'PKM. Kurikulum'
+  ) => {
+    if (!Array.isArray(tanggalYMDList) || tanggalYMDList.length === 0) return;
+    localMutationCounter++;
     const prev = get();
+    const prevSnapshot: KalenderPersistedPayload = {
+      activeTahunAjaran: prev.activeTahunAjaran,
+      hijriOffsetByTA: { ...prev.hijriOffsetByTA },
+      aturanLiburByKode: { ...prev.aturanLiburByKode },
+      agendaMapByTA: JSON.parse(JSON.stringify(prev.agendaMapByTA)),
+    };
+
     const currentTAMap = {
       ...(prev.agendaMapByTA[prev.activeTahunAjaran] || {}),
     };
-    delete currentTAMap[tanggalYMD];
+
+    for (const tgl of tanggalYMDList) {
+      delete currentTAMap[tgl];
+      await useAbsensiStore.getState().setHariLibur(tgl, null, actorName, true);
+    }
 
     const nextAgendaByTA = {
       ...prev.agendaMapByTA,
       [prev.activeTahunAjaran]: currentTAMap,
     };
 
-    set({ agendaMapByTA: nextAgendaByTA });
-
-    // Hapus juga dari liburMapByDate di useAbsensiStore bila ada
-    await useAbsensiStore.getState().setHariLibur(tanggalYMD, null, actorName, true);
-
-    await persistKalenderState({
+    const nextSnapshot: KalenderPersistedPayload = {
       activeTahunAjaran: prev.activeTahunAjaran,
       hijriOffsetByTA: prev.hijriOffsetByTA,
       aturanLiburByKode: prev.aturanLiburByKode,
       agendaMapByTA: nextAgendaByTA,
-    });
+    };
+
+    set({ agendaMapByTA: nextAgendaByTA });
+    await persistKalenderState(nextSnapshot);
     await pushAgendaLiburToAbsensiStore(nextAgendaByTA, actorName);
     set({ lastSyncedAt: formatWaktuSekarangWIB() });
+
+    useUndoRedoStore.getState().recordAction({
+      module: 'umum',
+      title: `Hapus ${tanggalYMDList.length} Agenda Kalender`,
+      undo: async () => {
+        set({
+          activeTahunAjaran: prevSnapshot.activeTahunAjaran,
+          hijriOffsetByTA: prevSnapshot.hijriOffsetByTA,
+          aturanLiburByKode: prevSnapshot.aturanLiburByKode,
+          agendaMapByTA: prevSnapshot.agendaMapByTA,
+        });
+        await persistKalenderState(prevSnapshot);
+        await pushAgendaLiburToAbsensiStore(prevSnapshot.agendaMapByTA, actorName);
+        return true;
+      },
+      redo: async () => {
+        set({
+          activeTahunAjaran: nextSnapshot.activeTahunAjaran,
+          hijriOffsetByTA: nextSnapshot.hijriOffsetByTA,
+          aturanLiburByKode: nextSnapshot.aturanLiburByKode,
+          agendaMapByTA: nextSnapshot.agendaMapByTA,
+        });
+        await persistKalenderState(nextSnapshot);
+        await pushAgendaLiburToAbsensiStore(nextSnapshot.agendaMapByTA, actorName);
+        return true;
+      },
+    });
+  },
+
+  clearAllAgendaTahunAjaran: async (
+    taMasehi,
+    actorName = 'PKM. Kurikulum'
+  ) => {
+    localMutationCounter++;
+    const prev = get();
+    const targetTA = taMasehi || prev.activeTahunAjaran;
+    const prevSnapshot: KalenderPersistedPayload = {
+      activeTahunAjaran: prev.activeTahunAjaran,
+      hijriOffsetByTA: { ...prev.hijriOffsetByTA },
+      aturanLiburByKode: { ...prev.aturanLiburByKode },
+      agendaMapByTA: JSON.parse(JSON.stringify(prev.agendaMapByTA)),
+    };
+
+    const existingDates = Object.keys(prev.agendaMapByTA[targetTA] || {});
+    for (const tgl of existingDates) {
+      await useAbsensiStore.getState().setHariLibur(tgl, null, actorName, true);
+    }
+
+    const nextAgendaByTA = {
+      ...prev.agendaMapByTA,
+      [targetTA]: {},
+    };
+
+    const nextSnapshot: KalenderPersistedPayload = {
+      activeTahunAjaran: prev.activeTahunAjaran,
+      hijriOffsetByTA: prev.hijriOffsetByTA,
+      aturanLiburByKode: prev.aturanLiburByKode,
+      agendaMapByTA: nextAgendaByTA,
+    };
+
+    set({ agendaMapByTA: nextAgendaByTA });
+    await persistKalenderState(nextSnapshot);
+    await pushAgendaLiburToAbsensiStore(nextAgendaByTA, actorName);
+    set({ lastSyncedAt: formatWaktuSekarangWIB() });
+
+    useUndoRedoStore.getState().recordAction({
+      module: 'umum',
+      title: `Hapus Semua Agenda Kalender TA ${targetTA}`,
+      undo: async () => {
+        set({
+          activeTahunAjaran: prevSnapshot.activeTahunAjaran,
+          hijriOffsetByTA: prevSnapshot.hijriOffsetByTA,
+          aturanLiburByKode: prevSnapshot.aturanLiburByKode,
+          agendaMapByTA: prevSnapshot.agendaMapByTA,
+        });
+        await persistKalenderState(prevSnapshot);
+        await pushAgendaLiburToAbsensiStore(prevSnapshot.agendaMapByTA, actorName);
+        return true;
+      },
+      redo: async () => {
+        set({
+          activeTahunAjaran: nextSnapshot.activeTahunAjaran,
+          hijriOffsetByTA: nextSnapshot.hijriOffsetByTA,
+          aturanLiburByKode: nextSnapshot.aturanLiburByKode,
+          agendaMapByTA: nextSnapshot.agendaMapByTA,
+        });
+        await persistKalenderState(nextSnapshot);
+        await pushAgendaLiburToAbsensiStore(nextSnapshot.agendaMapByTA, actorName);
+        return true;
+      },
+    });
+
+    await logActivity(
+      'CLEAR_ALL_KALENDER_TA',
+      `Menghapus seluruh agenda Kalender Kegiatan pada Tahun Ajaran ${targetTA}`
+    );
   },
 
   updateAturanLiburKode: async (
@@ -518,7 +705,6 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
       [prev.activeTahunAjaran]: nextHijriOffset,
     };
 
-    // Perbarui status isLiburKbm pada seluruh agenda sesuai aturan baru
     const nextAgendaByTA: Record<
       string,
       Record<string, AgendaKalenderItem>
@@ -539,12 +725,11 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
       nextAgendaByTA[ta] = updatedMap;
     });
 
-    // Jika koreksi hilal (hijriOffsetDays) pada TA aktif berubah, sesuaikan tanggal otomatis TA aktif
     if (
       (prev.hijriOffsetByTA[prev.activeTahunAjaran] ?? 0) !== nextHijriOffset
     ) {
       const cfg =
-        DAFTAR_TAHUN_AJARAN_KALENDER.find(
+        getAllKnownTahunAjaranConfigs().find(
           (c) => c.tahunAjaranMasehi === prev.activeTahunAjaran
         ) || DAFTAR_TAHUN_AJARAN_KALENDER[0];
       nextAgendaByTA[prev.activeTahunAjaran] = generateAgendaTahunAjaran(
@@ -576,10 +761,19 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
     actorName = 'PKM. Kurikulum'
   ) => {
     const prev = get();
-    const cfg =
-      DAFTAR_TAHUN_AJARAN_KALENDER.find(
-        (c) => c.tahunAjaranMasehi === taMasehi
-      ) || DAFTAR_TAHUN_AJARAN_KALENDER[0];
+    const cleanTA = sanitizeTahunAjaranMasehi(taMasehi);
+    const [startStr] = cleanTA.split('/');
+    const startYr = parseInt(startStr, 10) || 2026;
+    const startHijri = startYr - 579;
+    const cfg = getAllKnownTahunAjaranConfigs().find(
+      (c) => c.tahunAjaranMasehi === cleanTA
+    ) || {
+      tahunAjaranMasehi: cleanTA,
+      tahunAjaranHijriyah: `${startHijri}/${startHijri + 1}`,
+      startYearMasehi: startYr,
+      startYearHijriyah: startHijri,
+      hijriOffsetDays,
+    };
 
     const generated = generateAgendaTahunAjaran(
       { ...cfg, hijriOffsetDays },
@@ -588,22 +782,22 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
 
     const nextOffsets = {
       ...prev.hijriOffsetByTA,
-      [taMasehi]: hijriOffsetDays,
+      [cleanTA]: hijriOffsetDays,
     };
 
     const nextAgendaByTA = {
       ...prev.agendaMapByTA,
-      [taMasehi]: generated,
+      [cleanTA]: generated,
     };
 
     set({
-      activeTahunAjaran: taMasehi,
+      activeTahunAjaran: cleanTA,
       hijriOffsetByTA: nextOffsets,
       agendaMapByTA: nextAgendaByTA,
     });
 
     await persistKalenderState({
-      activeTahunAjaran: taMasehi,
+      activeTahunAjaran: cleanTA,
       hijriOffsetByTA: nextOffsets,
       aturanLiburByKode: prev.aturanLiburByKode,
       agendaMapByTA: nextAgendaByTA,
@@ -614,7 +808,7 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
 
     await logActivity(
       'GENERATE_KALENDER_TA_BARU',
-      `Menyesuaikan otomatis Kalender Kegiatan Tahun Ajaran ${taMasehi} (Koreksi Hilal: ${hijriOffsetDays} hari)`
+      `Menyesuaikan otomatis Kalender Kegiatan Tahun Ajaran ${cleanTA} (Koreksi Hilal: ${hijriOffsetDays} hari)`
     );
   },
 

@@ -61,13 +61,6 @@ export const PASARAN_JAWA_LIST = [
  */
 export const DAFTAR_TAHUN_AJARAN_KALENDER: TahunAjaranKalenderConfig[] = [
   {
-    tahunAjaranMasehi: '2025/2026',
-    tahunAjaranHijriyah: '1446/1447',
-    startYearMasehi: 2025,
-    startYearHijriyah: 1446,
-    hijriOffsetDays: 0,
-  },
-  {
     tahunAjaranMasehi: '2026/2027',
     tahunAjaranHijriyah: '1447/1448',
     startYearMasehi: 2026,
@@ -86,6 +79,13 @@ export const DAFTAR_TAHUN_AJARAN_KALENDER: TahunAjaranKalenderConfig[] = [
     tahunAjaranHijriyah: '1449/1450',
     startYearMasehi: 2028,
     startYearHijriyah: 1449,
+    hijriOffsetDays: 0,
+  },
+  {
+    tahunAjaranMasehi: '2029/2030',
+    tahunAjaranHijriyah: '1450/1451',
+    startYearMasehi: 2029,
+    startYearHijriyah: 1450,
     hijriOffsetDays: 0,
   },
 ];

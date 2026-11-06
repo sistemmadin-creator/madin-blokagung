@@ -257,17 +257,32 @@ export function ambilNamaFanSingkat(
 }
 
 /**
- * Menghitung label Tahun Ajaran berjalan secara otomatis
+ * Menghitung label Tahun Ajaran berjalan secara otomatis (tersinkron dengan useTahunAjaranStore)
  */
 export function dapatkanTahunAjaranKBM(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const masehiStart = month >= 6 ? year : year - 1;
-  const masehiEnd = masehiStart + 1;
-  const hijriStart = masehiStart - 579;
-  const hijriEnd = hijriStart + 1;
-  return `TAHUN AJARAN ${masehiStart}-${masehiEnd} M / ${hijriStart}-${hijriEnd} H`;
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('MADIN_GLOBAL_TAHUN_AJARAN_CACHE_V1');
+      if (raw) {
+        const parsed = JSON.parse(raw) as { activeTahunAjaran?: string };
+        if (
+          parsed?.activeTahunAjaran &&
+          parsed.activeTahunAjaran !== '2025/2026' &&
+          parsed.activeTahunAjaran !== '2024/2025'
+        ) {
+          const [startStr, endStr] = parsed.activeTahunAjaran.split('/');
+          const sYr = parseInt(startStr, 10) || 2026;
+          const eYr = parseInt(endStr, 10) || sYr + 1;
+          const hStart = sYr - 579;
+          const hEnd = hStart + 1;
+          return `TAHUN AJARAN ${sYr}-${eYr} M / ${hStart}-${hEnd} H`;
+        }
+      }
+    } catch {
+      // Gunakan fallback 2026-2027
+    }
+  }
+  return 'TAHUN AJARAN 2026-2027 M / 1447-1448 H';
 }
 
 /**

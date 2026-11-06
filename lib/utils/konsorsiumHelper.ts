@@ -103,16 +103,32 @@ export function getTahunAjaranKonsorsium(
   labelTahunAjaran: string;
   bulanList: BulanTahunAjaran[];
 } {
-  const currentMonth = refDate.getMonth() + 1; // 1 - 12
-  const currentYear = refDate.getFullYear();
+  let startYear = 2026;
+  let endYear = 2027;
 
-  let startYear = currentYear;
-  let endYear = currentYear + 1;
-
-  // Jika sebelum Juli (Januari - Juni), kita masih berada di paruh akhir tahun ajaran sebelumnya
-  if (currentMonth < 7) {
-    startYear = currentYear - 1;
-    endYear = currentYear;
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('MADIN_GLOBAL_TAHUN_AJARAN_CACHE_V1');
+      if (raw) {
+        const parsed = JSON.parse(raw) as { activeTahunAjaran?: string };
+        if (
+          parsed?.activeTahunAjaran &&
+          parsed.activeTahunAjaran !== '2025/2026' &&
+          parsed.activeTahunAjaran !== '2024/2025'
+        ) {
+          const [sStr, eStr] = parsed.activeTahunAjaran.split('/');
+          startYear = parseInt(sStr, 10) || 2026;
+          endYear = parseInt(eStr, 10) || startYear + 1;
+        }
+      }
+    } catch {
+      // Gunakan default 2026/2027
+    }
+  } else {
+    const currentMonth = refDate.getMonth() + 1;
+    const currentYear = refDate.getFullYear();
+    startYear = Math.max(2026, currentMonth < 7 ? currentYear - 1 : currentYear);
+    endYear = startYear + 1;
   }
 
   // 12 Bulan: Juli(7)..Desember(12) di startYear, lalu Januari(1)..Juni(6) di endYear

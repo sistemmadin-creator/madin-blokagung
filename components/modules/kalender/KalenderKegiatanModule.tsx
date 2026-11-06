@@ -22,6 +22,7 @@ import {
   Sun,
 } from 'lucide-react';
 import { useKalenderStore } from '@/stores/useKalenderStore';
+import { useTahunAjaranStore } from '@/stores/useTahunAjaranStore';
 import { useAbsensiStore } from '@/stores/useAbsensiStore';
 import { usePagePermission } from '@/stores/useRbacStore';
 import {
@@ -61,10 +62,18 @@ export function KalenderKegiatanModule() {
     getCurrentAgendaMap,
     upsertRentangAgenda,
     deleteAgendaTanggal,
+    deleteMultipleAgendaTanggal,
+    clearAllAgendaTahunAjaran,
     updateAturanLiburKode,
     regenerateTahunAjaranOtomatis,
     syncKalenderToAbsensiLibur,
   } = useKalenderStore();
+
+  const { daftarTahunAjaran } = useTahunAjaranStore();
+  const tahunAjaranOptions =
+    daftarTahunAjaran.length > 0
+      ? daftarTahunAjaran
+      : DAFTAR_TAHUN_AJARAN_KALENDER;
 
   const { liburMapByDate, setSelectedDate: setAbsensiSelectedDate } =
     useAbsensiStore();
@@ -77,12 +86,14 @@ export function KalenderKegiatanModule() {
   const [filterStatusKbm, setFilterStatusKbm] = useState<
     'ALL' | 'LIBUR' | 'EFEKTIF'
   >('ALL');
+  const [selectedAgendaDates, setSelectedAgendaDates] = useState<string[]>([]);
+  const [isConfirmClearAllOpen, setIsConfirmClearAllOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Modal 1: Atur Agenda Tanggal / Rentang Tanggal
   const [isAgendaModalOpen, setIsAgendaModalOpen] = useState(false);
-  const [formStartYMD, setFormStartYMD] = useState('2025-09-07');
-  const [formEndYMD, setFormEndYMD] = useState('2025-09-07');
+  const [formStartYMD, setFormStartYMD] = useState('2026-08-26');
+  const [formEndYMD, setFormEndYMD] = useState('2026-08-26');
   const [formKode, setFormKode] = useState<KodeKegiatanKalender>('LM');
   const [formNamaKegiatan, setFormNamaKegiatan] = useState('Libur Maulud');
   const [formIsLiburKbm, setFormIsLiburKbm] = useState(true);
@@ -384,19 +395,30 @@ export function KalenderKegiatanModule() {
               value={activeTahunAjaran}
               onChange={(e) => {
                 const nextTA = e.target.value;
+                setSelectedAgendaDates([]);
                 setActiveTahunAjaran(nextTA);
                 showToast(
-                  `Kalender otomatis disesuaikan ke Tahun Ajaran ${nextTA}.`
+                  `Kalender otomatis disesuaikan ke Tahun Ajaran ${nextTA} & disinkronkan ke seluruh halaman.`
                 );
               }}
               className="bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-extrabold text-slate-800 cursor-pointer"
             >
-              {DAFTAR_TAHUN_AJARAN_KALENDER.map((cfg) => (
+              {tahunAjaranOptions.map((cfg) => (
                 <option key={cfg.tahunAjaranMasehi} value={cfg.tahunAjaranMasehi}>
                   TA {cfg.tahunAjaranMasehi} ({cfg.tahunAjaranHijriyah} H)
                 </option>
               ))}
             </select>
+
+            <Link
+              href="/pengaturan?tab=tahun-ajaran"
+              data-testid="link-pengaturan-tahun-ajaran-global"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-emerald-50 border border-slate-200 text-slate-700 hover:text-emerald-800 text-xs font-bold transition"
+              title="Buka Pengaturan Tahun Ajaran Global untuk seluruh halaman"
+            >
+              <Settings2 className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Set Tahun Ajaran Global</span>
+            </Link>
 
             {canEdit && (
               <button
@@ -820,6 +842,64 @@ export function KalenderKegiatanModule() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {/* Tombol Hapus Terpilih (Muncul bila ada baris dicentang) */}
+            {(canDelete || canEdit) && selectedAgendaDates.length > 0 && (
+              <button
+                type="button"
+                data-testid="btn-hapus-agenda-terpilih"
+                onClick={async () => {
+                  const count = selectedAgendaDates.length;
+                  await deleteMultipleAgendaTanggal(
+                    selectedAgendaDates,
+                    currentAccount?.full_name || 'PKM. Kurikulum'
+                  );
+                  setSelectedAgendaDates([]);
+                  showToast(
+                    `${count} tanggal kegiatan terpilih berhasil dihapus & status libur dinormalkan.`
+                  );
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer shadow-2xs transition"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus Terpilih ({selectedAgendaDates.length})</span>
+              </button>
+            )}
+
+            {/* Tombol Hapus Semua Agenda */}
+            {(canDelete || canEdit) && sortedAgendaList.length > 0 && (
+              <button
+                type="button"
+                data-testid="btn-hapus-semua-agenda"
+                onClick={() => setIsConfirmClearAllOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold cursor-pointer transition"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus Semua</span>
+              </button>
+            )}
+
+            {/* Tombol Pulihkan Jadwal Standar bila tabel kosong */}
+            {(canDelete || canEdit) && sortedAgendaList.length === 0 && (
+              <button
+                type="button"
+                data-testid="btn-pulihkan-agenda-standar"
+                onClick={async () => {
+                  await regenerateTahunAjaranOtomatis(
+                    activeTahunAjaran,
+                    currentTAConfig.hijriOffsetDays,
+                    currentAccount?.full_name || 'PKM. Kurikulum'
+                  );
+                  showToast(
+                    `Jadwal standar Tahun Ajaran ${activeTahunAjaran} berhasil dipulihkan.`
+                  );
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold cursor-pointer transition"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Pulihkan Jadwal Standar</span>
+              </button>
+            )}
+
             <div className="inline-flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
               {(
                 [
@@ -872,6 +952,29 @@ export function KalenderKegiatanModule() {
           >
             <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
               <tr>
+                <th className="py-3 px-3 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    data-testid="checkbox-select-all-agenda"
+                    aria-label="Pilih semua agenda"
+                    checked={
+                      sortedAgendaList.length > 0 &&
+                      sortedAgendaList.every((it) =>
+                        selectedAgendaDates.includes(it.tanggalMasehi)
+                      )
+                    }
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedAgendaDates(
+                          sortedAgendaList.map((it) => it.tanggalMasehi)
+                        );
+                      } else {
+                        setSelectedAgendaDates([]);
+                      }
+                    }}
+                    className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-700 focus:ring-emerald-600 cursor-pointer"
+                  />
+                </th>
                 <th className="py-3 px-4">Tanggal Masehi</th>
                 <th className="py-3 px-4">Tanggal Hijriyah</th>
                 <th className="py-3 px-4">Kode &amp; Kegiatan</th>
@@ -881,102 +984,223 @@ export function KalenderKegiatanModule() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {sortedAgendaList.map((item) => {
-                const hInfo = masehiToHijri(
-                  item.tanggalMasehi,
-                  currentTAConfig.hijriOffsetDays
-                );
-                const meta =
-                  KATALOG_ATURAN_KEGIATAN[item.kode] ||
-                  KATALOG_ATURAN_KEGIATAN.CUSTOM;
-
-                return (
-                  <tr
-                    key={item.tanggalMasehi}
-                    className="hover:bg-slate-50/80"
+              {sortedAgendaList.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    data-testid="empty-rincian-agenda-row"
+                    className="py-10 px-4 text-center text-slate-500"
                   >
-                    <td className="py-2.5 px-4 font-mono font-bold text-slate-800 whitespace-nowrap">
-                      {item.tanggalMasehi}{' '}
-                      <span className="font-sans font-normal text-slate-500">
-                        ({getNamaHariDariTgl(item.tanggalMasehi)}{' '}
-                        {getPasaranJawa(item.tanggalMasehi)})
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-4 font-mono text-slate-700 whitespace-nowrap">
-                      {hInfo.dayH} {hInfo.monthName} {hInfo.yearH} H
-                    </td>
-                    <td className="py-2.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <span
-                          style={{
-                            backgroundColor: meta.bgHex,
-                            color: meta.textHex,
+                    <p className="font-bold text-slate-700">
+                      Tidak ada rincian tanggal kegiatan pada filter / Tahun Ajaran ini.
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Klik tombol &quot;Pulihkan Jadwal Standar&quot; atau &quot;+ Atur Agenda / Libur&quot; untuk menambahkan kegiatan.
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                sortedAgendaList.map((item) => {
+                  const hInfo = masehiToHijri(
+                    item.tanggalMasehi,
+                    currentTAConfig.hijriOffsetDays
+                  );
+                  const meta =
+                    KATALOG_ATURAN_KEGIATAN[item.kode] ||
+                    KATALOG_ATURAN_KEGIATAN.CUSTOM;
+                  const isChecked = selectedAgendaDates.includes(
+                    item.tanggalMasehi
+                  );
+
+                  return (
+                    <tr
+                      key={item.tanggalMasehi}
+                      className={`hover:bg-slate-50/80 ${
+                        isChecked ? 'bg-emerald-50/40' : ''
+                      }`}
+                    >
+                      <td className="py-2.5 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          data-testid={`checkbox-select-agenda-${item.tanggalMasehi}`}
+                          aria-label={`Pilih tanggal ${item.tanggalMasehi}`}
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedAgendaDates((prev) => [
+                                ...prev,
+                                item.tanggalMasehi,
+                              ]);
+                            } else {
+                              setSelectedAgendaDates((prev) =>
+                                prev.filter((d) => d !== item.tanggalMasehi)
+                              );
+                            }
                           }}
-                          className="px-2 py-0.5 rounded text-[10px] font-black shrink-0"
-                        >
-                          {item.kode}
+                          className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-700 focus:ring-emerald-600 cursor-pointer"
+                        />
+                      </td>
+                      <td className="py-2.5 px-4 font-mono font-bold text-slate-800 whitespace-nowrap">
+                        {item.tanggalMasehi}{' '}
+                        <span className="font-sans font-normal text-slate-500">
+                          ({getNamaHariDariTgl(item.tanggalMasehi)}{' '}
+                          {getPasaranJawa(item.tanggalMasehi)})
                         </span>
-                        <span className="font-bold text-slate-900">
-                          {item.namaKegiatan}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-2.5 px-4">
-                      {item.isLiburKbm ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">
-                          <CalendarOff className="w-3 h-3" />
-                          <span>KBM Diliburkan</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>KBM Reguler Masuk</span>
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2.5 px-4 text-slate-600 font-semibold">
-                      {item.isLiburKbm ? item.kategoriLibur : '-'}
-                    </td>
-                    <td className="py-2.5 px-4 text-right whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1.5">
-                        <Link
-                          href="/absensi"
-                          onClick={() =>
-                            setAbsensiSelectedDate(item.tanggalMasehi)
-                          }
-                          data-testid={`link-buka-absensi-${item.tanggalMasehi}`}
-                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 font-bold text-[11px]"
-                        >
-                          Lihat di Absensi
-                        </Link>
-                        {canEdit && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setFormStartYMD(item.tanggalMasehi);
-                              setFormEndYMD(item.tanggalMasehi);
-                              setFormKode(item.kode);
-                              setFormNamaKegiatan(item.namaKegiatan);
-                              setFormIsLiburKbm(item.isLiburKbm);
-                              setFormKategoriLibur(item.kategoriLibur);
-                              setFormCatatan(item.catatan || '');
-                              setHasExistingAgendaOnSelectedDate(true);
-                              setIsAgendaModalOpen(true);
+                      </td>
+                      <td className="py-2.5 px-4 font-mono text-slate-700 whitespace-nowrap">
+                        {hInfo.dayH} {hInfo.monthName} {hInfo.yearH} H
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <span
+                            style={{
+                              backgroundColor: meta.bgHex,
+                              color: meta.textHex,
                             }}
-                            className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-[11px] cursor-pointer"
+                            className="px-2 py-0.5 rounded text-[10px] font-black shrink-0"
                           >
-                            Edit
-                          </button>
+                            {item.kode}
+                          </span>
+                          <span className="font-bold text-slate-900">
+                            {item.namaKegiatan}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-4">
+                        {item.isLiburKbm ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">
+                            <CalendarOff className="w-3 h-3" />
+                            <span>KBM Diliburkan</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>KBM Reguler Masuk</span>
+                          </span>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                      <td className="py-2.5 px-4 text-slate-600 font-semibold">
+                        {item.isLiburKbm ? item.kategoriLibur : '-'}
+                      </td>
+                      <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5">
+                          <Link
+                            href="/absensi"
+                            onClick={() =>
+                              setAbsensiSelectedDate(item.tanggalMasehi)
+                            }
+                            data-testid={`link-buka-absensi-${item.tanggalMasehi}`}
+                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 font-bold text-[11px]"
+                          >
+                            Lihat di Absensi
+                          </Link>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormStartYMD(item.tanggalMasehi);
+                                setFormEndYMD(item.tanggalMasehi);
+                                setFormKode(item.kode);
+                                setFormNamaKegiatan(item.namaKegiatan);
+                                setFormIsLiburKbm(item.isLiburKbm);
+                                setFormKategoriLibur(item.kategoriLibur);
+                                setFormCatatan(item.catatan || '');
+                                setHasExistingAgendaOnSelectedDate(true);
+                                setIsAgendaModalOpen(true);
+                              }}
+                              className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-[11px] cursor-pointer"
+                            >
+                              Edit
+                            </button>
+                          )}
+                          {(canDelete || canEdit) && (
+                            <button
+                              type="button"
+                              data-testid={`btn-hapus-agenda-row-${item.tanggalMasehi}`}
+                              onClick={async () => {
+                                await deleteAgendaTanggal(
+                                  item.tanggalMasehi,
+                                  currentAccount?.full_name || 'PKM. Kurikulum'
+                                );
+                                setSelectedAgendaDates((prev) =>
+                                  prev.filter((d) => d !== item.tanggalMasehi)
+                                );
+                                showToast(
+                                  `Agenda [${item.kode}] pada ${item.tanggalMasehi} berhasil dihapus.`
+                                );
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 border border-rose-200 hover:border-rose-600 text-rose-700 hover:text-white font-bold text-[11px] cursor-pointer transition"
+                              title={`Hapus agenda tanggal ${item.tanggalMasehi}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Hapus</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* ==================== MODAL KONFIRMASI HAPUS SEMUA AGENDA ==================== */}
+      {isConfirmClearAllOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          data-testid="modal-konfirmasi-hapus-semua-agenda"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4"
+        >
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Hapus Semua Agenda Tahun Ajaran {activeTahunAjaran}?
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Seluruh rincian tanggal kegiatan ({sortedAgendaList.length} tanggal) pada Tahun Ajaran <strong>{activeTahunAjaran}</strong> beserta status libur otomatisnya di menu Absensi akan dikosongkan. Anda tetap dapat membatalkannya lewat tombol <strong>Undo</strong> atau menekan tombol <strong>Pulihkan Jadwal Standar</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                data-testid="btn-batal-hapus-semua-agenda"
+                onClick={() => setIsConfirmClearAllOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-xs font-bold text-slate-700 cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                data-testid="btn-konfirmasi-hapus-semua-agenda"
+                onClick={async () => {
+                  await clearAllAgendaTahunAjaran(
+                    activeTahunAjaran,
+                    currentAccount?.full_name || 'PKM. Kurikulum'
+                  );
+                  setSelectedAgendaDates([]);
+                  setIsConfirmClearAllOpen(false);
+                  showToast(
+                    `Seluruh agenda Tahun Ajaran ${activeTahunAjaran} telah dikosongkan.`
+                  );
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer shadow-xs"
+              >
+                Ya, Hapus Semua
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ==================== MODAL 1: ATUR AGENDA TANGGAL & SINKRON LIBUR ABSENSI ==================== */}
       {isAgendaModalOpen && (

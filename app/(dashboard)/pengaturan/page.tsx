@@ -19,14 +19,15 @@ import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyB
 import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
 import ModalHierarkiBlokKBM from '@/components/modules/formasi/ModalHierarkiBlokKBM';
 import CardAturanAkademik from '@/components/modules/settings/CardAturanAkademik';
+import CardPengaturanTahunAjaran from '@/components/modules/settings/CardPengaturanTahunAjaran';
 import CardAturanMuhafadzoh from '@/components/modules/settings/CardAturanMuhafadzoh';
 import CardAturanPiagam from '@/components/modules/settings/CardAturanPiagam';
 import CardPengaturanNotifikasi from '@/components/modules/settings/CardPengaturanNotifikasi';
 import AccountAuthorityManager from '@/components/modules/settings/AccountAuthorityManager';
 import { usePagePermission, useRbacStore } from '@/stores/useRbacStore';
-import { BellRing } from 'lucide-react';
+import { BellRing, CalendarRange } from 'lucide-react';
 
-type TabKey = 'overview' | 'akun' | 'sidebar' | 'hierarki' | 'audit' | 'akademik' | 'muhafadzoh' | 'piagam' | 'notifikasi';
+type TabKey = 'overview' | 'tahun-ajaran' | 'akun' | 'sidebar' | 'hierarki' | 'audit' | 'akademik' | 'muhafadzoh' | 'piagam' | 'notifikasi';
 
 function PengaturanContent() {
   const searchParams = useSearchParams();
@@ -60,6 +61,7 @@ function PengaturanContent() {
 
   const allTabs: { key: TabKey; label: string; icon: React.ReactNode; testId: string; masterOnly?: boolean }[] = [
     { key: 'overview', label: 'Tinjauan Pengaturan', icon: <Settings className="w-4 h-4" />, testId: 'tab-overview' },
+    { key: 'tahun-ajaran', label: 'Tahun Ajaran Aktif', icon: <CalendarRange className="w-4 h-4 text-amber-500" />, testId: 'tab-tahun-ajaran' },
     { key: 'akun', label: 'Kelola Akun & Otoritas', icon: <UserCog className="w-4 h-4 text-emerald-600" />, testId: 'tab-akun', masterOnly: true },
     { key: 'sidebar', label: 'Ubah Sidebar & Menu', icon: <LayoutList className="w-4 h-4 text-amber-500" />, testId: 'tab-sidebar' },
     { key: 'hierarki', label: 'Pusat Kendali Admin', icon: <Sliders className="w-4 h-4 text-emerald-500" />, testId: 'tab-hierarki' },
@@ -162,6 +164,31 @@ function PengaturanContent() {
         <div className="space-y-6 animate-fade-in">
           {/* Grid Pilar Pengaturan */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* Pilar Baru: Tahun Ajaran & Siklus Akademik Global */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:border-amber-300 hover:shadow-md transition-all flex flex-col justify-between group">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center mb-3">
+                  <CalendarRange className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-slate-900 text-base">Tahun Ajaran &amp; Siklus Akademik</h3>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  Tetapkan Tahun Ajaran aktif (2026/2027 ke 2027/2028 dst.) yang otomatis disinkronkan ke Kalender Kegiatan, Jadwal KBM, Formasi, dan Absen Konsorsium.
+                </p>
+              </div>
+              <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-amber-700">Sinkron Seluruh Halaman</span>
+                <button
+                  type="button"
+                  data-testid="card-open-tahun-ajaran-tab"
+                  onClick={() => handleSelectTab('tahun-ajaran')}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 hover:text-amber-900 cursor-pointer"
+                >
+                  <span>Atur Tahun Ajaran</span>
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+            </div>
+
             {/* Pilar 0: Kelola Akun & Otoritas (Khusus Master Admin saat Keamanan Aktif) */}
             {canShowKelolaAkun && (
               <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between group">
@@ -357,6 +384,13 @@ function PengaturanContent() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Tab Tahun Ajaran & Siklus Akademik Global */}
+      {activeTab === 'tahun-ajaran' && (
+        <div className="animate-fade-in">
+          <CardPengaturanTahunAjaran />
         </div>
       )}
 

@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
+import { useTahunAjaranStore } from '@/stores/useTahunAjaranStore';
 import { FormasiWithStats } from '@/types/formasi';
 import { getWaliKelasSyncInfo, getSantriInFormasi } from '@/lib/utils/formasiSync';
 import { compressImageFile } from '@/lib/utils/image';
@@ -40,6 +41,7 @@ export default function FormasiPaPage() {
 
   const { santriList, fetchSantri } = useSantriStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
+  const { getFormattedHeaderBanner, fetchGlobalTahunAjaran } = useTahunAjaranStore();
 
   const [selectedTingkat, setSelectedTingkat] = useState<string>('');
   const [search, setSearch] = useState<string>('');
@@ -339,7 +341,7 @@ export default function FormasiPaPage() {
             MADRASAH DINIYYAH AL AMIRIYYAH
           </h3>
           <h4 className="text-xs font-bold text-[#0f766e] uppercase tracking-wider m-0 pt-0.5">
-            TAHUN AJARAN 2026-2027 M / 1447-1448 H
+            {getFormattedHeaderBanner()}
           </h4>
         </div>
 
