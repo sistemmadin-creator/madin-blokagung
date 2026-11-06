@@ -27,6 +27,7 @@ import {
   ekstraksiSesiJadwalHariIni,
 } from '@/lib/utils/absensiHelper';
 import { RelationalMigrationService } from '@/lib/services/relationalMigrationService';
+import { buildDefaultLiburMapFromKalender } from '@/lib/utils/kalenderHijriyahHelper';
 
 export const KEY_DB_ABSENSI = 'ABSENSI_ASATIDZ_DATA';
 export const KEY_DB_LIBUR = 'PENGATURAN_LIBUR_MADIN';
@@ -325,7 +326,7 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
 
   rawBucketMap: {},
   absensiMapByDate: {},
-  liburMapByDate: {},
+  liburMapByDate: buildDefaultLiburMapFromKalender(),
 
   sesiHariIni: { 1: [], 2: [], 3: [], 4: [] },
   savedRecords: {},
@@ -387,7 +388,10 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
     set({ isLoading: true });
     try {
       let mergedRaw: Record<string, any> = {};
-      let mergedLibur: Record<string, HariLiburInfo> = {};
+      let mergedLibur: Record<string, HariLiburInfo> = {
+        ...buildDefaultLiburMapFromKalender(),
+        ...(get().liburMapByDate || {}),
+      };
 
       // Baca cache LocalStorage terlebih dahulu bila tidak forceRefresh
       if (!isForce && typeof window !== 'undefined') {
@@ -395,7 +399,12 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
           const lsAbs = localStorage.getItem(LS_CACHE_ABSENSI);
           const lsLib = localStorage.getItem(LS_CACHE_LIBUR);
           if (lsAbs) mergedRaw = JSON.parse(lsAbs) || {};
-          if (lsLib) mergedLibur = JSON.parse(lsLib) || {};
+          if (lsLib) {
+            mergedLibur = {
+              ...mergedLibur,
+              ...(JSON.parse(lsLib) || {}),
+            };
+          }
         } catch {
           // Abaikan bila gagal parse LocalStorage
         }
@@ -441,6 +450,7 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
           ...parseVal(mainAbsRow?.value),
         };
         mergedLibur = {
+          ...mergedLibur,
           ...parseVal(legacyLibRow?.value),
           ...parseVal(mainLibRow?.value),
         };

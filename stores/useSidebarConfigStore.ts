@@ -39,6 +39,7 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
         children: [
           { id: 'sub-jadwal-kelas', title: 'Jadwal KBM Per Kelas', href: '/jadwal-kbm', iconName: 'Calendar' },
           { id: 'sub-hari-kbm', title: 'Hari KBM', href: '/hari-kbm', iconName: 'CalendarDays' },
+          { id: 'sub-kalender-kegiatan', title: 'Kalender Kegiatan', href: '/kalender-kegiatan', iconName: 'CalendarDays' },
         ],
       },
       {

@@ -7,6 +7,7 @@ export type AppPageId =
   | 'catatan'
   | 'jadwal-kbm'
   | 'hari-kbm'
+  | 'kalender-kegiatan'
   | 'formasi'
   | 'fan-pelajaran'
   | 'fan-pengajar'
@@ -117,6 +118,14 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     routes: ['/hari-kbm'],
     supportsEditOverride: true,
     supportsDeleteOverride: false,
+  },
+  {
+    id: 'kalender-kegiatan',
+    label: 'Kalender Kegiatan (Masehi & Hijriyah)',
+    group: 'PKM. Kurikulum',
+    routes: ['/kalender-kegiatan'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: true,
   },
   {
     id: 'formasi',

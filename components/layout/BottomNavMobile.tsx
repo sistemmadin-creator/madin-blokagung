@@ -158,6 +158,14 @@ export default function BottomNavMobile() {
             <CalendarDays className="w-4 h-4 text-amber-600" />
             <span>Hari KBM</span>
           </Link>
+          <Link
+            href="/kalender-kegiatan"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-800 hover:bg-slate-50"
+          >
+            <CalendarDays className="w-4 h-4 text-emerald-600" />
+            <span>Kalender Kegiatan</span>
+          </Link>
           <hr className="my-1 border-slate-100" />
           <Link
             href="/formasi"
