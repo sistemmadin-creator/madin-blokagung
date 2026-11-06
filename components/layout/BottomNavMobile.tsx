@@ -23,6 +23,8 @@ import {
   BellRing,
   MessageSquare,
   FileText,
+  Package,
+  Wrench,
 } from 'lucide-react';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
@@ -107,6 +109,29 @@ export default function BottomNavMobile() {
               <Newspaper className="w-4 h-4" />
             </div>
             <span>Kelola Berita</span>
+          </Link>
+          <div className="px-3 pt-2 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-t border-slate-100">
+            PKM. Sapras
+          </div>
+          <Link
+            href="/sapras/inventaris-kelas"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-sm font-semibold text-slate-800"
+          >
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+              <Package className="w-4 h-4" />
+            </div>
+            <span>Inventaris Kelas (Papan & Meja Guru)</span>
+          </Link>
+          <Link
+            href="/sapras/perbaikan"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800"
+          >
+            <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+              <Wrench className="w-4 h-4" />
+            </div>
+            <span>Kerusakan & Perbaikan Sapras</span>
           </Link>
         </div>
       )}

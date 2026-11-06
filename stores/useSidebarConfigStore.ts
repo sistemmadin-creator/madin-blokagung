@@ -106,6 +106,36 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
     ],
   },
   {
+    id: 'grp-sapras',
+    group: 'PKM. Sapras',
+    items: [
+      {
+        id: 'item-sapras-inventaris',
+        title: 'Inventaris Kelas',
+        href: '/sapras/inventaris-kelas',
+        iconName: 'Package',
+      },
+      {
+        id: 'item-sapras-perbaikan',
+        title: 'Kerusakan & Perbaikan',
+        href: '/sapras/perbaikan',
+        iconName: 'Wrench',
+      },
+      {
+        id: 'item-sapras-logistik',
+        title: 'Logistik & ATK KBM',
+        href: '/sapras/logistik',
+        iconName: 'Grid',
+      },
+      {
+        id: 'item-sapras-rekap',
+        title: 'Rekap & Audit Sapras',
+        href: '/sapras/rekap',
+        iconName: 'BarChart2',
+      },
+    ],
+  },
+  {
     id: 'grp-publikasi',
     group: 'PKM. Publikasi & Warta',
     items: [
@@ -187,7 +217,7 @@ function mergeMissingDefaultItems(loadedGroups: ConfigMenuGroup[]): ConfigMenuGr
 
     return {
       ...g,
-      hidden: g.id === 'grp-kesiswaan' ? false : g.hidden,
+      hidden: g.id === 'grp-kesiswaan' || g.id === 'grp-sapras' ? false : g.hidden,
       items: finalItems,
     };
   });

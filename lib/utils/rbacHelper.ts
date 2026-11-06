@@ -147,6 +147,10 @@ export function resolvePageIdFromPathname(pathname: string): AppPageId | null {
   if (clean.startsWith('/absen-cepat')) return 'absen-cepat';
   if (clean.startsWith('/absen-konsorsium')) return 'absen-konsorsium';
   if (clean.startsWith('/rekap-absensi')) return 'rekap-absensi';
+  if (clean.startsWith('/sapras/perbaikan')) return 'sapras-perbaikan';
+  if (clean.startsWith('/sapras/logistik')) return 'sapras-logistik';
+  if (clean.startsWith('/sapras/rekap')) return 'sapras-rekap';
+  if (clean.startsWith('/sapras')) return 'sapras-inventaris';
   if (clean.startsWith('/kelola-berita')) return 'kelola-berita';
   if (clean.startsWith('/pengaturan')) return 'pengaturan';
   return null;

@@ -20,6 +20,10 @@ export type AppPageId =
   | 'absen-cepat'
   | 'absen-konsorsium'
   | 'rekap-absensi'
+  | 'sapras-inventaris'
+  | 'sapras-perbaikan'
+  | 'sapras-logistik'
+  | 'sapras-rekap'
   | 'kelola-berita'
   | 'pengaturan';
 
@@ -215,6 +219,38 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     label: 'Rekap Absensi',
     group: 'PKM. Kesiswaan',
     routes: ['/rekap-absensi'],
+    supportsEditOverride: false,
+    supportsDeleteOverride: false,
+  },
+  {
+    id: 'sapras-inventaris',
+    label: 'Inventaris Kelas (Papan Tulis & Meja Guru)',
+    group: 'PKM. Sapras',
+    routes: ['/sapras', '/sapras/inventaris-kelas'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: true,
+  },
+  {
+    id: 'sapras-perbaikan',
+    label: 'Kerusakan & Perbaikan Sapras',
+    group: 'PKM. Sapras',
+    routes: ['/sapras/perbaikan'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: true,
+  },
+  {
+    id: 'sapras-logistik',
+    label: 'Logistik & ATK KBM',
+    group: 'PKM. Sapras',
+    routes: ['/sapras/logistik'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: true,
+  },
+  {
+    id: 'sapras-rekap',
+    label: 'Rekap & Audit Sapras',
+    group: 'PKM. Sapras',
+    routes: ['/sapras/rekap'],
     supportsEditOverride: false,
     supportsDeleteOverride: false,
   },
