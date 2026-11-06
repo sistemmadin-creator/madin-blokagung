@@ -14,6 +14,7 @@ export type AppPageId =
   | 'setor-mustahiq'
   | 'rekap-hafalan'
   | 'piagam'
+  | 'kirim-wa'
   | 'absensi'
   | 'absen-cepat'
   | 'absen-konsorsium'
@@ -165,6 +166,14 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     label: 'Cetak Piagam',
     group: 'PKM. Muhafadzoh',
     routes: ['/piagam'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: false,
+  },
+  {
+    id: 'kirim-wa',
+    label: 'Kirim WhatsApp Rapor Hafalan',
+    group: 'PKM. Muhafadzoh',
+    routes: ['/kirim-wa'],
     supportsEditOverride: true,
     supportsDeleteOverride: false,
   },

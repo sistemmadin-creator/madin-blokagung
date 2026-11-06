@@ -25,6 +25,7 @@ import {
   Sparkles,
   Lock,
   Layers,
+  MessageSquare,
 } from 'lucide-react';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
@@ -538,7 +539,10 @@ export default function SetorMustahiqModule() {
         alert(`Masukkan jumlah pertambahan ${row.satuan_label} yang valid (lebih dari 0).`);
         return;
       }
+      const noteVal = catatan.trim() || undefined;
       setIsSubmitting(true);
+      setTambahAngka('');
+      setCatatan('');
       await addLogSetoran(
         {
           no_induk: row.no_induk,
@@ -552,22 +556,23 @@ export default function SetorMustahiqModule() {
           tanggal: tglSetor,
           tahun,
           tambah_angka: numVal,
-          catatan: catatan.trim() || undefined,
+          catatan: noteVal,
           mustahiq: row.mustahiq,
         },
         item
       );
       setIsSubmitting(false);
-      setTambahAngka('');
-      setCatatan('');
     } else {
       if (!kalimatDipilih.trim()) {
         alert(`Pilih tahapan ${row.satuan_label} yang disetorkan.`);
         return;
       }
+      const chosenKalimat = kalimatDipilih.trim();
+      const noteVal = catatan.trim() || undefined;
       const sentences = item.sentences || [];
-      const idx = sentences.findIndex((s) => norm(s) === norm(kalimatDipilih));
+      const idx = sentences.findIndex((s) => norm(s) === norm(chosenKalimat));
       setIsSubmitting(true);
+      setCatatan('');
       await addLogSetoran(
         {
           no_induk: row.no_induk,
@@ -580,15 +585,14 @@ export default function SetorMustahiqModule() {
           target_type: 'sentence',
           tanggal: tglSetor,
           tahun,
-          kalimat_dipilih: kalimatDipilih.trim(),
+          kalimat_dipilih: chosenKalimat,
           kalimat_index: idx !== -1 ? idx + 1 : undefined,
-          catatan: catatan.trim() || undefined,
+          catatan: noteVal,
           mustahiq: row.mustahiq,
         },
         item
       );
       setIsSubmitting(false);
-      setCatatan('');
     }
   };
 
@@ -743,10 +747,18 @@ export default function SetorMustahiqModule() {
             </Link>
             <Link
               href="/setor-mustahiq/rekap"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
             >
               <BarChart2 className="w-3.5 h-3.5" />
               Rekap Setor
+            </Link>
+            <Link
+              href="/kirim-wa"
+              data-testid="btn-shortcut-kirim-wa"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              Kirim WA Rapor
             </Link>
           </div>
 
@@ -1635,14 +1647,26 @@ export default function SetorMustahiqModule() {
 
               {/* Tabel Riwayat Setor */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                     <History className="w-3.5 h-3.5 text-slate-500" />
                     Riwayat Setor ({selectedSantriDetail.row.active_item.nama})
                   </h4>
-                  <span className="text-[11px] text-slate-400">
-                    {selectedSantriDetail.prog.matchingLogs.length} Catatan
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/kirim-wa?santri=${encodeURIComponent(
+                        selectedSantriDetail.row.no_induk
+                      )}&tahun=${tahun}`}
+                      data-testid="btn-modal-kirim-wa-santri"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-[11px] font-bold transition-colors"
+                    >
+                      <MessageSquare className="w-3 h-3" />
+                      <span>Kirim WA Rapor</span>
+                    </Link>
+                    <span className="text-[11px] text-slate-400">
+                      {selectedSantriDetail.prog.matchingLogs.length} Catatan
+                    </span>
+                  </div>
                 </div>
 
                 {selectedSantriDetail.prog.matchingLogs.length === 0 ? (

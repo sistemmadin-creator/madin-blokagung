@@ -20,7 +20,8 @@ import {
   ShieldCheck,
   Newspaper,
   LayoutDashboard,
-  BellRing
+  BellRing,
+  MessageSquare,
 } from 'lucide-react';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
@@ -211,6 +212,14 @@ export default function BottomNavMobile() {
           >
             <Award className="w-4 h-4 text-amber-500" />
             <span>Cetak Piagam / Syahadah</span>
+          </Link>
+          <Link
+            href="/kirim-wa"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-sm font-semibold text-emerald-800"
+          >
+            <MessageSquare className="w-4 h-4 text-emerald-600" />
+            <span>Kirim WhatsApp Rapor</span>
           </Link>
         </div>
       )}
