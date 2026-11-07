@@ -1,11 +1,24 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+async function gotoWithAuth(page: Page, targetPath: string) {
+  await page.goto(targetPath);
+  await page.waitForLoadState('domcontentloaded');
+  if (page.url().includes('/login')) {
+    await page.getByLabel('Username Pengurus').fill('admin');
+    await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+    await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
+    await page.waitForURL(`**${targetPath}**`, { timeout: 60000 });
+  }
+}
 
 test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)', () => {
+  test.setTimeout(90000);
+
   test('1.0 Absensi Asatidz: Header, KPI, dan Label Waktu Pesantren Jam 1..3 vs Jam 4', async ({ page }) => {
-    await page.goto('/absensi');
+    await gotoWithAuth(page, '/absensi');
 
     // Judul halaman & Subtitle
-    await expect(page.getByRole('heading', { name: 'Absensi Asatidz', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Absensi Asatidz', exact: true })).toBeVisible({ timeout: 25000 });
     await expect(
       page.getByText('Pencatatan kehadiran mengajar harian (Jam Ke-1 s/d Jam Ke-4) terintegrasi Jadwal KBM')
     ).toBeVisible();
@@ -29,7 +42,7 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
     // Verifikasi label waktu KBM Pesantren pada tiap Jam
     // Jam 1 s/d 3 harus berlabel "(Malam Sebelumnya)" dan Jam 4 berlabel "(Siang Hari)"
     const jam1Heading = page.locator('h2', { hasText: 'Daftar Pengajar Jam Ke-1' });
-    const isJumatOrLibur = await page.getByText(/Libur Reguler|Diliburkan/i).isVisible();
+    const isJumatOrLibur = await page.getByText(/Libur Reguler|Diliburkan/i).first().isVisible();
 
     if (!isJumatOrLibur && (await jam1Heading.isVisible())) {
       const jam1Badge = page.locator('h2', { hasText: 'Daftar Pengajar Jam Ke-1' }).locator('..').getByText('(Malam Sebelumnya)');
@@ -45,10 +58,11 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
   });
 
   test('2.0 Absensi Asatidz: Modal Libur / Event dan Modal Chat WA', async ({ page }) => {
-    await page.goto('/absensi');
+    await gotoWithAuth(page, '/absensi');
 
     // Buka Modal Libur / Event
     const btnLibur = page.getByRole('button', { name: /Libur \/ Event/i });
+    await expect(btnLibur).toBeVisible({ timeout: 25000 });
     await btnLibur.click();
     await expect(page.getByRole('heading', { name: /Pengaturan Hari Libur \/ Event/i })).toBeVisible();
 
@@ -67,10 +81,10 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
   });
 
   test('3.0 Absen Cepat: Mode Ringkas Berbasis Blok & Sinkronisasi Waktu Pesantren', async ({ page }) => {
-    await page.goto('/absen-cepat');
+    await gotoWithAuth(page, '/absen-cepat');
 
     // Header & Subtitle
-    await expect(page.getByRole('heading', { name: 'Absen Cepat', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Absen Cepat', exact: true })).toBeVisible({ timeout: 25000 });
     await expect(page.getByText('Mode presensi ringkas dikelompokkan per Blok Kelas')).toBeVisible();
 
     // Toolbar Notif & Tab Jam
@@ -79,19 +93,19 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
     await expect(page.getByRole('button', { name: /Simpan Jam Ini/i })).toBeVisible();
 
     // Tab Jam 1 aktif secara default dan berlabel "(Malam Sebelumnya)"
-    const isJumatOrLibur = await page.getByText(/Libur Reguler|Diliburkan/i).isVisible();
+    const isJumatOrLibur = await page.getByText(/Libur Reguler|Diliburkan/i).first().isVisible();
     if (!isJumatOrLibur) {
       await expect(page.getByText('(Malam Sebelumnya)')).toBeVisible();
 
       // Beralih ke Jam Ke-4
-      const btnJam4 = page.locator('button', { hasText: '4' }).first();
+      const btnJam4 = page.getByRole('button', { name: 'Jam Ke-4' });
       await btnJam4.click();
 
       // Verifikasi Jam Ke-4 berganti label ke "(Siang Hari)"
       await expect(page.getByText('(Siang Hari)')).toBeVisible();
 
       // Beralih kembali ke Jam Ke-1
-      const btnJam1 = page.locator('button', { hasText: '1' }).first();
+      const btnJam1 = page.getByRole('button', { name: 'Jam Ke-1' });
       await btnJam1.click();
       await expect(page.getByText('(Malam Sebelumnya)')).toBeVisible();
     }
@@ -109,10 +123,11 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
   });
 
   test('4.0 Absensi Asatidz: Tab Riwayat & Rekap Data', async ({ page }) => {
-    await page.goto('/absensi');
+    await gotoWithAuth(page, '/absensi');
 
     // Beralih ke Tab Riwayat & Rekap Data
     const tabRiwayat = page.getByRole('button', { name: /Riwayat & Rekap Data/i });
+    await expect(tabRiwayat).toBeVisible({ timeout: 25000 });
     await tabRiwayat.click();
 
     // Kontrol Filter Riwayat
@@ -122,9 +137,9 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
   });
 
   test('5.0 Absen Cepat: Modal Penetapan Presensi Massal (Inspirasi LPTQ)', async ({ page }) => {
-    await page.goto('/absen-cepat');
+    await gotoWithAuth(page, '/absen-cepat');
 
-    await expect(page.getByRole('heading', { name: 'Absen Cepat', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Absen Cepat', exact: true })).toBeVisible({ timeout: 25000 });
 
     // Tunggu hingga data sesi KBM termuat
     await expect(page.getByText(/dari [1-9]\d* Sesi/i).first()).toBeVisible({ timeout: 20000 });
@@ -142,12 +157,12 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
     ).toBeVisible();
 
     // 3. Verifikasi Tombol Target Status (H = Hadir, I = Izin, S = Sakit, A = Alfa, L = Tugas)
-    await expect(modal.getByRole('button', { name: /H = Hadir/i })).toBeVisible();
-    const btnTargetIzin = modal.getByRole('button', { name: /I = Izin/i });
+    await expect(modal.getByRole('button', { name: /H = Hadir/i }).first()).toBeVisible();
+    const btnTargetIzin = modal.getByRole('button', { name: /I = Izin/i }).first();
     await expect(btnTargetIzin).toBeVisible();
-    await expect(modal.getByRole('button', { name: /S = Sakit/i })).toBeVisible();
-    await expect(modal.getByRole('button', { name: /A = Alfa/i })).toBeVisible();
-    await expect(modal.getByRole('button', { name: /L = Tugas/i })).toBeVisible();
+    await expect(modal.getByRole('button', { name: /S = Sakit/i }).first()).toBeVisible();
+    await expect(modal.getByRole('button', { name: /A = Alfa/i }).first()).toBeVisible();
+    await expect(modal.getByRole('button', { name: /L = Tugas/i }).first()).toBeVisible();
 
     // Beralih ke Target Izin
     await btnTargetIzin.click();
@@ -156,7 +171,6 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
     const searchInput = modal.getByPlaceholder(/Cari asatidz \/ kelas \/ fan/i);
     await expect(searchInput).toBeVisible();
     await searchInput.fill('Fikrul');
-    // Jika ada Fikrul, harus tampil
     const matchCount = await modal.getByText(/Fikrul/i).count();
     if (matchCount > 0) {
       await expect(modal.getByText(/Fikrul/i).first()).toBeVisible();
@@ -170,9 +184,10 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
     await btnSelectAll.click();
 
     // Tombol eksekusi harus aktif dengan teks IZIN (N)
-    const btnApply = modal.locator('button', { hasText: /Terapkan IZIN/i });
+    const btnApply = modal.getByTestId('btn-apply-presensi-massal');
     await expect(btnApply).toBeVisible();
     await expect(btnApply).toBeEnabled();
+    await expect(btnApply).toContainText(/Terapkan IZIN/i);
 
     // Batalkan pilihan semua
     await btnSelectAll.click();
@@ -193,7 +208,7 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
   });
 
   test('6.0 Absen Cepat: Urutan Grup Blok Resmi & Kontrol Pagination', async ({ page }) => {
-    await page.goto('/absen-cepat');
+    await gotoWithAuth(page, '/absen-cepat');
 
     // Tunggu data sesi termuat
     await expect(page.getByText(/dari [1-9]\d* Sesi/i).first()).toBeVisible({ timeout: 20000 });
@@ -203,7 +218,6 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
     await expect(blockBanners.first()).toBeVisible();
 
     const firstBannerText = await blockBanners.first().innerText();
-    // Blok teratas harus Blok Induk Putra (bukan Blok 4)
     expect(firstBannerText.toUpperCase()).toContain('BLOK INDUK PUTRA');
 
     // 2. Verifikasi Kelas Teratas di dalam Blok Induk Putra adalah 1 A ULA (PA)
@@ -219,14 +233,85 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
     const btnBerikutnya = page.getByRole('button', { name: 'Berikutnya', exact: true });
     if (await btnBerikutnya.isVisible()) {
       await expect(page.getByText(/Halaman 1 dari/i)).toBeVisible();
-      // Klik halaman berikutnya
       await btnBerikutnya.click();
       await expect(page.getByText(/Halaman 2 dari/i)).toBeVisible();
 
-      // Klik kembali ke halaman sebelumnya
       const btnSebelumnya = page.getByRole('button', { name: 'Sebelumnya', exact: true });
       await btnSebelumnya.click();
       await expect(page.getByText(/Halaman 1 dari/i)).toBeVisible();
     }
+  });
+
+  test('7.0 Absen Cepat Mobile (Gambar 1-4): Smooth Swipe, Tombol Terapkan Di Atas Navbar HP, Tabel Kompak 6 Kolom, dan Elevasi Keyboard Pencarian', async ({
+    page,
+  }) => {
+    // Gunakan ukuran layar ponsel (390x844) seperti pada Gambar 2, 3, dan 4
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoWithAuth(page, '/absen-cepat');
+
+    await expect(page.getByRole('heading', { name: 'Absen Cepat', exact: true })).toBeVisible({ timeout: 25000 });
+    await expect(page.getByText(/dari [1-9]\d* Sesi/i).first()).toBeVisible({ timeout: 20000 });
+
+    // 1. Verifikasi panel memiliki animasi transisi smooth (Gambar 1)
+    const jamPanel = page.getByTestId('absen-cepat-jam-panel');
+    await expect(jamPanel).toBeVisible();
+
+    // 2. Buka Modal Penetapan Presensi Massal di Mode HP (Gambar 2 & 3)
+    await page.getByRole('button', { name: /Presensi Massal/i }).click();
+
+    const modalOverlay = page.getByTestId('modal-presensi-massal-overlay');
+    await expect(modalOverlay).toBeVisible();
+
+    // Pastikan z-index modal (70) lebih tinggi daripada BottomNavMobile (40) sehingga tidak tertutup navbar HP
+    const overlayZIndex = await modalOverlay.evaluate((el) => Number(window.getComputedStyle(el).zIndex));
+    expect(overlayZIndex).toBeGreaterThanOrEqual(70);
+
+    // 3. Verifikasi Tabel Kompak 6 Kolom di Mode HP (Gambar 3)
+    const table = page.getByTestId('table-presensi-massal');
+    await expect(table).toBeVisible();
+    const headerCount = await table.locator('thead th').count();
+    expect(headerCount).toBe(6);
+
+    const firstRowBox = await table.locator('tbody tr').first().boundingBox();
+    expect(firstRowBox).not.toBeNull();
+    // Baris kompak di mode HP memiliki tinggi padat (<= 44px) agar muat banyak baris sekaligus seperti Gambar 3
+    expect(firstRowBox!.height).toBeLessThanOrEqual(44);
+
+    // 4. Verifikasi Penyesuaian Otomatis Popup Naik ke Atas Saat Fokus Pencarian / Keyboard Muncul (Gambar 4)
+    const searchInput = page.getByTestId('input-search-presensi-massal');
+    await searchInput.focus();
+    await expect(modalOverlay).toHaveAttribute('data-keyboard-elevated', 'true');
+
+    await searchInput.fill('ULA');
+    const searchedFirstRow = table.locator('tbody tr').first();
+    await expect(searchedFirstRow).toBeVisible();
+
+    // 5. Pilih baris hasil pencarian, pilih target status Alfa, dan klik tombol Terapkan (Gambar 2 & 4)
+    await searchedFirstRow.click();
+
+    // Pilih Jam 2 dan Status Target Alfa di dalam modal
+    await modalOverlay.getByRole('button', { name: 'Jam 2', exact: true }).click();
+    await searchInput.fill('');
+    await table.locator('tbody tr').first().click();
+
+    // Pilih A = Alfa (gunakan locator yang visible di mobile)
+    await modalOverlay.locator('button:visible', { hasText: 'A = Alfa' }).first().click();
+
+    const btnApply = page.getByTestId('btn-apply-presensi-massal');
+    await expect(btnApply).toBeVisible();
+    await expect(btnApply).toBeEnabled();
+    await expect(btnApply).toContainText('Terapkan ALFA (1)');
+
+    // Klik langsung tombol Terapkan (memastikan tidak terhalang oleh BottomNavMobile)
+    await btnApply.click();
+    await expect(modalOverlay).toBeHidden();
+
+    // 6. Halaman utama Absen Cepat otomatis tersinkron ke Jam Ke-2 dan menampilkan indikator perubahan belum disimpan
+    await expect(
+      page.getByRole('heading', { name: 'Daftar Pengajar Jam Ke-2' })
+    ).toBeVisible();
+    await expect(page.getByTestId('badge-unsaved-changes')).toContainText(
+      '1 perubahan belum disimpan'
+    );
   });
 });

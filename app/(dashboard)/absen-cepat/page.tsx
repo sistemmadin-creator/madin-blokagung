@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Zap,
   Calendar,
@@ -49,6 +49,7 @@ export default function AbsenCepatPage() {
     selectedJam,
     sesiHariIni,
     savedRecords,
+    pendingStatus,
     liburMapByDate,
     setSelectedDate,
     setSelectedJam,
@@ -90,16 +91,48 @@ export default function AbsenCepatPage() {
     text: string;
   } | null>(null);
 
+  // Smooth Swipe & Slide Animation State (Mode HP)
+  const [swipeDragX, setSwipeDragX] = useState<number>(0);
+  const [isSwipingHorizontal, setIsSwipingHorizontal] = useState<boolean>(false);
+  const [slidePhase, setSlidePhase] = useState<
+    'idle' | 'from-right' | 'from-left'
+  >('idle');
+
   // Drag Selection & Double-Tap Refs
   const isDraggingSelectRef = useRef<boolean>(false);
   const dragTargetStateRef = useRef<boolean>(true);
+  const isTouchDeviceRef = useRef<boolean>(false);
+  const preDoubleTapSelectedRef = useRef<boolean>(false);
   const lastTapRef = useRef<{ key: string; time: number }>({ key: '', time: 0 });
-  const swipeTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const swipeTouchStartRef = useRef<{
+    x: number;
+    y: number;
+    lockedAxis: 'x' | 'y' | null;
+  } | null>(null);
+
+  const isAnyModalOpen = Boolean(
+    detailSesi || isNotifOpen || isWAOpen || isPushModalOpen || isBulkModalOpen
+  );
 
   const showToast = (type: 'success' | 'error', text: string) => {
     setToastMsg({ type, text });
     setTimeout(() => setToastMsg(null), 3200);
   };
+
+  // Fungsi berpindah Jam dengan animasi slide smooth
+  const handleSelectJamWithSlide = useCallback(
+    (targetJam: JamKbm) => {
+      if (targetJam === selectedJam) return;
+      const direction = targetJam > selectedJam ? 'from-right' : 'from-left';
+      setSlidePhase(direction);
+      setSelectedJam(targetJam);
+      const timer = setTimeout(() => {
+        setSlidePhase('idle');
+      }, 40);
+      return () => clearTimeout(timer);
+    },
+    [selectedJam, setSelectedJam]
+  );
 
   useEffect(() => {
     fetchAbsensi();
@@ -173,6 +206,15 @@ export default function AbsenCepatPage() {
     }).length;
   }, [allSesiJam, selectedDate, savedRecords]);
 
+  // Hitung jumlah sesi yang telah diubah (pendingStatus) namun belum disimpan ke DB pada jam aktif
+  const unsavedCountJam = useMemo(() => {
+    return allSesiJam.filter((s) => {
+      const k = getSesiKey(selectedDate, s);
+      const p = pendingStatus[k];
+      return Boolean(p && !p.isSaved);
+    }).length;
+  }, [allSesiJam, selectedDate, pendingStatus]);
+
   // Daftar Blok unik untuk dropdown filter
   const daftarBlokUnik = useMemo(() => {
     const setBlok = new Set<string>();
@@ -231,18 +273,26 @@ export default function AbsenCepatPage() {
     pageSize === -1 ? 1 : Math.max(1, Math.ceil(filteredSesi.length / pageSize));
 
   // Peta total sesi per blok & indeks posisi item dalam bloknya di seluruh filteredSesi
-  const { totalPerBlokMap, itemIndexInBlokMap } = useMemo(() => {
+  const { totalPerBlokMap, itemIndexInBlokMap, allKeysPerBlokMap } = useMemo(() => {
     const totals = new Map<string, number>();
     const indices = new Map<string, number>();
+    const keysByBlok = new Map<string, string[]>();
 
     filteredSesi.forEach((s) => {
       const bKey = s.blok || 'Belum Diatur';
+      const sKey = getSesiKey(selectedDate, s);
       const nextIdx = (totals.get(bKey) || 0) + 1;
       totals.set(bKey, nextIdx);
-      indices.set(getSesiKey(selectedDate, s), nextIdx);
+      indices.set(sKey, nextIdx);
+      if (!keysByBlok.has(bKey)) keysByBlok.set(bKey, []);
+      keysByBlok.get(bKey)!.push(sKey);
     });
 
-    return { totalPerBlokMap: totals, itemIndexInBlokMap: indices };
+    return {
+      totalPerBlokMap: totals,
+      itemIndexInBlokMap: indices,
+      allKeysPerBlokMap: keysByBlok,
+    };
   }, [filteredSesi, selectedDate]);
 
   // Sesi yang dipaginasi pada halaman aktif
@@ -274,6 +324,7 @@ export default function AbsenCepatPage() {
       const firstIdx = itemIndexInBlokMap.get(firstItemKey) || 1;
       const lastIdx = itemIndexInBlokMap.get(lastItemKey) || items.length;
       const isLanjutan = firstIdx > 1;
+      const blokKeys = allKeysPerBlokMap.get(blok) || [];
 
       return {
         blok,
@@ -282,10 +333,17 @@ export default function AbsenCepatPage() {
         firstIdx,
         lastIdx,
         totalInBlok,
+        blokKeys,
         items,
       };
     });
-  }, [paginatedSesi, totalPerBlokMap, itemIndexInBlokMap, selectedDate]);
+  }, [
+    paginatedSesi,
+    totalPerBlokMap,
+    itemIndexInBlokMap,
+    allKeysPerBlokMap,
+    selectedDate,
+  ]);
 
   // Toggle pilih 1 kartu
   const toggleSelectKey = (sKey: string, forceValue?: boolean) => {
@@ -298,9 +356,22 @@ export default function AbsenCepatPage() {
     });
   };
 
-  // Handler Mouse Down / Enter untuk Drag Selection
+  // Toggle pilih seluruh sesi dalam 1 blok
+  const handleToggleSelectBlok = (blokKeys: string[]) => {
+    if (blokKeys.length === 0) return;
+    const allSelected = blokKeys.every((k) => selectedKeys.includes(k));
+    if (allSelected) {
+      setSelectedKeys((prev) => prev.filter((k) => !blokKeys.includes(k)));
+    } else {
+      setSelectedKeys((prev) => Array.from(new Set([...prev, ...blokKeys])));
+    }
+  };
+
+  // Handler Mouse Down / Enter untuk Drag Selection (Desktop)
   const handleCardMouseDown = (sKey: string, e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).tagName === 'BUTTON') return;
+    if (isTouchDeviceRef.current) return;
+    const targetEl = e.target as HTMLElement;
+    if (targetEl.closest('button, a, select, input')) return;
     isDraggingSelectRef.current = true;
     const isCurrentlySelected = selectedKeys.includes(sKey);
     dragTargetStateRef.current = !isCurrentlySelected;
@@ -308,49 +379,113 @@ export default function AbsenCepatPage() {
   };
 
   const handleCardMouseEnter = (sKey: string) => {
-    if (!isDraggingSelectRef.current) return;
+    if (isTouchDeviceRef.current || !isDraggingSelectRef.current) return;
     toggleSelectKey(sKey, dragTargetStateRef.current);
   };
 
-  // Handler Klik / Double-Tap Mobile untuk membuka Modal Detail
+  // Handler Klik / Double-Tap untuk memilih kartu atau membuka Modal Detail
   const handleCardClickOrDoubleTap = (
     sKey: string,
-    sesi: SesiJadwalHarian
+    sesi: SesiJadwalHarian,
+    e: React.MouseEvent
   ) => {
+    const targetEl = e.target as HTMLElement;
+    if (targetEl.closest('button, a, select, input')) return;
+
     const now = Date.now();
     if (
       lastTapRef.current.key === sKey &&
       now - lastTapRef.current.time < 320
     ) {
+      // Kembalikan state pilihan sebelum double-tap agar double-click tidak mengubah centang secara tidak sengaja
+      toggleSelectKey(sKey, preDoubleTapSelectedRef.current);
       setDetailSesi(sesi);
       lastTapRef.current = { key: '', time: 0 };
       return;
     }
+
+    preDoubleTapSelectedRef.current = selectedKeys.includes(sKey);
+    if (isTouchDeviceRef.current) {
+      toggleSelectKey(sKey);
+    }
     lastTapRef.current = { key: sKey, time: now };
   };
 
-  // Handler Swipe Horizontal untuk berpindah Jam 1 - 4 di layar Mobile
+  // Handler Swipe Horizontal dengan Animasi Smooth untuk berpindah Jam 1 - 4 di layar Mobile
   const handleSwipeTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return;
+    isTouchDeviceRef.current = true;
+    if (isAnyModalOpen || e.touches.length !== 1) return;
+    const targetEl = e.target as HTMLElement;
+    if (targetEl.closest('input, select, textarea')) return;
+
     swipeTouchStartRef.current = {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
+      lockedAxis: null,
     };
   };
 
+  const handleSwipeTouchMove = (e: React.TouchEvent) => {
+    if (
+      isAnyModalOpen ||
+      !swipeTouchStartRef.current ||
+      e.touches.length !== 1
+    ) {
+      return;
+    }
+
+    const dx = e.touches[0].clientX - swipeTouchStartRef.current.x;
+    const dy = e.touches[0].clientY - swipeTouchStartRef.current.y;
+
+    if (!swipeTouchStartRef.current.lockedAxis) {
+      if (Math.abs(dx) > 12 || Math.abs(dy) > 12) {
+        swipeTouchStartRef.current.lockedAxis =
+          Math.abs(dx) > Math.abs(dy) * 1.25 ? 'x' : 'y';
+      }
+    }
+
+    if (swipeTouchStartRef.current.lockedAxis === 'x') {
+      // Berikan efek rubber-band halus ketika berada di ujung Jam 1 atau Jam 4
+      const isAtEdge =
+        (selectedJam === 1 && dx > 0) || (selectedJam === 4 && dx < 0);
+      const damping = isAtEdge ? 0.16 : 0.42;
+      const clampedOffset = Math.max(-110, Math.min(110, dx * damping));
+      setIsSwipingHorizontal(true);
+      setSwipeDragX(clampedOffset);
+    }
+  };
+
   const handleSwipeTouchEnd = (e: React.TouchEvent) => {
-    if (!swipeTouchStartRef.current || e.changedTouches.length !== 1) return;
+    if (
+      isAnyModalOpen ||
+      !swipeTouchStartRef.current ||
+      e.changedTouches.length !== 1
+    ) {
+      setSwipeDragX(0);
+      setIsSwipingHorizontal(false);
+      swipeTouchStartRef.current = null;
+      return;
+    }
+
     const deltaX = e.changedTouches[0].clientX - swipeTouchStartRef.current.x;
     const deltaY = Math.abs(
       e.changedTouches[0].clientY - swipeTouchStartRef.current.y
     );
-    swipeTouchStartRef.current = null;
+    const lockedAxis = swipeTouchStartRef.current.lockedAxis;
 
-    if (Math.abs(deltaX) > 70 && deltaY < 45) {
+    swipeTouchStartRef.current = null;
+    setSwipeDragX(0);
+    setIsSwipingHorizontal(false);
+
+    if (
+      (lockedAxis === 'x' || Math.abs(deltaX) > deltaY * 1.3) &&
+      Math.abs(deltaX) > 55 &&
+      deltaY < 65
+    ) {
       if (deltaX < 0 && selectedJam < 4) {
-        setSelectedJam((selectedJam + 1) as JamKbm);
+        handleSelectJamWithSlide((selectedJam + 1) as JamKbm);
       } else if (deltaX > 0 && selectedJam > 1) {
-        setSelectedJam((selectedJam - 1) as JamKbm);
+        handleSelectJamWithSlide((selectedJam - 1) as JamKbm);
       }
     }
   };
@@ -363,7 +498,7 @@ export default function AbsenCepatPage() {
     setSelectedKeys([]);
     showToast(
       'success',
-      `Status "${status}" diterapkan pada ${count} pengajar.`
+      `Status "${status}" diterapkan pada ${count} pengajar. Jangan lupa klik "Simpan Jam Ini".`
     );
   };
 
@@ -371,7 +506,7 @@ export default function AbsenCepatPage() {
     tandaiSemuaHadirJam(selectedJam);
     showToast(
       'success',
-      `Semua sesi pada Jam Ke-${selectedJam} ditandai Hadir.`
+      `Semua sesi pada Jam Ke-${selectedJam} ditandai Hadir. Klik "Simpan Jam Ini" untuk menyimpan.`
     );
   };
 
@@ -453,16 +588,50 @@ export default function AbsenCepatPage() {
 
   const waktuInfo = getLabelWaktuJamKBM(selectedJam);
 
+  // Hitung gaya transformasi untuk efek swipe & slide yang halus (Smooth 60fps)
+  const slideTransformStyle: React.CSSProperties = useMemo(() => {
+    if (isSwipingHorizontal && swipeDragX !== 0) {
+      return {
+        transform: `translate3d(${swipeDragX}px, 0, 0)`,
+        transition: 'none',
+        willChange: 'transform',
+      };
+    }
+    if (slidePhase === 'from-right') {
+      return {
+        transform: 'translate3d(28px, 0, 0)',
+        opacity: 0.35,
+        transition: 'none',
+        willChange: 'transform, opacity',
+      };
+    }
+    if (slidePhase === 'from-left') {
+      return {
+        transform: 'translate3d(-28px, 0, 0)',
+        opacity: 0.35,
+        transition: 'none',
+        willChange: 'transform, opacity',
+      };
+    }
+    return {
+      transform: 'translate3d(0, 0, 0)',
+      opacity: 1,
+      transition:
+        'transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 240ms ease-out',
+    };
+  }, [isSwipingHorizontal, swipeDragX, slidePhase]);
+
   return (
     <div
-      className="space-y-4 pb-10 select-none"
+      className="space-y-4 pb-10 select-none overflow-x-hidden"
       onTouchStart={handleSwipeTouchStart}
+      onTouchMove={handleSwipeTouchMove}
       onTouchEnd={handleSwipeTouchEnd}
     >
       {/* Toast Notification */}
       {toastMsg && (
         <div
-          className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-xs font-bold animate-in fade-in slide-in-from-bottom-4 ${
+          className={`fixed bottom-20 md:bottom-5 right-4 md:right-5 z-[60] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-xs font-bold animate-in fade-in slide-in-from-bottom-4 ${
             toastMsg.type === 'success'
               ? 'bg-emerald-800 text-white border-emerald-700'
               : 'bg-rose-700 text-white border-rose-600'
@@ -531,13 +700,17 @@ export default function AbsenCepatPage() {
             const isComplete =
               listJ.length > 0 &&
               listJ.every((s) => Boolean(savedRecords[getSesiKey(selectedDate, s)]));
+            const hasPendingJam = listJ.some((s) => {
+              const p = pendingStatus[getSesiKey(selectedDate, s)];
+              return Boolean(p && !p.isSaved);
+            });
             const isActive = selectedJam === j;
 
             return (
               <button
                 key={j}
                 type="button"
-                onClick={() => setSelectedJam(j)}
+                onClick={() => handleSelectJamWithSlide(j)}
                 aria-label={`Jam Ke-${j}`}
                 className={`relative w-10 h-10 rounded-full font-extrabold text-xs flex items-center justify-center transition-all border ${
                   isActive
@@ -553,6 +726,12 @@ export default function AbsenCepatPage() {
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </span>
                 )}
+                {!isComplete && hasPendingJam && (
+                  <span
+                    title="Ada perubahan status yang belum disimpan pada jam ini"
+                    className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-amber-500 border-2 border-white shadow"
+                  />
+                )}
               </button>
             );
           })}
@@ -560,9 +739,13 @@ export default function AbsenCepatPage() {
       </div>
 
       {/* ====================================================================
-          PANEL KONTROL JAM AKTIF + FILTER & AKSI MASSAL
+          PANEL KONTROL JAM AKTIF + FILTER & AKSI MASSAL (DENGAN ANIMASI SLIDE)
       ==================================================================== */}
-      <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm overflow-hidden">
+      <div
+        data-testid="absen-cepat-jam-panel"
+        style={slideTransformStyle}
+        className="bg-white rounded-xl border border-slate-200/90 shadow-sm overflow-hidden"
+      >
         {/* Baris Kontrol Atas */}
         <div className="px-4 py-3.5 bg-slate-50/80 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5">
@@ -581,10 +764,20 @@ export default function AbsenCepatPage() {
                   {waktuInfo.label}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500">
-                Progres: <strong>{savedCountJam}</strong> dari{' '}
-                <strong>{allSesiJam.length}</strong> sesi diabsen
-              </p>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                <span>
+                  Progres: <strong>{savedCountJam}</strong> dari{' '}
+                  <strong>{allSesiJam.length}</strong> sesi diabsen
+                </span>
+                {unsavedCountJam > 0 && (
+                  <span
+                    data-testid="badge-unsaved-changes"
+                    className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[10px]"
+                  >
+                    {unsavedCountJam} perubahan belum disimpan
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -595,6 +788,13 @@ export default function AbsenCepatPage() {
                 <span className="text-[11px] font-extrabold text-amber-900 mr-1">
                   {selectedKeys.length} Dipilih:
                 </span>
+                <button
+                  type="button"
+                  onClick={() => handleBulkStatus('Hadir')}
+                  className="px-2 py-1 rounded text-[11px] font-bold bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  Hadir
+                </button>
                 <button
                   type="button"
                   onClick={() => handleBulkStatus('Izin')}
@@ -669,10 +869,18 @@ export default function AbsenCepatPage() {
               disabled={isSaving || allSesiJam.length === 0}
               onClick={handleSimpanJamIni}
               aria-label="Simpan Jam Ini"
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors disabled:opacity-50"
+              className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold text-white shadow-sm transition-colors disabled:opacity-50 ${
+                unsavedCountJam > 0
+                  ? 'bg-amber-600 hover:bg-amber-700 ring-2 ring-amber-300'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
             >
               <Save className="w-3.5 h-3.5" />
-              {isSaving ? 'Menyimpan...' : 'Simpan Jam Ini'}
+              {isSaving
+                ? 'Menyimpan...'
+                : unsavedCountJam > 0
+                ? `Simpan Jam Ini (${unsavedCountJam})`
+                : 'Simpan Jam Ini'}
             </button>
           </div>
         </div>
@@ -740,7 +948,7 @@ export default function AbsenCepatPage() {
 
           <div className="flex items-center gap-3 text-[11px] text-slate-500">
             <span className="hidden md:inline text-slate-400">
-              Klik/Tahan-Geser: Pilih • Klik 2x: Detail & Status
+              Klik/Tahan-Geser: Pilih • Klik 2x: Detail &amp; Status
             </span>
             <span className="font-semibold">
               Menampilkan:{' '}
@@ -795,124 +1003,150 @@ export default function AbsenCepatPage() {
               Tidak ada sesi pengajar yang sesuai kriteria pada Jam Ke-{selectedJam}.
             </div>
           ) : (
-            groupedByBlok.map((group) => (
-              <div key={group.blok} className="space-y-2">
-                {/* Banner Header Kelompok Blok (Hijau Khas Gambar 4) */}
-                <div
-                  data-testid="group-blok-header"
-                  className="flex items-center justify-between px-3.5 py-2 rounded-lg bg-emerald-50/90 border border-emerald-200/80"
-                >
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-emerald-700" />
-                    <span className="text-xs font-extrabold text-emerald-900 tracking-wide flex items-center gap-1.5">
-                      <span>{group.labelBlok}</span>
-                      {group.isLanjutan && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-200/80 text-emerald-800">
-                          (Lanjutan)
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold">
-                    {group.totalInBlok > group.items.length
-                      ? `Sesi ${group.firstIdx} - ${group.lastIdx} dari ${group.totalInBlok} Asatidz`
-                      : `${group.items.length} Asatidz`}
-                  </span>
-                </div>
+            groupedByBlok.map((group) => {
+              const isAllBlokSelected =
+                group.blokKeys.length > 0 &&
+                group.blokKeys.every((k) => selectedKeys.includes(k));
 
-                {/* Daftar Baris Kartu Ringkas */}
-                <div className="space-y-1.5">
-                  {group.items.map((sesi) => {
-                    const sKey = getSesiKey(selectedDate, sesi);
-                    const stData = getSesiStatusData(sesi);
-                    const vis = getStatusVisual(stData.status || 'Hadir');
-                    const isSelected = selectedKeys.includes(sKey);
-
-                    return (
-                      <div
-                        key={sKey}
-                        onMouseDown={(e) => handleCardMouseDown(sKey, e)}
-                        onMouseEnter={() => handleCardMouseEnter(sKey)}
-                        onClick={() => handleCardClickOrDoubleTap(sKey, sesi)}
-                        onDoubleClick={() => setDetailSesi(sesi)}
-                        className={`flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border cursor-pointer transition-all ${
-                          isSelected
-                            ? 'bg-emerald-50/60 border-emerald-500 ring-1 ring-emerald-500'
-                            : 'bg-white hover:bg-slate-50 border-slate-200'
-                        }`}
+              return (
+                <div key={group.blok} className="space-y-2">
+                  {/* Banner Header Kelompok Blok */}
+                  <div
+                    data-testid="group-blok-header"
+                    className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 rounded-lg bg-emerald-50/90 border border-emerald-200/80"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-emerald-700" />
+                      <span className="text-xs font-extrabold text-emerald-900 tracking-wide flex items-center gap-1.5">
+                        <span>{group.labelBlok}</span>
+                        {group.isLanjutan && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-200/80 text-emerald-800">
+                            (Lanjutan)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSelectBlok(group.blokKeys)}
+                        className="px-2 py-0.5 rounded text-[10px] font-bold bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 transition-colors"
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {}}
-                            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 pointer-events-none shrink-0"
-                          />
+                        {isAllBlokSelected ? 'Batal Pilih Blok' : 'Pilih Blok'}
+                      </button>
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold">
+                        {group.totalInBlok > group.items.length
+                          ? `Sesi ${group.firstIdx} - ${group.lastIdx} dari ${group.totalInBlok} Asatidz`
+                          : `${group.items.length} Asatidz`}
+                      </span>
+                    </div>
+                  </div>
 
-                          {/* Badge Bulat Status (✓ / I / S / A / T / B) */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDetailSesi(sesi);
-                            }}
-                            title={`Status: ${vis.label} (Klik untuk ubah detail)`}
-                            className={`w-6 h-6 rounded-full border text-[11px] font-extrabold flex items-center justify-center shrink-0 transition-transform hover:scale-110 ${vis.circleClass}`}
-                          >
-                            {vis.symbol}
-                          </button>
+                  {/* Daftar Baris Kartu Ringkas */}
+                  <div className="space-y-1.5">
+                    {group.items.map((sesi) => {
+                      const sKey = getSesiKey(selectedDate, sesi);
+                      const stData = getSesiStatusData(sesi);
+                      const vis = getStatusVisual(stData.status || 'Hadir');
+                      const isSelected = selectedKeys.includes(sKey);
+                      const hasUnsavedItem = Boolean(
+                        pendingStatus[sKey] && !pendingStatus[sKey].isSaved
+                      );
 
-                          {/* Badge Kelas Mengajar */}
-                          <span
-                            data-testid="badge-kelas-cepat"
-                            className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-extrabold text-[11px] shrink-0"
-                          >
-                            {sesi.kelasMengajar}
-                          </span>
+                      return (
+                        <div
+                          key={sKey}
+                          onMouseDown={(e) => handleCardMouseDown(sKey, e)}
+                          onMouseEnter={() => handleCardMouseEnter(sKey)}
+                          onClick={(e) => handleCardClickOrDoubleTap(sKey, sesi, e)}
+                          onDoubleClick={() => setDetailSesi(sesi)}
+                          className={`flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-emerald-50/60 border-emerald-500 ring-1 ring-emerald-500'
+                              : hasUnsavedItem
+                              ? 'bg-amber-50/30 hover:bg-amber-50/60 border-amber-300'
+                              : 'bg-white hover:bg-slate-50 border-slate-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectKey(sKey)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
+                            />
 
-                          {/* Nama Asatidz */}
-                          <span className="font-bold text-xs text-slate-800 truncate">
-                            {sesi.nama}
-                          </span>
-
-                          {sesi.isBentrok && (
-                            <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-extrabold text-[9px] uppercase shrink-0">
-                              Bentrok
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Sisi Kanan: Indikator Status Non-Hadir / Tersimpan */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          {stData.status && stData.status !== 'Hadir' && (
-                            <span
-                              className={`px-2 py-0.5 rounded-full border text-[10px] font-bold ${vis.pillClass}`}
+                            {/* Badge Bulat Status (✓ / I / S / A / T / B) */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDetailSesi(sesi);
+                              }}
+                              title={`Status: ${vis.label} (Klik untuk ubah detail)`}
+                              className={`w-6 h-6 rounded-full border text-[11px] font-extrabold flex items-center justify-center shrink-0 transition-transform hover:scale-110 ${vis.circleClass}`}
                             >
-                              {vis.label}
-                              {stData.namaPengganti
-                                ? `: ${stData.namaPengganti}`
-                                : stData.menitTerlambat
-                                ? ` (${stData.menitTerlambat}m)`
-                                : ''}
+                              {vis.symbol}
+                            </button>
+
+                            {/* Badge Kelas Mengajar */}
+                            <span
+                              data-testid="badge-kelas-cepat"
+                              className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-extrabold text-[11px] shrink-0"
+                            >
+                              {sesi.kelasMengajar}
                             </span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDetailSesi(sesi);
-                            }}
-                            className="text-[10px] font-semibold text-slate-400 hover:text-emerald-700 px-1.5 py-0.5 rounded hover:bg-slate-100"
-                          >
-                            Detail
-                          </button>
+
+                            {/* Nama Asatidz */}
+                            <span className="font-bold text-xs text-slate-800 truncate">
+                              {sesi.nama}
+                            </span>
+
+                            {sesi.isBentrok && (
+                              <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-extrabold text-[9px] uppercase shrink-0">
+                                Bentrok
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Sisi Kanan: Indikator Status Non-Hadir / Belum Disimpan / Tersimpan */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {stData.status && stData.status !== 'Hadir' && (
+                              <span
+                                className={`px-2 py-0.5 rounded-full border text-[10px] font-bold ${vis.pillClass}`}
+                              >
+                                {vis.label}
+                                {stData.namaPengganti
+                                  ? `: ${stData.namaPengganti}`
+                                  : stData.menitTerlambat
+                                  ? ` (${stData.menitTerlambat}m)`
+                                  : ''}
+                              </span>
+                            )}
+                            {hasUnsavedItem && (
+                              <span className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-bold">
+                                Belum disimpan
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDetailSesi(sesi);
+                              }}
+                              className="text-[10px] font-semibold text-slate-400 hover:text-emerald-700 px-1.5 py-0.5 rounded hover:bg-slate-100"
+                            >
+                              Detail
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -1026,11 +1260,14 @@ export default function AbsenCepatPage() {
         sesiHariIni={sesiHariIni}
         getSesiStatusData={getSesiStatusData}
         daftarBlok={daftarBlokUnik}
+        onJamChange={(jam) => {
+          handleSelectJamWithSlide(jam);
+        }}
         onApplyBulk={(jam, sKeys, status) => {
           terapkanStatusMassal(jam, sKeys, status);
           showToast(
             'success',
-            `Status "${status}" diterapkan ke ${sKeys.length} asatidz Jam Ke-${jam}.`
+            `Status "${status}" diterapkan ke ${sKeys.length} asatidz Jam Ke-${jam}. Klik "Simpan Jam Ini" untuk menyimpan.`
           );
         }}
         onQuickChangeSingle={(sesi, updates) => {

@@ -56,7 +56,7 @@ export default function BottomNavMobile() {
 
       {/* 1. Dropup Menu Grup: UTAMA */}
       {activeMenu === 'utama' && (
-        <div className="fixed bottom-24 left-4 right-4 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-50 md:hidden space-y-1 animate-in slide-in-from-bottom-4 duration-200">
+        <div className="fixed bottom-24 left-4 right-4 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[45] md:hidden space-y-1 animate-in slide-in-from-bottom-4 duration-200">
           <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             Menu Utama
           </div>
@@ -138,7 +138,7 @@ export default function BottomNavMobile() {
 
       {/* 2. Dropup Menu Grup: KURIKULUM */}
       {activeMenu === 'kurikulum' && (
-        <div className="fixed bottom-24 left-4 right-4 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-50 md:hidden space-y-1 max-h-[70vh] overflow-y-auto animate-in slide-in-from-bottom-4 duration-200">
+        <div className="fixed bottom-24 left-4 right-4 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[45] md:hidden space-y-1 max-h-[70vh] overflow-y-auto animate-in slide-in-from-bottom-4 duration-200">
           <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             PKM. Kurikulum
           </div>
@@ -213,7 +213,7 @@ export default function BottomNavMobile() {
 
       {/* 3. Dropup Menu Grup: MUHAFADZOH */}
       {activeMenu === 'muhafadzoh' && (
-        <div className="fixed bottom-24 left-4 right-4 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-50 md:hidden space-y-1 animate-in slide-in-from-bottom-4 duration-200">
+        <div className="fixed bottom-24 left-4 right-4 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[45] md:hidden space-y-1 animate-in slide-in-from-bottom-4 duration-200">
           <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             PKM. Muhafadzoh
           </div>
@@ -270,7 +270,7 @@ export default function BottomNavMobile() {
 
       {/* 4. Dropup Menu Grup: KESISWAAN */}
       {activeMenu === 'kesiswaan' && (
-        <div className="fixed bottom-24 left-4 right-4 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-50 md:hidden space-y-1 animate-in slide-in-from-bottom-4 duration-200">
+        <div className="fixed bottom-24 left-4 right-4 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[45] md:hidden space-y-1 animate-in slide-in-from-bottom-4 duration-200">
           <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             PKM. Kesiswaan
           </div>
@@ -319,7 +319,7 @@ export default function BottomNavMobile() {
 
       {/* 5. Dropup Menu Grup: PENGATURAN */}
       {activeMenu === 'pengaturan' && (
-        <div className="fixed bottom-24 left-4 right-4 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-50 md:hidden space-y-1 animate-in slide-in-from-bottom-4 duration-200">
+        <div className="fixed bottom-24 left-4 right-4 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[45] md:hidden space-y-1 animate-in slide-in-from-bottom-4 duration-200">
           <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             Pengaturan Sistem
           </div>
@@ -379,7 +379,7 @@ export default function BottomNavMobile() {
       )}
 
       {/* Floating Pill Bottom Bar Khusus Mobile */}
-      <nav className="fixed bottom-5 left-4 right-4 h-15 bg-white/95 backdrop-blur-md rounded-full shadow-[0_10px_35px_rgba(0,0,0,0.12)] border border-slate-200/80 z-50 flex items-center justify-around md:hidden px-2 py-1 select-none">
+      <nav className="fixed bottom-5 left-4 right-4 h-15 bg-white/95 backdrop-blur-md rounded-full shadow-[0_10px_35px_rgba(0,0,0,0.12)] border border-slate-200/80 z-40 flex items-center justify-around md:hidden px-2 py-1 select-none">
         <button
           type="button"
           onClick={() => toggleDropup('utama')}

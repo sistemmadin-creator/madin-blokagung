@@ -154,7 +154,7 @@ export default function ModalNotifAbsenBlok({
     filterJam === 'ALL' ? 'Semua Jam (1 - 4)' : `Jam Ke-${filterJam}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 bg-emerald-700 text-white">
