@@ -101,17 +101,19 @@ export default function CatatanModule() {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<CatatanItem | null>(null);
   const [formTitle, setFormTitle] = useState('');
+  const [formSummary, setFormSummary] = useState('');
   const [formCategory, setFormCategory] = useState<CatatanNoteCategory>('panduan');
   const [formTheme, setFormTheme] = useState<CatatanColorTheme>('emerald');
   const [formPinned, setFormPinned] = useState(false);
   const [formContent, setFormContent] = useState('');
   const [formTagsInput, setFormTagsInput] = useState('');
-  const [formInitialTodos, setFormInitialTodos] = useState<
-    Array<{ text: string; priority: TodoPriority }>
+  const [formTodos, setFormTodos] = useState<
+    Array<{ id?: string; text: string; completed?: boolean; priority: TodoPriority }>
   >([]);
   const [draftModalTodo, setDraftModalTodo] = useState('');
   const [draftModalTodoPriority, setDraftModalTodoPriority] =
     useState<TodoPriority>('normal');
+  const [todoFilterMode, setTodoFilterMode] = useState<'pending' | 'all'>('pending');
 
   useEffect(() => {
     void fetchCatatan();
@@ -168,6 +170,9 @@ export default function CatatanModule() {
       .filter((note) => {
         if (activeTab === 'TODO') {
           if (note.todos.length === 0) return false;
+          if (todoFilterMode === 'pending' && !note.todos.some((t) => !t.completed)) {
+            return false;
+          }
         } else if (activeTab !== 'ALL') {
           if (note.category !== activeTab) return false;
         }
@@ -197,40 +202,42 @@ export default function CatatanModule() {
         if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
         return b.updatedAt.localeCompare(a.updatedAt);
       });
-  }, [notes, activeTab, searchQuery]);
+  }, [notes, activeTab, searchQuery, todoFilterMode]);
 
-  // Catatan aktif yang sedang ditampilkan di panel kanan
+  // Catatan aktif yang sedang ditampilkan di panel kanan (sinkron murni dengan hasil filter)
   const activeNote: CatatanItem | null = useMemo(() => {
-    const found =
-      filteredNotes.find((n) => n.id === selectedNoteId) ||
-      notes.find((n) => n.id === selectedNoteId);
-    if (found) return found;
-    return filteredNotes.length > 0 ? filteredNotes[0] : null;
-  }, [filteredNotes, notes, selectedNoteId]);
+    if (filteredNotes.length === 0) return null;
+    const found = filteredNotes.find((n) => n.id === selectedNoteId);
+    return found || filteredNotes[0];
+  }, [filteredNotes, selectedNoteId]);
 
   const handleOpenCreateModal = () => {
     setEditingNote(null);
     setFormTitle('');
+    setFormSummary('');
     setFormCategory('umum');
     setFormTheme('emerald');
     setFormPinned(false);
     setFormContent('');
     setFormTagsInput('');
-    setFormInitialTodos([]);
+    setFormTodos([]);
     setDraftModalTodo('');
+    setDraftModalTodoPriority('normal');
     setIsFormModalOpen(true);
   };
 
   const handleOpenEditModal = (note: CatatanItem) => {
     setEditingNote(note);
     setFormTitle(note.title);
+    setFormSummary(note.summary);
     setFormCategory(note.category);
     setFormTheme(note.colorTheme);
     setFormPinned(note.isPinned);
     setFormContent(note.content);
     setFormTagsInput(note.tags.join(', '));
-    setFormInitialTodos([]);
+    setFormTodos([...note.todos]);
     setDraftModalTodo('');
+    setDraftModalTodoPriority('normal');
     setIsFormModalOpen(true);
   };
 
@@ -246,32 +253,46 @@ export default function CatatanModule() {
       .map((t) => t.trim())
       .filter(Boolean);
 
+    const mergedTodos = [...formTodos];
+    if (draftModalTodo.trim()) {
+      mergedTodos.push({
+        id: `todo-${Date.now()}`,
+        text: draftModalTodo.trim(),
+        completed: false,
+        priority: draftModalTodoPriority,
+      });
+    }
+
     if (editingNote) {
       await updateCatatan(editingNote.id, {
         title: formTitle.trim(),
+        summary: formSummary.trim() || undefined,
         category: formCategory,
         colorTheme: formTheme,
         isPinned: formPinned,
         content: formContent,
         tags: parsedTags.length > 0 ? parsedTags : editingNote.tags,
+        todos: mergedTodos.map((td, idx) => ({
+          id: td.id || `todo-${Date.now()}-${idx}`,
+          text: td.text,
+          completed: Boolean(td.completed),
+          priority: td.priority || 'normal',
+          createdAt: new Date().toISOString(),
+        })),
       });
       showToast('Perubahan catatan berhasil disimpan.');
     } else {
-      const pendingTodos = [...formInitialTodos];
-      if (draftModalTodo.trim()) {
-        pendingTodos.push({
-          text: draftModalTodo.trim(),
-          priority: draftModalTodoPriority,
-        });
-      }
-
       const created = await addCatatan({
         title: formTitle.trim(),
+        summary: formSummary.trim() || undefined,
         content: formContent,
         category: formCategory,
         colorTheme: formTheme,
         isPinned: formPinned,
-        todos: pendingTodos,
+        todos: mergedTodos.map((td) => ({
+          text: td.text,
+          priority: td.priority,
+        })),
         tags: parsedTags.length > 0 ? parsedTags : undefined,
         author: currentAccount?.full_name || 'Master Administrator',
       });
@@ -305,6 +326,30 @@ export default function CatatanModule() {
     { id: 'kesiswaan', label: 'PKM. Kesiswaan' },
     { id: 'umum', label: 'Umum & Rapat' },
   ];
+
+  const renderFormattedContent = (text: string) => {
+    if (!text) return 'Belum ada uraian teks pada catatan ini.';
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+
+    return parts.map((part, index) => {
+      if (urlRegex.test(part)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-emerald-700 underline font-semibold hover:text-emerald-900 break-all"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </a>
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
 
   const renderNoteDetailContent = (note: CatatanItem) => {
     const catMeta = CATATAN_CATEGORY_META[note.category] || CATATAN_CATEGORY_META.umum;
@@ -508,7 +553,7 @@ export default function CatatanModule() {
             </div>
           ) : (
             <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200 whitespace-pre-wrap break-words font-sans text-xs sm:text-sm text-slate-800 leading-relaxed">
-              {note.content || 'Belum ada uraian teks pada catatan ini.'}
+              {renderFormattedContent(note.content)}
             </div>
           )}
         </div>
@@ -765,7 +810,37 @@ export default function CatatanModule() {
       {/* 3. Workspace Dua Panel (Kiri: Daftar Kartu 5 Kolom, Kanan: Pembaca & To-Do 7 Kolom) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Panel Kiri: Daftar Kartu Catatan */}
-        <div className="lg:col-span-5 min-w-0 space-y-3">
+        <div className="lg:col-span-5 min-w-0 space-y-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-160px)] lg:overflow-y-auto lg:pr-1.5">
+          {activeTab === 'TODO' && (
+            <div className="flex items-center justify-between bg-emerald-50/70 border border-emerald-200/80 px-3.5 py-2 rounded-xl text-xs">
+              <span className="font-bold text-emerald-950">Filter To-Do:</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setTodoFilterMode('pending')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer ${
+                    todoFilterMode === 'pending'
+                      ? 'bg-[#134e3a] text-white shadow-2xs'
+                      : 'bg-white/80 text-emerald-800 hover:bg-white'
+                  }`}
+                >
+                  Tugas Aktif ({kpiStats.pendingTodos})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTodoFilterMode('all')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer ${
+                    todoFilterMode === 'all'
+                      ? 'bg-[#134e3a] text-white shadow-2xs'
+                      : 'bg-white/80 text-emerald-800 hover:bg-white'
+                  }`}
+                >
+                  Semua ({notes.filter((n) => n.todos.length > 0).length})
+                </button>
+              </div>
+            </div>
+          )}
+
           {isLoading ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-xs text-slate-500">
               Memuat daftar catatan...
@@ -813,13 +888,34 @@ export default function CatatanModule() {
                       {catMeta.label}
                     </span>
 
-                    <div className="flex items-center gap-1">
-                      {note.isPinned && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold">
-                          <Pin className="w-2.5 h-2.5 fill-amber-500 text-amber-600" />
-                          Semat
-                        </span>
-                      )}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        data-testid={`btn-quick-pin-${note.id}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void togglePinCatatan(note.id);
+                        }}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold transition cursor-pointer ${
+                          note.isPinned
+                            ? 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100'
+                            : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                        }`}
+                        title={
+                          note.isPinned
+                            ? 'Lepas sematan'
+                            : 'Sematkan catatan ke urutan paling atas'
+                        }
+                      >
+                        <Pin
+                          className={`w-2.5 h-2.5 ${
+                            note.isPinned
+                              ? 'fill-amber-500 text-amber-600'
+                              : 'text-slate-400'
+                          }`}
+                        />
+                        <span>{note.isPinned ? 'Disematkan' : 'Sematkan'}</span>
+                      </button>
                     </div>
                   </div>
 
@@ -933,6 +1029,19 @@ export default function CatatanModule() {
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Ringkasan Singkat (Opsional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Kosongkan jika ingin ringkasan otomatis dibuat dari isi catatan..."
+                  value={formSummary}
+                  onChange={(e) => setFormSummary(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs text-slate-800"
+                />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -999,26 +1108,30 @@ export default function CatatanModule() {
                 />
               </div>
 
-              {!editingNote && (
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold text-slate-800">
-                    Daftar Tugas / To-Do Awal (Opsional)
+                    {editingNote
+                      ? 'Daftar Tugas / To-Do List Catatan'
+                      : 'Daftar Tugas / To-Do Awal (Opsional)'}
                   </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      data-testid="input-modal-todo-draft"
-                      placeholder="Ketik item tugas lalu klik + Tambah..."
-                      value={draftModalTodo}
-                      onChange={(e) => setDraftModalTodo(e.target.value)}
-                      className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800"
-                    />
-                    <button
-                      type="button"
-                      data-testid="btn-modal-add-todo-draft"
-                      onClick={() => {
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    {formTodos.length} tugas
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    data-testid="input-modal-todo-draft"
+                    placeholder="Ketik item tugas lalu klik + Tambah..."
+                    value={draftModalTodo}
+                    onChange={(e) => setDraftModalTodo(e.target.value)}
+                    className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
                         if (!draftModalTodo.trim()) return;
-                        setFormInitialTodos((prev) => [
+                        setFormTodos((prev) => [
                           ...prev,
                           {
                             text: draftModalTodo.trim(),
@@ -1026,38 +1139,71 @@ export default function CatatanModule() {
                           },
                         ]);
                         setDraftModalTodo('');
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-bold cursor-pointer"
-                    >
-                      + Tambah
-                    </button>
-                  </div>
-
-                  {formInitialTodos.length > 0 && (
-                    <ul className="space-y-1 text-xs text-slate-700">
-                      {formInitialTodos.map((td, idx) => (
-                        <li
-                          key={idx}
-                          className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200"
-                        >
-                          <span>• {td.text}</span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFormInitialTodos((prev) =>
-                                prev.filter((_, i) => i !== idx)
-                              )
-                            }
-                            className="text-rose-500 hover:text-rose-700 text-[11px] font-bold"
-                          >
-                            Hapus
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                      }
+                    }}
+                  />
+                  <select
+                    value={draftModalTodoPriority}
+                    onChange={(e) =>
+                      setDraftModalTodoPriority(e.target.value as TodoPriority)
+                    }
+                    aria-label="Prioritas To-Do"
+                    className="bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-[11px] font-semibold text-slate-700"
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="penting">Penting</option>
+                  </select>
+                  <button
+                    type="button"
+                    data-testid="btn-modal-add-todo-draft"
+                    onClick={() => {
+                      if (!draftModalTodo.trim()) return;
+                      setFormTodos((prev) => [
+                        ...prev,
+                        {
+                          text: draftModalTodo.trim(),
+                          priority: draftModalTodoPriority,
+                        },
+                      ]);
+                      setDraftModalTodo('');
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-bold cursor-pointer"
+                  >
+                    + Tambah
+                  </button>
                 </div>
-              )}
+
+                {formTodos.length > 0 && (
+                  <ul className="space-y-1 text-xs text-slate-700 max-h-36 overflow-y-auto">
+                    {formTodos.map((td, idx) => (
+                      <li
+                        key={idx}
+                        className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="truncate">• {td.text}</span>
+                          {td.priority === 'penting' && (
+                            <span className="px-1.5 py-0.2 rounded bg-rose-50 text-rose-600 border border-rose-200 text-[9px] font-bold shrink-0">
+                              Penting
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormTodos((prev) =>
+                              prev.filter((_, i) => i !== idx)
+                            )
+                          }
+                          className="text-rose-500 hover:text-rose-700 text-[11px] font-bold shrink-0 ml-2"
+                        >
+                          Hapus
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">

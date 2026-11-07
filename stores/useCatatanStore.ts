@@ -13,6 +13,25 @@ import {
 export const KEY_DB_CATATAN_DATA = 'MADIN_CATATAN_DATA_V1';
 export const LS_CATATAN_DATA = 'MADIN_CATATAN_LOCAL_V1';
 
+export function generateSmartSummary(content: string, customSummary?: string): string {
+  if (customSummary && customSummary.trim().length > 0) {
+    return customSummary.trim();
+  }
+  const clean = content.trim();
+  if (!clean) return 'Catatan & daftar tugas operasional madrasah.';
+
+  const firstLine =
+    clean.split('\n').find((line) => line.trim().length > 0)?.trim() || '';
+  if (firstLine.length <= 110) return firstLine;
+
+  const sub = firstLine.slice(0, 110);
+  const lastSpace = sub.lastIndexOf(' ');
+  if (lastSpace > 50) {
+    return `${sub.slice(0, lastSpace)}...`;
+  }
+  return `${sub}...`;
+}
+
 export const DEFAULT_WAHA_GUIDE_CONTENT = `Bagian 1: Cara Mengatasi Risiko Keamanan Sesi WhatsApp Lokal (waha-gateway/auth_info_baileys)
 
 A. Apa yang Sebenarnya Tersimpan di Komputer Anda?
@@ -361,10 +380,7 @@ export const useCatatanStore = create<CatatanState>((set, get) => ({
     const prevNotes = get().notes;
     const now = new Date().toISOString();
     const cleanContent = input.content.trim();
-    const autoSummary =
-      input.summary?.trim() ||
-      cleanContent.split('\n').find((line) => line.trim().length > 0)?.slice(0, 140) ||
-      'Catatan & daftar tugas operasional madrasah.';
+    const autoSummary = generateSmartSummary(cleanContent, input.summary);
 
     const newTodos: CatatanTodoItem[] = (input.todos || [])
       .filter((t) => t.text.trim().length > 0)
@@ -420,13 +436,10 @@ export const useCatatanStore = create<CatatanState>((set, get) => ({
       const updatedContent =
         updates.content !== undefined ? updates.content : item.content;
       const updatedSummary =
-        updates.summary !== undefined
-          ? updates.summary
+        updates.summary !== undefined && updates.summary.trim().length > 0
+          ? updates.summary.trim()
           : updates.content !== undefined && item.id !== DEFAULT_WAHA_GUIDE_NOTE.id
-          ? updatedContent
-              .split('\n')
-              .find((l) => l.trim().length > 0)
-              ?.slice(0, 140) || item.summary
+          ? generateSmartSummary(updatedContent)
           : item.summary;
 
       return {

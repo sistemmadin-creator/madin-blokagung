@@ -1,4 +1,15 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+async function gotoWithAuth(page: Page, targetPath: string) {
+  await page.goto(targetPath);
+  await page.waitForLoadState('domcontentloaded');
+  if (page.url().includes('/login')) {
+    await page.getByLabel('Username Pengurus').fill('admin');
+    await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+    await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
+    await page.waitForURL(`**${targetPath}**`, { timeout: 60000 });
+  }
+}
 
 test.describe('Menu Catatan & To-Do List Terpadu (/catatan)', () => {
   test.setTimeout(120000);
@@ -6,8 +17,8 @@ test.describe('Menu Catatan & To-Do List Terpadu (/catatan)', () => {
   test('Menampilkan Catatan Awal Panduan Keamanan & Pembaruan Protokol WAHA Gateway serta Fitur To-Do List Interaktif', async ({
     page,
   }) => {
-    // 1. Buka halaman /catatan
-    await page.goto('/catatan');
+    // 1. Buka halaman /catatan dengan autentikasi
+    await gotoWithAuth(page, '/catatan');
     await expect(page.getByTestId('heading-catatan-module')).toBeVisible({
       timeout: 25000,
     });
@@ -101,5 +112,51 @@ test.describe('Menu Catatan & To-Do List Terpadu (/catatan)', () => {
         { timeout: 3000 }
       )
       .toBe(false);
+  });
+
+  test('Verifikasi Perbaikan Bug: Quick Pin Kartu, Sinkronisasi Filter Kategori, dan Kelola To-Do di Modal Edit', async ({
+    page,
+  }) => {
+    await gotoWithAuth(page, '/catatan');
+    await expect(page.getByTestId('heading-catatan-module')).toBeVisible({
+      timeout: 25000,
+    });
+
+    // 1. Verifikasi Tombol Quick Pin pada Kartu
+    const quickPinBtn = page.getByTestId(
+      'btn-quick-pin-note-panduan-waha-gateway'
+    );
+    await expect(quickPinBtn).toBeVisible();
+
+    // 2. Verifikasi Sinkronisasi Filter Kategori:
+    // Pindah ke tab "PKM. Muhafadzoh"
+    const tabMuhafadzoh = page.getByTestId('tab-catatan-muhafadzoh');
+    await tabMuhafadzoh.click();
+
+    // Catatan aktif pada panel pembaca harus otomatis berubah menjadi catatan di kategori muhafadzoh
+    const detailTitle = page.getByTestId('detail-note-title');
+    await expect(detailTitle).toContainText('Checklist Evaluasi Mingguan');
+
+    // 3. Verifikasi Filter To-Do List
+    const tabTodo = page.getByTestId('tab-catatan-TODO');
+    await tabTodo.click();
+    await expect(page.getByText('Filter To-Do:')).toBeVisible();
+
+    // 4. Verifikasi Modal Edit Mengizinkan Pengelolaan To-Do
+    // Klik tombol Edit pada catatan yang sedang aktif
+    await page.getByTestId('btn-edit-catatan').click();
+    const editModal = page.getByTestId('modal-form-catatan');
+    await expect(editModal).toBeVisible();
+    await expect(editModal.getByText('Edit Catatan')).toBeVisible();
+
+    // Pastikan bagian To-Do List tampil di dalam modal edit
+    await expect(
+      editModal.getByText('Daftar Tugas / To-Do List Catatan')
+    ).toBeVisible();
+    await expect(editModal.getByTestId('input-modal-todo-draft')).toBeVisible();
+
+    // Batal edit
+    await editModal.getByRole('button', { name: 'Batal' }).click();
+    await expect(editModal).toBeHidden();
   });
 });
