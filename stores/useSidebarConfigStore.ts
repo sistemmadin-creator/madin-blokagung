@@ -91,6 +91,7 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
           },
         ],
       },
+      { id: 'item-setor-cepat', title: 'Setor Cepat', href: '/setor-cepat', iconName: 'Zap' },
       { id: 'item-rekap-hafalan', title: 'Rekap Hafalan', href: '/rekap-hafalan', iconName: 'BarChart2' },
       { id: 'item-piagam', title: 'Cetak Piagam', href: '/piagam', iconName: 'Award' },
       { id: 'item-kirim-wa', title: 'Kirim WhatsApp', href: '/kirim-wa', iconName: 'MessageSquare' },

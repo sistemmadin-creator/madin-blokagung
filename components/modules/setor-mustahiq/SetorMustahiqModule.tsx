@@ -26,7 +26,6 @@ import {
   Lock,
   Layers,
   MessageSquare,
-  QrCode,
 } from 'lucide-react';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
@@ -43,7 +42,6 @@ import {
 import { SantriSetorMustahiqRow, MateriOptionWithStatus } from '@/types/setor-mustahiq';
 import { formatTargetPreview, norm } from '@/lib/utils/setoranHelper';
 import ModalSettingsHafalan from '@/components/modules/setoran/ModalSettingsHafalan';
-import ModalBarcodeSetorMustahiq from '@/components/modules/setor-mustahiq/ModalBarcodeSetorMustahiq';
 
 const CARDS_PER_PAGE = 6;
 const TABLE_PAGE_SIZE = 30;
@@ -63,6 +61,7 @@ export default function SetorMustahiqModule() {
     isLoading: isLoadingMustahiq,
     fetchMustahiqData,
     addLogSetoran,
+    addLogSetoranBatch,
     deleteLogSetoran,
     deleteSantriLogsBatch,
     switchActiveHafalan,
@@ -114,6 +113,9 @@ export default function SetorMustahiqModule() {
   );
   const [tambahAngka, setTambahAngka] = useState<string>('');
   const [kalimatDipilih, setKalimatDipilih] = useState<string>('');
+  const [selectedKalimatList, setSelectedKalimatList] = useState<string[]>([]);
+  const [isKalimatDropdownOpen, setIsKalimatDropdownOpen] = useState(false);
+  const [kalimatSearch, setKalimatSearch] = useState('');
   const [catatan, setCatatan] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -127,8 +129,6 @@ export default function SetorMustahiqModule() {
   const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
   const [quickSearchSantri, setQuickSearchSantri] = useState('');
 
-  // Modal Input Lewat Barcode
-  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const autoOpenedFromQueryRef = React.useRef<string | null>(null);
 
   // Load initial data
@@ -507,6 +507,10 @@ export default function SetorMustahiqModule() {
     setSelectedSantriNoInduk(noInduk);
     setTambahAngka('');
     setCatatan('');
+    setSelectedKalimatList([]);
+    setKalimatDipilih('');
+    setKalimatSearch('');
+    setIsKalimatDropdownOpen(false);
     setTglSetor(new Date().toISOString().split('T')[0]);
   };
 
@@ -592,35 +596,66 @@ export default function SetorMustahiqModule() {
       );
       setIsSubmitting(false);
     } else {
-      if (!kalimatDipilih.trim()) {
+      const itemsToSubmit =
+        selectedKalimatList.length > 0
+          ? selectedKalimatList
+          : kalimatDipilih.trim()
+          ? [kalimatDipilih.trim()]
+          : [];
+
+      if (itemsToSubmit.length === 0) {
         alert(`Pilih tahapan ${row.satuan_label} yang disetorkan.`);
         return;
       }
-      const chosenKalimat = kalimatDipilih.trim();
       const noteVal = catatan.trim() || undefined;
-      const sentences = item.sentences || [];
-      const idx = sentences.findIndex((s) => norm(s) === norm(chosenKalimat));
       setIsSubmitting(true);
       setCatatan('');
-      await addLogSetoran(
-        {
-          no_induk: row.no_induk,
-          nama_santri: row.nama,
-          tingkat: row.tingkat,
-          din_kls: row.din_kls,
-          din_bag: row.din_bag,
-          materi_nama: item.nama,
-          kategori: row.active_kategori,
-          target_type: 'sentence',
-          tanggal: tglSetor,
-          tahun,
-          kalimat_dipilih: chosenKalimat,
-          kalimat_index: idx !== -1 ? idx + 1 : undefined,
-          catatan: noteVal,
-          mustahiq: row.mustahiq,
-        },
-        item
-      );
+
+      if (itemsToSubmit.length === 1) {
+        const chosenKalimat = itemsToSubmit[0];
+        const sentences = item.sentences || [];
+        const idx = sentences.findIndex((s) => norm(s) === norm(chosenKalimat));
+        await addLogSetoran(
+          {
+            no_induk: row.no_induk,
+            nama_santri: row.nama,
+            tingkat: row.tingkat,
+            din_kls: row.din_kls,
+            din_bag: row.din_bag,
+            materi_nama: item.nama,
+            kategori: row.active_kategori,
+            target_type: 'sentence',
+            tanggal: tglSetor,
+            tahun,
+            kalimat_dipilih: chosenKalimat,
+            kalimat_index: idx !== -1 ? idx + 1 : undefined,
+            catatan: noteVal,
+            mustahiq: row.mustahiq,
+          },
+          item
+        );
+      } else {
+        await addLogSetoranBatch(
+          {
+            no_induk: row.no_induk,
+            nama_santri: row.nama,
+            tingkat: row.tingkat,
+            din_kls: row.din_kls,
+            din_bag: row.din_bag,
+            materi_nama: item.nama,
+            kategori: row.active_kategori,
+            target_type: 'sentence',
+            tanggal: tglSetor,
+            tahun,
+            catatan: noteVal,
+            mustahiq: row.mustahiq,
+          },
+          itemsToSubmit,
+          item
+        );
+      }
+      setSelectedKalimatList([]);
+      setKalimatDipilih('');
       setIsSubmitting(false);
     }
   };
@@ -873,18 +908,6 @@ export default function SetorMustahiqModule() {
 
         {/* Action Buttons Right */}
         <div className="flex flex-wrap items-center gap-2 ml-auto">
-          {/* Tombol Input Lewat Barcode */}
-          <button
-            type="button"
-            data-testid="btn-input-lewat-barcode"
-            onClick={() => setIsBarcodeModalOpen(true)}
-            title="Buka katalog kartu barcode santri untuk input setoran lewat scan kamera"
-            className="inline-flex items-center gap-1.5 px-3.5 h-10 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold transition-all cursor-pointer shadow-xs"
-          >
-            <QrCode className="w-4 h-4 text-emerald-700 shrink-0" />
-            <span>Input Lewat Barcode</span>
-          </button>
-
           {/* Filter Button */}
           <button
             type="button"
@@ -1622,33 +1645,128 @@ export default function SetorMustahiqModule() {
                           />
                         </div>
                       ) : (
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                            Pilih {selectedSantriDetail.row.satuan_label} *
+                        <div className="relative">
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                            <span>Pilih {selectedSantriDetail.row.satuan_label} *</span>
+                            <span className="text-[10px] text-emerald-700 font-semibold">
+                              {selectedKalimatList.length > 0 ? `${selectedKalimatList.length} Dipilih` : ''}
+                            </span>
                           </label>
-                          <select
-                            data-testid="select-kalimat-setor"
-                            value={kalimatDipilih}
-                            onChange={(e) => setKalimatDipilih(e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-600"
-                            required
+
+                          <button
+                            type="button"
+                            onClick={() => setIsKalimatDropdownOpen((v) => !v)}
+                            className="w-full bg-white border border-slate-200 hover:border-emerald-500 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 text-left flex items-center justify-between gap-1 transition-colors"
                           >
-                            {(selectedSantriDetail.row.active_item.sentences &&
-                            selectedSantriDetail.row.active_item.sentences.length > 0
-                              ? selectedSantriDetail.row.active_item.sentences
-                              : ['Muqodimah', 'Mubtada', 'Khobar', 'Rofa', 'Jer']
-                            ).map((kal, idx) => {
-                              const isDone =
-                                selectedSantriDetail.prog.completedSentences.some(
-                                  (cs) => norm(cs) === norm(kal)
-                                );
-                              return (
-                                <option key={`${kal}_${idx}`} value={kal}>
-                                  {idx + 1}. {kal} {isDone ? '(Sudah Disetor)' : ''}
-                                </option>
-                              );
-                            })}
-                          </select>
+                            <span className="truncate">
+                              {selectedKalimatList.length === 0
+                                ? (kalimatDipilih ? kalimatDipilih : `Pilih ${selectedSantriDetail.row.satuan_label}...`)
+                                : `${selectedKalimatList.length} ${selectedSantriDetail.row.satuan_label}: ${selectedKalimatList.slice(0, 2).join(', ')}${selectedKalimatList.length > 2 ? '...' : ''}`}
+                            </span>
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          </button>
+
+                          {isKalimatDropdownOpen && (
+                            <div className="absolute left-0 top-full mt-1.5 w-72 sm:w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 p-2.5 space-y-2 max-h-80 flex flex-col">
+                              <div className="relative">
+                                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                  type="text"
+                                  placeholder="Cari surah/kalimat..."
+                                  value={kalimatSearch}
+                                  onChange={(e) => setKalimatSearch(e.target.value)}
+                                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
+                                />
+                              </div>
+
+                              <div className="flex items-center gap-1.5 flex-wrap pt-0.5 pb-1 border-b border-slate-100 text-[10px]">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const allS = (selectedSantriDetail.row.active_item.sentences && selectedSantriDetail.row.active_item.sentences.length > 0
+                                      ? selectedSantriDetail.row.active_item.sentences
+                                      : ['Muqodimah', 'Mubtada', 'Khobar', 'Rofa', 'Jer']);
+                                    const uncompleted = allS.filter((s) => !selectedSantriDetail.prog.completedSentences.some((cs) => norm(cs) === norm(s)));
+                                    setSelectedKalimatList(uncompleted.slice(0, 3));
+                                  }}
+                                  className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold cursor-pointer"
+                                >
+                                  +3 Berikutnya
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const allS = (selectedSantriDetail.row.active_item.sentences && selectedSantriDetail.row.active_item.sentences.length > 0
+                                      ? selectedSantriDetail.row.active_item.sentences
+                                      : ['Muqodimah', 'Mubtada', 'Khobar', 'Rofa', 'Jer']);
+                                    const uncompleted = allS.filter((s) => !selectedSantriDetail.prog.completedSentences.some((cs) => norm(cs) === norm(s)));
+                                    setSelectedKalimatList(uncompleted);
+                                  }}
+                                  className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
+                                >
+                                  Semua Belum
+                                </button>
+                                {selectedKalimatList.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedKalimatList([])}
+                                    className="px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold ml-auto cursor-pointer"
+                                  >
+                                    Reset
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="overflow-y-auto space-y-1 flex-1 pr-1">
+                                {(selectedSantriDetail.row.active_item.sentences &&
+                                selectedSantriDetail.row.active_item.sentences.length > 0
+                                  ? selectedSantriDetail.row.active_item.sentences
+                                  : ['Muqodimah', 'Mubtada', 'Khobar', 'Rofa', 'Jer']
+                                )
+                                  .filter((k) => (kalimatSearch ? norm(k).includes(norm(kalimatSearch)) : true))
+                                  .map((kal, idx) => {
+                                    const isDone = selectedSantriDetail.prog.completedSentences.some(
+                                      (cs) => norm(cs) === norm(kal)
+                                    );
+                                    const isSelected = selectedKalimatList.some((s) => norm(s) === norm(kal));
+                                    return (
+                                      <div
+                                        key={`${kal}_${idx}`}
+                                        onClick={() => {
+                                          setSelectedKalimatList((prev) =>
+                                            prev.some((s) => norm(s) === norm(kal))
+                                              ? prev.filter((s) => norm(s) !== norm(kal))
+                                              : [...prev, kal]
+                                          );
+                                        }}
+                                        className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition-all ${
+                                          isSelected
+                                            ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold'
+                                            : 'hover:bg-slate-50 text-slate-700 border border-transparent'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => {}}
+                                            className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 cursor-pointer pointer-events-none"
+                                          />
+                                          <span>
+                                            {idx + 1}. {kal}
+                                          </span>
+                                        </div>
+                                        {isDone && (
+                                          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
+                                            Sudah Disetor
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1667,6 +1785,34 @@ export default function SetorMustahiqModule() {
                       </div>
                     </div>
 
+                    {/* Selected Kalimat Badges Preview */}
+                    {selectedKalimatList.length > 0 && (
+                      <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                        <span className="text-[11px] text-slate-500 font-semibold">
+                          Pilihan ({selectedKalimatList.length}):
+                        </span>
+                        {selectedKalimatList.map((kal) => (
+                          <span
+                            key={kal}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-bold"
+                          >
+                            <span>{kal}</span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedKalimatList((prev) =>
+                                  prev.filter((s) => norm(s) !== norm(kal))
+                                )
+                              }
+                              className="text-emerald-700 hover:text-emerald-950 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between pt-1">
                       <span className="text-[11px] text-slate-500 italic">
                         *Target penuh materi ini:{' '}
@@ -1680,6 +1826,7 @@ export default function SetorMustahiqModule() {
                       >
                         <Plus className="w-3.5 h-3.5" />
                         Simpan Setoran
+                        {selectedKalimatList.length > 0 && ` (${selectedKalimatList.length} Kalimat)`}
                       </button>
                     </div>
                   </form>
@@ -2256,15 +2403,6 @@ export default function SetorMustahiqModule() {
           </div>
         </div>
       )}
-
-      {/* Modal Input Lewat Barcode */}
-      <ModalBarcodeSetorMustahiq
-        isOpen={isBarcodeModalOpen}
-        onClose={() => setIsBarcodeModalOpen(false)}
-        allRows={allRows}
-        tahun={tahun}
-        lockedMustahiqClass={lockedMustahiqClass}
-      />
 
       {/* Modal Pengaturan Target Muhafadzoh */}
       <ModalSettingsHafalan />

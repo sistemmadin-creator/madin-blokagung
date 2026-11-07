@@ -14,6 +14,7 @@ export type AppPageId =
   | 'daftar-pendidik'
   | 'setoran'
   | 'setor-mustahiq'
+  | 'setor-cepat'
   | 'rekap-hafalan'
   | 'piagam'
   | 'kirim-wa'
@@ -174,6 +175,14 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     label: 'Setor Mustahiq',
     group: 'PKM. Muhafadzoh',
     routes: ['/setor-mustahiq', '/setor-mustahiq/rekap'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: true,
+  },
+  {
+    id: 'setor-cepat',
+    label: 'Setor Cepat',
+    group: 'PKM. Muhafadzoh',
+    routes: ['/setor-cepat'],
     supportsEditOverride: true,
     supportsDeleteOverride: true,
   },

@@ -432,6 +432,15 @@ interface SetorMustahiqStoreState {
     itemDetail: ItemHafalanDetail,
     skipHistory?: boolean
   ) => Promise<boolean>;
+  addLogSetoranBatch: (
+    basePayload: Omit<
+      SetorMustahiqLog,
+      'id' | 'created_at' | 'status_ringkas' | 'kumulatif_angka' | 'kalimat_dipilih' | 'kalimat_index' | 'target_type'
+    > & { target_type?: 'sentence' },
+    kalimatList: string[],
+    itemDetail: ItemHafalanDetail,
+    skipHistory?: boolean
+  ) => Promise<boolean>;
   deleteLogSetoran: (logId: string, skipHistory?: boolean) => Promise<boolean>;
   deleteSantriLogsBatch: (
     noIndukList: string[],
@@ -623,6 +632,93 @@ export const useSetorMustahiqStore = create<SetorMustahiqStoreState>((set, get) 
       return true;
     } catch (err: any) {
       console.error('Gagal menyimpan log Setor Mustahiq:', err);
+      alert('Gagal menyimpan setoran: ' + err.message);
+      return false;
+    }
+  },
+
+  addLogSetoranBatch: async (basePayload, kalimatList, itemDetail, skipHistory = false) => {
+    try {
+      if (!kalimatList || kalimatList.length === 0) return false;
+      const prevLogs = [...get().logs];
+      let currentLogs = [...prevLogs];
+      const unitLabel = getUnitLabel(itemDetail);
+      const sentences = itemDetail.sentences || [];
+      const newLogs: SetorMustahiqLog[] = [];
+
+      for (let i = 0; i < kalimatList.length; i++) {
+        const chosen = kalimatList[i].trim();
+        if (!chosen) continue;
+
+        const prog = computeMateriProgressForSantri(
+          basePayload.no_induk,
+          itemDetail,
+          currentLogs,
+          basePayload.tahun
+        );
+
+        const alreadyDone = prog.completedSentences.some((s) => norm(s) === norm(chosen));
+        const newCount = alreadyDone
+          ? prog.completedSentencesCount
+          : prog.completedSentencesCount + 1;
+        const kumulatifAngka = newCount;
+        const statusRingkas = `${unitLabel}: ${chosen} (${newCount}/${prog.totalSentencesCount})`;
+        const idx = sentences.findIndex((s) => norm(s) === norm(chosen));
+
+        const logItem: SetorMustahiqLog = {
+          ...basePayload,
+          id: `sm_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 7)}`,
+          target_type: 'sentence',
+          kalimat_dipilih: chosen,
+          kalimat_index: idx !== -1 ? idx + 1 : undefined,
+          kumulatif_angka: kumulatifAngka,
+          target_akhir_angka: prog.totalSentencesCount,
+          satuan_angka: unitLabel,
+          status_ringkas: statusRingkas,
+          created_at: new Date(Date.now() + i * 50).toISOString(),
+        };
+
+        newLogs.push(logItem);
+        currentLogs.push(logItem);
+      }
+
+      if (newLogs.length === 0) return false;
+
+      const nextLogs = currentLogs;
+      set({ logs: nextLogs });
+      await persistMustahiqLogs(nextLogs);
+
+      const kalimatStr = kalimatList.join(', ');
+      await logActivity(
+        'INPUT SETOR CEPAT BATCH',
+        `Mencatat ${newLogs.length} setoran [${basePayload.materi_nama}] santri ${basePayload.nama_santri}: ${kalimatStr}`
+      );
+
+      if (!skipHistory) {
+        const newLogIds = newLogs.map((l) => l.id);
+        useUndoRedoStore.getState().recordAction({
+          module: 'muhafadzoh',
+          title: `Setor Cepat (${newLogs.length} Kalimat): ${basePayload.nama_santri}`,
+          undo: async () => {
+            const cur = get().logs;
+            const filtered = cur.filter((l) => !newLogIds.includes(l.id));
+            set({ logs: filtered });
+            await persistMustahiqLogs(filtered);
+            return true;
+          },
+          redo: async () => {
+            const cur = get().logs;
+            const restored = [...cur, ...newLogs];
+            set({ logs: restored });
+            await persistMustahiqLogs(restored);
+            return true;
+          },
+        });
+      }
+
+      return true;
+    } catch (err: any) {
+      console.error('Gagal menyimpan log Setor Cepat batch:', err);
       alert('Gagal menyimpan setoran: ' + err.message);
       return false;
     }
