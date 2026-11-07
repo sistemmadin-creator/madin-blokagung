@@ -5,6 +5,7 @@ import {
   X, 
   Upload, 
   Image as ImageIcon, 
+  ImagePlus,
   Check, 
   FileText, 
   LayoutGrid, 
@@ -13,31 +14,13 @@ import {
   ShieldAlert,
   Heading,
   Quote,
-  List
+  List,
+  Video,
+  Sparkles
 } from 'lucide-react';
 import { useBeritaStore } from '@/stores/useBeritaStore';
 import { TopikBerita, DisplayTypeBerita, StatusBerita, TOPIK_BERITA_MAP } from '@/types/berita';
 import { compressImageFile } from '@/lib/utils/image';
-
-// Preset foto dokumentasi pesantren berkualitas tinggi untuk kemudahan input admin
-const PRESET_COVERS = [
-  {
-    name: 'Kajian Aula & Masyayikh',
-    url: 'https://images.unsplash.com/photo-1584697964190-705b89369947?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    name: 'Santri Sorogan Kitab',
-    url: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80',
-  },
-  {
-    name: 'Musyawarah & Bahtsul Masail',
-    url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80',
-  },
-  {
-    name: 'Khazanah Kitab Turots',
-    url: 'https://images.unsplash.com/photo-1532012164546-f432f2e3edd4?auto=format&fit=crop&w=800&q=80',
-  },
-];
 
 export default function ModalFormBerita() {
   const { isFormModalOpen, editingPost, closeFormModal, createPost, updatePost } = useBeritaStore();
@@ -52,11 +35,25 @@ export default function ModalFormBerita() {
   const [authorName, setAuthorName] = useState('Redaksi Madin Blokagung');
   const [status, setStatus] = useState<StatusBerita>('published');
   const [tags, setTags] = useState('Kegiatan, Santri');
+  const [tiktokUrl, setTiktokUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Ref elemen
   const modalRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const contentInputRef = useRef<HTMLTextAreaElement>(null);
+  const inlineFileInputRef = useRef<HTMLInputElement>(null);
+
+  // State untuk Pop-up Klik Kanan Sisip Foto di Tengah Teks
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    cursorPos: number;
+  } | null>(null);
+  const [inlineImgUrl, setInlineImgUrl] = useState('');
+  const [inlineCaption, setInlineCaption] = useState('');
+  const [isProcessingInline, setIsProcessingInline] = useState(false);
 
   // Helper pembuat slug otomatis
   const generateSlug = (text: string) => {
@@ -80,19 +77,22 @@ export default function ModalFormBerita() {
       setAuthorName(editingPost.author_name);
       setStatus(editingPost.status);
       setTags(editingPost.tags ? editingPost.tags.join(', ') : '');
+      setTiktokUrl(editingPost.tiktok_url || '');
     } else {
       // Default state form baru
       setTitle('');
       setSlug('');
       setTopic('kelas_unggulan');
       setDisplayType('highlight_grid');
-      setCoverUrl(PRESET_COVERS[0].url);
+      setCoverUrl('');
       setExcerpt('');
       setContent('');
       setAuthorName('Redaksi Madin Blokagung');
       setStatus('published');
       setTags('Kegiatan, Santri');
+      setTiktokUrl('');
     }
+    setContextMenu(null);
     setErrorMessage('');
   }, [editingPost, isFormModalOpen]);
 
@@ -104,18 +104,79 @@ export default function ModalFormBerita() {
     }
   };
 
-  // Handler upload & kompresi foto
+  // Handler upload & kompresi foto cover
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
-      // Kompres ukuran gambar canvas max 1000px agar ringan
-      const compressedDataUrl = await compressImageFile(file, 1000, 0.8);
+      // Kompres ukuran gambar canvas max 1200px agar ringan
+      const compressedDataUrl = await compressImageFile(file, 1200, 0.82);
       setCoverUrl(compressedDataUrl);
     } catch {
       setErrorMessage('Gagal memproses gambar. Silakan gunakan format JPG atau PNG.');
     }
+  };
+
+  // Handler upload & kompresi foto sisipan di tengah teks
+  const handleInlineFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsProcessingInline(true);
+      const compressedDataUrl = await compressImageFile(file, 1000, 0.8);
+      setInlineImgUrl(compressedDataUrl);
+    } catch {
+      setErrorMessage('Gagal memproses gambar sisipan.');
+    } finally {
+      setIsProcessingInline(false);
+    }
+  };
+
+  // Handler klik kanan pada textarea konten berita
+  const handleContentContextMenu = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    const textarea = contentInputRef.current;
+    const cursorPos = textarea ? textarea.selectionStart : content.length;
+
+    const rect = modalRef.current?.getBoundingClientRect();
+    const modalWidth = rect?.width || 800;
+    const modalHeight = rect?.height || 600;
+
+    // Hitung posisi relatif di dalam modal container
+    const rawX = rect ? e.clientX - rect.left : e.clientX;
+    const rawY = rect ? e.clientY - rect.top : e.clientY;
+
+    // Pastikan popup tidak melompat keluar batas modal
+    const clampedX = Math.max(16, Math.min(rawX, modalWidth - 360));
+    const clampedY = Math.max(16, Math.min(rawY, modalHeight - 340));
+
+    setContextMenu({
+      x: clampedX,
+      y: clampedY,
+      cursorPos,
+    });
+    setInlineImgUrl('');
+    setInlineCaption('');
+  };
+
+  // Handler menyisipkan foto ke posisi kursor teks
+  const handleInsertInlinePhoto = () => {
+    if (!inlineImgUrl.trim()) return;
+
+    const textarea = contentInputRef.current;
+    const pos = contextMenu?.cursorPos ?? (textarea?.selectionStart ?? content.length);
+    const captionText = inlineCaption.trim() || 'Dokumentasi Santri Madin Al-Amiriyyah';
+
+    // Format blok markdown foto dengan takarir
+    const markdownBlock = `\n\n![${captionText}](${inlineImgUrl.trim()})\n*Foto: ${captionText}*\n\n`;
+
+    const newContent = content.slice(0, pos) + markdownBlock + content.slice(pos);
+    setContent(newContent);
+    setContextMenu(null);
+    setInlineImgUrl('');
+    setInlineCaption('');
   };
 
   // Handler bantuan formatting konten
@@ -130,16 +191,16 @@ export default function ModalFormBerita() {
       setErrorMessage('Judul berita wajib diisi.');
       return;
     }
+    if (!coverUrl.trim()) {
+      setErrorMessage('Foto cover berita wajib diunggah atau diisi URL-nya.');
+      return;
+    }
     if (!excerpt.trim()) {
       setErrorMessage('Ringkasan / cuplikan berita wajib diisi.');
       return;
     }
     if (!content.trim()) {
       setErrorMessage('Konten isi berita wajib diisi.');
-      return;
-    }
-    if (!coverUrl.trim()) {
-      setErrorMessage('Foto cover berita wajib dipilih atau diunggah.');
       return;
     }
 
@@ -162,6 +223,7 @@ export default function ModalFormBerita() {
       author_name: authorName.trim() || 'Redaksi Madin Blokagung',
       status,
       tags: formattedTags,
+      tiktok_url: tiktokUrl.trim() || undefined,
       published_at: editingPost ? editingPost.published_at : new Date().toISOString(),
     };
 
@@ -182,21 +244,25 @@ export default function ModalFormBerita() {
   // Tutup dengan Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isFormModalOpen) {
-        closeFormModal();
+      if (e.key === 'Escape') {
+        if (contextMenu) {
+          setContextMenu(null);
+        } else if (isFormModalOpen) {
+          closeFormModal();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFormModalOpen, closeFormModal]);
+  }, [isFormModalOpen, contextMenu, closeFormModal]);
 
   if (!isFormModalOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
       <div 
         ref={modalRef}
-        className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200"
+        className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200"
       >
         {/* Header Modal */}
         <div className="flex items-center justify-between px-6 py-4.5 bg-gradient-to-r from-[#0b5751] to-[#0e6962] text-white border-b border-emerald-800">
@@ -209,7 +275,7 @@ export default function ModalFormBerita() {
                 {editingPost ? 'Perbarui Warta Berita' : 'Tulis Berita Baru (Warta Madina)'}
               </h2>
               <p className="text-xs text-emerald-100/80">
-                Terintegrasi dengan 4 topik diniyyah dan tata letak editorial ala Lirboyo.net
+                Terintegrasi dengan alur teratas editorial 5 Hero Slider, Sorotan Grid 2x2, dan Widget TikTok
               </p>
             </div>
           </div>
@@ -307,75 +373,24 @@ export default function ModalFormBerita() {
             </div>
           </div>
 
-          {/* 3. Tipe Tampilan Ala Lirboyo.net */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
-              Posisi Tampilan Tata Letak Editorial
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={() => setDisplayType('hero_lead')}
-                className={`p-3 rounded-xl border text-left transition-all ${
-                  displayType === 'hero_lead'
-                    ? 'border-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/30 ring-2 ring-emerald-600'
-                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-800'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-1 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
-                  <Star className="w-4 h-4 fill-amber-400 text-amber-500" />
-                  <span>Hero Utama Kiri (60%)</span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Kartu berita raksasa di sisi kiri beranda, menjadi tajuk utama warta.
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setDisplayType('highlight_grid')}
-                className={`p-3 rounded-xl border text-left transition-all ${
-                  displayType === 'highlight_grid'
-                    ? 'border-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/30 ring-2 ring-emerald-600'
-                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-800'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-1 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
-                  <LayoutGrid className="w-4 h-4 text-emerald-600" />
-                  <span>Sorotan Grid 2x2 Kanan (40%)</span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Tampil pada 4 kotak sorotan pendukung berdampingan dengan berita utama.
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setDisplayType('regular')}
-                className={`p-3 rounded-xl border text-left transition-all ${
-                  displayType === 'regular'
-                    ? 'border-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/30 ring-2 ring-emerald-600'
-                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-800'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-1 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
-                  <Layers className="w-4 h-4 text-slate-500" />
-                  <span>Post Terbaru (Reguler)</span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Masuk ke dalam daftar artikel terbaru di bawah barisan hero grid.
-                </p>
-              </button>
+          {/* 3. Penjelasan Alur Editorial Otomatis */}
+          <div className="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs flex items-start gap-2.5">
+            <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Alur Waterfall Editorial Berita Otomatis:</p>
+              <p className="text-[11px] text-emerald-800/90 dark:text-emerald-300/80 mt-0.5 leading-relaxed">
+                Berita baru yang dipublikasikan akan langsung masuk ke <strong>5 Hero Slider Utama</strong> di sisi kiri (bergulir otomatis setiap 2 detik). Berita yang tertumpuk selanjutnya masuk ke <strong>Sorotan Grid 2x2 Kanan</strong>, dan berikutnya ke <strong>Post Terbaru</strong>.
+              </p>
             </div>
           </div>
 
-          {/* 4. Foto Cover / Thumbnail */}
+          {/* 4. Foto Cover / Thumbnail (Fitur Preset Foto Pesantren Sudah Dihapus Bersih) */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
-              Foto Cover Berita (Thumbnail) <span className="text-rose-500">*</span>
+              Foto Cover Berita (Thumbnail Utama) <span className="text-rose-500">*</span>
             </label>
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              {/* Preview Gambar */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+              {/* Preview Gambar Cover */}
               <div className="md:col-span-5 relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 aspect-video flex items-center justify-center group shadow-xs">
                 {coverUrl ? (
                   <img
@@ -386,14 +401,14 @@ export default function ModalFormBerita() {
                 ) : (
                   <div className="text-center p-4 text-slate-400">
                     <ImageIcon className="w-8 h-8 mx-auto mb-1 stroke-1" />
-                    <span className="text-xs">Belum ada foto</span>
+                    <span className="text-xs">Belum ada foto terpilih</span>
                   </div>
                 )}
               </div>
 
-              {/* Kontrol Upload & Preset */}
+              {/* Kontrol Upload File & Input URL */}
               <div className="md:col-span-7 space-y-3">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -404,41 +419,24 @@ export default function ModalFormBerita() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-emerald-950 bg-amber-400 hover:bg-amber-300 transition shadow-xs"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-emerald-950 bg-amber-400 hover:bg-amber-300 transition shadow-xs active:scale-98"
                   >
                     <Upload className="w-3.5 h-3.5" />
                     <span>Unggah File Foto</span>
                   </button>
-                  <span className="text-[11px] text-slate-400">Kompresi otomatis max 1000px</span>
+                  <span className="text-[11px] text-slate-400">Kompresi otomatis max 1200px</span>
                 </div>
 
                 <div>
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Atau Pilih Foto Pesantren:</span>
-                  <div className="grid grid-cols-2 gap-2 mt-1.5">
-                    {PRESET_COVERS.map((preset) => (
-                      <button
-                        key={preset.url}
-                        type="button"
-                        onClick={() => setCoverUrl(preset.url)}
-                        className={`px-2.5 py-1.5 rounded-lg border text-left text-xs truncate transition ${
-                          coverUrl === preset.url
-                            ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-bold'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50'
-                        }`}
-                      >
-                        {preset.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    Atau Masukkan URL Gambar:
+                  </label>
                   <input
                     type="url"
                     value={coverUrl}
                     onChange={(e) => setCoverUrl(e.target.value)}
-                    placeholder="Atau tempel URL gambar eksternal (https://...)"
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                    placeholder="https://images.unsplash.com/... atau URL foto langsung"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                   />
                 </div>
               </div>
@@ -466,12 +464,14 @@ export default function ModalFormBerita() {
             />
           </div>
 
-          {/* 6. Konten Lengkap & Toolbar Format */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
+          {/* 6. Konten Lengkap & Fitur Klik Kanan Sisip Foto di Tengah Teks */}
+          <div className="relative">
+            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                 Konten Berita Lengkap <span className="text-rose-500">*</span>
               </label>
+              
+              {/* Toolbar Pembantu Formatting */}
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
@@ -500,19 +500,175 @@ export default function ModalFormBerita() {
                   <List className="w-3 h-3" />
                   <span>Poin</span>
                 </button>
+
+                {/* Tombol Sisip Foto di Toolbar (Alternatif klik kanan) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const textarea = contentInputRef.current;
+                    const pos = textarea ? textarea.selectionStart : content.length;
+                    setContextMenu({
+                      x: 120,
+                      y: 280,
+                      cursorPos: pos,
+                    });
+                    setInlineImgUrl('');
+                    setInlineCaption('');
+                  }}
+                  className="px-2.5 py-1 rounded bg-amber-100 dark:bg-amber-950/60 hover:bg-amber-200 text-amber-950 dark:text-amber-200 text-[11px] font-bold flex items-center gap-1 border border-amber-300/60 transition"
+                  title="Sisipkan Foto di Posisi Kursor Teks (Atau Klik Kanan pada Kotak Teks)"
+                >
+                  <ImagePlus className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                  <span>+ Sisip Foto</span>
+                </button>
               </div>
             </div>
+
+            {/* Input File Tersembunyi untuk Foto Sisipan */}
+            <input
+              ref={inlineFileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleInlineFileChange}
+              className="hidden"
+            />
+
+            {/* Textarea Konten dengan Listener onContextMenu (Klik Kanan) */}
             <textarea
+              ref={contentInputRef}
               required
               rows={8}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Tuliskan isi berita secara mendalam. Dukung pemisahan paragraf dengan tombol enter ganda..."
+              onContextMenu={handleContentContextMenu}
+              placeholder="Tuliskan isi berita secara mendalam. TIPS: Klik kanan di mana saja pada teks ini untuk menyisipkan foto di tengah paragraf..."
               className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none transition leading-relaxed font-sans"
             />
+            <p className="text-[11px] text-slate-400 mt-1">
+              💡 <strong>Tips:</strong> Klik kanan di sembarang posisi teks atau klik <strong>&ldquo;+ Sisip Foto&rdquo;</strong> untuk menambahkan foto dokumentasi di tengah-tengah paragraf.
+            </p>
+
+            {/* FLOATING POPUP KECIL UNTUK KLIK KANAN MENAMBAH FOTO DI TENGAH TEKS */}
+            {contextMenu && (
+              <div 
+                className="absolute z-50 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border-2 border-emerald-600 p-4 space-y-3 animate-in zoom-in-95 duration-150"
+                style={{
+                  top: `${contextMenu.y}px`,
+                  left: `${contextMenu.x}px`,
+                }}
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
+                    <ImagePlus className="w-4 h-4 text-emerald-600" />
+                    <span>Sisipkan Foto di Tengah Teks</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setContextMenu(null)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Tombol Unggah File Lokal */}
+                <div>
+                  <button
+                    type="button"
+                    disabled={isProcessingInline}
+                    onClick={() => inlineFileInputRef.current?.click()}
+                    className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-emerald-950 bg-amber-400 hover:bg-amber-300 transition shadow-2xs"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{isProcessingInline ? 'Mengompresi Foto...' : 'Pilih File Foto (Komputer)'}</span>
+                  </button>
+                </div>
+
+                {/* Input URL Gambar */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                    Atau Tempel URL Gambar:
+                  </label>
+                  <input
+                    type="url"
+                    value={inlineImgUrl}
+                    onChange={(e) => setInlineImgUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  />
+                </div>
+
+                {/* Keterangan / Caption Foto */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                    Keterangan Foto (Caption):
+                  </label>
+                  <input
+                    type="text"
+                    value={inlineCaption}
+                    onChange={(e) => setInlineCaption(e.target.value)}
+                    placeholder="Contoh: Suasana setoran hafalan nadzom"
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  />
+                </div>
+
+                {/* Pratinjau Kecil Jika Gambar Sudah Terpilih */}
+                {inlineImgUrl && (
+                  <div className="rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video relative">
+                    <img src={inlineImgUrl} alt="Pratinjau Sisipan" className="w-full h-full object-cover" />
+                  </div>
+                )}
+
+                {/* Tombol Aksi Sisip / Batal */}
+                <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => setContextMenu(null)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!inlineImgUrl.trim()}
+                    onClick={handleInsertInlinePhoto}
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 transition shadow-2xs"
+                  >
+                    Sisipkan Foto
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* 7. Metadata Tambahan: Penulis, Tag, Status */}
+          {/* 7. Input Tautan Video TikTok (Widget Samping Berita) */}
+          <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-950 text-rose-600 flex items-center justify-center">
+                <Video className="w-4 h-4" />
+              </div>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                Tautan Video TikTok (Widget Jendela Samping Kanan Berita)
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-rose-600 font-bold bg-white dark:bg-slate-900 px-3 py-2.5 rounded-xl border border-rose-300 dark:border-rose-900/60 flex items-center gap-1">
+                <span>TikTok</span>
+              </span>
+              <input
+                type="url"
+                value={tiktokUrl}
+                onChange={(e) => setTiktokUrl(e.target.value)}
+                placeholder="Contoh: https://www.tiktok.com/@madinblokagung/video/7350000000000000000"
+                className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+              />
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Video ini akan ditampilkan pada widget jendela khusus di sebelah kanan berita (Gambar 4). Jika dikosongkan, widget samping akan menampilkan akun TikTok resmi MADINA Blokagung secara otomatis.
+            </p>
+          </div>
+
+          {/* 8. Metadata Tambahan: Penulis, Tag, Status */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">

@@ -307,12 +307,16 @@ export default function TabelKelolaBerita() {
                     >
                       {/* Foto Thumbnail */}
                       <td className="py-3.5 px-4 align-top">
-                        <div className="w-16 h-11 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 relative shadow-2xs flex-shrink-0">
+                        <div className="w-16 h-11 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 relative shadow-2xs flex-shrink-0 flex items-center justify-center">
                           <img
                             src={post.cover_image_url}
                             alt=""
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                            }}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform relative z-10"
                           />
+                          <Newspaper className="w-5 h-5 text-slate-300 dark:text-slate-600 absolute" />
                         </div>
                       </td>
 
@@ -325,7 +329,7 @@ export default function TabelKelolaBerita() {
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
                             {post.excerpt}
                           </p>
-                          <div className="flex items-center gap-3 text-[10px] text-slate-400 pt-0.5">
+                          <div className="flex items-center gap-3 text-[10px] text-slate-400 pt-0.5 flex-wrap">
                             <span className="font-medium text-slate-600 dark:text-slate-300">
                               Oleh: {post.author_name}
                             </span>
@@ -340,6 +344,14 @@ export default function TabelKelolaBerita() {
                             </span>
                             <span>•</span>
                             <span>{post.views_count} pembaca</span>
+                            {post.tiktok_url && (
+                              <>
+                                <span>•</span>
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-rose-50 text-rose-600 font-bold text-[9px]">
+                                  TikTok Video
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </td>

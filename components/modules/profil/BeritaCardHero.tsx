@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { Clock, Tag, ArrowRight } from 'lucide-react';
+import { Clock, Tag, ArrowRight, BookOpen } from 'lucide-react';
 import { WartaBerita, TOPIK_BERITA_MAP } from '@/types/berita';
 
 interface BeritaCardHeroProps {
@@ -10,6 +10,7 @@ interface BeritaCardHeroProps {
 }
 
 export default function BeritaCardHero({ post }: BeritaCardHeroProps) {
+  const [hasImgError, setHasImgError] = useState(false);
   const topikMeta = TOPIK_BERITA_MAP[post.topic] || TOPIK_BERITA_MAP.kelas_unggulan;
 
   // Format tanggal publikasi
@@ -22,17 +23,24 @@ export default function BeritaCardHero({ post }: BeritaCardHeroProps) {
   return (
     <Link
       href={`/berita/${post.slug}`}
-      className="group relative block w-full h-full min-h-[380px] sm:min-h-[440px] lg:min-h-[480px] rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-200/80 dark:border-slate-800 focus:outline-none focus:ring-4 focus:ring-emerald-500/40"
+      className="group relative block w-full h-full min-h-[380px] sm:min-h-[440px] lg:min-h-[480px] rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-200/80 dark:border-slate-800 focus:outline-none focus:ring-4 focus:ring-emerald-500/40 bg-gradient-to-br from-emerald-950 via-[#063321] to-slate-900"
     >
-      {/* Background Image dengan efek zoom halus */}
-      <img
-        src={post.cover_image_url}
-        alt={post.title}
-        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-      />
+      {/* Background Image dengan efek zoom halus dan Fallback Cerdas */}
+      {!hasImgError && post.cover_image_url ? (
+        <img
+          src={post.cover_image_url}
+          alt=""
+          onError={() => setHasImgError(true)}
+          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center opacity-30 bg-gradient-to-tr from-emerald-900 to-amber-950">
+          <BookOpen className="w-24 h-24 text-amber-300/40" />
+        </div>
+      )}
 
       {/* Gradien Scrim Gelap (Khas Majalah Editorial Pesantren ala Lirboyo) */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/55 to-black/10 transition-opacity" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/20 transition-opacity" />
 
       {/* Konten Berita di Atas Scrim */}
       <div className="absolute inset-0 p-5 sm:p-7 lg:p-8 flex flex-col justify-end">

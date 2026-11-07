@@ -53,7 +53,26 @@ function loadFromLocal(): WartaBerita[] {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
       if (data) {
-        return JSON.parse(data);
+        const parsed = JSON.parse(data) as WartaBerita[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Perbaiki otomatis gambar seed yang sempat 404 pada cache lama
+          const repaired = parsed.map((item) => {
+            if (item.cover_image_url?.includes('photo-1584697964190-705b89369947')) {
+              return { ...item, cover_image_url: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=1200&q=80' };
+            }
+            if (item.cover_image_url?.includes('photo-1532012164546-f432f2e3edd4')) {
+              return { ...item, cover_image_url: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80' };
+            }
+            return item;
+          });
+          // Tambahkan seed baru jika data lokal lama masih kurang dari daftar seed terbaru
+          const existingIds = new Set(repaired.map((p) => p.id));
+          const missingSeeds = SEED_BERITA.filter((p) => !existingIds.has(p.id));
+          if (missingSeeds.length > 0) {
+            return [...repaired, ...missingSeeds];
+          }
+          return repaired;
+        }
       }
     } catch {
       // Ignore parse errors
@@ -63,7 +82,7 @@ function loadFromLocal(): WartaBerita[] {
 }
 
 export const useBeritaStore = create<BeritaState>((set, get) => ({
-  posts: [],
+  posts: typeof window !== 'undefined' ? loadFromLocal() : SEED_BERITA,
   isLoading: false,
   error: null,
 
@@ -102,7 +121,17 @@ export const useBeritaStore = create<BeritaState>((set, get) => ({
 
   createPost: async (postData) => {
     set({ isLoading: true });
-    const newId = `warta-${Date.now()}`;
+    // Gunakan UUID standar agar valid saat disimpan ke kolom UUID di Supabase PostgreSQL
+    let newId: string;
+    try {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        newId = crypto.randomUUID();
+      } else {
+        newId = `warta-${Date.now()}`;
+      }
+    } catch {
+      newId = `warta-${Date.now()}`;
+    }
     const newPost: WartaBerita = {
       ...postData,
       id: newId,

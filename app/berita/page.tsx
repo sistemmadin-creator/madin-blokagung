@@ -162,13 +162,17 @@ export default function ArsipBeritaPage() {
                     className="group flex flex-col bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300"
                   >
                     {/* Cover Thumbnail 16:9 */}
-                    <div className="relative aspect-video w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                    <div className="relative aspect-video w-full overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                       <img
                         src={post.cover_image_url}
-                        alt={post.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        alt=""
+                        onError={(e) => {
+                          (e.currentTarget as HTMLElement).style.display = 'none';
+                        }}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 relative z-10"
                       />
-                      <div className="absolute top-3 left-3">
+                      <Newspaper className="w-8 h-8 text-slate-300 dark:text-slate-600 absolute" />
+                      <div className="absolute top-3 left-3 z-20">
                         <span className={`px-2.5 py-1 rounded-lg text-[10px] uppercase tracking-wider ${topikMeta.badgeBg} ${topikMeta.badgeText} shadow-md`}>
                           {topikMeta.title}
                         </span>
