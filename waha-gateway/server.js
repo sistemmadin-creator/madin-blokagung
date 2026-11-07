@@ -336,10 +336,6 @@ app.post('/api/sendImage', async (req, res) => {
     }
 
     const targetJid = await resolveWhatsAppJid(chatId);
-    let targetJid = String(chatId).replace('@c.us', '@s.whatsapp.net');
-    if (!targetJid.includes('@')) {
-      targetJid = `${targetJid}@s.whatsapp.net`;
-    }
 
     let imageBuffer;
     if (rawFile.startsWith('data:image')) {
@@ -380,8 +376,6 @@ app.post('/api/sendText', async (req, res) => {
 
     const { chatId, text } = req.body;
     const targetJid = await resolveWhatsAppJid(chatId);
-    let targetJid = String(chatId).replace('@c.us', '@s.whatsapp.net');
-    if (!targetJid.includes('@')) targetJid = `${targetJid}@s.whatsapp.net`;
 
     const result = await sock.sendMessage(targetJid, { text: text || '' });
     return res.json({ id: result?.key?.id, jid: targetJid, status: 'success' });
