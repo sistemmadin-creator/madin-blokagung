@@ -3,31 +3,21 @@
 import React, { useMemo } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { useKonsorsiumStore } from '@/stores/useKonsorsiumStore';
-import {
-  KelasKonsorsium,
-  AnggotaKonsorsium,
-  SesiPresensiKonsorsium,
-} from '@/types/konsorsium';
+import { useTahunAjaranStore } from '@/stores/useTahunAjaranStore';
+import { KelasKonsorsium } from '@/types/konsorsium';
 import {
   getTahunAjaranKonsorsium,
   getHariNamaKonsorsium,
 } from '@/lib/utils/konsorsiumHelper';
 import * as XLSX from 'xlsx';
-import {
-  Calendar,
-  FileSpreadsheet,
-  Users,
-  CheckCircle2,
-  Clock,
-  BookOpen,
-  ArrowRight,
-} from 'lucide-react';
+import { FileSpreadsheet } from 'lucide-react';
 
 interface ModalDetailMatriksTahunanProps {
   isOpen: boolean;
   onClose: () => void;
   kelas: KelasKonsorsium | null;
   onInputPresensi?: (kelas: KelasKonsorsium, tanggal?: string) => void;
+  canEdit?: boolean;
 }
 
 export default function ModalDetailMatriksTahunan({
@@ -35,8 +25,10 @@ export default function ModalDetailMatriksTahunan({
   onClose,
   kelas,
   onInputPresensi,
+  canEdit = true,
 }: ModalDetailMatriksTahunanProps) {
   const { anggotaList, sesiList } = useKonsorsiumStore();
+  const activeTahunAjaran = useTahunAjaranStore((s) => s.activeTahunAjaran);
 
   const enrolledAnggota = useMemo(() => {
     if (!kelas) return [];
@@ -48,24 +40,34 @@ export default function ModalDetailMatriksTahunan({
     return sesiList.filter((s) => s.kelasId === kelas.id);
   }, [sesiList, kelas]);
 
-  // Hitung kalender 12 bulan Tahun Ajaran (Juli - Juni)
+  // Hitung kalender 12 bulan Tahun Ajaran (Juli - Juni) secara reaktif terhadap activeTahunAjaran
   const tahunAjaranData = useMemo(() => {
     if (!kelas) return null;
-    return getTahunAjaranKonsorsium(new Date(), kelas.jenisKonsor);
-  }, [kelas]);
+    return getTahunAjaranKonsorsium(new Date(), kelas.jenisKonsor, activeTahunAjaran);
+  }, [kelas, activeTahunAjaran]);
 
-  // Indexing map: tanggal -> (nia -> status)
+  // Indexing map: tanggal -> (anggotaId atau nia -> status)
   const attendanceMap = useMemo(() => {
     const map = new Map<string, Map<string, string>>();
     kelasSesiList.forEach((sesi) => {
       const perTanggalMap = new Map<string, string>();
       sesi.records.forEach((r) => {
-        perTanggalMap.set(r.nia, r.status);
+        if (r.anggotaId) perTanggalMap.set(r.anggotaId, r.status);
+        if (r.nia && r.nia !== '-') perTanggalMap.set(`nia:${r.nia}`, r.status);
       });
       map.set(sesi.tanggal, perTanggalMap);
     });
     return map;
   }, [kelasSesiList]);
+
+  const getStatusForAnggota = (tgl: string, agt: { id: string; nia: string }) => {
+    const sesiMap = attendanceMap.get(tgl);
+    if (!sesiMap) return undefined;
+    return (
+      sesiMap.get(agt.id) ||
+      (agt.nia && agt.nia !== '-' ? sesiMap.get(`nia:${agt.nia}`) : undefined)
+    );
+  };
 
   // Rekap akumulasi tahunan per asatidz
   const rekapTahunanPerAsatidz = useMemo(() => {
@@ -96,7 +98,9 @@ export default function ModalDetailMatriksTahunan({
         const sesiAda = attendanceMap.get(tgl);
         if (sesiAda) {
           totalSesiTerlaksana++;
-          const status = sesiAda.get(agt.nia);
+          const status =
+            sesiAda.get(agt.id) ||
+            (agt.nia && agt.nia !== '-' ? sesiAda.get(`nia:${agt.nia}`) : undefined);
           if (status === 'Hadir') h++;
           else if (status === 'Izin') i++;
           else if (status === 'Sakit') s++;
@@ -110,7 +114,7 @@ export default function ModalDetailMatriksTahunan({
           ? Math.round(((h + t) / totalSesiTerlaksana) * 100)
           : 0;
 
-      resultMap.set(agt.nia, {
+      resultMap.set(agt.id, {
         hadir: h,
         izin: i,
         sakit: s,
@@ -143,11 +147,11 @@ export default function ModalDetailMatriksTahunan({
     enrolledAnggota.forEach((agt, idx) => {
       const row: (string | number)[] = [idx + 1, agt.nia, agt.nama];
       dateKeys.forEach((tgl) => {
-        const status = attendanceMap.get(tgl)?.get(agt.nia) || '-';
+        const status = getStatusForAnggota(tgl, agt) || '-';
         row.push(status);
       });
 
-      const rkp = rekapTahunanPerAsatidz.get(agt.nia) || {
+      const rkp = rekapTahunanPerAsatidz.get(agt.id) || {
         hadir: 0,
         izin: 0,
         sakit: 0,
@@ -179,7 +183,7 @@ export default function ModalDetailMatriksTahunan({
       title={`Detail Matriks Absensi: ${kelas.namaKelas} (Tahun Ajaran ${tahunAjaranData.labelTahunAjaran})`}
       maxWidth="5xl"
     >
-      <div className="p-5 space-y-4 max-h-[85vh] flex flex-col">
+      <div className="space-y-4 max-h-[82vh] flex flex-col">
         {/* Header Ringkasan Kelas & Aksi */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
           <div className="space-y-1">
@@ -258,19 +262,19 @@ export default function ModalDetailMatriksTahunan({
               <tr className="bg-slate-100/90 text-slate-700 border-b border-slate-200 text-[11px] font-bold">
                 <th
                   rowSpan={2}
-                  className="py-2.5 px-3 w-10 text-center sticky left-0 bg-slate-100 z-20 border-r border-slate-200 shadow-xs"
+                  className="py-2.5 px-2 w-10 min-w-[40px] max-w-[40px] text-center sticky left-0 bg-slate-100 z-20 border-r border-slate-200 shadow-xs"
                 >
                   No
                 </th>
                 <th
                   rowSpan={2}
-                  className="py-2.5 px-3 w-20 text-center sticky left-10 bg-slate-100 z-20 border-r border-slate-200 font-mono shadow-xs"
+                  className="py-2.5 px-2 w-24 min-w-[96px] max-w-[96px] text-center sticky left-10 bg-slate-100 z-20 border-r border-slate-200 font-mono shadow-xs"
                 >
                   NIA
                 </th>
                 <th
                   rowSpan={2}
-                  className="py-2.5 px-3 text-left min-w-[170px] sticky left-28 bg-slate-100 z-20 border-r border-slate-200 shadow-xs"
+                  className="py-2.5 px-3 text-left min-w-[180px] sticky left-[136px] bg-slate-100 z-20 border-r border-slate-200 shadow-xs"
                 >
                   Nama Asatidz
                 </th>
@@ -298,18 +302,33 @@ export default function ModalDetailMatriksTahunan({
               {/* Baris 2: Sub-Header Kolom Pertemuan (1, 2, 3, 4, [5]) + Tanggal Kecil */}
               <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[10px]">
                 {tahunAjaranData.bulanList.map((bln) =>
-                  bln.pertemuanList.map((p) => (
-                    <th
-                      key={p.tanggal}
-                      className="py-1 px-1.5 border-r border-slate-200 min-w-[34px] font-medium"
-                      title={p.fullFormatted}
-                    >
-                      <div className="font-bold text-slate-800">{p.ke}</div>
-                      <div className="text-[9px] text-slate-400 font-mono scale-90 -mt-0.5">
-                        {p.labelTanggal.split('/')[0]}
-                      </div>
-                    </th>
-                  ))
+                  bln.pertemuanList.map((p) => {
+                    const isClickable = canEdit && !!onInputPresensi && enrolledAnggota.length > 0;
+                    return (
+                      <th
+                        key={p.tanggal}
+                        onClick={() => {
+                          if (isClickable && onInputPresensi) {
+                            onClose();
+                            onInputPresensi(kelas, p.tanggal);
+                          }
+                        }}
+                        className={`py-1 px-1.5 border-r border-slate-200 min-w-[34px] font-medium ${
+                          isClickable ? 'cursor-pointer hover:bg-emerald-50 transition-colors' : ''
+                        }`}
+                        title={
+                          isClickable
+                            ? `${p.fullFormatted} (Klik untuk input/edit presensi)`
+                            : p.fullFormatted
+                        }
+                      >
+                        <div className="font-bold text-slate-800">{p.ke}</div>
+                        <div className="text-[9px] text-slate-400 font-mono scale-90 -mt-0.5">
+                          {p.labelTanggal.split('/')[0]}
+                        </div>
+                      </th>
+                    );
+                  })
                 )}
 
                 {/* Sub-Header Kolom Rekap */}
@@ -333,7 +352,7 @@ export default function ModalDetailMatriksTahunan({
                 </tr>
               ) : (
                 enrolledAnggota.map((agt, idx) => {
-                  const rkp = rekapTahunanPerAsatidz.get(agt.nia) || {
+                  const rkp = rekapTahunanPerAsatidz.get(agt.id) || {
                     hadir: 0,
                     izin: 0,
                     sakit: 0,
@@ -347,20 +366,20 @@ export default function ModalDetailMatriksTahunan({
                       key={agt.id}
                       className="hover:bg-slate-50/80 transition-colors group"
                     >
-                      <td className="py-2 px-2 text-center text-slate-400 sticky left-0 bg-white group-hover:bg-slate-50 border-r border-slate-100 z-10 font-mono text-[11px]">
+                      <td className="py-2 px-2 w-10 min-w-[40px] max-w-[40px] text-center text-slate-400 sticky left-0 bg-white group-hover:bg-slate-50 border-r border-slate-100 z-10 font-mono text-[11px]">
                         {idx + 1}
                       </td>
-                      <td className="py-2 px-2 text-center font-mono text-slate-600 font-medium sticky left-10 bg-white group-hover:bg-slate-50 border-r border-slate-100 z-10 text-[11px]">
+                      <td className="py-2 px-2 w-24 min-w-[96px] max-w-[96px] text-center font-mono text-slate-600 font-medium sticky left-10 bg-white group-hover:bg-slate-50 border-r border-slate-100 z-10 text-[11px] truncate">
                         {agt.nia}
                       </td>
-                      <td className="py-2 px-3 text-left font-semibold text-slate-800 sticky left-28 bg-white group-hover:bg-slate-50 border-r border-slate-100 z-10 truncate max-w-[200px]">
+                      <td className="py-2 px-3 text-left font-semibold text-slate-800 sticky left-[136px] bg-white group-hover:bg-slate-50 border-r border-slate-100 z-10 truncate max-w-[200px]">
                         {agt.nama}
                       </td>
 
                       {/* Sel Presensi per Pertemuan 1..5 */}
                       {tahunAjaranData.bulanList.map((bln) =>
                         bln.pertemuanList.map((p) => {
-                          const status = attendanceMap.get(p.tanggal)?.get(agt.nia);
+                          const status = getStatusForAnggota(p.tanggal, agt);
 
                           return (
                             <td

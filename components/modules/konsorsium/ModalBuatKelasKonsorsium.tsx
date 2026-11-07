@@ -10,11 +10,8 @@ import { parseFanItemString } from '@/lib/utils/fanHelper';
 import {
   BookOpen,
   UserCheck,
-  Building2,
   Check,
   ChevronDown,
-  Search,
-  Sparkles,
   Info,
 } from 'lucide-react';
 
@@ -31,7 +28,7 @@ export default function ModalBuatKelasKonsorsium({
   onClose,
   editData,
 }: ModalBuatKelasKonsorsiumProps) {
-  const { tambahKelasKonsorsium, updateKelasKonsorsium } = useKonsorsiumStore();
+  const { kelasList, tambahKelasKonsorsium, updateKelasKonsorsium } = useKonsorsiumStore();
   const { fanConfig, fetchFanData } = useFanStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
 
@@ -53,11 +50,17 @@ export default function ModalBuatKelasKonsorsium({
   const [pembimbingSearch, setPembimbingSearch] = useState('');
   const pembimbingDropdownRef = useRef<HTMLDivElement>(null);
 
+  // 1. Pastikan master Fan & Asatidz dimuat tanpa mereset state form ketika selesai
   useEffect(() => {
     if (isOpen) {
-      if (Object.keys(fanConfig).length === 0) fetchFanData();
-      if (asatidzList.length === 0) fetchAsatidz();
+      if (Object.keys(fanConfig).length === 0) void fetchFanData();
+      if (asatidzList.length === 0) void fetchAsatidz();
+    }
+  }, [isOpen, fanConfig, asatidzList.length, fetchFanData, fetchAsatidz]);
 
+  // 2. Inisialisasi form hanya saat modal dibuka atau target editData berubah
+  useEffect(() => {
+    if (isOpen) {
       if (editData) {
         setTingkat(editData.tingkat || 'ULA');
         setJenisKonsor(editData.jenisKonsor || 'Mustahiq/qoh');
@@ -76,8 +79,10 @@ export default function ModalBuatKelasKonsorsium({
         setPembimbingSearch('');
       }
       setErrorMsg('');
+      setIsFanDropdownOpen(false);
+      setIsPembimbingDropdownOpen(false);
     }
-  }, [isOpen, editData, fanConfig, asatidzList.length, fetchFanData, fetchAsatidz]);
+  }, [isOpen, editData]);
 
   // Click outside listener for dropdowns
   useEffect(() => {
@@ -161,6 +166,21 @@ export default function ModalBuatKelasKonsorsium({
       return;
     }
 
+    // Validasi cegah duplikasi kelas konsorsium dengan tingkat + jenis + nama yang sama
+    const isDuplicate = kelasList.some(
+      (k) =>
+        k.id !== editData?.id &&
+        k.tingkat === tingkat &&
+        (k.jenisKonsor || 'Mustahiq/qoh') === jenisKonsor &&
+        k.namaKelas.trim().toLowerCase() === namaKelas.trim().toLowerCase()
+    );
+    if (isDuplicate) {
+      setErrorMsg(
+        `Kelas konsorsium "${namaKelas.trim()}" untuk tingkat ${tingkat} (${jenisKonsor}) sudah terdaftar.`
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       if (editData) {
@@ -198,7 +218,7 @@ export default function ModalBuatKelasKonsorsium({
       title={editData ? 'Ubah Kelas Konsorsium' : 'Buat Kelas Konsorsium Baru'}
       maxWidth="md"
     >
-      <form onSubmit={handleSubmit} className="p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {errorMsg && (
           <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg flex items-center gap-2">
             <Info className="w-4 h-4 flex-shrink-0" />
@@ -308,6 +328,7 @@ export default function ModalBuatKelasKonsorsium({
               type="button"
               onClick={() => setIsFanDropdownOpen((prev) => !prev)}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+              aria-label="Tampilkan daftar fan pelajaran"
             >
               <ChevronDown className="w-4 h-4" />
             </button>
@@ -315,8 +336,8 @@ export default function ModalBuatKelasKonsorsium({
 
           {/* Quick Suggestion Chips */}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] text-slate-400 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-500" /> Cepat:
+            <span className="text-[11px] text-slate-400">
+              Pilihan cepat:
             </span>
             {daftarFanOpsi.kategori.slice(0, 6).map((fan) => (
               <button
@@ -339,7 +360,7 @@ export default function ModalBuatKelasKonsorsium({
 
           {/* Dropdown Menu Fan */}
           {isFanDropdownOpen && (
-            <div className="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-56 overflow-y-auto">
+            <div className="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
               <div className="p-2 border-b border-slate-100 bg-slate-50 text-[11px] font-medium text-slate-500 uppercase tracking-wider">
                 Fan Pelajaran Terdaftar ({filteredFanKategori.length})
               </div>
@@ -369,7 +390,7 @@ export default function ModalBuatKelasKonsorsium({
           )}
         </div>
 
-        {/* 3. Pembimbing Kelas */}
+        {/* 4. Pembimbing Kelas */}
         <div className="relative" ref={pembimbingDropdownRef}>
           <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5">
@@ -388,8 +409,14 @@ export default function ModalBuatKelasKonsorsium({
               type="text"
               value={pembimbingSearch}
               onChange={(e) => {
-                setPembimbingSearch(e.target.value);
-                setPembimbingNama(e.target.value);
+                const nextVal = e.target.value;
+                setPembimbingSearch(nextVal);
+                setPembimbingNama(nextVal);
+                // Reset NIA jika pengguna mengubah nama secara manual
+                const matched = asatidzList.find(
+                  (a) => a.nama_asatidz?.toLowerCase() === nextVal.trim().toLowerCase()
+                );
+                setPembimbingNia(matched?.nia || '');
                 setIsPembimbingDropdownOpen(true);
               }}
               onFocus={() => setIsPembimbingDropdownOpen(true)}
@@ -400,6 +427,7 @@ export default function ModalBuatKelasKonsorsium({
               type="button"
               onClick={() => setIsPembimbingDropdownOpen((prev) => !prev)}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+              aria-label="Tampilkan daftar pembimbing"
             >
               <ChevronDown className="w-4 h-4" />
             </button>
@@ -407,7 +435,7 @@ export default function ModalBuatKelasKonsorsium({
 
           {/* Dropdown Pembimbing */}
           {isPembimbingDropdownOpen && (
-            <div className="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-56 overflow-y-auto">
+            <div className="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
               <div className="p-2 border-b border-slate-100 bg-slate-50 text-[11px] font-medium text-slate-500 uppercase tracking-wider">
                 Pilih Dari Master Asatidz ({filteredAsatidz.length})
               </div>
@@ -444,7 +472,7 @@ export default function ModalBuatKelasKonsorsium({
           )}
         </div>
 
-        {/* 4. Keterangan / Catatan Tambahan */}
+        {/* 5. Keterangan / Catatan Tambahan */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
             Keterangan / Jadwal Rutin (Opsional)

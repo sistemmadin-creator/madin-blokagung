@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useKonsorsiumStore } from '@/stores/useKonsorsiumStore';
 import { useFanStore } from '@/stores/useFanStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
+import { useTahunAjaranStore } from '@/stores/useTahunAjaranStore';
 import { usePagePermission } from '@/stores/useRbacStore';
 import {
   KelasKonsorsium,
@@ -43,6 +44,7 @@ export default function AbsenKonsorsiumPage() {
 
   const { fetchFanData, fanConfig } = useFanStore();
   const { fetchAsatidz, asatidzList } = useAsatidzStore();
+  const { fetchGlobalTahunAjaran } = useTahunAjaranStore();
   const { canEdit } = usePagePermission('absen-konsorsium');
 
   // Filter Jenis Konsor State ('SEMUA' | 'Mustahiq/qoh' | 'Munawib/bah')
@@ -57,6 +59,7 @@ export default function AbsenKonsorsiumPage() {
 
   const [isModalPresensiOpen, setIsModalPresensiOpen] = useState(false);
   const [targetKelasPresensi, setTargetKelasPresensi] = useState<KelasKonsorsium | null>(null);
+  const [targetTanggalPresensi, setTargetTanggalPresensi] = useState<string | undefined>(undefined);
   const [editSesiTarget, setEditSesiTarget] = useState<SesiPresensiKonsorsium | null>(null);
 
   const [isModalRiwayatOpen, setIsModalRiwayatOpen] = useState(false);
@@ -66,10 +69,18 @@ export default function AbsenKonsorsiumPage() {
   const [targetKelasMatriks, setTargetKelasMatriks] = useState<KelasKonsorsium | null>(null);
 
   useEffect(() => {
-    fetchKonsorsiumData();
-    if (Object.keys(fanConfig).length === 0) fetchFanData();
-    if (asatidzList.length === 0) fetchAsatidz();
-  }, [fetchKonsorsiumData, fetchFanData, fetchAsatidz, fanConfig, asatidzList.length]);
+    void fetchKonsorsiumData();
+    void fetchGlobalTahunAjaran();
+    if (Object.keys(fanConfig).length === 0) void fetchFanData();
+    if (asatidzList.length === 0) void fetchAsatidz();
+  }, [
+    fetchKonsorsiumData,
+    fetchGlobalTahunAjaran,
+    fetchFanData,
+    fetchAsatidz,
+    fanConfig,
+    asatidzList.length,
+  ]);
 
   // Hitung jumlah kelas per jenis konsor
   const countsByJenis = useMemo(() => {
@@ -111,14 +122,20 @@ export default function AbsenKonsorsiumPage() {
     });
   }, [kelasList, selectedTingkat, filterJenis, searchKeyword, anggotaList]);
 
-  // Statistik Ringkasan KPI
+  // Statistik Ringkasan KPI (memastikan hanya menghitung anggota dan sesi dari kelas yang valid)
   const stats = useMemo(() => {
+    const validKelasIds = new Set(kelasList.map((k) => k.id));
+    const validAnggota = anggotaList.filter((a) => validKelasIds.has(a.kelasId));
+    const validSesi = sesiList.filter((s) => validKelasIds.has(s.kelasId));
+
     const totalKelas = kelasList.length;
-    const uniqueAsatidz = new Set(anggotaList.map((a) => a.nia)).size;
-    const totalSesi = sesiList.length;
+    const uniqueAsatidz = new Set(
+      validAnggota.map((a) => (a.nia && a.nia !== '-' ? a.nia : a.id))
+    ).size;
+    const totalSesi = validSesi.length;
 
     return { totalKelas, uniqueAsatidz, totalSesi };
-  }, [kelasList.length, anggotaList, sesiList.length]);
+  }, [kelasList, anggotaList, sesiList]);
 
   // Handlers untuk interaksi kelas
   const handleOpenBuatKelas = () => {
@@ -136,8 +153,9 @@ export default function AbsenKonsorsiumPage() {
     setIsModalDaftarOpen(true);
   };
 
-  const handleOpenInputPresensi = (kelas: KelasKonsorsium, _tanggal?: string) => {
+  const handleOpenInputPresensi = (kelas: KelasKonsorsium, tanggal?: string) => {
     setTargetKelasPresensi(kelas);
+    setTargetTanggalPresensi(tanggal);
     setEditSesiTarget(null);
     setIsModalPresensiOpen(true);
   };
@@ -153,7 +171,13 @@ export default function AbsenKonsorsiumPage() {
   };
 
   const handleEditSesiDariRiwayat = (sesi: SesiPresensiKonsorsium) => {
+    const resolvedKelas =
+      targetKelasRiwayat ||
+      kelasList.find((k) => k.id === sesi.kelasId) ||
+      null;
     setIsModalRiwayatOpen(false);
+    setTargetKelasPresensi(resolvedKelas);
+    setTargetTanggalPresensi(sesi.tanggal);
     setEditSesiTarget(sesi);
     setIsModalPresensiOpen(true);
   };
@@ -164,7 +188,7 @@ export default function AbsenKonsorsiumPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
@@ -181,9 +205,10 @@ export default function AbsenKonsorsiumPage() {
         <div className="flex items-center gap-2.5 self-start md:self-auto">
           <button
             type="button"
-            onClick={() => fetchKonsorsiumData()}
+            onClick={() => void fetchKonsorsiumData()}
             className="p-2.5 text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl shadow-xs transition-colors"
             title="Refresh Data"
+            aria-label="Refresh Data Konsorsium"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-emerald-600' : ''}`} />
           </button>
@@ -192,10 +217,10 @@ export default function AbsenKonsorsiumPage() {
             <button
               type="button"
               onClick={handleOpenBuatKelas}
-              className="px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm hover:shadow-md transition-all flex items-center gap-2"
+              className="px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition-all flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Buat Kelas Konsorsium</span>
+              <span>Buat Kelas Konsorsium</span>
             </button>
           )}
         </div>
@@ -259,7 +284,7 @@ export default function AbsenKonsorsiumPage() {
         >
           <Layers className="w-3.5 h-3.5" />
           <span>Semua Konsorsium</span>
-          <span className={`text-[11px] px-1.5 py-0.2 rounded-full ${filterJenis === 'SEMUA' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
+          <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${filterJenis === 'SEMUA' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
             {countsByJenis.semua}
           </span>
         </button>
@@ -275,7 +300,7 @@ export default function AbsenKonsorsiumPage() {
         >
           <span>Konsorsium Mustahiq/qoh</span>
           <span className="text-[10px] font-normal opacity-90">(Setiap Hari Kamis)</span>
-          <span className={`text-[11px] px-1.5 py-0.2 rounded-full ${filterJenis === 'Mustahiq/qoh' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
+          <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${filterJenis === 'Mustahiq/qoh' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
             {countsByJenis.mustahiq}
           </span>
         </button>
@@ -291,7 +316,7 @@ export default function AbsenKonsorsiumPage() {
         >
           <span>Konsorsium Munawib/bah</span>
           <span className="text-[10px] font-normal opacity-90">(Setiap Hari Selasa)</span>
-          <span className={`text-[11px] px-1.5 py-0.2 rounded-full ${filterJenis === 'Munawib/bah' ? 'bg-white/20 text-white' : 'bg-teal-100 text-teal-800'}`}>
+          <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${filterJenis === 'Munawib/bah' ? 'bg-white/20 text-white' : 'bg-teal-100 text-teal-800'}`}>
             {countsByJenis.munawib}
           </span>
         </button>
@@ -364,6 +389,7 @@ export default function AbsenKonsorsiumPage() {
             <KartuKelasKonsorsium
               key={kelas.id}
               kelas={kelas}
+              canEdit={canEdit}
               onDaftarkanAsatidz={handleOpenDaftarkanAsatidz}
               onInputPresensi={handleOpenInputPresensi}
               onLihatRiwayat={handleOpenLihatRiwayat}
@@ -392,12 +418,14 @@ export default function AbsenKonsorsiumPage() {
         onClose={() => setIsModalPresensiOpen(false)}
         kelas={targetKelasPresensi}
         editSesi={editSesiTarget}
+        targetTanggal={targetTanggalPresensi}
       />
 
       <ModalRiwayatPresensiKonsorsium
         isOpen={isModalRiwayatOpen}
         onClose={() => setIsModalRiwayatOpen(false)}
         kelas={targetKelasRiwayat}
+        canEdit={canEdit}
         onEditSesi={handleEditSesiDariRiwayat}
       />
 
@@ -405,7 +433,11 @@ export default function AbsenKonsorsiumPage() {
         isOpen={isModalMatriksOpen}
         onClose={() => setIsModalMatriksOpen(false)}
         kelas={targetKelasMatriks}
-        onInputPresensi={handleOpenInputPresensi}
+        canEdit={canEdit}
+        onInputPresensi={(kelas, tanggal) => {
+          setIsModalMatriksOpen(false);
+          handleOpenInputPresensi(kelas, tanggal);
+        }}
       />
     </div>
   );

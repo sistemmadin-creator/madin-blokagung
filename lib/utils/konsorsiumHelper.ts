@@ -44,6 +44,17 @@ export function getHariNamaKonsorsium(jenis: JenisKonsorsium): string {
 }
 
 /**
+ * Menghasilkan tanggal hari ini dalam format YYYY-MM-DD sesuai zona waktu lokal perangkat
+ * (menghindari pergeseran mundur 1 hari antara pukul 00:00-06:59 WIB akibat toISOString UTC)
+ */
+export function getLocalTodayISO(refDate: Date = new Date()): string {
+  const yyyy = refDate.getFullYear();
+  const mm = String(refDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(refDate.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
  * Menghasilkan daftar tanggal pertemuan (1, 2, 3, 4, [5]) dalam suatu bulan
  * berdasarkan hari wajib jenis konsorsium (Kamis untuk Mustahiq/qoh, Selasa untuk Munawib/bah)
  */
@@ -96,35 +107,49 @@ export interface BulanTahunAjaran {
  */
 export function getTahunAjaranKonsorsium(
   refDate: Date = new Date(),
-  jenis: JenisKonsorsium = 'Mustahiq/qoh'
+  jenis: JenisKonsorsium = 'Mustahiq/qoh',
+  explicitTahunAjaran?: string
 ): {
   startYear: number;
   endYear: number;
   labelTahunAjaran: string;
   bulanList: BulanTahunAjaran[];
 } {
-  let startYear = 2026;
-  let endYear = 2027;
+  let startYear = 0;
+  let endYear = 0;
 
-  if (typeof window !== 'undefined') {
+  const parseTAString = (taStr?: string) => {
+    if (
+      taStr &&
+      taStr.includes('/') &&
+      taStr !== '2025/2026' &&
+      taStr !== '2024/2025'
+    ) {
+      const [sStr, eStr] = taStr.split('/');
+      const sNum = parseInt(sStr, 10);
+      const eNum = parseInt(eStr, 10);
+      if (sNum >= 2026) {
+        startYear = sNum;
+        endYear = eNum || sNum + 1;
+        return true;
+      }
+    }
+    return false;
+  };
+
+  if (!parseTAString(explicitTahunAjaran) && typeof window !== 'undefined') {
     try {
       const raw = localStorage.getItem('MADIN_GLOBAL_TAHUN_AJARAN_CACHE_V1');
       if (raw) {
         const parsed = JSON.parse(raw) as { activeTahunAjaran?: string };
-        if (
-          parsed?.activeTahunAjaran &&
-          parsed.activeTahunAjaran !== '2025/2026' &&
-          parsed.activeTahunAjaran !== '2024/2025'
-        ) {
-          const [sStr, eStr] = parsed.activeTahunAjaran.split('/');
-          startYear = parseInt(sStr, 10) || 2026;
-          endYear = parseInt(eStr, 10) || startYear + 1;
-        }
+        parseTAString(parsed?.activeTahunAjaran);
       }
     } catch {
-      // Gunakan default 2026/2027
+      // Fallback ke kalkulasi refDate di bawah
     }
-  } else {
+  }
+
+  if (!startYear || !endYear) {
     const currentMonth = refDate.getMonth() + 1;
     const currentYear = refDate.getFullYear();
     startYear = Math.max(2026, currentMonth < 7 ? currentYear - 1 : currentYear);

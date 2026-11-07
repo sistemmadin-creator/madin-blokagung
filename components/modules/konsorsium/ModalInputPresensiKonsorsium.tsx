@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { useKonsorsiumStore } from '@/stores/useKonsorsiumStore';
 import {
@@ -13,13 +13,11 @@ import {
   getDaftarPertemuanBulan,
   NAMA_BULAN_IND,
   getHariNamaKonsorsium,
+  getLocalTodayISO,
 } from '@/lib/utils/konsorsiumHelper';
 import {
-  CheckCircle2,
   Calendar,
   Save,
-  Clock,
-  Sparkles,
   Info,
   CheckCheck,
   ChevronLeft,
@@ -109,117 +107,138 @@ export default function ModalInputPresensiKonsorsium({
     );
   }, [selectedYear, selectedMonth, kelas]);
 
-  // Inisialisasi data form saat modal dibuka
-  useEffect(() => {
-    if (isOpen && kelas) {
-      setErrorMsg('');
+  // Helper untuk mengisi recordsMap lengkap bagi seluruh enrolledAnggota
+  const applySesiOrDefaultToForm = useCallback(
+    (targetDate: string, explicitSesi?: SesiPresensiKonsorsium | null) => {
+      if (!kelas) return;
 
-      if (editSesi) {
-        setTanggal(editSesi.tanggal || '');
-        setTopikBahasan(editSesi.topikBahasan || '');
-        setNotulen(editSesi.notulen || '');
+      const baseMap: Record<string, { status: StatusAbsenKonsorsium; keterangan: string }> = {};
+      enrolledAnggota.forEach((a) => {
+        baseMap[a.id] = { status: 'Hadir', keterangan: '' };
+      });
 
-        if (editSesi.tanggal) {
-          const parts = editSesi.tanggal.split('-');
-          if (parts.length >= 2) {
-            setSelectedYear(parseInt(parts[0], 10));
-            setSelectedMonth(parseInt(parts[1], 10));
+      const matchedSesi =
+        explicitSesi && explicitSesi.tanggal === targetDate
+          ? explicitSesi
+          : sesiList.find((s) => s.kelasId === kelas.id && s.tanggal === targetDate);
+
+      if (matchedSesi) {
+        setTopikBahasan(matchedSesi.topikBahasan || '');
+        setNotulen(matchedSesi.notulen || '');
+        enrolledAnggota.forEach((a) => {
+          const rec = matchedSesi.records.find(
+            (r) =>
+              r.anggotaId === a.id ||
+              (r.nia && r.nia !== '-' && r.nia === a.nia)
+          );
+          if (rec) {
+            baseMap[a.id] = {
+              status: rec.status,
+              keterangan: rec.keterangan || '',
+            };
           }
-        }
-
-        const map: Record<string, { status: StatusAbsenKonsorsium; keterangan: string }> = {};
-        editSesi.records.forEach((r) => {
-          map[r.anggotaId] = {
-            status: r.status,
-            keterangan: r.keterangan || '',
-          };
         });
-        setRecordsMap(map);
       } else {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const defaultTgl =
-          targetTanggal ||
-          (pertemuanList.length > 0 ? pertemuanList[0].tanggal : todayStr);
-
-        setTanggal(defaultTgl);
         setTopikBahasan('');
         setNotulen('');
+      }
 
-        // Cek apakah tanggal terpilih sudah pernah diabsen sebelumnya
-        const existingSesi = sesiList.find(
-          (s) => s.kelasId === kelas.id && s.tanggal === defaultTgl
-        );
+      setRecordsMap(baseMap);
+    },
+    [kelas, enrolledAnggota, sesiList]
+  );
 
-        if (existingSesi) {
-          setTopikBahasan(existingSesi.topikBahasan || '');
-          setNotulen(existingSesi.notulen || '');
-          const map: Record<string, { status: StatusAbsenKonsorsium; keterangan: string }> = {};
-          existingSesi.records.forEach((r) => {
-            map[r.anggotaId] = {
-              status: r.status,
-              keterangan: r.keterangan || '',
-            };
-          });
-          setRecordsMap(map);
-        } else {
-          // Default: semua anggota berstatus 'Hadir'
-          const initialMap: Record<string, { status: StatusAbsenKonsorsium; keterangan: string }> = {};
-          enrolledAnggota.forEach((a) => {
-            initialMap[a.id] = { status: 'Hadir', keterangan: '' };
-          });
-          setRecordsMap(initialMap);
-        }
+  // Inisialisasi data form saat modal dibuka atau target sesi berubah
+  useEffect(() => {
+    if (!isOpen || !kelas) return;
+
+    setErrorMsg('');
+    const todayStr = getLocalTodayISO();
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    const defaultMonthMeetings = getDaftarPertemuanBulan(
+      currentYear,
+      currentMonth,
+      kelas.jenisKonsor || 'Mustahiq/qoh'
+    );
+
+    const initDate =
+      editSesi?.tanggal ||
+      targetTanggal ||
+      (defaultMonthMeetings.length > 0 ? defaultMonthMeetings[0].tanggal : todayStr);
+
+    const parts = initDate.split('-');
+    if (parts.length >= 2) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      if (!isNaN(y) && !isNaN(m)) {
+        setSelectedYear(y);
+        setSelectedMonth(m);
       }
     }
-  }, [isOpen, kelas, editSesi, targetTanggal, enrolledAnggota]);
+
+    setTanggal(initDate);
+    applySesiOrDefaultToForm(initDate, editSesi);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, kelas?.id, editSesi?.id, targetTanggal]);
+
+  // Pastikan jika ada anggota baru saat modal terbuka, mereka tetap punya entry di recordsMap
+  useEffect(() => {
+    if (!isOpen || !kelas) return;
+    setRecordsMap((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      enrolledAnggota.forEach((a) => {
+        if (!next[a.id]) {
+          next[a.id] = { status: 'Hadir', keterangan: '' };
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [isOpen, kelas, enrolledAnggota]);
 
   // Ketika pengguna mengklik salah satu tombol Pertemuan 1..5
   const handlePilihPertemuan = (pTanggal: string) => {
     setTanggal(pTanggal);
-    if (!kelas) return;
-
-    // Cek apakah sesi ini sudah pernah disimpan
-    const existing = sesiList.find(
-      (s) => s.kelasId === kelas.id && s.tanggal === pTanggal
-    );
-
-    if (existing) {
-      setTopikBahasan(existing.topikBahasan || '');
-      setNotulen(existing.notulen || '');
-      const map: Record<string, { status: StatusAbsenKonsorsium; keterangan: string }> = {};
-      existing.records.forEach((r) => {
-        map[r.anggotaId] = {
-          status: r.status,
-          keterangan: r.keterangan || '',
-        };
-      });
-      setRecordsMap(map);
-    } else {
-      setTopikBahasan('');
-      setNotulen('');
-      const initialMap: Record<string, { status: StatusAbsenKonsorsium; keterangan: string }> = {};
-      enrolledAnggota.forEach((a) => {
-        initialMap[a.id] = { status: 'Hadir', keterangan: '' };
-      });
-      setRecordsMap(initialMap);
-    }
+    applySesiOrDefaultToForm(pTanggal, null);
   };
 
   const handlePrevMonth = () => {
-    if (selectedMonth === 1) {
-      setSelectedMonth(12);
-      setSelectedYear((y) => y - 1);
-    } else {
-      setSelectedMonth((m) => m - 1);
+    if (!kelas) return;
+    const nextMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
+    const nextYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+    setSelectedMonth(nextMonth);
+    setSelectedYear(nextYear);
+
+    const nextMeetings = getDaftarPertemuanBulan(
+      nextYear,
+      nextMonth,
+      kelas.jenisKonsor || 'Mustahiq/qoh'
+    );
+    const nextDate = nextMeetings[0]?.tanggal || '';
+    setTanggal(nextDate);
+    if (nextDate) {
+      applySesiOrDefaultToForm(nextDate, null);
     }
   };
 
   const handleNextMonth = () => {
-    if (selectedMonth === 12) {
-      setSelectedMonth(1);
-      setSelectedYear((y) => y + 1);
-    } else {
-      setSelectedMonth((m) => m + 1);
+    if (!kelas) return;
+    const nextMonth = selectedMonth === 12 ? 1 : selectedMonth + 1;
+    const nextYear = selectedMonth === 12 ? selectedYear + 1 : selectedYear;
+    setSelectedMonth(nextMonth);
+    setSelectedYear(nextYear);
+
+    const nextMeetings = getDaftarPertemuanBulan(
+      nextYear,
+      nextMonth,
+      kelas.jenisKonsor || 'Mustahiq/qoh'
+    );
+    const nextDate = nextMeetings[0]?.tanggal || '';
+    setTanggal(nextDate);
+    if (nextDate) {
+      applySesiOrDefaultToForm(nextDate, null);
     }
   };
 
@@ -257,7 +276,7 @@ export default function ModalInputPresensiKonsorsium({
     setRecordsMap(updated);
   };
 
-  // KPI Ringkasan
+  // KPI Ringkasan selalu dihitung dari enrolledAnggota aktif
   const stats = useMemo(() => {
     let hadir = 0;
     let izin = 0;
@@ -265,16 +284,17 @@ export default function ModalInputPresensiKonsorsium({
     let alfa = 0;
     let terlambat = 0;
 
-    Object.values(recordsMap).forEach((r) => {
-      if (r.status === 'Hadir') hadir++;
-      else if (r.status === 'Izin') izin++;
-      else if (r.status === 'Sakit') sakit++;
-      else if (r.status === 'Alfa') alfa++;
-      else if (r.status === 'Terlambat') terlambat++;
+    enrolledAnggota.forEach((a) => {
+      const status = recordsMap[a.id]?.status || 'Hadir';
+      if (status === 'Hadir') hadir++;
+      else if (status === 'Izin') izin++;
+      else if (status === 'Sakit') sakit++;
+      else if (status === 'Alfa') alfa++;
+      else if (status === 'Terlambat') terlambat++;
     });
 
     return { total: enrolledAnggota.length, hadir, izin, sakit, alfa, terlambat };
-  }, [recordsMap, enrolledAnggota.length]);
+  }, [recordsMap, enrolledAnggota]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -306,10 +326,13 @@ export default function ModalInputPresensiKonsorsium({
       // Hitung info pertemuan ke- berapa
       const currentPertemuan = pertemuanList.find((p) => p.tanggal === tanggal);
 
-      // Cek apakah sudah ada sesi dengan tanggal ini (untuk auto update)
-      const existingSesi = sesiList.find(
+      // Utamakan sesi dengan tanggal yang sedang dipilih agar ganti tab tanggal tidak menimpa sesi lama
+      const existingSesiByDate = sesiList.find(
         (s) => s.kelasId === kelas.id && s.tanggal === tanggal
       );
+      const targetSesiId =
+        existingSesiByDate?.id ||
+        (editSesi && editSesi.tanggal === tanggal ? editSesi.id : undefined);
 
       await simpanSesiPresensi(
         {
@@ -322,7 +345,7 @@ export default function ModalInputPresensiKonsorsium({
           notulen: notulen.trim(),
           records,
         },
-        editSesi?.id || existingSesi?.id
+        targetSesiId
       );
 
       onClose();
@@ -345,7 +368,7 @@ export default function ModalInputPresensiKonsorsium({
       title={`Input Presensi: ${kelas.namaKelas} (${kelas.jenisKonsor || 'Mustahiq/qoh'} - Setiap ${hariWajib})`}
       maxWidth="4xl"
     >
-      <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {errorMsg && (
           <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg flex items-center gap-2">
             <Info className="w-4 h-4 flex-shrink-0" />
@@ -366,6 +389,7 @@ export default function ModalInputPresensiKonsorsium({
                   type="button"
                   onClick={handlePrevMonth}
                   className="p-1 hover:text-emerald-700 hover:bg-slate-100 rounded"
+                  aria-label="Bulan Sebelumnya"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
@@ -376,6 +400,7 @@ export default function ModalInputPresensiKonsorsium({
                   type="button"
                   onClick={handleNextMonth}
                   className="p-1 hover:text-emerald-700 hover:bg-slate-100 rounded"
+                  aria-label="Bulan Berikutnya"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
@@ -413,7 +438,7 @@ export default function ModalInputPresensiKonsorsium({
                       Pertemuan {p.ke}
                     </span>
                     {isAlreadySaved ? (
-                      <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded ${isSelected ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-100 text-emerald-800'}`}>
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isSelected ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-100 text-emerald-800'}`}>
                         Sudah Diisi
                       </span>
                     ) : (

@@ -8,12 +8,14 @@ import { useFanStore } from '@/stores/useFanStore';
 import { useJadwalStore } from '@/stores/useJadwalStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
+import { useKonsorsiumStore } from '@/stores/useKonsorsiumStore';
 
 export interface CascadeDeleteSnapshot {
   deletedAsatidz: Asatidz[];
   fanDetailBefore: FanPelajaranDetail;
   jadwalMapBefore: Record<string, TeacherJadwalRow>;
   formasiBefore: Array<{ id: string | number; id_mustahiq?: string | null; wali_kelas?: string | null }>;
+  konsorsiumAnggotaDeletedIds?: string[];
 }
 
 /**
@@ -166,11 +168,32 @@ export const CascadeAsatidzService = {
         );
       }
 
+      // 5. Cascade Clean anggota_konsorsium & kelas_konsorsium
+      const konsStore = useKonsorsiumStore.getState();
+      const matchedKonsAnggota = konsStore.anggotaList.filter((ang) => {
+        const angNiaUpper = String(ang.nia || '').trim().toUpperCase();
+        const angNamaUpper = String(ang.nama || '').trim().toUpperCase();
+        return (
+          (angNiaUpper && angNiaUpper !== '-' && niasUpperSet.has(angNiaUpper)) ||
+          (angNamaUpper && namesUpperSet.has(angNamaUpper))
+        );
+      });
+
+      const konsorsiumAnggotaDeletedIds = matchedKonsAnggota.map((a) => a.id);
+      if (konsorsiumAnggotaDeletedIds.length > 0) {
+        await supabase
+          .from('anggota_konsorsium')
+          .delete()
+          .in('id', konsorsiumAnggotaDeletedIds);
+        await konsStore.fetchKonsorsiumData();
+      }
+
       return {
         deletedAsatidz: [...asatidzToDelete],
         fanDetailBefore,
         jadwalMapBefore,
         formasiBefore,
+        konsorsiumAnggotaDeletedIds,
       };
     } catch (err: any) {
       console.error('[CascadeAsatidzService] Error cascading delete:', err.message);
@@ -305,6 +328,24 @@ export const CascadeAsatidzService = {
         .eq('wali_kelas', cleanOld);
 
       await useFormasiStore.getState().fetchFormasi();
+
+      // Perbarui tabel relasional Absen Konsorsium jika menjadi pembimbing atau anggota
+      await supabase
+        .from('kelas_konsorsium')
+        .update({ pembimbing_nama: cleanNew, updated_at: new Date().toISOString() })
+        .eq('pembimbing_nama', cleanOld);
+
+      await supabase
+        .from('anggota_konsorsium')
+        .update({ nama_asatidz: cleanNew })
+        .eq('nama_asatidz', cleanOld);
+
+      await supabase
+        .from('detail_presensi_konsorsium')
+        .update({ nama_asatidz: cleanNew })
+        .eq('nama_asatidz', cleanOld);
+
+      await useKonsorsiumStore.getState().fetchKonsorsiumData();
 
       return true;
     } catch (err: any) {

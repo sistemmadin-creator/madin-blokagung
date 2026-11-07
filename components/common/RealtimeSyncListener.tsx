@@ -7,6 +7,7 @@ import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useJadwalStore, KEY_DB_JADWAL_ASATIDZ } from '@/stores/useJadwalStore';
 import { useAbsensiStore, KEY_DB_ABSENSI, KEY_DB_LIBUR } from '@/stores/useAbsensiStore';
 import { useMuhafadzohStore, KEY_DB_RIWAYAT_MUHAFADZOH } from '@/stores/useMuhafadzohStore';
+import { useKonsorsiumStore, KEY_DB_KONSORSIUM } from '@/stores/useKonsorsiumStore';
 
 export default function RealtimeSyncListener() {
   const [isConnected, setIsConnected] = useState(false);
@@ -44,6 +45,8 @@ export default function RealtimeSyncListener() {
             useAbsensiStore.getState().handleRealtimeLibur(val);
           } else if (key === KEY_DB_RIWAYAT_MUHAFADZOH) {
             useMuhafadzohStore.getState().handleRealtimeMuhafadzoh(val);
+          } else if (key === KEY_DB_KONSORSIUM) {
+            useKonsorsiumStore.getState().handleRealtimeKonsorsium(val);
           }
         }
       )

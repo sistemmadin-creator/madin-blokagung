@@ -103,6 +103,57 @@ export interface ScheduleSolverProposalRecord {
   updated_at?: string;
 }
 
+export interface KelasKonsorsiumRow {
+  id: string;
+  tingkat: string;
+  jenis_konsor: string;
+  nama_kelas: string;
+  kitab_rujukan?: string;
+  pembimbing_nama: string;
+  pembimbing_nia?: string;
+  keterangan?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AnggotaKonsorsiumRow {
+  id: string;
+  kelas_id: string;
+  asatidz_id?: string | null;
+  nia: string;
+  nama_asatidz: string;
+  gender?: string;
+  peran?: string;
+  tanggal_bergabung?: string;
+  created_at?: string;
+}
+
+export interface SesiPresensiKonsorsiumRow {
+  id: string;
+  kelas_id: string;
+  tanggal: string;
+  hari?: string;
+  tahun?: number | null;
+  bulan?: number | null;
+  pertemuan_ke?: number | null;
+  topik_bahasan?: string;
+  notulen?: string;
+  diinput_oleh?: string;
+  created_at?: string;
+}
+
+export interface DetailPresensiKonsorsiumRow {
+  id: string;
+  sesi_id: string;
+  anggota_id: string;
+  nia: string;
+  nama_asatidz: string;
+  status: string;
+  keterangan?: string;
+  waktu_input?: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -172,6 +223,26 @@ export interface Database {
         Row: ScheduleSolverProposalRecord;
         Insert: Partial<ScheduleSolverProposalRecord>;
         Update: Partial<ScheduleSolverProposalRecord>;
+      };
+      kelas_konsorsium: {
+        Row: KelasKonsorsiumRow;
+        Insert: Partial<KelasKonsorsiumRow>;
+        Update: Partial<KelasKonsorsiumRow>;
+      };
+      anggota_konsorsium: {
+        Row: AnggotaKonsorsiumRow;
+        Insert: Partial<AnggotaKonsorsiumRow>;
+        Update: Partial<AnggotaKonsorsiumRow>;
+      };
+      sesi_presensi_konsorsium: {
+        Row: SesiPresensiKonsorsiumRow;
+        Insert: Partial<SesiPresensiKonsorsiumRow>;
+        Update: Partial<SesiPresensiKonsorsiumRow>;
+      };
+      detail_presensi_konsorsium: {
+        Row: DetailPresensiKonsorsiumRow;
+        Insert: Partial<DetailPresensiKonsorsiumRow>;
+        Update: Partial<DetailPresensiKonsorsiumRow>;
       };
     };
   };

@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { useKonsorsiumStore } from '@/stores/useKonsorsiumStore';
 import { KelasKonsorsium, SesiPresensiKonsorsium } from '@/types/konsorsium';
+import { getLocalTodayISO } from '@/lib/utils/konsorsiumHelper';
 import * as XLSX from 'xlsx';
 import {
   Calendar,
@@ -12,10 +13,6 @@ import {
   Edit3,
   ChevronDown,
   ChevronUp,
-  Clock,
-  CheckCircle2,
-  Users,
-  BookOpen,
 } from 'lucide-react';
 
 interface ModalRiwayatPresensiKonsorsiumProps {
@@ -23,6 +20,7 @@ interface ModalRiwayatPresensiKonsorsiumProps {
   onClose: () => void;
   kelas: KelasKonsorsium | null;
   onEditSesi: (sesi: SesiPresensiKonsorsium) => void;
+  canEdit?: boolean;
 }
 
 export default function ModalRiwayatPresensiKonsorsium({
@@ -30,6 +28,7 @@ export default function ModalRiwayatPresensiKonsorsium({
   onClose,
   kelas,
   onEditSesi,
+  canEdit = true,
 }: ModalRiwayatPresensiKonsorsiumProps) {
   const { sesiList, hapusSesiPresensi } = useKonsorsiumStore();
   const [expandedSesiId, setExpandedSesiId] = useState<string | null>(null);
@@ -49,7 +48,7 @@ export default function ModalRiwayatPresensiKonsorsium({
   const handleExportExcel = () => {
     if (!kelas || kelasSesiList.length === 0) return;
 
-    const rows: Record<string, any>[] = [];
+    const rows: Record<string, string | number>[] = [];
 
     kelasSesiList.forEach((sesi) => {
       sesi.records.forEach((rec, idx) => {
@@ -74,7 +73,7 @@ export default function ModalRiwayatPresensiKonsorsium({
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Presensi Konsorsium');
     XLSX.writeFile(
       workbook,
-      `Presensi_Konsorsium_${kelas.namaKelas.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`
+      `Presensi_Konsorsium_${kelas.namaKelas.replace(/\s+/g, '_')}_${getLocalTodayISO()}.xlsx`
     );
   };
 
@@ -87,7 +86,7 @@ export default function ModalRiwayatPresensiKonsorsium({
       title={`Riwayat Pertemuan: ${kelas.namaKelas}`}
       maxWidth="lg"
     >
-      <div className="p-6 space-y-4">
+      <div className="space-y-4">
         {/* Header Action & Info */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
           <div>
@@ -165,34 +164,38 @@ export default function ModalRiwayatPresensiKonsorsium({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditSesi(sesi);
-                        }}
-                        className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors"
-                        title="Ubah Presensi"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (
-                            confirm(
-                              `Apakah Anda yakin ingin menghapus catatan presensi tanggal ${sesi.tanggal}?`
-                            )
-                          ) {
-                            hapusSesiPresensi(sesi.id);
-                          }
-                        }}
-                        className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-md transition-colors"
-                        title="Hapus Presensi"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {canEdit && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditSesi(sesi);
+                            }}
+                            className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors"
+                            title="Ubah Presensi"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (
+                                confirm(
+                                  `Apakah Anda yakin ingin menghapus catatan presensi tanggal ${sesi.tanggal}?`
+                                )
+                              ) {
+                                hapusSesiPresensi(sesi.id);
+                              }
+                            }}
+                            className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-md transition-colors"
+                            title="Hapus Presensi"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
                       {isExpanded ? (
                         <ChevronUp className="w-4 h-4 text-slate-400" />
                       ) : (
