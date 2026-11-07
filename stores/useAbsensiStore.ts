@@ -1818,18 +1818,19 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
     }
 
     // 2. Persistensi ke Supabase app_settings di background tanpa memblokir thread
-    supabase
-      .from('app_settings')
-      .upsert(
-        { key: KEY_DB_SINGKATAN_ASATIDZ, value: mapping },
-        { onConflict: 'key' }
-      )
-      .then(() => {
+    (async () => {
+      try {
+        await supabase
+          .from('app_settings')
+          .upsert(
+            { key: KEY_DB_SINGKATAN_ASATIDZ, value: mapping },
+            { onConflict: 'key' }
+          );
         logActivity('Simpan Singkatan Asatidz', 'Memperbarui daftar singkatan nama asatidz laporan WA').catch(() => {});
-      })
-      .catch((err) => {
+      } catch (err: any) {
         console.warn('Save singkatan asatidz background warning:', err?.message || err);
-      });
+      }
+    })();
 
     return true;
   },

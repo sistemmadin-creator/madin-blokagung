@@ -4,10 +4,8 @@ import React, { useState, useEffect } from 'react';
 import {
   Clock,
   Users,
-  Copy,
   Check,
   X,
-  Send,
   RefreshCw,
   BellRing,
   ClipboardCheck,
