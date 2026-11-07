@@ -291,6 +291,8 @@ interface AbsensiState {
     skipHistory?: boolean
   ) => Promise<boolean>;
   hapusRekamanRiwayat: (id: string, skipHistory?: boolean) => Promise<boolean>;
+  hapusBanyakRekamanRiwayat: (ids: string[], skipHistory?: boolean) => Promise<boolean>;
+  hapusSemuaRekamanRiwayat: (targetIds?: string[], label?: string) => Promise<boolean>;
 
   saveAbsensiJam: (date: string, jam: JamKbm, records: RecordSesiAbsensi[]) => Promise<boolean>;
   setHariLibur: (
@@ -1147,6 +1149,200 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       return true;
     } catch (err: any) {
       console.error('Hapus rekaman riwayat error:', err.message);
+      return false;
+    }
+  },
+
+  hapusBanyakRekamanRiwayat: async (ids: string[], skipHistory = false) => {
+    if (!ids || ids.length === 0) return false;
+    const { rawBucketMap, selectedDate, sesiHariIni, forceUnlockedJams } = get();
+    const prevRawMap = JSON.parse(JSON.stringify(rawBucketMap));
+    const nextRawMap: Record<string, any> = { ...rawBucketMap };
+    const idSet = new Set(ids);
+    let countRemoved = 0;
+
+    Object.entries(nextRawMap).forEach(([bKey, bucket]) => {
+      if (!bucket || typeof bucket !== 'object' || !Array.isArray(bucket.data)) return;
+      const initialLen = bucket.data.length;
+      const newData = bucket.data.filter((t: any) => {
+        const recordId = Array.isArray(t) ? t[0] : t?.id;
+        return !idSet.has(recordId);
+      });
+      if (newData.length < initialLen) {
+        countRemoved += (initialLen - newData.length);
+        if (newData.length === 0) {
+          delete nextRawMap[bKey];
+        } else {
+          nextRawMap[bKey] = {
+            ...bucket,
+            data: newData,
+          };
+        }
+      }
+    });
+
+    if (countRemoved === 0) return false;
+
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert(
+          { key: KEY_DB_ABSENSI, value: nextRawMap },
+          { onConflict: 'key' }
+        );
+      if (error) throw error;
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(LS_CACHE_ABSENSI, JSON.stringify(nextRawMap));
+        } catch {
+          // Abaikan
+        }
+      }
+
+      const nextSavedRecords = buildSavedRecordsForDate(selectedDate, nextRawMap);
+      const nextAbsensiMapByDate = buildLegacyAbsensiMapByDate(nextRawMap);
+      const { savedJams, unlockedJams } = computeJamLocks(
+        selectedDate,
+        sesiHariIni,
+        nextSavedRecords,
+        forceUnlockedJams
+      );
+
+      await logActivity('Hapus Riwayat Absensi Terpilih', `Menghapus ${countRemoved} rekaman absensi terpilih`);
+
+      if (!skipHistory) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'absensi',
+          title: `Hapus ${countRemoved} Rekaman Absensi`,
+          undo: async () => {
+            return await get().restoreAbsensiRawMap(
+              prevRawMap,
+              `[UNDO] Hapus ${countRemoved} Rekaman Absensi`
+            );
+          },
+          redo: async () => {
+            return await get().restoreAbsensiRawMap(
+              nextRawMap,
+              `[REDO] Hapus ${countRemoved} Rekaman Absensi`
+            );
+          },
+        });
+      }
+
+      set({
+        rawBucketMap: nextRawMap,
+        absensiMapByDate: nextAbsensiMapByDate,
+        savedRecords: nextSavedRecords,
+        pendingStatus: {},
+        savedJams,
+        unlockedJams,
+      });
+
+      return true;
+    } catch (err: any) {
+      console.error('Hapus banyak rekaman riwayat error:', err?.message || err);
+      return false;
+    }
+  },
+
+  hapusSemuaRekamanRiwayat: async (targetIds?: string[], label = 'Semua') => {
+    const { rawBucketMap, selectedDate, sesiHariIni, forceUnlockedJams } = get();
+    const prevRawMap = JSON.parse(JSON.stringify(rawBucketMap));
+    let nextRawMap: Record<string, any> = {};
+    let countRemoved = 0;
+
+    if (targetIds && targetIds.length > 0) {
+      nextRawMap = { ...rawBucketMap };
+      const idSet = new Set(targetIds);
+      Object.entries(nextRawMap).forEach(([bKey, bucket]) => {
+        if (!bucket || typeof bucket !== 'object' || !Array.isArray(bucket.data)) return;
+        const initialLen = bucket.data.length;
+        const newData = bucket.data.filter((t: any) => {
+          const recordId = Array.isArray(t) ? t[0] : t?.id;
+          return !idSet.has(recordId);
+        });
+        if (newData.length < initialLen) {
+          countRemoved += (initialLen - newData.length);
+          if (newData.length === 0) {
+            delete nextRawMap[bKey];
+          } else {
+            nextRawMap[bKey] = {
+              ...bucket,
+              data: newData,
+            };
+          }
+        }
+      });
+    } else {
+      Object.values(rawBucketMap).forEach((b: any) => {
+        if (Array.isArray(b?.data)) countRemoved += b.data.length;
+      });
+      nextRawMap = {};
+    }
+
+    if (countRemoved === 0) return false;
+
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert(
+          { key: KEY_DB_ABSENSI, value: nextRawMap },
+          { onConflict: 'key' }
+        );
+      if (error) throw error;
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(LS_CACHE_ABSENSI, JSON.stringify(nextRawMap));
+        } catch {
+          // Abaikan
+        }
+      }
+
+      const nextSavedRecords = buildSavedRecordsForDate(selectedDate, nextRawMap);
+      const nextAbsensiMapByDate = buildLegacyAbsensiMapByDate(nextRawMap);
+      const { savedJams, unlockedJams } = computeJamLocks(
+        selectedDate,
+        sesiHariIni,
+        nextSavedRecords,
+        forceUnlockedJams
+      );
+
+      await logActivity(
+        'Hapus Semua Riwayat Absensi',
+        `Menghapus ${countRemoved} rekaman absensi (${label})`
+      );
+
+      useUndoRedoStore.getState().recordAction({
+        module: 'absensi',
+        title: `Hapus ${label} Rekaman Absensi (${countRemoved} data)`,
+        undo: async () => {
+          return await get().restoreAbsensiRawMap(
+            prevRawMap,
+            `[UNDO] Hapus ${label} Rekaman Absensi (${countRemoved} data)`
+          );
+        },
+        redo: async () => {
+          return await get().restoreAbsensiRawMap(
+            nextRawMap,
+            `[REDO] Hapus ${label} Rekaman Absensi (${countRemoved} data)`
+          );
+        },
+      });
+
+      set({
+        rawBucketMap: nextRawMap,
+        absensiMapByDate: nextAbsensiMapByDate,
+        savedRecords: nextSavedRecords,
+        pendingStatus: {},
+        savedJams,
+        unlockedJams,
+      });
+
+      return true;
+    } catch (err: any) {
+      console.error('Hapus semua rekaman riwayat error:', err?.message || err);
       return false;
     }
   },

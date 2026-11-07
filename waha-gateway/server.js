@@ -173,6 +173,34 @@ app.get('/api/sessions', (req, res) => {
   ]);
 });
 
+async function resolveWhatsAppJid(rawChatId) {
+  const cleanNumber = String(rawChatId || '')
+    .replace('@c.us', '')
+    .replace('@s.whatsapp.net', '')
+    .replace(/[^0-9]/g, '');
+
+  if (!cleanNumber) {
+    const invalidErr = new Error('Nomor WhatsApp tujuan tidak valid.');
+    invalidErr.statusCode = 400;
+    throw invalidErr;
+  }
+
+  if (typeof sock?.onWhatsApp === 'function') {
+    const results = await sock.onWhatsApp(cleanNumber);
+    const match = Array.isArray(results) ? results[0] : null;
+    if (!match || !match.exists) {
+      const notFoundErr = new Error(
+        `Nomor ${cleanNumber} tidak terdaftar atau tidak aktif di WhatsApp.`
+      );
+      notFoundErr.statusCode = 400;
+      throw notFoundErr;
+    }
+    return match.jid || `${cleanNumber}@s.whatsapp.net`;
+  }
+
+  return `${cleanNumber}@s.whatsapp.net`;
+}
+
 app.post('/api/sendImage', async (req, res) => {
   try {
     if (currentStatus !== 'WORKING' || !sock) {
@@ -186,10 +214,7 @@ app.post('/api/sendImage', async (req, res) => {
       return res.status(400).json({ error: 'Parameter chatId dan file.url wajib disertakan.' });
     }
 
-    let targetJid = chatId.replace('@c.us', '@s.whatsapp.net');
-    if (!targetJid.includes('@')) {
-      targetJid = `${targetJid}@s.whatsapp.net`;
-    }
+    const targetJid = await resolveWhatsAppJid(chatId);
 
     let imageBuffer;
     if (file.url.startsWith('data:image')) {
@@ -208,12 +233,14 @@ app.post('/api/sendImage', async (req, res) => {
     console.log(`[SUKSES] Gambar terkirim ke: ${targetJid} (ID: ${result?.key?.id})`);
     return res.json({
       id: result?.key?.id || `msg_${Date.now()}`,
+      jid: targetJid,
       status: 'success',
     });
   } catch (err) {
+    const statusCode = err.statusCode || 500;
     console.error('[GAGAL] Gagal mengirim gambar:', err.message);
-    return res.status(500).json({
-      error: `Gagal mengirim gambar: ${err.message}`,
+    return res.status(statusCode).json({
+      error: err.message,
     });
   }
 });
@@ -225,13 +252,13 @@ app.post('/api/sendText', async (req, res) => {
     }
 
     const { chatId, text } = req.body;
-    let targetJid = chatId.replace('@c.us', '@s.whatsapp.net');
-    if (!targetJid.includes('@')) targetJid = `${targetJid}@s.whatsapp.net`;
+    const targetJid = await resolveWhatsAppJid(chatId);
 
     const result = await sock.sendMessage(targetJid, { text: text || '' });
-    return res.json({ id: result?.key?.id, status: 'success' });
+    return res.json({ id: result?.key?.id, jid: targetJid, status: 'success' });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({ error: err.message });
   }
 });
 

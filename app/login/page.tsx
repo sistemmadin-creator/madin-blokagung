@@ -117,7 +117,7 @@ function LoginFormContent() {
       }
 
       const profile = extractUserProfile(data.user);
-      await logActivity(
+      void logActivity(
         'LOGIN SISTEM',
         `Masuk ke ruang kerja internal sebagai ${profile?.fullName || trimmedUser} (${profile?.roleLabel || 'Pengurus'})${
           isPersistentAbsenCepat ? ' [Otoritas Spesial Perangkat Tetap -> Absen Cepat]' : ''
@@ -128,8 +128,7 @@ function LoginFormContent() {
         ? '/absen-cepat'
         : nextPath;
 
-      router.replace(finalTarget);
-      router.refresh();
+      window.location.assign(finalTarget);
     } catch {
       setErrorMsg(
         'Gagal menghubungi server autentikasi. Periksa sambungan internet Anda lalu coba lagi.'

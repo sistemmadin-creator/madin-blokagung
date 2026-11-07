@@ -267,6 +267,31 @@ export async function logoutWahaSession(
   }
 }
 
+async function resolveImageAsDataUrl(imageUrl: string): Promise<string> {
+  if (!imageUrl || imageUrl.startsWith('data:image') || typeof window === 'undefined') {
+    return imageUrl;
+  }
+  try {
+    const imgRes = await fetch(imageUrl, { credentials: 'include' });
+    if (!imgRes.ok) return imageUrl;
+    const blob = await imgRes.blob();
+    return await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string' && reader.result.startsWith('data:image')) {
+          resolve(reader.result);
+        } else {
+          resolve(imageUrl);
+        }
+      };
+      reader.onerror = () => resolve(imageUrl);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return imageUrl;
+  }
+}
+
 export async function sendWahaImage(
   config: WahaConfig,
   phone: string,
@@ -279,11 +304,13 @@ export async function sendWahaImage(
     return { success: false, error: 'Nomor WhatsApp tidak valid.' };
   }
 
+  const resolvedFileUrl = await resolveImageAsDataUrl(imageUrl);
+
   const payload = {
     session: config.session || 'default',
     chatId,
     file: {
-      url: imageUrl,
+      url: resolvedFileUrl,
       filename: 'Kartu_Rapor_Hafalan_Madin.png',
       caption,
     },
@@ -300,9 +327,17 @@ export async function sendWahaImage(
 
     if (!res.ok) {
       const errBody = await res.text();
+      let parsedError = errBody || res.statusText;
+      try {
+        const errJson = JSON.parse(errBody);
+        if (errJson?.error) parsedError = String(errJson.error);
+        else if (errJson?.message) parsedError = String(errJson.message);
+      } catch {
+        // Gunakan teks asli bila bukan JSON
+      }
       return {
         success: false,
-        error: `Gagal mengirim gambar (${res.status}): ${errBody || res.statusText}`,
+        error: parsedError,
       };
     }
 
@@ -340,12 +375,16 @@ export function saveDeliveryLog(log: Omit<DeliveryLog, 'id' | 'tanggalKirim'>): 
   localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(updated));
 }
 
-export function isAlreadyDelivered(noInduk: string, materi: string): boolean {
+export function getLatestDeliveryLog(
+  noInduk: string,
+  materi: string
+): DeliveryLog | undefined {
   const logs = getDeliveryLogs();
-  return logs.some(
-    (l) =>
-      l.noInduk === noInduk &&
-      l.materi === materi &&
-      (l.status === 'success' || l.status === 'manual')
-  );
+  return logs.find((l) => l.noInduk === noInduk && l.materi === materi);
+}
+
+export function isAlreadyDelivered(noInduk: string, materi: string): boolean {
+  const latest = getLatestDeliveryLog(noInduk, materi);
+  if (!latest) return false;
+  return latest.status === 'success' || latest.status === 'manual';
 }

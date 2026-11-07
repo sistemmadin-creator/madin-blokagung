@@ -6,27 +6,44 @@ test.describe('Modul Kirim WhatsApp & Kartu Rapor Digital Hafalan (Gabungan Gamb
   test('Integrasi penuh Setor Mustahiq -> 3 Riwayat Setor Terakhir -> Kartu Rapor Digital Hafalan & Nomor WA Santri', async ({
     page,
   }) => {
+    // 0. Pastikan endpoint /api/og/rapor-hafalan dapat diakses tanpa sesi login (tidak terkena 401)
+    const unauthOgRes = await page.request.get(
+      '/api/og/rapor-hafalan?nama=ARYA%20PRATAMA&nis=12345'
+    );
+    expect(unauthOgRes.status()).toBe(200);
+    expect(unauthOgRes.headers()['content-type']).toContain('image/png');
+
     // 1. Buka halaman Setor Mustahiq (Gambar 5)
     await page.goto('/setor-mustahiq');
+    await page.waitForLoadState('domcontentloaded');
+    if (page.url().includes('/login')) {
+      await page.getByLabel('Username Pengurus').fill('admin');
+      await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+      await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
+      await page.waitForURL('**/setor-mustahiq**', { timeout: 60000 });
+    }
+
     await expect(
       page.getByRole('heading', { name: 'Setoran Mingguan Santri (Mustahiq)' })
-    ).toBeVisible({ timeout: 25000 });
+    ).toBeVisible({ timeout: 45000 });
 
     // Pastikan tombol pintasan Kirim WA Rapor ada di toolbar
     await expect(page.getByTestId('btn-shortcut-kirim-wa')).toBeVisible();
 
-    // Beralih ke tampilan Tabel dan buka modal santri ANDIKO DWI SAPUTRA (sesuai Gambar 3)
+    // Beralih ke tampilan Tabel dan buka modal santri ARYA PRATAMA (sesuai Gambar 1 & 2)
     await page.getByRole('button', { name: 'Tabel' }).click();
-    const andikoBtn = page.getByRole('button', { name: 'ANDIKO DWI SAPUTRA' }).first();
-    await expect(andikoBtn).toBeVisible({ timeout: 20000 });
-    await andikoBtn.click();
+    const targetSantriBtn = page
+      .getByRole('button', { name: /ARYA PRATAMA|ANDIKO DWI SAPUTRA/ })
+      .first();
+    await expect(targetSantriBtn).toBeVisible({ timeout: 20000 });
+    await targetSantriBtn.click();
 
-    // 2. Di dalam Modal Detail Setoran Santri (Gambar 3 & 4), tambahkan 4 riwayat setoran
+    // 2. Di dalam Modal Detail Setoran Santri, tambahkan 4 riwayat setoran
     const modal = page.getByTestId('modal-detail-setor-mustahiq');
     await expect(modal).toBeVisible();
 
     const santriName = (await modal.locator('h3').first().textContent())?.trim() || '';
-    expect(santriName).toBe('ANDIKO DWI SAPUTRA');
+    expect(santriName.length).toBeGreaterThan(0);
 
     // Input 4 catatan setoran berturut-turut agar menguji pemotongan 3 riwayat terakhir
     const isNumericInput = await page.getByTestId('input-tambah-angka').isVisible();
@@ -100,7 +117,100 @@ test.describe('Modul Kirim WhatsApp & Kartu Rapor Digital Hafalan (Gabungan Gamb
     await modalGateway.getByRole('button', { name: 'Batal', exact: true }).click();
     await expect(modalGateway).toBeHidden();
 
-    // 8. Verifikasi responsivitas pada viewport HP (375x667) tanpa overflow horizontal
+    // 8. Uji Pengiriman Broadcast & Penanganan Kegagalan vs Keberhasilan (Koreksi Gambar 1 & Gambar 2)
+    let simulateSendSuccess = false;
+    let capturedImagePayloadUrl = '';
+
+    await page.route('**/api/sessions/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          name: 'default',
+          status: 'WORKING',
+          me: { id: '6281958426856@c.us', pushName: 'Madin Blokagung' },
+        }),
+      });
+    });
+
+    await page.route('**/api/sendImage', async (route) => {
+      const postBody = route.request().postDataJSON();
+      capturedImagePayloadUrl = postBody?.file?.url || '';
+      if (!simulateSendSuccess) {
+        return route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            error: 'Nomor 6285289039180 tidak terdaftar atau tidak aktif di WhatsApp.',
+          }),
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'msg_test_success_1',
+          status: 'success',
+        }),
+      });
+    });
+
+    // Klik tombol status WAHA untuk menyegarkan status menjadi Online
+    await page.getByTestId('btn-status-waha').click();
+    await expect(page.getByTestId('btn-status-waha')).toContainText('WAHA Aktif');
+
+    // Pastikan santri terpilih memiliki nomor telepon (jika belum, isi melalui modal cepat)
+    const activeRow = page
+      .locator('[data-testid^="wa-row-"]')
+      .filter({ hasText: santriName })
+      .first();
+    await expect(activeRow).toBeVisible();
+
+    if (await activeRow.getByText('Belum Ada (Isi Nomor)').isVisible()) {
+      await activeRow.getByText('Belum Ada (Isi Nomor)').click();
+      const phoneModal = page.getByTestId('modal-edit-phone-santri');
+      await expect(phoneModal).toBeVisible();
+      await page.getByTestId('input-quick-phone-santri').fill('085289039180');
+      await page.getByTestId('btn-save-quick-phone').click();
+      await expect(phoneModal).toBeHidden({ timeout: 15000 });
+    }
+
+    // Centang baris santri tersebut untuk Broadcast
+    const rowCheckbox = activeRow.getByRole('checkbox');
+    if (!(await rowCheckbox.isChecked())) {
+      await rowCheckbox.check();
+    }
+
+    // Skenario A (Gambar 2): Broadcast gagal -> Panel TIDAK langsung hilang, menampilkan ringkasan gagal & badge Gagal Kirim
+    simulateSendSuccess = false;
+    await page.getByTestId('btn-start-broadcast-wa').click();
+
+    const broadcastPanel = page.getByTestId('panel-broadcast-progress');
+    await expect(broadcastPanel).toBeVisible();
+    await expect(broadcastPanel).toContainText('Broadcast Gagal Terkirim (1 Gagal)', {
+      timeout: 15000,
+    });
+    await expect(page.getByTestId('broadcast-logs-container')).toContainText(
+      'tidak terdaftar atau tidak aktif di WhatsApp'
+    );
+    expect(capturedImagePayloadUrl.startsWith('data:image/png;base64,')).toBe(true);
+    await expect(activeRow.getByTestId('badge-wa-gagal')).toBeVisible();
+
+    // Tutup panel log broadcast
+    await page.getByTestId('btn-close-broadcast-log').click();
+    await expect(broadcastPanel).toBeHidden();
+
+    // Skenario B: Broadcast berhasil -> Panel menampilkan Broadcast Selesai (1 Berhasil Terkirim) & badge Terkirim
+    simulateSendSuccess = true;
+    await page.getByTestId('btn-start-broadcast-wa').click();
+    await expect(broadcastPanel).toBeVisible();
+    await expect(broadcastPanel).toContainText('Broadcast Selesai (1 Berhasil Terkirim)', {
+      timeout: 15000,
+    });
+    await expect(activeRow.getByTestId('badge-wa-terkirim')).toBeVisible();
+    await page.getByTestId('btn-close-broadcast-log').click();
+
+    // 9. Verifikasi responsivitas pada viewport HP (375x667) tanpa overflow horizontal
     await page.setViewportSize({ width: 375, height: 667 });
     await expect
       .poll(

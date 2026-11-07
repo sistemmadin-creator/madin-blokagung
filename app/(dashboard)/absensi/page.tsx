@@ -30,6 +30,7 @@ import {
   MapPin,
   BookOpen,
   Building2,
+  Loader2,
 } from 'lucide-react';
 import { useAbsensiStore } from '@/stores/useAbsensiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
@@ -105,6 +106,8 @@ export default function AbsensiAsatidzPage() {
     simpanAbsensiJam,
     editRekamanRiwayat,
     hapusRekamanRiwayat,
+    hapusBanyakRekamanRiwayat,
+    hapusSemuaRekamanRiwayat,
     setHariLibur,
   } = useAbsensiStore();
 
@@ -166,6 +169,10 @@ export default function AbsensiAsatidzPage() {
   );
   const [riwayatPage, setRiwayatPage] = useState<number>(1);
   const [riwayatPageSize, setRiwayatPageSize] = useState<number>(25);
+  const [selectedRiwayatIds, setSelectedRiwayatIds] = useState<string[]>([]);
+  const [isConfirmHapusPilihOpen, setIsConfirmHapusPilihOpen] = useState<boolean>(false);
+  const [isConfirmHapusSemuaOpen, setIsConfirmHapusSemuaOpen] = useState<boolean>(false);
+  const [isDeletingRiwayat, setIsDeletingRiwayat] = useState<boolean>(false);
 
   const showToast = (type: 'success' | 'error', text: string) => {
     setToastMsg({ type, text });
@@ -428,6 +435,75 @@ export default function AbsensiAsatidzPage() {
     setRiwayatNama('');
     setRiwayatQuickSearch('');
     setRiwayatPage(1);
+    setSelectedRiwayatIds([]);
+  };
+
+  const isAllPageSelected =
+    paginatedRiwayat.length > 0 &&
+    paginatedRiwayat.every((item) => selectedRiwayatIds.includes(item.id));
+
+  const handleToggleSelectAllPage = () => {
+    if (isAllPageSelected) {
+      const pageIds = new Set(paginatedRiwayat.map((i) => i.id));
+      setSelectedRiwayatIds((prev) => prev.filter((id) => !pageIds.has(id)));
+    } else {
+      const pageIds = paginatedRiwayat.map((i) => i.id);
+      setSelectedRiwayatIds((prev) => Array.from(new Set([...prev, ...pageIds])));
+    }
+  };
+
+  const handleToggleSelectRow = (id: string) => {
+    setSelectedRiwayatIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleEksekusiHapusPilih = async () => {
+    if (selectedRiwayatIds.length === 0) return;
+    setIsDeletingRiwayat(true);
+    try {
+      const count = selectedRiwayatIds.length;
+      const ok = await hapusBanyakRekamanRiwayat(selectedRiwayatIds);
+      if (ok) {
+        showToast('success', `${count} rekaman riwayat absensi berhasil dihapus.`);
+        setSelectedRiwayatIds([]);
+        setIsConfirmHapusPilihOpen(false);
+      } else {
+        showToast('error', 'Gagal menghapus rekaman terpilih.');
+      }
+    } finally {
+      setIsDeletingRiwayat(false);
+    }
+  };
+
+  const handleEksekusiHapusSemua = async () => {
+    if (filteredRiwayatList.length === 0) return;
+    setIsDeletingRiwayat(true);
+    try {
+      const isFiltered =
+        Boolean(riwayatTglDari) ||
+        Boolean(riwayatTglSampai) ||
+        riwayatHari !== 'ALL' ||
+        riwayatJam !== 'ALL' ||
+        riwayatBlok !== 'ALL' ||
+        riwayatStatus !== 'ALL' ||
+        Boolean(riwayatQuickSearch.trim());
+
+      const targetIds = isFiltered ? filteredRiwayatList.map((r) => r.id) : undefined;
+      const label = isFiltered ? 'Filter Saat Ini' : 'Semua';
+      const count = filteredRiwayatList.length;
+
+      const ok = await hapusSemuaRekamanRiwayat(targetIds, label);
+      if (ok) {
+        showToast('success', `${count} rekaman riwayat absensi berhasil dihapus (${label}).`);
+        setSelectedRiwayatIds([]);
+        setIsConfirmHapusSemuaOpen(false);
+      } else {
+        showToast('error', 'Gagal menghapus riwayat absensi.');
+      }
+    } finally {
+      setIsDeletingRiwayat(false);
+    }
   };
 
   const handleExportRiwayatExcel = () => {
@@ -1523,9 +1599,47 @@ export default function AbsensiAsatidzPage() {
                 </select>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">
-                  Total: <strong>{filteredRiwayatList.length}</strong> Rekaman
+              <div className="flex flex-wrap items-center gap-2.5">
+                {canDelete && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmHapusPilihOpen(true)}
+                      disabled={selectedRiwayatIds.length === 0}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        selectedRiwayatIds.length > 0
+                          ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm ring-2 ring-rose-200 cursor-pointer'
+                          : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                      }`}
+                      title={
+                        selectedRiwayatIds.length > 0
+                          ? `Hapus ${selectedRiwayatIds.length} rekaman yang dipilih`
+                          : 'Centang kotak rekaman pada tabel untuk menghapus'
+                      }
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Hapus Pilih {selectedRiwayatIds.length > 0 ? `(${selectedRiwayatIds.length})` : ''}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmHapusSemuaOpen(true)}
+                      disabled={filteredRiwayatList.length === 0}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        filteredRiwayatList.length > 0
+                          ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-sm cursor-pointer'
+                          : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                      }`}
+                      title="Hapus semua rekaman riwayat yang sedang tampil"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                      Hapus Semua
+                    </button>
+                  </div>
+                )}
+
+                <span className="text-xs text-slate-500 font-medium">
+                  Total: <strong className="text-slate-800">{filteredRiwayatList.length}</strong> Rekaman
                 </span>
                 <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5">
                   <button
@@ -1562,6 +1676,17 @@ export default function AbsensiAsatidzPage() {
                 <table className="w-full text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-100 text-slate-600 font-bold uppercase text-[10px] border-b border-slate-200">
+                      {canDelete && (
+                        <th className="py-2.5 px-3 text-center w-8">
+                          <input
+                            type="checkbox"
+                            checked={isAllPageSelected}
+                            onChange={handleToggleSelectAllPage}
+                            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                            title="Pilih semua pada halaman ini"
+                          />
+                        </th>
+                      )}
                       <th className="py-2.5 px-3 text-center w-10">NO</th>
                       <th className="py-2.5 px-3 text-left">TANGGAL / HARI</th>
                       <th className="py-2.5 px-3 text-center">JAM</th>
@@ -1580,7 +1705,7 @@ export default function AbsensiAsatidzPage() {
                     {paginatedRiwayat.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={12}
+                          colSpan={canDelete ? 13 : 12}
                           className="py-12 text-center text-slate-400"
                         >
                           Belum ada rekaman riwayat absensi yang sesuai filter.
@@ -1590,8 +1715,24 @@ export default function AbsensiAsatidzPage() {
                       paginatedRiwayat.map((item, idx) => {
                         const rowNum =
                           (riwayatPage - 1) * riwayatPageSize + idx + 1;
+                        const isSelected = selectedRiwayatIds.includes(item.id);
                         return (
-                          <tr key={item.id} className="hover:bg-slate-50">
+                          <tr
+                            key={item.id}
+                            className={`hover:bg-slate-50 transition-colors ${
+                              isSelected ? 'bg-emerald-50/60' : ''
+                            }`}
+                          >
+                            {canDelete && (
+                              <td className="py-2.5 px-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleSelectRow(item.id)}
+                                  className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                />
+                              </td>
+                            )}
                             <td className="py-2.5 px-3 text-center font-mono text-slate-400">
                               {rowNum}
                             </td>
@@ -1700,8 +1841,25 @@ export default function AbsensiAsatidzPage() {
                   paginatedRiwayat.map((item) => (
                     <div
                       key={item.id}
-                      className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-sm space-y-2 text-xs"
+                      className={`p-3.5 rounded-xl border bg-white shadow-sm space-y-2 text-xs transition-colors ${
+                        selectedRiwayatIds.includes(item.id)
+                          ? 'border-emerald-400 bg-emerald-50/40 ring-1 ring-emerald-300'
+                          : 'border-slate-200'
+                      }`}
                     >
+                      {canDelete && (
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedRiwayatIds.includes(item.id)}
+                              onChange={() => handleToggleSelectRow(item.id)}
+                              className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                            />
+                            <span className="text-[11px] font-semibold text-slate-600">Pilih Rekaman</span>
+                          </label>
+                        </div>
+                      )}
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="font-bold text-slate-800">
@@ -1856,6 +2014,114 @@ export default function AbsensiAsatidzPage() {
         onClose={() => setIsWAModalOpen(false)}
         initialJam="ALL"
       />
+
+      {/* Modal Konfirmasi Hapus Pilih */}
+      {isConfirmHapusPilihOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-extrabold text-slate-900 mb-2">
+              Hapus {selectedRiwayatIds.length} Rekaman Terpilih?
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed mb-6">
+              Apakah Anda yakin ingin menghapus <strong>{selectedRiwayatIds.length}</strong> rekaman riwayat absensi yang telah dipilih? Data akan dihapus dari sistem namun dapat dibatalkan sewaktu-waktu melalui tombol <strong>Undo</strong> di bilah atas.
+            </p>
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsConfirmHapusPilihOpen(false)}
+                disabled={isDeletingRiwayat}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleEksekusiHapusPilih}
+                disabled={isDeletingRiwayat}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-200 transition-colors inline-flex items-center gap-1.5"
+              >
+                {isDeletingRiwayat ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Menghapus...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Ya, Hapus ({selectedRiwayatIds.length})
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Hapus Semua */}
+      {isConfirmHapusSemuaOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center mb-4">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-extrabold text-slate-900 mb-2">
+              Hapus Semua Rekaman Riwayat Absensi?
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed mb-4">
+              {Boolean(riwayatTglDari) ||
+              Boolean(riwayatTglSampai) ||
+              riwayatHari !== 'ALL' ||
+              riwayatJam !== 'ALL' ||
+              riwayatBlok !== 'ALL' ||
+              riwayatStatus !== 'ALL' ||
+              Boolean(riwayatQuickSearch.trim()) ? (
+                <span>
+                  Filter sedang aktif. Tindakan ini akan menghapus seluruh <strong>{filteredRiwayatList.length}</strong> rekaman riwayat absensi yang sesuai dengan kriteria pencarian/filter saat ini.
+                </span>
+              ) : (
+                <span>
+                  Perhatian: Tindakan ini akan menghapus <strong>SELURUH ({filteredRiwayatList.length})</strong> rekaman riwayat absensi yang tersimpan dalam database madrasah.
+                </span>
+              )}
+            </p>
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 mb-6 flex items-start gap-2">
+              <span className="font-bold">Info:</span>
+              <span>Anda tetap dapat membatalkan tindakan ini sewaktu-waktu lewat tombol Undo di bagian atas.</span>
+            </div>
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsConfirmHapusSemuaOpen(false)}
+                disabled={isDeletingRiwayat}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleEksekusiHapusSemua}
+                disabled={isDeletingRiwayat}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-200 transition-colors inline-flex items-center gap-1.5"
+              >
+                {isDeletingRiwayat ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Menghapus...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Ya, Hapus Semua ({filteredRiwayatList.length})
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

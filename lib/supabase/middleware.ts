@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { sanitizeNextPath } from '@/lib/utils/authHelper';
 
 const PUBLIC_EXACT_PATHS = new Set(['/', '/login', '/manifest.webmanifest']);
-const PUBLIC_PREFIX_PATHS = ['/berita'];
+const PUBLIC_PREFIX_PATHS = ['/berita', '/api/og/rapor-hafalan'];
 
 export function isPublicPathname(pathname: string): boolean {
   if (PUBLIC_EXACT_PATHS.has(pathname)) return true;

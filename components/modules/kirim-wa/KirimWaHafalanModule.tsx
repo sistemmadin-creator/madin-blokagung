@@ -23,6 +23,7 @@ import {
   BookOpen,
   Phone,
   X,
+  AlertCircle,
 } from 'lucide-react';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
@@ -47,6 +48,7 @@ import {
   formatPhoneNumber,
   getDeliveryLogs,
   saveDeliveryLog,
+  getLatestDeliveryLog,
   isAlreadyDelivered,
   DEFAULT_WAHA_CONFIG,
   type WahaConfig,
@@ -68,6 +70,8 @@ export interface SantriWaRaporRow {
   phone: string;
   hasPhone: boolean;
   isDelivered: boolean;
+  deliveryStatus?: 'success' | 'failed' | 'manual';
+  deliveryError?: string;
   totalCatatan: number;
   last3Logs: RaporHistoryItem[];
   targetPreview: string;
@@ -142,7 +146,13 @@ export default function KirimWaHafalanModule() {
   // Broadcast Runner State
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [broadcastProgress, setBroadcastProgress] = useState({ current: 0, total: 0 });
+  const [broadcastProgress, setBroadcastProgress] = useState({
+    current: 0,
+    completed: 0,
+    total: 0,
+    successCount: 0,
+    failedCount: 0,
+  });
   const [currentDelay, setCurrentDelay] = useState<number>(0);
   const [broadcastLogs, setBroadcastLogs] = useState<string[]>([]);
   const cancelBroadcastRef = useRef(false);
@@ -318,6 +328,7 @@ export default function KirimWaHafalanModule() {
       const rawPhone = String(s.telepon || '').trim();
       const phone = formatPhoneNumber(rawPhone);
       const hasPhone = Boolean(phone && phone.length >= 9);
+      const latestLog = getLatestDeliveryLog(setorRow.no_induk, setorRow.active_item.nama);
       const isDelivered = isAlreadyDelivered(setorRow.no_induk, setorRow.active_item.nama);
 
       return {
@@ -326,6 +337,8 @@ export default function KirimWaHafalanModule() {
         phone,
         hasPhone,
         isDelivered,
+        deliveryStatus: latestLog?.status,
+        deliveryError: latestLog?.error,
         totalCatatan: prog.matchingLogs.length,
         last3Logs,
         targetPreview: formatTargetPreview(setorRow.active_item),
@@ -781,10 +794,19 @@ export default function KirimWaHafalanModule() {
     setIsPaused(false);
     cancelBroadcastRef.current = false;
     pauseBroadcastRef.current = false;
-    setBroadcastProgress({ current: 0, total: validRows.length });
+    setBroadcastProgress({
+      current: 0,
+      completed: 0,
+      total: validRows.length,
+      successCount: 0,
+      failedCount: 0,
+    });
     setBroadcastLogs([
       `[${new Date().toLocaleTimeString()}] Memulai broadcast Kartu Rapor Hafalan ke ${validRows.length} nomor...`,
     ]);
+
+    let localSuccess = 0;
+    let localFailed = 0;
 
     for (let i = 0; i < validRows.length; i++) {
       if (cancelBroadcastRef.current) {
@@ -801,7 +823,10 @@ export default function KirimWaHafalanModule() {
       }
 
       const item = validRows[i];
-      setBroadcastProgress({ current: i + 1, total: validRows.length });
+      setBroadcastProgress((prev) => ({
+        ...prev,
+        current: i + 1,
+      }));
 
       try {
         const imageUrl = buildRaporImageUrl(item);
@@ -817,6 +842,7 @@ export default function KirimWaHafalanModule() {
         const res = await sendWahaImage(wahaConfig, item.phone, imageUrl, text);
 
         if (res.success) {
+          localSuccess += 1;
           saveDeliveryLog({
             noInduk: item.row.no_induk,
             namaSantri: item.row.nama,
@@ -831,6 +857,7 @@ export default function KirimWaHafalanModule() {
             `  ✓ Berhasil terkirim ke ${item.row.nama}.`,
           ]);
         } else {
+          localFailed += 1;
           saveDeliveryLog({
             noInduk: item.row.no_induk,
             namaSantri: item.row.nama,
@@ -847,12 +874,22 @@ export default function KirimWaHafalanModule() {
           ]);
         }
       } catch (e: unknown) {
+        localFailed += 1;
         const msg = e instanceof Error ? e.message : 'Unknown error';
         setBroadcastLogs((prev) => [
           ...prev,
           `  ✕ Error sistem saat memproses ${item.row.nama}: ${msg}`,
         ]);
       }
+
+      setBroadcastProgress({
+        current: i + 1,
+        completed: i + 1,
+        total: validRows.length,
+        successCount: localSuccess,
+        failedCount: localFailed,
+      });
+      refreshLogsState();
 
       if (i < validRows.length - 1 && !cancelBroadcastRef.current) {
         const delaySeconds =
@@ -874,10 +911,13 @@ export default function KirimWaHafalanModule() {
 
     setBroadcastLogs((prev) => [
       ...prev,
-      `[${new Date().toLocaleTimeString()}] Selesai memproses seluruh antrean broadcast.`,
+      `[${new Date().toLocaleTimeString()}] Selesai: ${localSuccess} berhasil terkirim, ${localFailed} gagal.`,
     ]);
     setIsBroadcasting(false);
     refreshLogsState();
+    showToast(
+      `Broadcast selesai: ${localSuccess} berhasil, ${localFailed} gagal.`
+    );
   };
 
   const handlePauseResume = () => {
@@ -1016,60 +1056,123 @@ export default function KirimWaHafalanModule() {
         </div>
       )}
 
-      {/* 3. Progress Box saat Sedang Broadcast Massal */}
-      {isBroadcasting && (
-        <div className="bg-emerald-950 text-white rounded-2xl p-5 shadow-xl border border-emerald-500/40 space-y-4">
+      {/* 3. Progress & Ringkasan Hasil Broadcast Massal */}
+      {(isBroadcasting || broadcastLogs.length > 0) && (
+        <div
+          data-testid="panel-broadcast-progress"
+          className="bg-emerald-950 text-white rounded-2xl p-5 shadow-xl border border-emerald-500/40 space-y-4"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
+                <span
+                  className={`w-3 h-3 rounded-full ${
+                    isBroadcasting
+                      ? 'bg-emerald-400 animate-ping'
+                      : broadcastProgress.failedCount > 0 && broadcastProgress.successCount === 0
+                      ? 'bg-rose-400'
+                      : broadcastProgress.failedCount > 0
+                      ? 'bg-amber-400'
+                      : 'bg-emerald-400'
+                  }`}
+                />
                 <h3 className="font-bold text-sm sm:text-base">
-                  Sedang Mengirim Broadcast Kartu Rapor Digital...
+                  {isBroadcasting
+                    ? 'Sedang Mengirim Broadcast Kartu Rapor Digital...'
+                    : broadcastProgress.failedCount > 0 && broadcastProgress.successCount === 0
+                    ? `Broadcast Gagal Terkirim (${broadcastProgress.failedCount} Gagal)`
+                    : broadcastProgress.failedCount > 0
+                    ? `Broadcast Selesai Sebagian (${broadcastProgress.successCount} Berhasil, ${broadcastProgress.failedCount} Gagal)`
+                    : `Broadcast Selesai (${broadcastProgress.successCount} Berhasil Terkirim)`}
                 </h3>
               </div>
               <p className="text-xs text-emerald-200 mt-1">
-                Memproses {broadcastProgress.current} dari {broadcastProgress.total} santri
-                {currentDelay > 0 && ` • Jeda aman anti-banned: ${currentDelay} detik lagi...`}
+                {isBroadcasting ? (
+                  <>
+                    Memproses {broadcastProgress.current} dari {broadcastProgress.total} santri (
+                    {broadcastProgress.completed} selesai)
+                    {currentDelay > 0 && ` • Jeda aman anti-banned: ${currentDelay} detik lagi...`}
+                  </>
+                ) : (
+                  <>
+                    Total diproses: {broadcastProgress.completed} dari {broadcastProgress.total}{' '}
+                    santri • {broadcastProgress.successCount} Berhasil •{' '}
+                    {broadcastProgress.failedCount} Gagal
+                  </>
+                )}
               </p>
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handlePauseResume}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition cursor-pointer"
-              >
-                {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-                <span>{isPaused ? 'Lanjutkan' : 'Jeda'}</span>
-              </button>
+              {isBroadcasting ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handlePauseResume}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition cursor-pointer"
+                  >
+                    {isPaused ? (
+                      <Play className="w-3.5 h-3.5" />
+                    ) : (
+                      <Pause className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isPaused ? 'Lanjutkan' : 'Jeda'}</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={handleCancelBroadcast}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white transition cursor-pointer"
-              >
-                <Square className="w-3.5 h-3.5" />
-                <span>Hentikan</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelBroadcast}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white transition cursor-pointer"
+                  >
+                    <Square className="w-3.5 h-3.5" />
+                    <span>Hentikan</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  data-testid="btn-close-broadcast-log"
+                  onClick={() => setBroadcastLogs([])}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-xs font-bold text-white transition cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Tutup Log</span>
+                </button>
+              )}
             </div>
           </div>
 
           <div className="w-full bg-emerald-900 rounded-full h-3 overflow-hidden">
             <div
-              className="bg-emerald-400 h-full transition-transform duration-300"
+              data-testid="broadcast-progress-bar"
+              className={`h-full transition-all duration-300 ${
+                !isBroadcasting &&
+                broadcastProgress.failedCount > 0 &&
+                broadcastProgress.successCount === 0
+                  ? 'bg-rose-400'
+                  : 'bg-emerald-400'
+              }`}
               style={{
                 width: `${
                   broadcastProgress.total > 0
-                    ? (broadcastProgress.current / broadcastProgress.total) * 100
+                    ? (broadcastProgress.completed / broadcastProgress.total) * 100
                     : 0
                 }%`,
               }}
             />
           </div>
 
-          <div className="bg-black/40 rounded-xl p-3 font-mono text-[11px] text-emerald-300 max-h-36 overflow-y-auto space-y-1">
-            {broadcastLogs.slice(-6).map((log, idx) => (
-              <div key={idx} className="truncate">
+          <div
+            data-testid="broadcast-logs-container"
+            className="bg-black/40 rounded-xl p-3 font-mono text-[11px] text-emerald-300 max-h-40 overflow-y-auto space-y-1"
+          >
+            {broadcastLogs.slice(-8).map((log, idx) => (
+              <div
+                key={idx}
+                className={
+                  log.includes('✕') ? 'text-rose-300 font-semibold whitespace-pre-wrap' : 'truncate'
+                }
+              >
                 {log}
               </div>
             ))}
@@ -1314,9 +1417,29 @@ export default function KirimWaHafalanModule() {
                           <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
                             {r.short_kelas_badge} ({r.kelas_label})
                           </span>
-                          {item.isDelivered && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0">
+                          {item.deliveryStatus === 'success' && (
+                            <span
+                              data-testid="badge-wa-terkirim"
+                              className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0"
+                            >
                               <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Terkirim
+                            </span>
+                          )}
+                          {item.deliveryStatus === 'manual' && (
+                            <span
+                              data-testid="badge-wa-manual"
+                              className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 shrink-0"
+                            >
+                              <ExternalLink className="w-3 h-3 text-teal-600" /> Dibuka di WA Web
+                            </span>
+                          )}
+                          {item.deliveryStatus === 'failed' && (
+                            <span
+                              data-testid="badge-wa-gagal"
+                              title={item.deliveryError || 'Gagal mengirim pesan'}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-800 shrink-0"
+                            >
+                              <AlertCircle className="w-3 h-3 text-rose-600" /> Gagal Kirim
                             </span>
                           )}
                         </div>
