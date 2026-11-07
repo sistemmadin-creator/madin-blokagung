@@ -10,8 +10,97 @@ const {
   DisconnectReason,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
+  fetchLatestWaWebVersion,
+  Browsers,
   delay,
 } = require('@whiskeysockets/baileys');
+
+// --- PATCH ANTI-401 UNTUK UPLOAD MEDIA BAILEYS ---
+try {
+  const messagesMedia = require('@whiskeysockets/baileys/lib/Utils/messages-media');
+  if (messagesMedia && typeof messagesMedia.getWaUploadToServer === 'function') {
+    const MEDIA_PATH_MAP = {
+      image: '/mms/image',
+      video: '/mms/video',
+      document: '/mms/document',
+      audio: '/mms/audio',
+      sticker: '/mms/image',
+      'thumbnail-link': '/mms/image',
+      'product-catalog-image': '/product/image',
+      'md-app-state': '',
+      'md-msg-hist': '/mms/md-app-state',
+    };
+
+    const encodeB64ForUpload = (b64) =>
+      encodeURIComponent(b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''));
+
+    const toBuffer = async (input) => {
+      if (Buffer.isBuffer(input)) return input;
+      if (typeof input === 'string' && fs.existsSync(input)) return fs.readFileSync(input);
+      const chunks = [];
+      for await (const chunk of input) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+    };
+
+    messagesMedia.getWaUploadToServer = (
+      { customUploadHosts = [], fetchAgent, options = {} },
+      refreshMediaConn
+    ) => {
+      return async (streamOrPath, { mediaType, fileEncSha256B64, timeoutMs }) => {
+        const bodyBuffer = await toBuffer(streamOrPath);
+        const safeSha = encodeB64ForUpload(fileEncSha256B64);
+        const mediaPath = MEDIA_PATH_MAP[mediaType] || '/mms/image';
+
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const uploadInfo = await refreshMediaConn(attempt > 0);
+          const hosts = [...customUploadHosts, ...(uploadInfo?.hosts || [])];
+
+          for (const { hostname } of hosts) {
+            const auth = encodeURIComponent(uploadInfo.auth);
+            const url = `https://${hostname}${mediaPath}/${safeSha}?auth=${auth}&token=${safeSha}`;
+            try {
+              const { data } = await axios.post(url, bodyBuffer, {
+                ...options,
+                headers: {
+                  ...(options.headers || {}),
+                  'Content-Type': 'application/octet-stream',
+                  'Content-Length': bodyBuffer.length,
+                  Origin: 'https://web.whatsapp.com',
+                  Referer: 'https://web.whatsapp.com/',
+                  'User-Agent':
+                    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+                },
+                httpsAgent: fetchAgent,
+                timeout: timeoutMs || 30000,
+                responseType: 'json',
+                maxBodyLength: Infinity,
+                maxContentLength: Infinity,
+              });
+
+              if (data && (data.url || data.direct_path)) {
+                return {
+                  mediaUrl: data.url,
+                  directPath: data.direct_path,
+                };
+              }
+            } catch (err) {
+              const status = err?.response?.status;
+              console.warn(`[WARN] Upload media ke ${hostname} gagal (status: ${status || err.message})`);
+              if (status === 401 || status === 403) {
+                break; // Keluar dari loop host untuk force-refresh mediaConn pada attempt berikutnya
+              }
+            }
+          }
+        }
+        throw new Error('Gagal mengunggah media ke server WhatsApp setelah refresh token.');
+      };
+    }
+  }
+} catch (patchErr) {
+  console.warn('Info patch media:', patchErr.message);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3008;
@@ -42,24 +131,54 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 let sock = null;
-let currentStatus = 'STARTING'; // STARTING | SCAN_QR_CODE | WORKING | STOPPED | FAILED
+let currentStatus = 'STARTING';
 let currentQrCodeDataUrl = null;
 let connectedUser = null;
 let connectionAttempts = 0;
 
 const logger = pino({ level: 'silent' });
 
+async function getLatestWaVersion() {
+  try {
+    const { data } = await axios.get(
+      'https://web.whatsapp.com/check-update?version=1&platform=web',
+      { timeout: 6000 }
+    );
+    if (data && data.currentVersion) {
+      const parts = data.currentVersion.split('.').map(Number);
+      if (parts.length === 3 && !parts.some(isNaN)) {
+        return parts;
+      }
+    }
+  } catch (e) {}
+
+  try {
+    if (typeof fetchLatestWaWebVersion === 'function') {
+      const { version } = await fetchLatestWaWebVersion({});
+      if (version) return version;
+    }
+  } catch (e) {}
+
+  try {
+    const { version } = await fetchLatestBaileysVersion();
+    if (version) return version;
+  } catch (e) {}
+
+  return [2, 3000, 1023223821];
+}
+
 async function initWhatsApp() {
   try {
     currentStatus = 'STARTING';
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-    const { version } = await fetchLatestBaileysVersion();
+    const version = await getLatestWaVersion();
+    console.log('Menggunakan WA Web Version:', version.join('.'));
 
     sock = makeWASocket({
       version,
       logger,
       auth: state,
-      browser: ['Madin Al Amiriyyah Blokagung', 'Chrome', '1.0.0'],
+      browser: Browsers?.ubuntu ? Browsers.ubuntu('Chrome') : ['Ubuntu', 'Chrome', '22.04.4'],
       syncFullHistory: false,
       connectTimeoutMs: 60000,
     });
@@ -185,7 +304,7 @@ app.post('/api/sendImage', async (req, res) => {
     const rawFile = file?.url || file?.data || req.body?.image;
 
     if (!chatId || !rawFile) {
-      return res.status(400).json({ error: 'Parameter chatId dan file (url/data) wajib disertakan.' });
+      return res.status(400).json({ error: 'Parameter chatId dan file.url wajib disertakan.' });
     }
 
     let targetJid = String(chatId).replace('@c.us', '@s.whatsapp.net');
@@ -194,35 +313,19 @@ app.post('/api/sendImage', async (req, res) => {
     }
 
     let imageBuffer;
-
-    // 1. Jika dikirim sebagai Data URI (data:image/png;base64,...)
     if (rawFile.startsWith('data:image')) {
       const base64Data = rawFile.replace(/^data:image\/\w+;base64,/, '');
       imageBuffer = Buffer.from(base64Data, 'base64');
-    } 
-    // 2. Jika dikirim sebagai URL HTTP/HTTPS
-    else if (rawFile.startsWith('http://') || rawFile.startsWith('https://')) {
-      console.log(`[INFO] Mengunduh gambar dari URL: ${rawFile}`);
-      const resp = await axios.get(rawFile, {
-        responseType: 'arraybuffer',
-        timeout: 25000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-          ...(req.headers.authorization ? { Authorization: req.headers.authorization } : {}),
-        },
-      });
+    } else if (rawFile.startsWith('http://') || rawFile.startsWith('https://')) {
+      const resp = await axios.get(rawFile, { responseType: 'arraybuffer', timeout: 20000 });
       imageBuffer = Buffer.from(resp.data);
-    } 
-    // 3. Jika dikirim sebagai string Base64 murni (tanpa prefix data:image)
-    else {
+    } else {
       imageBuffer = Buffer.from(rawFile, 'base64');
     }
 
-    const finalCaption = file?.caption || caption || '';
-
     const result = await sock.sendMessage(targetJid, {
       image: imageBuffer,
-      caption: finalCaption,
+      caption: file?.caption || caption || '',
     });
 
     console.log(`[SUKSES] Gambar terkirim ke: ${targetJid} (ID: ${result?.key?.id})`);
@@ -231,8 +334,7 @@ app.post('/api/sendImage', async (req, res) => {
       status: 'success',
     });
   } catch (err) {
-    const failedUrl = req.body?.file?.url || 'unknown';
-    console.error(`[GAGAL] Gagal mengirim gambar (Sumber: ${failedUrl.substring(0, 80)}):`, err.message);
+    console.error('[GAGAL] Gagal mengirim gambar:', err.message);
     return res.status(500).json({
       error: `Gagal mengirim gambar: ${err.message}`,
     });
@@ -246,7 +348,7 @@ app.post('/api/sendText', async (req, res) => {
     }
 
     const { chatId, text } = req.body;
-    let targetJid = chatId.replace('@c.us', '@s.whatsapp.net');
+    let targetJid = String(chatId).replace('@c.us', '@s.whatsapp.net');
     if (!targetJid.includes('@')) targetJid = `${targetJid}@s.whatsapp.net`;
 
     const result = await sock.sendMessage(targetJid, { text: text || '' });
