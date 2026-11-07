@@ -732,6 +732,7 @@ export interface GenerateLaporanWAParams {
   judulJamLabel?: string;
   isLibur?: boolean;
   infoLibur?: HariLiburInfo | null;
+  singkatanMap?: Record<string, string>;
 }
 
 /**
@@ -742,40 +743,39 @@ export interface GenerateLaporanWAParams {
  * Format nama asatidz untuk laporan WhatsApp:
  * 1. Setiap asatidz putra diawali 'Ust.' dan putri diawali 'Ustz.'
  * 2. Membersihkan gelar/awalan yang mungkin sudah tertulis di master data agar tidak duplikat
- * 3. Normalisasi awalan varian nama Muhammad / Mohammad / Moch / Moh / Mhd / M menjadi 'M.'
- * 4. Membatasi panjang nama maksimal 14 karakter; jika lebih dari 14 huruf, selanjutnya diberi ' .'
- *    Pengecualian: jika nama aslinya memang sudah selesai (panjang <= 14 huruf), tidak perlu diberi titik '.'
+ * 3. Menggunakan nama singkatan manual yang telah ditentukan pengguna jika tersedia
+ * 4. Jika tidak ada singkatan manual, nama asatidz ditampilkan utuh (tanpa pemotongan 14 karakter dan tanpa normalisasi kata Muhammad)
  */
 export function formatNamaAsatidzWA(
   nama: string,
-  gender?: 'PA' | 'PI' | string
+  gender?: 'PA' | 'PI' | string,
+  singkatanMap?: Record<string, string>
 ): string {
   if (!nama || !nama.trim()) return '-';
+  const rawTrimmed = nama.trim();
 
-  // 1. Bersihkan prefix gelar lama jika ada (misal: "Ust.", "Ustadz", "Ustz.", "Ustadzah")
-  let cleanName = nama
-    .trim()
+  // 1. Cek apakah ada singkatan manual dari pengguna
+  let baseName = rawTrimmed;
+  if (singkatanMap) {
+    const custom =
+      singkatanMap[rawTrimmed] ||
+      singkatanMap[rawTrimmed.toUpperCase()] ||
+      singkatanMap[rawTrimmed.toLowerCase()];
+    if (custom && custom.trim()) {
+      baseName = custom.trim();
+    }
+  }
+
+  // 2. Bersihkan prefix gelar jika ada (misal: "Ust.", "Ustadz", "Ustz.", "Ustadzah")
+  const cleanName = baseName
     .replace(/^(ust(\.|adz)?|ustz(\.|adzah)?)\s+/i, '')
     .trim();
 
-  // 2. Normalisasi awalan varian Muhammad menjadi 'M.'
-  cleanName = cleanName.replace(
-    /^(muhammad|muhamad|mohammad|mohamad|mochammad|mochmad|mochamad|moch|moh|muh|mhd|m)\.?\s+/i,
-    'M. '
-  );
-
-  // 3. Batasi maksimal 14 karakter jika melebihi (dengan titik tunggal '.')
-  let formattedName = cleanName;
-  if (cleanName.length > 14) {
-    const sliced = cleanName.slice(0, 14).trimEnd();
-    formattedName = sliced.endsWith('.') ? sliced : `${sliced} .`;
-  }
-
-  // 4. Tambahkan prefix berdasarkan gender
+  // 3. Tambahkan prefix kehormatan berdasarkan gender
   const isPI = String(gender || '').trim().toUpperCase() === 'PI';
   const prefix = isPI ? 'Ustz. ' : 'Ust. ';
 
-  return `${prefix}${formattedName}`;
+  return `${prefix}${cleanName}`;
 }
 
 export function generateLaporanWAText({
@@ -787,6 +787,7 @@ export function generateLaporanWAText({
   filterGender = 'SEMUA',
   isLibur = false,
   infoLibur = null,
+  singkatanMap,
 }: GenerateLaporanWAParams): string {
   const tglPanjang = formatTanggalPanjangIndo(tanggal).toUpperCase();
 
@@ -985,7 +986,7 @@ export function generateLaporanWAText({
 
         // Cetak masing-masing asatidz pada baris tersendiri dengan nomor urut berlanjut
         guruList.forEach((gItem) => {
-          const formattedName = formatNamaAsatidzWA(gItem.guru, gItem.gender);
+          const formattedName = formatNamaAsatidzWA(gItem.guru, gItem.gender, singkatanMap);
           const firstEmoji = gItem.sessions[0]?.emoji || '❓';
           const isSemuaSama = gItem.sessions.every((se) => se.emoji === firstEmoji);
 

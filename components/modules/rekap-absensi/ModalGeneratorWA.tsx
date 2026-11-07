@@ -12,6 +12,7 @@ import {
   BellRing,
   ClipboardCheck,
   MessageSquare,
+  Type,
 } from 'lucide-react';
 import { useAbsensiStore } from '@/stores/useAbsensiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
@@ -20,6 +21,7 @@ import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useFanStore } from '@/stores/useFanStore';
 import { JamKbm } from '@/types/absensi';
 import { generateLaporanWAText } from '@/lib/utils/absensiHelper';
+import ModalSingkatNamaWA from './ModalSingkatNamaWA';
 
 interface ModalGeneratorWAProps {
   isOpen: boolean;
@@ -44,6 +46,8 @@ export default function ModalGeneratorWA({
     liburMapByDate,
     getSesiStatusData,
     syncSesiHariIni,
+    singkatanAsatidzMap,
+    fetchSingkatanAsatidz,
   } = useAbsensiStore();
 
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
@@ -59,6 +63,7 @@ export default function ModalGeneratorWA({
   const [copied, setCopied] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [pushResult, setPushResult] = useState<string | null>(null);
+  const [isSingkatNamaModalOpen, setIsSingkatNamaModalOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -76,6 +81,7 @@ export default function ModalGeneratorWA({
       if (Object.keys(jadwalMap).length === 0) fetchJadwal();
       if (formasiList.length === 0) fetchFormasi();
       if (Object.keys(fanConfig).length === 0) fetchFanData();
+      fetchSingkatanAsatidz();
     }
   }, [
     isOpen,
@@ -88,6 +94,7 @@ export default function ModalGeneratorWA({
     fetchJadwal,
     fetchFormasi,
     fetchFanData,
+    fetchSingkatanAsatidz,
   ]);
 
   // Pastikan sesiHariIni tersinkronisasi bila dibuka dari halaman Rekap Absensi atau saat formasi selesai dimuat
@@ -131,6 +138,7 @@ export default function ModalGeneratorWA({
       filterGender,
       isLibur,
       infoLibur,
+      singkatanMap: singkatanAsatidzMap,
     });
     setWaText(text);
   };
@@ -140,7 +148,7 @@ export default function ModalGeneratorWA({
       regenerateText();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, selectedDate, selectedJams, filterGender, sesiHariIni, liburMapByDate]);
+  }, [isOpen, selectedDate, selectedJams, filterGender, sesiHariIni, liburMapByDate, singkatanAsatidzMap]);
 
   if (!isOpen) return null;
 
@@ -353,6 +361,15 @@ export default function ModalGeneratorWA({
                 Pratinjau Teks Laporan WhatsApp:
               </label>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSingkatNamaModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 transition-colors shadow-2xs cursor-pointer"
+                  title="Atur singkatan nama asatidz manual untuk laporan WhatsApp"
+                >
+                  <Type className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Singkat Nama</span>
+                </button>
                 <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-mono text-[11px] font-semibold border border-slate-200">
                   {waText.length} Karakter
                 </span>
@@ -454,6 +471,13 @@ export default function ModalGeneratorWA({
           </div>
         </div>
       </div>
+
+      {/* Modal Pengaturan Singkat Nama Asatidz */}
+      <ModalSingkatNamaWA
+        isOpen={isSingkatNamaModalOpen}
+        onClose={() => setIsSingkatNamaModalOpen(false)}
+        onSaved={regenerateText}
+      />
     </div>
   );
 }

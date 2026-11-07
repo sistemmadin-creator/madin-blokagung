@@ -31,8 +31,10 @@ import { buildDefaultLiburMapFromKalender } from '@/lib/utils/kalenderHijriyahHe
 
 export const KEY_DB_ABSENSI = 'ABSENSI_ASATIDZ_DATA';
 export const KEY_DB_LIBUR = 'PENGATURAN_LIBUR_MADIN';
+export const KEY_DB_SINGKATAN_ASATIDZ = 'MADIN_SINGKATAN_ASATIDZ_WA';
 export const LS_CACHE_ABSENSI = 'MADIN_ABSENSI_ASATIDZ_DATA';
 export const LS_CACHE_LIBUR = 'MADIN_PENGATURAN_LIBUR';
+export const LS_CACHE_SINGKATAN_ASATIDZ = 'MADIN_CACHE_SINGKATAN_ASATIDZ';
 
 /**
  * Mengonversi rawBucketMap (V3 maupun Legacy) menjadi absensiMapByDate
@@ -316,6 +318,9 @@ interface AbsensiState {
   ) => Promise<boolean>;
   handleRealtimeAbsensi: (newValue: any) => void;
   handleRealtimeLibur: (newValue: any) => void;
+  singkatanAsatidzMap: Record<string, string>;
+  fetchSingkatanAsatidz: () => Promise<Record<string, string>>;
+  saveSingkatanAsatidz: (mapping: Record<string, string>) => Promise<boolean>;
 }
 
 const initialDate = getDefaultTanggalAbsensi();
@@ -399,6 +404,18 @@ function getInitialSyncedLiburMap(): Record<string, HariLiburInfo> {
   return buildDefaultLiburMapFromKalender();
 }
 
+function getInitialSingkatanMap(): Record<string, string> {
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(LS_CACHE_SINGKATAN_ASATIDZ);
+      if (raw) return JSON.parse(raw);
+    } catch {
+      // Abaikan
+    }
+  }
+  return {};
+}
+
 export const useAbsensiStore = create<AbsensiState>((set, get) => ({
   selectedDate: initialDate,
   hari: getNamaHariDariTgl(initialDate),
@@ -408,6 +425,7 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
   rawBucketMap: {},
   absensiMapByDate: {},
   liburMapByDate: getInitialSyncedLiburMap(),
+  singkatanAsatidzMap: getInitialSingkatanMap(),
 
   sesiHariIni: { 1: [], 2: [], 3: [], 4: [] },
   savedRecords: {},
@@ -502,6 +520,7 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
         .in('key', [
           KEY_DB_ABSENSI,
           KEY_DB_LIBUR,
+          KEY_DB_SINGKATAN_ASATIDZ,
           'MADIN_KALENDER_KEGIATAN_V3',
           'KEY_DB_ABSENSI',
           'KEY_DB_LIBUR',
@@ -512,6 +531,7 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
         const legacyAbsRow = rows.find((r) => r.key === 'KEY_DB_ABSENSI');
         const mainAbsRow = rows.find((r) => r.key === KEY_DB_ABSENSI);
         const mainLibRow = rows.find((r) => r.key === KEY_DB_LIBUR);
+        const singkatanRow = rows.find((r) => r.key === KEY_DB_SINGKATAN_ASATIDZ);
         const kalenderRow = rows.find(
           (r) => r.key === 'MADIN_KALENDER_KEGIATAN_V3'
         );
@@ -527,6 +547,18 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
           }
           return typeof v === 'object' ? v : {};
         };
+
+        if (singkatanRow) {
+          const parsedSingkatan = parseVal(singkatanRow.value);
+          if (parsedSingkatan && typeof parsedSingkatan === 'object') {
+            set({ singkatanAsatidzMap: parsedSingkatan });
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem(LS_CACHE_SINGKATAN_ASATIDZ, JSON.stringify(parsedSingkatan));
+              } catch {}
+            }
+          }
+        }
 
         mergedRaw = {
           ...parseVal(legacyAbsRow?.value),
@@ -829,7 +861,10 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
           { key: KEY_DB_ABSENSI, value: nextRawMap },
           { onConflict: 'key' }
         );
-      if (error) throw error;
+      if (error) {
+        console.error('SUPABASE ERROR IN saveSingkatanAsatidz:', error);
+        throw error;
+      }
 
       if (typeof window !== 'undefined') {
         try {
@@ -1005,7 +1040,10 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
           { key: KEY_DB_ABSENSI, value: nextRawMap },
           { onConflict: 'key' }
         );
-      if (error) throw error;
+      if (error) {
+        console.error('SUPABASE ERROR IN saveSingkatanAsatidz:', error);
+        throw error;
+      }
 
       if (typeof window !== 'undefined') {
         try {
@@ -1097,7 +1135,10 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
           { key: KEY_DB_ABSENSI, value: nextRawMap },
           { onConflict: 'key' }
         );
-      if (error) throw error;
+      if (error) {
+        console.error('SUPABASE ERROR IN saveSingkatanAsatidz:', error);
+        throw error;
+      }
 
       if (typeof window !== 'undefined') {
         try {
@@ -1190,7 +1231,10 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
           { key: KEY_DB_ABSENSI, value: nextRawMap },
           { onConflict: 'key' }
         );
-      if (error) throw error;
+      if (error) {
+        console.error('SUPABASE ERROR IN saveSingkatanAsatidz:', error);
+        throw error;
+      }
 
       if (typeof window !== 'undefined') {
         try {
@@ -1290,7 +1334,10 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
           { key: KEY_DB_ABSENSI, value: nextRawMap },
           { onConflict: 'key' }
         );
-      if (error) throw error;
+      if (error) {
+        console.error('SUPABASE ERROR IN saveSingkatanAsatidz:', error);
+        throw error;
+      }
 
       if (typeof window !== 'undefined') {
         try {
@@ -1396,7 +1443,10 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       const { error } = await supabase
         .from('app_settings')
         .upsert({ key: KEY_DB_ABSENSI, value: nextRawMap }, { onConflict: 'key' });
-      if (error) throw error;
+      if (error) {
+        console.error('SUPABASE ERROR IN saveSingkatanAsatidz:', error);
+        throw error;
+      }
 
       // Dual-write ke tabel relasional absensi_records bila tersedia
       RelationalMigrationService.isTableAvailable('absensi_records').then(async (avail) => {
@@ -1463,7 +1513,10 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       const { error } = await supabase
         .from('app_settings')
         .upsert({ key: KEY_DB_LIBUR, value: current }, { onConflict: 'key' });
-      if (error) throw error;
+      if (error) {
+        console.error('SUPABASE ERROR IN saveSingkatanAsatidz:', error);
+        throw error;
+      }
 
       if (typeof window !== 'undefined') {
         try {
@@ -1548,7 +1601,10 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       const { error } = await supabase
         .from('app_settings')
         .upsert({ key: KEY_DB_ABSENSI, value: targetRawMap }, { onConflict: 'key' });
-      if (error) throw error;
+      if (error) {
+        console.error('SUPABASE ERROR IN saveSingkatanAsatidz:', error);
+        throw error;
+      }
 
       if (typeof window !== 'undefined') {
         try {
@@ -1597,7 +1653,10 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       const { error } = await supabase
         .from('app_settings')
         .upsert({ key: KEY_DB_ABSENSI, value: nextRawMap }, { onConflict: 'key' });
-      if (error) throw error;
+      if (error) {
+        console.error('SUPABASE ERROR IN saveSingkatanAsatidz:', error);
+        throw error;
+      }
 
       // Dual-write ke tabel relasional absensi_records bila tersedia
       RelationalMigrationService.isTableAvailable('absensi_records').then(async (avail) => {
@@ -1655,7 +1714,10 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       const { error } = await supabase
         .from('app_settings')
         .upsert({ key: KEY_DB_LIBUR, value: targetLiburMap }, { onConflict: 'key' });
-      if (error) throw error;
+      if (error) {
+        console.error('SUPABASE ERROR IN saveSingkatanAsatidz:', error);
+        throw error;
+      }
 
       if (typeof window !== 'undefined') {
         try {
@@ -1718,6 +1780,58 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
     } catch (err) {
       console.error('Handle realtime libur error:', err);
     }
+  },
+
+  fetchSingkatanAsatidz: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', KEY_DB_SINGKATAN_ASATIDZ)
+        .maybeSingle();
+
+      if (!error && data && data.value) {
+        const val = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        if (val && typeof val === 'object') {
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem(LS_CACHE_SINGKATAN_ASATIDZ, JSON.stringify(val));
+            } catch {}
+          }
+          set({ singkatanAsatidzMap: val });
+          return val;
+        }
+      }
+    } catch (err: any) {
+      console.error('Fetch singkatan asatidz error:', err?.message || err);
+    }
+    return get().singkatanAsatidzMap;
+  },
+
+  saveSingkatanAsatidz: async (mapping: Record<string, string>) => {
+    // 1. Pembaruan optimistik instan pada store dan local storage
+    set({ singkatanAsatidzMap: mapping });
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(LS_CACHE_SINGKATAN_ASATIDZ, JSON.stringify(mapping));
+      } catch {}
+    }
+
+    // 2. Persistensi ke Supabase app_settings di background tanpa memblokir thread
+    supabase
+      .from('app_settings')
+      .upsert(
+        { key: KEY_DB_SINGKATAN_ASATIDZ, value: mapping },
+        { onConflict: 'key' }
+      )
+      .then(() => {
+        logActivity('Simpan Singkatan Asatidz', 'Memperbarui daftar singkatan nama asatidz laporan WA').catch(() => {});
+      })
+      .catch((err) => {
+        console.warn('Save singkatan asatidz background warning:', err?.message || err);
+      });
+
+    return true;
   },
 }));
 
