@@ -181,28 +181,48 @@ app.post('/api/sendImage', async (req, res) => {
       });
     }
 
-    const { chatId, file } = req.body;
-    if (!chatId || !file || !file.url) {
-      return res.status(400).json({ error: 'Parameter chatId dan file.url wajib disertakan.' });
+    const { chatId, file, caption } = req.body;
+    const rawFile = file?.url || file?.data || req.body?.image;
+
+    if (!chatId || !rawFile) {
+      return res.status(400).json({ error: 'Parameter chatId dan file (url/data) wajib disertakan.' });
     }
 
-    let targetJid = chatId.replace('@c.us', '@s.whatsapp.net');
+    let targetJid = String(chatId).replace('@c.us', '@s.whatsapp.net');
     if (!targetJid.includes('@')) {
       targetJid = `${targetJid}@s.whatsapp.net`;
     }
 
     let imageBuffer;
-    if (file.url.startsWith('data:image')) {
-      const base64Data = file.url.replace(/^data:image\/\w+;base64,/, '');
+
+    // 1. Jika dikirim sebagai Data URI (data:image/png;base64,...)
+    if (rawFile.startsWith('data:image')) {
+      const base64Data = rawFile.replace(/^data:image\/\w+;base64,/, '');
       imageBuffer = Buffer.from(base64Data, 'base64');
-    } else {
-      const resp = await axios.get(file.url, { responseType: 'arraybuffer', timeout: 20000 });
+    } 
+    // 2. Jika dikirim sebagai URL HTTP/HTTPS
+    else if (rawFile.startsWith('http://') || rawFile.startsWith('https://')) {
+      console.log(`[INFO] Mengunduh gambar dari URL: ${rawFile}`);
+      const resp = await axios.get(rawFile, {
+        responseType: 'arraybuffer',
+        timeout: 25000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          ...(req.headers.authorization ? { Authorization: req.headers.authorization } : {}),
+        },
+      });
       imageBuffer = Buffer.from(resp.data);
+    } 
+    // 3. Jika dikirim sebagai string Base64 murni (tanpa prefix data:image)
+    else {
+      imageBuffer = Buffer.from(rawFile, 'base64');
     }
+
+    const finalCaption = file?.caption || caption || '';
 
     const result = await sock.sendMessage(targetJid, {
       image: imageBuffer,
-      caption: file.caption || '',
+      caption: finalCaption,
     });
 
     console.log(`[SUKSES] Gambar terkirim ke: ${targetJid} (ID: ${result?.key?.id})`);
@@ -211,7 +231,8 @@ app.post('/api/sendImage', async (req, res) => {
       status: 'success',
     });
   } catch (err) {
-    console.error('[GAGAL] Gagal mengirim gambar:', err.message);
+    const failedUrl = req.body?.file?.url || 'unknown';
+    console.error(`[GAGAL] Gagal mengirim gambar (Sumber: ${failedUrl.substring(0, 80)}):`, err.message);
     return res.status(500).json({
       error: `Gagal mengirim gambar: ${err.message}`,
     });
