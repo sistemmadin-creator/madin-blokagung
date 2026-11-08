@@ -18,7 +18,6 @@ import {
   ChevronDown,
   RotateCcw,
   User,
-  Sparkles,
   Plus,
 } from 'lucide-react';
 import { useSantriStore } from '@/stores/useSantriStore';
@@ -31,9 +30,14 @@ import {
   buildSantriSetorRow,
   computeMateriProgressForSantri,
   getMateriOptionsWithStatusForSantri,
+  getMateriListForTingkat,
 } from '@/stores/useSetorMustahiqStore';
 import { SantriSetorMustahiqRow } from '@/types/setor-mustahiq';
-import { formatTargetPreview, norm } from '@/lib/utils/setoranHelper';
+import {
+  formatTargetPreview,
+  norm,
+  getDaftarTingkatKelasDiniyyah,
+} from '@/lib/utils/setoranHelper';
 import SundayDatePicker from '@/components/ui/SundayDatePicker';
 
 export default function SetorCepatModule() {
@@ -90,6 +94,8 @@ export default function SetorCepatModule() {
   const [chosenNextMateri, setChosenNextMateri] = useState('');
   const [chosenNextKategori, setChosenNextKategori] = useState<'Wajib' | 'Sunnah' | 'Kitab'>('Wajib');
   const [markCurrentAsDone, setMarkCurrentAsDone] = useState(false);
+  const [selectedExternalKey, setSelectedExternalKey] = useState<string>('ULA_1');
+  const [externalSearchQuery, setExternalSearchQuery] = useState<string>('');
 
   // Load initial data
   useEffect(() => {
@@ -581,6 +587,18 @@ export default function SetorCepatModule() {
     };
   }, [gantiHafalanTargetNoInduk, allRows, config, logs, activeStates, tahun]);
 
+  const availableTingkatKelasOptions = useMemo(() => {
+    return getDaftarTingkatKelasDiniyyah(formasiList, santriList);
+  }, [formasiList, santriList]);
+
+  const externalMateriList = useMemo(() => {
+    if (!selectedExternalKey) return [];
+    const list = getMateriListForTingkat(config, selectedExternalKey);
+    if (!externalSearchQuery.trim()) return list;
+    const q = norm(externalSearchQuery);
+    return list.filter((m) => norm(m.item.nama).includes(q));
+  }, [selectedExternalKey, config, externalSearchQuery]);
+
   const handleOpenGantiHafalanModal = (noInduk: string) => {
     const row = allRows.find((r) => norm(r.no_induk) === norm(noInduk));
     if (!row) return;
@@ -597,6 +615,10 @@ export default function SetorCepatModule() {
     const recommended =
       options.find((o) => !o.isCompleted && norm(o.item.nama) !== norm(row.active_item.nama)) ||
       options[0];
+
+    const otherOption = availableTingkatKelasOptions.find((opt) => opt.key !== row.config_key);
+    setSelectedExternalKey(otherOption?.key || 'ULA_1');
+    setExternalSearchQuery('');
 
     setGantiHafalanTargetNoInduk(noInduk);
     setChosenNextMateri(recommended?.item.nama || row.active_item.nama);
@@ -1395,7 +1417,6 @@ export default function SetorCepatModule() {
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-emerald-600" />
                 <h3 className="text-base font-bold text-slate-900">
                   Ganti Hafalan Selanjutnya
                 </h3>
@@ -1403,7 +1424,7 @@ export default function SetorCepatModule() {
               <button
                 type="button"
                 onClick={() => setGantiHafalanTargetNoInduk(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1519,6 +1540,122 @@ export default function SetorCepatModule() {
                   </div>
                 </div>
               )}
+
+              {/* Kategori Baru: Hafalan Tingkat Lain */}
+              <div className="space-y-3 pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                    Hafalan Tingkat Lain
+                  </span>
+                  {gantiHafalanData.allWajibDone ? (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      Aktif (Wajib Tuntas)
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                      Terkunci (Selesaikan Wajib Dahulu)
+                    </span>
+                  )}
+                </div>
+
+                {!gantiHafalanData.allWajibDone ? (
+                  <div className="p-3 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs text-slate-500 italic">
+                    Kategori ini aktif jika seluruh materi Hafalan Wajib kelas santri ({gantiHafalanData.row.din_kls} {gantiHafalanData.row.tingkat}) telah dituntaskan 100%.
+                  </div>
+                ) : (
+                  <div className="space-y-3 p-3.5 bg-slate-50/70 rounded-xl border border-slate-200">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="flex-1">
+                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                          Pilih Kelas &amp; Tingkat Lain:
+                        </label>
+                        <select
+                          value={selectedExternalKey}
+                          onChange={(e) => setSelectedExternalKey(e.target.value)}
+                          className="w-full text-xs font-semibold px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        >
+                          {availableTingkatKelasOptions.map((opt) => (
+                            <option key={opt.key} value={opt.key}>
+                              Kelas {opt.label} {opt.key === gantiHafalanData.row.config_key ? '(Kelas Saat Ini)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex-1">
+                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                          Cari Materi:
+                        </label>
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            value={externalSearchQuery}
+                            onChange={(e) => setExternalSearchQuery(e.target.value)}
+                            placeholder="Ketik nama kitab / juz..."
+                            className="w-full text-xs pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Daftar Materi Tingkat Lain */}
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {externalMateriList.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic text-center py-2">
+                          Tidak ada materi hafalan ditemukan untuk tingkatan ini.
+                        </p>
+                      ) : (
+                        externalMateriList.map((opt, idx) => {
+                          const isSelected = norm(chosenNextMateri) === norm(opt.item.nama);
+                          return (
+                            <label
+                              key={`ext_${opt.item.nama}_${idx}`}
+                              onClick={() => {
+                                setChosenNextMateri(opt.item.nama);
+                                setChosenNextKategori(opt.kategori || 'Sunnah');
+                              }}
+                              className={`flex items-start justify-between gap-3 p-2.5 rounded-lg border transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-emerald-50/90 border-emerald-500 ring-2 ring-emerald-500/20'
+                                  : 'bg-white border-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-start gap-2.5">
+                                <input
+                                  type="radio"
+                                  name="next_materi"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    setChosenNextMateri(opt.item.nama);
+                                    setChosenNextKategori(opt.kategori || 'Sunnah');
+                                  }}
+                                  className="mt-1 text-emerald-700"
+                                />
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs font-bold text-slate-900">
+                                      {opt.item.nama}
+                                    </span>
+                                    <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.2 rounded">
+                                      {opt.kategori}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-500 mt-0.5">
+                                    Target: {formatTargetPreview(opt.item)}
+                                  </p>
+                                </div>
+                              </div>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
                 <button

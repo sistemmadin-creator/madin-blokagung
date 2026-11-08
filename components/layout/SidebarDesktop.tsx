@@ -30,6 +30,7 @@ import {
   FileText,
   Package,
   Wrench,
+  CheckSquare,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { useSidebarConfigStore, DEFAULT_SIDEBAR_GROUPS } from '@/stores/useSidebarConfigStore';
@@ -62,6 +63,7 @@ const ICON_REGISTRY: Record<string, React.ReactNode> = {
   FileText: <FileText className="w-5 h-5 flex-shrink-0" />,
   Package: <Package className="w-5 h-5 flex-shrink-0" />,
   Wrench: <Wrench className="w-5 h-5 flex-shrink-0" />,
+  CheckSquare: <CheckSquare className="w-5 h-5 flex-shrink-0" />,
 };
 
 const SUB_ICON_REGISTRY: Record<string, React.ReactNode> = {

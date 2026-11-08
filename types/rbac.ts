@@ -18,6 +18,7 @@ export type AppPageId =
   | 'linimasa-setor'
   | 'rekap-hafalan'
   | 'piagam'
+  | 'serah-piagam'
   | 'kirim-wa'
   | 'absensi'
   | 'absen-cepat'
@@ -208,6 +209,14 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     label: 'Cetak Piagam',
     group: 'PKM. Muhafadzoh',
     routes: ['/piagam'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: false,
+  },
+  {
+    id: 'serah-piagam',
+    label: 'Serah Piagam Santri',
+    group: 'PKM. Muhafadzoh',
+    routes: ['/serah-piagam'],
     supportsEditOverride: true,
     supportsDeleteOverride: false,
   },

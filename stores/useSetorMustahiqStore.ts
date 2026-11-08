@@ -251,6 +251,46 @@ export function computeMateriProgressForSantri(
   };
 }
 
+export function findItemInAllConfigs(
+  config: HafalanConfig,
+  materiNama: string
+): { item: ItemHafalanDetail; kategori: 'Wajib' | 'Sunnah' | 'Kitab' } | null {
+  const targetNorm = norm(materiNama);
+  if (!targetNorm) return null;
+
+  const allKeys = new Set<string>([
+    ...Object.keys(config?.hafWajib || {}),
+    ...Object.keys(config?.hafSunnah || {}),
+    ...Object.keys(config?.hafKitab || {}),
+    ...Object.keys(DEFAULT_HAFALAN_WAJIB),
+    'ULA_1',
+    'ULA_2',
+    'ULA_3',
+    'ULA_4',
+    'WUSTHO_1',
+    'WUSTHO_2',
+    'WUSTHO_3',
+    'ULYA_1',
+    'ULYA_2',
+    'ULYA_3',
+  ]);
+
+  const keyList = Array.from(allKeys);
+  for (let i = 0; i < keyList.length; i++) {
+    const k = keyList[i];
+    const list = getMateriListForTingkat(config, k);
+    const found = list.find((m) => norm(m.item.nama) === targetNorm);
+    if (found) {
+      return { item: found.item, kategori: found.kategori };
+    }
+  }
+
+  return {
+    item: normalizeToItemDetail(materiNama, 999),
+    kategori: 'Sunnah',
+  };
+}
+
 export function getMateriOptionsWithStatusForSantri(
   noInduk: string,
   configKey: string,
@@ -259,7 +299,25 @@ export function getMateriOptionsWithStatusForSantri(
   activeState: SantriActiveHafalanState | undefined,
   tahun: number
 ): MateriOptionWithStatus[] {
-  const allMateri = getMateriListForTingkat(config, configKey);
+  const allMateri = [...getMateriListForTingkat(config, configKey)];
+
+  // Jika santri memiliki target aktif dari tingkat/kelas lain, sertakan ke allMateri
+  if (activeState?.active_materi_nama) {
+    const exists = allMateri.some(
+      (m) => norm(m.item.nama) === norm(activeState.active_materi_nama)
+    );
+    if (!exists) {
+      const externalItem = findItemInAllConfigs(config, activeState.active_materi_nama);
+      if (externalItem) {
+        allMateri.push({
+          item: externalItem.item,
+          kategori: activeState.active_kategori || externalItem.kategori,
+          orderIndex: allMateri.length,
+        });
+      }
+    }
+  }
+
   const manualCompletedSet = new Set(
     (activeState?.completed_materi || []).map((m) => norm(m))
   );
