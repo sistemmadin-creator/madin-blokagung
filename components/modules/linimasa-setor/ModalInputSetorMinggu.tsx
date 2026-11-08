@@ -1,21 +1,32 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import {
   X,
-  Calendar,
-  User,
-  GraduationCap,
   BookOpen,
   CheckCircle2,
   Trash2,
   Plus,
+  TrendingUp,
+  Search,
+  ChevronDown,
+  History,
+  MessageSquare,
   AlertCircle,
+  Calendar,
 } from 'lucide-react';
-import { SetoranHafalan } from '@/types/setoran';
 import { SundayOption } from '@/lib/utils/sundayHelper';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
-import { DEFAULT_HAFALAN_WAJIB } from '@/lib/utils/setoranHelper';
+import { useFormasiStore } from '@/stores/useFormasiStore';
+import { useAsatidzStore } from '@/stores/useAsatidzStore';
+import {
+  useSetorMustahiqStore,
+  buildSantriSetorRow,
+  computeMateriProgressForSantri,
+  getMateriOptionsWithStatusForSantri,
+} from '@/stores/useSetorMustahiqStore';
+import { formatTargetPreview, norm } from '@/lib/utils/setoranHelper';
 
 interface ModalInputSetorMingguProps {
   isOpen: boolean;
@@ -26,9 +37,13 @@ interface ModalInputSetorMingguProps {
     displayKelas: string;
     tingkat?: string;
     din_kls?: string;
+    din_bag?: string;
+    pa_pi?: 'PA' | 'PI';
+    kamar?: string;
+    raw: any;
   };
   sunday: SundayOption;
-  existingRecords: SetoranHafalan[];
+  existingRecords?: any[];
   onSuccess: () => void;
 }
 
@@ -37,321 +52,785 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
   onClose,
   santri,
   sunday,
-  existingRecords,
   onSuccess,
 }) => {
-  const { addSetoran, deleteSetoran } = useMuhafadzohStore();
+  const { config, fetchSetoranData, addSetoran } = useMuhafadzohStore();
+  const { formasiList, fetchFormasi } = useFormasiStore();
+  const { asatidzList, fetchAsatidz } = useAsatidzStore();
+  const {
+    logs,
+    activeStates,
+    fetchMustahiqData,
+    addLogSetoran,
+    addLogSetoranBatch,
+    deleteLogSetoran,
+    switchActiveHafalan,
+  } = useSetorMustahiqStore();
 
-  // Suggestions berdasarkan tingkat & kelas
-  const keyHafalan = `${santri.tingkat || 'ULA'}_${santri.din_kls || '1'}`.toUpperCase();
-  const suggestions = DEFAULT_HAFALAN_WAJIB[keyHafalan] || [
-    "Juz Amma' (An-Naas - Adh-Dhuha)",
-    'Aqidatul Awam',
-    'Tasrif Istilahi',
-    'Nadhom Al-Imrithi',
-    'Al-Fiyyah 350',
-  ];
+  const tahun = parseInt(sunday.tanggal.split('-')[0], 10) || new Date().getFullYear();
 
-  const [itemHafalan, setItemHafalan] = useState<string>(suggestions[0] || '');
-  const [customItem, setCustomItem] = useState<string>('');
-  const [isCustom, setIsCustom] = useState<boolean>(false);
-  const [kategori, setKategori] = useState<string>('Wajib');
-  const [mustahiq, setMustahiq] = useState<string>('');
+  // Load dependency stores if empty
+  useEffect(() => {
+    if (formasiList.length === 0) fetchFormasi();
+    if (asatidzList.length === 0) fetchAsatidz();
+    if (logs.length === 0) fetchMustahiqData();
+  }, [formasiList.length, asatidzList.length, logs.length, fetchFormasi, fetchAsatidz, fetchMustahiqData]);
+
+  // Bangun SantriSetorRow & Progress persis seperti di SetorMustahiqModule (Gambar 2)
+  const santriRow = useMemo(() => {
+    return buildSantriSetorRow(
+      santri.raw || santri,
+      config,
+      logs,
+      activeStates,
+      asatidzList,
+      formasiList,
+      tahun
+    );
+  }, [santri, config, logs, activeStates, asatidzList, formasiList, tahun]);
+
+  const prog = useMemo(() => {
+    return computeMateriProgressForSantri(
+      santri.no_induk,
+      santriRow.active_item,
+      logs,
+      tahun
+    );
+  }, [santri.no_induk, santriRow.active_item, logs, tahun]);
+
+  const materiOptions = useMemo(() => {
+    return getMateriOptionsWithStatusForSantri(
+      santri.no_induk,
+      santriRow.config_key,
+      config,
+      logs,
+      activeStates[santri.no_induk],
+      tahun
+    );
+  }, [santri.no_induk, santriRow.config_key, config, logs, activeStates, tahun]);
+
+  // State Form Input Setoran
+  // Tanggal setor otomatis terkunci/terpilih ke hari Minggu yang diklik
+  const [tglSetor, setTglSetor] = useState<string>(sunday.tanggal);
+  const [tambahAngka, setTambahAngka] = useState<string>('');
+  const [selectedKalimatList, setSelectedKalimatList] = useState<string[]>([]);
   const [catatan, setCatatan] = useState<string>('');
+  const [isKalimatDropdownOpen, setIsKalimatDropdownOpen] = useState<boolean>(false);
+  const [kalimatSearch, setKalimatSearch] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // Modal Ganti Hafalan Selanjutnya
+  const [isGantiHafalanOpen, setIsGantiHafalanOpen] = useState<boolean>(false);
+
+  const kalimatDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Sync tanggal bila sunday prop berganti
+  useEffect(() => {
+    setTglSetor(sunday.tanggal);
+  }, [sunday.tanggal]);
+
+  // Click outside listener untuk dropdown kalimat
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        kalimatDropdownRef.current &&
+        !kalimatDropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsKalimatDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handler Submit Setoran (persis alur Setor Mustahiq Gambar 2)
+  const handleSubmitSetoran = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalItem = isCustom ? customItem.trim() : itemHafalan.trim();
-    if (!finalItem) {
-      setErrorMsg('Item hafalan wajib diisi.');
-      return;
-    }
-
-    setIsSubmitting(true);
     setErrorMsg('');
+    const item = santriRow.active_item;
 
-    try {
-      const newRecord: SetoranHafalan = {
-        no_induk: santri.no_induk,
-        nama: santri.nama,
-        tanggal: sunday.tanggal, // Format YYYY-MM-DD
-        penjaga: mustahiq.trim() || 'Mustahiq Kelas',
-        mustahiq: mustahiq.trim() || 'Mustahiq Kelas',
-        tingkat: santri.tingkat || 'ULA',
-        din_kls: santri.din_kls || '1',
-        item_hafalan: finalItem,
-        kategori,
-        capaian: catatan.trim() || 'Tuntas',
-      };
-
-      const ok = await addSetoran(newRecord);
-      if (ok) {
-        onSuccess();
-        // Reset form
-        setCatatan('');
-        if (isCustom) setCustomItem('');
-      } else {
-        setErrorMsg('Gagal menyimpan setoran. Silakan coba lagi.');
+    if (item.targetType === 'numeric') {
+      const numVal = parseInt(tambahAngka, 10);
+      if (!numVal || numVal <= 0) {
+        setErrorMsg(`Masukkan jumlah pertambahan ${santriRow.satuan_label} yang valid (lebih dari 0).`);
+        return;
       }
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Terjadi kesalahan sistem saat menyimpan setoran.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteRecord = async (record: SetoranHafalan) => {
-    if (!window.confirm(`Hapus catatan setoran "${record.item_hafalan}" ini?`)) return;
-    try {
-      if (record.id) {
-        await deleteSetoran(record.id);
-      } else {
-        await deleteSetoran({
-          noInduk: record.no_induk,
-          tglSetor: record.tanggal,
-          hafalan: record.item_hafalan,
+      setIsSubmitting(true);
+      try {
+        await addLogSetoran(
+          {
+            no_induk: santriRow.no_induk,
+            nama_santri: santriRow.nama,
+            tingkat: santriRow.tingkat,
+            din_kls: santriRow.din_kls,
+            din_bag: santriRow.din_bag,
+            materi_nama: item.nama,
+            kategori: santriRow.active_kategori,
+            target_type: 'numeric',
+            tanggal: tglSetor,
+            tahun,
+            tambah_angka: numVal,
+            catatan: catatan.trim() || undefined,
+            mustahiq: santriRow.mustahiq,
+          },
+          item
+        );
+        // Dual write ke muhafadzoh store untuk kompatibilitas tabel setoran records
+        await addSetoran({
+          no_induk: santriRow.no_induk,
+          nama: santriRow.nama,
+          tanggal: tglSetor,
+          item_hafalan: item.nama,
+          kategori: santriRow.active_kategori,
+          penjaga: santriRow.mustahiq || 'Mustahiq Kelas',
+          mustahiq: santriRow.mustahiq,
+          tingkat: santriRow.tingkat,
+          din_kls: santriRow.din_kls,
+          din_bag: santriRow.din_bag,
+          capaian: `${numVal} ${santriRow.satuan_label}`,
         });
+
+        setTambahAngka('');
+        setCatatan('');
+        fetchSetoranData();
+        onSuccess();
+      } catch (err: any) {
+        setErrorMsg(err?.message || 'Gagal menyimpan setoran.');
+      } finally {
+        setIsSubmitting(false);
       }
-      onSuccess();
-    } catch (err) {
-      console.error('Gagal menghapus record:', err);
+    } else {
+      // Target Sentence (Kalimat/Surah/Tajwid)
+      if (selectedKalimatList.length === 0) {
+        setErrorMsg(`Pilih minimal 1 tahapan ${santriRow.satuan_label} yang disetorkan.`);
+        return;
+      }
+      setIsSubmitting(true);
+      try {
+        if (selectedKalimatList.length === 1) {
+          const chosenKalimat = selectedKalimatList[0];
+          const sentences = item.sentences || [];
+          const idx = sentences.findIndex((s) => norm(s) === norm(chosenKalimat));
+          await addLogSetoran(
+            {
+              no_induk: santriRow.no_induk,
+              nama_santri: santriRow.nama,
+              tingkat: santriRow.tingkat,
+              din_kls: santriRow.din_kls,
+              din_bag: santriRow.din_bag,
+              materi_nama: item.nama,
+              kategori: santriRow.active_kategori,
+              target_type: 'sentence',
+              tanggal: tglSetor,
+              tahun,
+              kalimat_dipilih: chosenKalimat,
+              kalimat_index: idx >= 0 ? idx : undefined,
+              catatan: catatan.trim() || undefined,
+              mustahiq: santriRow.mustahiq,
+            },
+            item
+          );
+        } else {
+          // Batch sentences
+          await addLogSetoranBatch(
+            {
+              no_induk: santriRow.no_induk,
+              nama_santri: santriRow.nama,
+              tingkat: santriRow.tingkat,
+              din_kls: santriRow.din_kls,
+              din_bag: santriRow.din_bag,
+              materi_nama: item.nama,
+              kategori: santriRow.active_kategori,
+              tanggal: tglSetor,
+              tahun,
+              catatan: catatan.trim() || undefined,
+              mustahiq: santriRow.mustahiq,
+            },
+            selectedKalimatList,
+            item
+          );
+        }
+
+        // Dual write ke muhafadzoh records
+        await addSetoran({
+          no_induk: santriRow.no_induk,
+          nama: santriRow.nama,
+          tanggal: tglSetor,
+          item_hafalan: item.nama,
+          kategori: santriRow.active_kategori,
+          penjaga: santriRow.mustahiq || 'Mustahiq Kelas',
+          mustahiq: santriRow.mustahiq,
+          tingkat: santriRow.tingkat,
+          din_kls: santriRow.din_kls,
+          din_bag: santriRow.din_bag,
+          capaian: selectedKalimatList.join(', '),
+        });
+
+        setSelectedKalimatList([]);
+        setCatatan('');
+        fetchSetoranData();
+        onSuccess();
+      } catch (err: any) {
+        setErrorMsg(err?.message || 'Gagal menyimpan setoran kalimat.');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
+
+  // Handler Hapus Log
+  const handleDeleteLog = async (logId: string) => {
+    if (!window.confirm('Hapus rekaman setoran ini? Capaian santri akan dihitung ulang otomatis.')) return;
+    await deleteLogSetoran(logId);
+    fetchSetoranData();
+    onSuccess();
+  };
+
+  // Handler Ganti Target Hafalan
+  const handlePilihMateriBaru = async (materiNama: string, kat: 'Wajib' | 'Sunnah' | 'Kitab') => {
+    await switchActiveHafalan(
+      santriRow.no_induk,
+      santriRow.nama,
+      materiNama,
+      kat,
+      santriRow.is_target_met ? santriRow.active_item.nama : undefined
+    );
+    setIsGantiHafalanOpen(false);
+    fetchSetoranData();
+    onSuccess();
+  };
+
+  const sentencesList = santriRow.active_item.sentences && santriRow.active_item.sentences.length > 0
+    ? santriRow.active_item.sentences
+    : ['Muqodimah', 'Mubtada', 'Khobar', 'Rofa', 'Jer'];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Modal Header */}
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-emerald-800 text-white">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center">
-              <Calendar className="w-4 h-4 text-emerald-200" />
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+    >
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh]">
+        {/* ================= MODAL HEADER (Gambar 2) ================= */}
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+              <BookOpen className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold tracking-tight">Setoran Hari Minggu</h2>
-              <p className="text-[11px] text-emerald-100/90">{sunday.labelLengkap}</p>
+              <h2 className="text-base font-bold text-slate-900">
+                Detail Setoran Hafalan Santri
+              </h2>
+              <p className="text-xs text-slate-500">
+                Madrasah Diniyyah Al Amiriyyah Blokagung
+              </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-emerald-100 hover:text-white transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-5 overflow-y-auto space-y-4 flex-1">
-          {/* Card Info Santri */}
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-xs font-bold text-slate-900">{santri.nama}</span>
-              </div>
-              <div className="text-[11px] text-slate-500 font-mono">
-                NIS: {santri.no_induk}
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs border border-emerald-200">
-                <GraduationCap className="w-3.5 h-3.5" />
-                {santri.displayKelas}
-              </span>
-            </div>
-          </div>
-
-          {/* Riwayat Setoran pada Minggu Ini (jika sudah ada) */}
-          {existingRecords.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  Setoran Tercatat ({existingRecords.length})
+        {/* ================= MODAL BODY (Gambar 2) ================= */}
+        <div className="p-6 overflow-y-auto space-y-5 flex-1">
+          {/* 1. Kartu Ringkasan Santri & Target Aktif */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  {santriRow.nama}
                 </h3>
-                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                  Status: Sudah Setor
+                <p className="text-xs text-slate-500 font-mono mt-0.5">
+                  NIS: {santriRow.no_induk} • Kamar: {santri.kamar || '-'} • Mustahiq:{' '}
+                  {santriRow.mustahiq || 'Belum Diatur'}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                {/* Format Kelas Baru: 1 A ULA (PA) */}
+                <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
+                  {santri.displayKelas}
+                </span>
+                <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold">
+                  Hafalan {santriRow.active_kategori}
                 </span>
               </div>
+            </div>
 
-              <div className="space-y-1.5">
-                {existingRecords.map((rec, idx) => (
-                  <div
-                    key={rec.id || idx}
-                    className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/40 flex items-start justify-between gap-3 text-xs"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                        <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>{rec.item_hafalan}</span>
-                        <span className="text-[10px] font-semibold px-1.5 py-0.2 bg-white border border-emerald-200 rounded text-emerald-800">
-                          {rec.kategori}
-                        </span>
-                      </div>
-                      {rec.capaian && (
-                        <p className="text-[11px] text-slate-600 font-medium pl-5">
-                          Capaian/Ket: {rec.capaian}
-                        </p>
-                      )}
-                      <p className="text-[10px] text-slate-400 pl-5">
-                        Mustahiq: {rec.mustahiq || rec.penjaga || '-'}
-                      </p>
-                    </div>
+            {/* Target Kelas Ini */}
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs gap-2">
+              <span className="text-slate-500">Target Hafalan Saat Ini:</span>
+              <span className="font-bold text-slate-800 text-right">
+                {santriRow.active_item.nama} ({formatTargetPreview(santriRow.active_item)})
+              </span>
+            </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteRecord(rec)}
-                      className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
-                      title="Hapus rekaman ini"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+            {/* Capaian Progress Bar */}
+            <div className="pt-2 border-t border-slate-100 space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-600 font-medium">
+                  Capaian Setoran Hafalan:
+                </span>
+                <span className="font-bold text-emerald-800 font-mono">
+                  {santriRow.status_badge_text} ({santriRow.progress_pct}%)
+                </span>
+              </div>
+              <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                  style={{ width: `${santriRow.progress_pct}%` }}
+                />
               </div>
             </div>
-          )}
 
-          {/* Form Tambah Setoran */}
-          <form onSubmit={handleSubmit} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-            <div className="flex items-center justify-between pb-1 border-b border-slate-200">
-              <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Plus className="w-3.5 h-3.5 text-emerald-700" />
-                {existingRecords.length > 0 ? 'Tambah Setoran Lagi' : 'Input Setoran Baru'}
-              </h4>
-              <span className="text-[10px] text-slate-500 font-mono">
-                {sunday.formattedDisplay}
-              </span>
+            {/* Banner Status & Tombol "Ganti Hafalan Selanjutnya" */}
+            {santriRow.is_target_met ? (
+              <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs text-emerald-900 font-semibold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div>
+                    <p className="font-bold">Target Hafalan Ini Telah Tuntas (100%)!</p>
+                    <p className="text-[11px] text-emerald-700 font-normal">
+                      Santri telah menyelesaikan target {santriRow.active_item.nama}. Silakan ganti ke hafalan selanjutnya.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsGantiHafalanOpen(true)}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer shadow-xs transition-colors"
+                >
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  Ganti Hafalan Selanjutnya
+                </button>
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 flex items-center justify-between gap-3">
+                <div className="text-xs text-amber-900">
+                  <p className="font-bold">Masih dalam proses setoran hafalan</p>
+                  <p className="text-[11px] text-amber-700 mt-0.5">
+                    {santriRow.active_item.targetType === 'numeric'
+                      ? `Kurang ${Math.max(
+                          0,
+                          santriRow.target_akhir_angka - santriRow.total_capaian_angka
+                        )} ${santriRow.satuan_label} lagi untuk menuntaskan target ini.`
+                      : `Kurang ${Math.max(
+                          0,
+                          santriRow.total_sentences_count - santriRow.completed_sentences_count
+                        )} ${santriRow.satuan_label} lagi untuk menuntaskan target ini.`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsGantiHafalanOpen(true)}
+                  className="px-3 py-1.5 rounded-lg bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer transition-colors"
+                >
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  Ganti Hafalan Selanjutnya
+                </button>
+              </div>
+            )}
+
+            {/* Modal Mini: Pilih Hafalan Selanjutnya */}
+            {isGantiHafalanOpen && (
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-300 space-y-2.5 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800">
+                    Pilih Target Materi Hafalan:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsGantiHafalanOpen(false)}
+                    className="text-xs text-slate-500 hover:text-slate-800"
+                  >
+                    Batal
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {materiOptions.map((opt) => (
+                    <button
+                      key={opt.item.nama}
+                      type="button"
+                      onClick={() => handlePilihMateriBaru(opt.item.nama, opt.kategori)}
+                      className={`p-2 rounded-lg text-left text-xs border transition-all ${
+                        opt.isCurrentActive
+                          ? 'bg-emerald-100 border-emerald-400 font-bold text-emerald-900'
+                          : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-800'
+                      }`}
+                    >
+                      <div className="font-semibold">{opt.item.nama}</div>
+                      <div className="text-[10px] text-slate-500">
+                        {opt.kategori} • {opt.isCompleted ? '✓ Sudah Selesai' : 'Sedang/Belum'}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 2. Form Proses Setoran (Gambar 2) */}
+          <div className="space-y-2">
+            <div>
+              <h4 className="text-sm font-bold text-slate-900">Proses Setoran</h4>
+              <p className="text-xs text-slate-500">
+                {santriRow.active_item.targetType === 'numeric'
+                  ? `Input pertambahan ${santriRow.satuan_label.toLowerCase()} setoran santri pada hari Minggu yang dipilih.`
+                  : `Pilih tahapan ${santriRow.satuan_label.toLowerCase()} yang telah disetorkan santri kepada Mustahiq.`}
+              </p>
             </div>
 
             {errorMsg && (
-              <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>{errorMsg}</span>
               </div>
             )}
 
-            {/* Pilihan Materi */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-bold text-slate-700">
-                Materi Hafalan *
-              </label>
-              {!isCustom ? (
-                <div className="space-y-1.5">
-                  <select
-                    value={itemHafalan}
-                    onChange={(e) => setItemHafalan(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 font-medium focus:outline-none focus:border-emerald-600"
-                  >
-                    {suggestions.map((sug) => (
-                      <option key={sug} value={sug}>
-                        {sug}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setIsCustom(true)}
-                    className="text-[11px] text-emerald-700 hover:underline font-semibold"
-                  >
-                    + Ketik materi kustom lainnya...
-                  </button>
+            <form
+              onSubmit={handleSubmitSetoran}
+              className="p-4 rounded-xl bg-emerald-50/40 border border-emerald-100 space-y-3"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Tanggal Setor (Hari Minggu yang Dipilih) */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                    <span>Tanggal Setor</span>
+                    <span className="text-[10px] text-emerald-700 font-bold">
+                      Minggu {sunday.mingguKe}
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={tglSetor}
+                      onChange={(e) => setTglSetor(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-600 font-medium"
+                      required
+                    />
+                  </div>
+                  <p className="text-[10px] text-emerald-800 font-medium mt-1">
+                    ✓ {sunday.labelLengkap}
+                  </p>
                 </div>
-              ) : (
-                <div className="space-y-1.5">
+
+                {/* Input Numerik / Kalimat */}
+                {santriRow.active_item.targetType === 'numeric' ? (
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Tambah {santriRow.satuan_label} *
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={1000}
+                      placeholder="1, 2, 5, 13..."
+                      value={tambahAngka}
+                      onChange={(e) => setTambahAngka(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-600"
+                      required
+                    />
+                  </div>
+                ) : (
+                  <div className="relative" ref={kalimatDropdownRef}>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                      <span>Pilih {santriRow.satuan_label} *</span>
+                      <span className="text-[10px] text-emerald-700 font-semibold">
+                        {selectedKalimatList.length > 0 ? `${selectedKalimatList.length} Dipilih` : ''}
+                      </span>
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsKalimatDropdownOpen((v) => !v)}
+                      className="w-full bg-white border border-slate-200 hover:border-emerald-500 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 text-left flex items-center justify-between gap-1 transition-colors"
+                    >
+                      <span className="truncate">
+                        {selectedKalimatList.length === 0
+                          ? `Pilih ${santriRow.satuan_label}...`
+                          : `${selectedKalimatList.length} ${santriRow.satuan_label}: ${selectedKalimatList.slice(0, 2).join(', ')}${selectedKalimatList.length > 2 ? '...' : ''}`}
+                      </span>
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    </button>
+
+                    {/* Dropdown Menu Multi-Select Kalimat */}
+                    {isKalimatDropdownOpen && (
+                      <div className="absolute left-0 top-full mt-1.5 w-72 sm:w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 p-2.5 space-y-2 max-h-80 flex flex-col">
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input
+                            type="text"
+                            placeholder="Cari surah/kalimat..."
+                            value={kalimatSearch}
+                            onChange={(e) => setKalimatSearch(e.target.value)}
+                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
+                          />
+                        </div>
+
+                        {/* Tombol Cepat Pilihan */}
+                        <div className="flex items-center gap-1.5 flex-wrap pt-0.5 pb-1 border-b border-slate-100 text-[10px]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const uncompleted = sentencesList.filter(
+                                (s) => !prog.completedSentences.some((cs) => norm(cs) === norm(s))
+                              );
+                              setSelectedKalimatList(uncompleted.slice(0, 3));
+                            }}
+                            className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold cursor-pointer"
+                          >
+                            +3 Berikutnya
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const uncompleted = sentencesList.filter(
+                                (s) => !prog.completedSentences.some((cs) => norm(cs) === norm(s))
+                              );
+                              setSelectedKalimatList(uncompleted);
+                            }}
+                            className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
+                          >
+                            Semua Belum
+                          </button>
+                          {selectedKalimatList.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedKalimatList([])}
+                              className="px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold ml-auto cursor-pointer"
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
+
+                        {/* List Kalimat dengan Checkbox */}
+                        <div className="overflow-y-auto space-y-1 flex-1 pr-1">
+                          {sentencesList
+                            .filter((k) => (kalimatSearch ? norm(k).includes(norm(kalimatSearch)) : true))
+                            .map((kal, idx) => {
+                              const isDone = prog.completedSentences.some(
+                                (cs) => norm(cs) === norm(kal)
+                              );
+                              const isSelected = selectedKalimatList.some(
+                                (s) => norm(s) === norm(kal)
+                              );
+                              return (
+                                <div
+                                  key={`${kal}_${idx}`}
+                                  onClick={() => {
+                                    setSelectedKalimatList((prev) =>
+                                      prev.some((s) => norm(s) === norm(kal))
+                                        ? prev.filter((s) => norm(s) !== norm(kal))
+                                        : [...prev, kal]
+                                    );
+                                  }}
+                                  className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition-all ${
+                                    isSelected
+                                      ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold'
+                                      : 'hover:bg-slate-50 text-slate-700 border border-transparent'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => {}}
+                                      className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 cursor-pointer pointer-events-none"
+                                    />
+                                    <span>
+                                      {idx + 1}. {kal}
+                                    </span>
+                                  </div>
+                                  {isDone && (
+                                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
+                                      Sudah Disetor
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Catatan Opsional */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Catatan (Opsional)
+                  </label>
                   <input
                     type="text"
-                    value={customItem}
-                    onChange={(e) => setCustomItem(e.target.value)}
-                    placeholder="Nama kitab, surah, atau nadhom..."
+                    placeholder="Surah / bait / keterangan..."
+                    value={catatan}
+                    onChange={(e) => setCatatan(e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
-                    required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setIsCustom(false)}
-                    className="text-[11px] text-slate-500 hover:text-slate-800 font-semibold"
-                  >
-                    ← Kembali ke daftar materi standar
-                  </button>
+                </div>
+              </div>
+
+              {/* Badges Pilihan Kalimat */}
+              {selectedKalimatList.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                  <span className="text-[11px] text-slate-500 font-semibold">
+                    Pilihan ({selectedKalimatList.length}):
+                  </span>
+                  {selectedKalimatList.map((kal) => (
+                    <span
+                      key={kal}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-bold"
+                    >
+                      <span>{kal}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedKalimatList((prev) =>
+                            prev.filter((s) => norm(s) !== norm(kal))
+                          )
+                        }
+                        className="text-emerald-700 hover:text-emerald-950 cursor-pointer"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
                 </div>
               )}
-            </div>
 
-            {/* Kategori & Mustahiq */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Kategori
-                </label>
-                <select
-                  value={kategori}
-                  onChange={(e) => setKategori(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 font-medium focus:outline-none focus:border-emerald-600"
+              {/* Tombol Simpan Setoran */}
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] text-slate-500 italic">
+                  *Target penuh materi ini: {formatTargetPreview(santriRow.active_item)}
+                </span>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 rounded-lg bg-[#134e3a] hover:bg-[#0f3d2e] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition-colors"
                 >
-                  <option value="Wajib">Wajib (Silabus)</option>
-                  <option value="Sunnah">Sunnah</option>
-                  <option value="Tahfidz">Tahfidz</option>
-                  <option value="Kitab">Kitab</option>
-                </select>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Simpan Setoran</span>
+                  {selectedKalimatList.length > 0 && (
+                    <span>({selectedKalimatList.length} Kalimat)</span>
+                  )}
+                </button>
               </div>
+            </form>
+          </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Mustahiq / Penjaga
-                </label>
-                <input
-                  type="text"
-                  placeholder="Nama ustadz / mustahiq..."
-                  value={mustahiq}
-                  onChange={(e) => setMustahiq(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
-                />
+          {/* 3. Riwayat Setor (Gambar 2) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <History className="w-3.5 h-3.5 text-slate-500" />
+                Riwayat Setor ({santriRow.active_item.nama})
+              </h4>
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/kirim-wa?santri=${encodeURIComponent(
+                    santriRow.no_induk
+                  )}&tahun=${tahun}`}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-[11px] font-bold transition-colors"
+                >
+                  <MessageSquare className="w-3 h-3" />
+                  <span>Kirim WA Rapor</span>
+                </Link>
+                <span className="text-[11px] text-slate-400">
+                  {prog.matchingLogs.length} Catatan
+                </span>
               </div>
             </div>
 
-            {/* Catatan / Detail Kalimat / Bait */}
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                Catatan Capaian (Ayat / Bait / Halaman)
-              </label>
-              <input
-                type="text"
-                placeholder="Contoh: Ayat 1-15, Bait 1-20, Tuntas..."
-                value={catatan}
-                onChange={(e) => setCatatan(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
-              />
-            </div>
+            {prog.matchingLogs.length === 0 ? (
+              <div className="p-6 rounded-xl border border-slate-200 text-center text-xs text-slate-400">
+                Belum ada riwayat setoran untuk materi{' '}
+                <span className="font-semibold text-slate-600">
+                  {santriRow.active_item.nama}
+                </span>{' '}
+                di tahun {tahun}.
+              </div>
+            ) : (
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 font-semibold">
+                      <th className="py-2 px-3 w-10">No</th>
+                      <th className="py-2 px-3">Tanggal</th>
+                      <th className="py-2 px-3 text-center">
+                        Tambah {santriRow.satuan_label}
+                      </th>
+                      <th className="py-2 px-3">Rincian Status</th>
+                      <th className="py-2 px-3 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {prog.matchingLogs.map((log, idx) => (
+                      <tr key={log.id} className="hover:bg-slate-50">
+                        <td className="py-2 px-3 text-slate-400 font-mono text-[11px]">
+                          {idx + 1}
+                        </td>
+                        <td className="py-2 px-3 font-semibold text-slate-800">
+                          {log.tanggal}
+                        </td>
+                        <td className="py-2 px-3 text-center font-bold text-emerald-700">
+                          {log.target_type === 'sentence'
+                            ? `+1 ${santriRow.satuan_label}`
+                            : `+${log.tambah_angka || 0} ${santriRow.satuan_label}`}
+                        </td>
+                        <td className="py-2 px-3 text-slate-600">
+                          {log.target_type === 'sentence' ? (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 font-semibold text-[11px]">
+                                {log.kalimat_dipilih}
+                              </span>
+                              {log.catatan && (
+                                <span className="text-slate-400 text-[11px]">
+                                  • {log.catatan}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span>
+                              Kumulatif: {log.kumulatif_angka || 0} {santriRow.satuan_label}{' '}
+                              {log.catatan && `• ${log.catatan}`}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 px-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteLog(log.id)}
+                            className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                            title="Hapus rekaman ini"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
 
-            <div className="pt-2 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100"
-              >
-                Tutup
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <span>Menyimpan...</span>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Simpan Setoran</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+        {/* Modal Footer */}
+        <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+          >
+            Tutup
+          </button>
         </div>
       </div>
     </div>

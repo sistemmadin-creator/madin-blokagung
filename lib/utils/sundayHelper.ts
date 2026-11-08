@@ -156,6 +156,20 @@ export function getClosestSunday(sundays: SundayOption[]): SundayOption | null {
 }
 
 /**
+ * Format peletakan nama kelas standar: '1 A ULA (PA)'
+ */
+export function formatKelasMadin(
+  din_kls?: string,
+  din_bag?: string,
+  tingkat?: string,
+  pa_pi?: string
+): string {
+  const base = [din_kls, din_bag, tingkat].filter(Boolean).join(' ').trim();
+  const cleanGender = pa_pi ? pa_pi.trim().toUpperCase() : '';
+  return cleanGender ? `${base} (${cleanGender})` : base;
+}
+
+/**
  * Peringkat hierarki tingkat madin untuk sorting
  */
 export const TINGKAT_RANK_FORMASI: Record<string, number> = {

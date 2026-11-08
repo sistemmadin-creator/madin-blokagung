@@ -51,7 +51,7 @@ test.describe('E2E: Sunday Date Picker & Modul Linimasa Setor Santri', () => {
     ).toBeVisible({ timeout: 25000 });
   });
 
-  test('3. Matriks Linimasa Setor Santri: Multi-Header Minggu Dinamis, Filter Switch Tingkat, dan Filter Bulan', async ({
+  test('3. Matriks Linimasa Setor Santri: Multi-Header Minggu Dinamis, Filter Switch Tingkat, Pembatasan 3 Kelas, dan Format Kelas Baru', async ({
     page,
   }) => {
     await gotoWithAuth(page, '/linimasa-setor');
@@ -96,28 +96,45 @@ test.describe('E2E: Sunday Date Picker & Modul Linimasa Setor Santri', () => {
     await expect(page.getByRole('columnheader', { name: 'NAMA SANTRI', exact: true })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'KELAS', exact: true })).toBeVisible();
 
-    // 4. Verifikasi Tombol Export Excel
+    // 4. Verifikasi Pembatasan 3 Kelas
+    const labelTigaKelas = page.getByText('Menampilkan 3 Kelas:');
+    await expect(labelTigaKelas).toBeVisible();
+
+    // 5. Verifikasi Format Kolom Kelas Baru: contoh '1 A ULA (PA)' atau serupa
+    await page.waitForSelector('tbody tr.group', { timeout: 30000 });
+    const firstClassCell = page.locator('tbody tr.group').first().locator('td').nth(2);
+    await expect(firstClassCell).toBeVisible();
+    const classText = await firstClassCell.textContent();
+    // Format harus mencakup tingkat dan (PA)/(PI), contoh '1 A ULA (PA)'
+    expect(classText).toMatch(/\b(ULA|WUSTHO|ULYA)\b.*\((PA|PI)\)/i);
+
+    // 6. Verifikasi Tombol Export Excel
     const btnExport = page.getByRole('button', { name: /Export Excel/i });
     await expect(btnExport).toBeVisible();
   });
 
-  test('4. Interaktivitas Sel: Klik sel hari Minggu membuka modal detail/input setoran', async ({ page }) => {
+  test('4. Interaktivitas Sel: Klik sel hari Minggu membuka modal detail setoran lengkap (Gambar 2)', async ({
+    page,
+  }) => {
     await gotoWithAuth(page, '/linimasa-setor');
 
     // Tunggu tabel termuat dengan baris santri
-    await page.waitForSelector('tbody tr', { timeout: 30000 });
+    await page.waitForSelector('tbody tr.group', { timeout: 30000 });
 
     // Ambil sel pertama pertemuan hari Minggu (kolom ke-4) pada baris santri pertama
-    const firstRowFirstSundayCell = page.locator('tbody tr').first().locator('td').nth(3);
+    const firstRowFirstSundayCell = page.locator('tbody tr.group').first().locator('td').nth(3);
     await expect(firstRowFirstSundayCell).toBeVisible();
 
     // Klik sel tersebut
     await firstRowFirstSundayCell.click();
 
-    // Verifikasi modal input/detail setoran muncul
+    // Verifikasi modal Detail Setoran Hafalan Santri (Gambar 2) muncul
     await expect(
-      page.getByRole('heading', { name: 'Setoran Hari Minggu' })
+      page.getByRole('heading', { name: 'Detail Setoran Hafalan Santri' })
     ).toBeVisible({ timeout: 15000 });
+
+    // Verifikasi form input setoran dengan tombol Simpan Setoran
+    await expect(page.getByRole('button', { name: /Simpan Setoran/i })).toBeVisible();
 
     // Pastikan tombol Tutup berfungsi
     const btnTutup = page.getByRole('button', { name: 'Tutup' });
@@ -125,6 +142,6 @@ test.describe('E2E: Sunday Date Picker & Modul Linimasa Setor Santri', () => {
     await btnTutup.click();
 
     // Modal tertutup
-    await expect(page.getByRole('heading', { name: 'Setoran Hari Minggu' })).not.toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Detail Setoran Hafalan Santri' })).not.toBeVisible();
   });
 });

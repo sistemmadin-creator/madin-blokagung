@@ -16,6 +16,7 @@ import { useFormasiStore } from '@/stores/useFormasiStore';
 import {
   getAcademicYearMonths,
   sortSantriByFormasiHierarchy,
+  formatKelasMadin,
   SundayOption,
 } from '@/lib/utils/sundayHelper';
 import { SetoranHafalan } from '@/types/setoran';
@@ -74,7 +75,8 @@ function parseSantri(s: any): ParsedSantri {
 
   const din_bag = String(s.din_bag || s[25] || s.bag || '').trim().toUpperCase();
   const kamar = String(s.kamar || s[19] || '').trim();
-  const displayKelas = `${din_kls} ${tingkat} ${din_bag} ${pa_pi}`.replace(/\s+/g, ' ').trim();
+  // Format Kelas Baru: '1 A ULA (PA)'
+  const displayKelas = formatKelasMadin(din_kls, din_bag, tingkat, pa_pi);
 
   return {
     no_induk,
@@ -177,6 +179,44 @@ export default function LinimasaSetorModule() {
     // Urutkan menggunakan algoritma Formasi Kelas (Gambar 3)
     return sortSantriByFormasiHierarchy(filtered);
   }, [parsedSantriList, activeTingkat, filterGender, searchQuery]);
+
+  // Batasi baris tabel hanya 3 kelas saja
+  const [classPage, setClassPage] = useState<number>(0);
+  const CLASSES_PER_VIEW = 3;
+
+  // Reset pagination kelas bila filter berubah
+  useEffect(() => {
+    setClassPage(0);
+  }, [activeTingkat, filterGender, searchQuery]);
+
+  // Daftar kelas unik berurutan sesuai hierarki formasi
+  const distinctClasses = useMemo(() => {
+    const list: string[] = [];
+    const set = new Set<string>();
+    displayedSantri.forEach((s) => {
+      if (s.displayKelas && !set.has(s.displayKelas)) {
+        set.add(s.displayKelas);
+        list.push(s.displayKelas);
+      }
+    });
+    return list;
+  }, [displayedSantri]);
+
+  const totalClassPages = Math.ceil(distinctClasses.length / CLASSES_PER_VIEW) || 1;
+  const currentClassPage = Math.min(classPage, Math.max(0, totalClassPages - 1));
+
+  // 3 Kelas yang sedang aktif ditampilkan
+  const activeClasses = useMemo(() => {
+    const startIdx = currentClassPage * CLASSES_PER_VIEW;
+    return distinctClasses.slice(startIdx, startIdx + CLASSES_PER_VIEW);
+  }, [distinctClasses, currentClassPage]);
+
+  const activeClassSet = useMemo(() => new Set(activeClasses), [activeClasses]);
+
+  // Santri yang dibatasi hanya dari 3 kelas aktif tersebut
+  const paginatedSantri = useMemo(() => {
+    return displayedSantri.filter((s) => activeClassSet.has(s.displayKelas));
+  }, [displayedSantri, activeClassSet]);
 
   // Lookup Cepat Setoran: Map `${no_induk}_${isoDate}` -> SetoranHafalan[]
   const setoranLookupMap = useMemo(() => {
@@ -531,12 +571,87 @@ export default function LinimasaSetorModule() {
         )}
       </div>
 
+      {/* Kontrol Pembatasan 3 Kelas */}
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-600" />
+            <span>Menampilkan 3 Kelas:</span>
+          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {activeClasses.map((cls) => (
+              <span
+                key={cls}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200"
+              >
+                {cls}
+              </span>
+            ))}
+            {activeClasses.length === 0 && (
+              <span className="text-xs text-slate-400 italic">Tidak ada kelas</span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          {/* Jump to Class Dropdown */}
+          {distinctClasses.length > 0 && (
+            <select
+              value={activeClasses[0] || ''}
+              onChange={(e) => {
+                const targetClass = e.target.value;
+                const idx = distinctClasses.indexOf(targetClass);
+                if (idx >= 0) {
+                  setClassPage(Math.floor(idx / CLASSES_PER_VIEW));
+                }
+              }}
+              className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-semibold text-slate-700 focus:outline-none focus:border-emerald-600 cursor-pointer"
+            >
+              {distinctClasses.map((cls) => (
+                <option key={cls} value={cls}>
+                  Lompat ke: {cls}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {/* Prev / Next 3 Kelas Buttons */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={currentClassPage === 0}
+              onClick={() => setClassPage((p) => Math.max(0, p - 1))}
+              className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-slate-700 transition-colors"
+              title="3 Kelas Sebelumnya"
+            >
+              ← Sebelumnya
+            </button>
+            <span className="text-xs font-semibold text-slate-500 px-1 font-mono">
+              {currentClassPage + 1} / {totalClassPages}
+            </span>
+            <button
+              type="button"
+              disabled={currentClassPage >= totalClassPages - 1}
+              onClick={() => setClassPage((p) => Math.min(totalClassPages - 1, p + 1))}
+              className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-slate-700 transition-colors"
+              title="3 Kelas Berikutnya"
+            >
+              Berikutnya →
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Tabel Linimasa Matriks */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         {/* Banner Status Tabel */}
         <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-900">{displayedSantri.length} Santri</span>
+            <span className="font-bold text-slate-900">{paginatedSantri.length} Santri</span>
+            <span>•</span>
+            <span className="text-slate-600">
+              3 Kelas Terpilih dari total {distinctClasses.length} Kelas ({displayedSantri.length} Total Santri)
+            </span>
             <span>•</span>
             <span>
               {displayedMonths.length} Bulan Aktif ({totalSundayColumns} Kolom Minggu)
@@ -623,9 +738,9 @@ export default function LinimasaSetorModule() {
               </tr>
             </thead>
 
-            {/* Body Data Santri (Urutan Sesuai Gambar 3) */}
+            {/* Body Data Santri (Dibatasi 3 Kelas Saja, Urutan Sesuai Gambar 3) */}
             <tbody className="divide-y divide-slate-100 font-medium">
-              {displayedSantri.length === 0 ? (
+              {paginatedSantri.length === 0 ? (
                 <tr>
                   <td
                     colSpan={3 + totalSundayColumns}
@@ -633,16 +748,36 @@ export default function LinimasaSetorModule() {
                   >
                     {loadingSantri
                       ? 'Memuat data santri madrasah...'
-                      : 'Tidak ada data santri yang sesuai filter.'}
+                      : 'Tidak ada data santri pada kelas ini.'}
                   </td>
                 </tr>
               ) : (
-                displayedSantri.map((santri, idx) => {
+                paginatedSantri.map((santri, idx) => {
+                  const isNewClass =
+                    idx === 0 || santri.displayKelas !== paginatedSantri[idx - 1].displayKelas;
+                  const countInClass = paginatedSantri.filter(
+                    (s) => s.displayKelas === santri.displayKelas
+                  ).length;
+
                   return (
-                    <tr
-                      key={santri.no_induk || idx}
-                      className="hover:bg-emerald-50/30 transition-colors group"
-                    >
+                    <React.Fragment key={santri.no_induk || idx}>
+                      {isNewClass && (
+                        <tr className="bg-slate-100 border-y border-slate-300">
+                          <td
+                            colSpan={3 + totalSundayColumns}
+                            className="py-1.5 px-3 font-bold text-slate-800 text-xs tracking-tight sticky left-0 z-20"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-3.5 bg-emerald-600 rounded-sm" />
+                              <span>Kelas: {santri.displayKelas}</span>
+                              <span className="text-[11px] text-slate-500 font-normal font-mono">
+                                ({countInClass} Santri)
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      <tr className="hover:bg-emerald-50/30 transition-colors group">
                       {/* Kolom 1: No Urut (Sticky Left) */}
                       <td className="py-2 px-2 text-center sticky left-0 z-20 bg-white group-hover:bg-emerald-50/50 border-r border-slate-200 text-slate-500 font-mono text-[11px]">
                         {idx + 1}
@@ -708,8 +843,9 @@ export default function LinimasaSetorModule() {
                         })
                       )}
                     </tr>
-                  );
-                })
+                  </React.Fragment>
+                );
+              })
               )}
             </tbody>
           </table>

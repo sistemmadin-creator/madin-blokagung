@@ -3,6 +3,7 @@ import {
   getSundaysInMonth,
   getAcademicYearMonths,
   sortSantriByFormasiHierarchy,
+  formatKelasMadin,
 } from '@/lib/utils/sundayHelper';
 
 describe('Sunday Helper & Linimasa Sorting (Unit Tests)', () => {
@@ -75,5 +76,11 @@ describe('Sunday Helper & Linimasa Sorting (Unit Tests)', () => {
 
     // 5. ULYA 1 A PA (Hasan)
     expect(sorted[5].nama).toBe('Hasan');
+  });
+
+  it('5. Memformat nama kelas menjadi format standar 1 A ULA (PA)', () => {
+    expect(formatKelasMadin('1', 'A', 'ULA', 'PA')).toBe('1 A ULA (PA)');
+    expect(formatKelasMadin('1', 'B', 'WUSTHO', 'PI')).toBe('1 B WUSTHO (PI)');
+    expect(formatKelasMadin('2', 'A', 'ULYA', 'PA')).toBe('2 A ULYA (PA)');
   });
 });
