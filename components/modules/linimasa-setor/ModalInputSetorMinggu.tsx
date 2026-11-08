@@ -11,8 +11,6 @@ import {
   Trash2,
   Plus,
   AlertCircle,
-  Clock,
-  Sparkles,
 } from 'lucide-react';
 import { SetoranHafalan } from '@/types/setoran';
 import { SundayOption } from '@/lib/utils/sundayHelper';

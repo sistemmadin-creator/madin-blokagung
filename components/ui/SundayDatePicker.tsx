@@ -5,7 +5,6 @@ import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Check } from 'luci
 import {
   getSundaysInMonth,
   MONTH_NAMES_INDONESIA,
-  SundayOption,
   getClosestSunday,
 } from '@/lib/utils/sundayHelper';
 

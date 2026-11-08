@@ -17,11 +17,8 @@ import {
   Layers,
   ChevronDown,
   RotateCcw,
-  Check,
   User,
-  GraduationCap,
   Sparkles,
-  AlertCircle,
   Plus,
 } from 'lucide-react';
 import { useSantriStore } from '@/stores/useSantriStore';
@@ -34,14 +31,13 @@ import {
   buildSantriSetorRow,
   computeMateriProgressForSantri,
   getMateriOptionsWithStatusForSantri,
-  getUnitLabel,
 } from '@/stores/useSetorMustahiqStore';
-import { SantriSetorMustahiqRow, MateriOptionWithStatus } from '@/types/setor-mustahiq';
+import { SantriSetorMustahiqRow } from '@/types/setor-mustahiq';
 import { formatTargetPreview, norm } from '@/lib/utils/setoranHelper';
 import SundayDatePicker from '@/components/ui/SundayDatePicker';
 
 export default function SetorCepatModule() {
-  const { santriList, fetchSantri, isLoading: isLoadingSantri } = useSantriStore();
+  const { santriList, fetchSantri } = useSantriStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
   const { formasiList, fetchFormasi } = useFormasiStore();
   const { config, fetchSetoranData } = useMuhafadzohStore();

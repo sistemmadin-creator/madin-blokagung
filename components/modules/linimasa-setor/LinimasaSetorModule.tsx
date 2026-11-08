@@ -5,19 +5,9 @@ import {
   CalendarDays,
   Calendar,
   Search,
-  Filter,
   Download,
-  CheckCircle2,
-  XCircle,
-  HelpCircle,
   ChevronDown,
-  Layers,
-  GraduationCap,
-  Users,
-  Sparkles,
-  RefreshCw,
   SlidersHorizontal,
-  Check,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useSantriStore } from '@/stores/useSantriStore';
@@ -26,7 +16,6 @@ import { useFormasiStore } from '@/stores/useFormasiStore';
 import {
   getAcademicYearMonths,
   sortSantriByFormasiHierarchy,
-  AcademicMonthInfo,
   SundayOption,
 } from '@/lib/utils/sundayHelper';
 import { SetoranHafalan } from '@/types/setoran';
@@ -102,7 +91,7 @@ function parseSantri(s: any): ParsedSantri {
 
 export default function LinimasaSetorModule() {
   const { santriList, fetchSantri, isLoading: loadingSantri } = useSantriStore();
-  const { setoranList, fetchSetoranData, isLoading: loadingSetoran } = useMuhafadzohStore();
+  const { setoranList, fetchSetoranData } = useMuhafadzohStore();
   const { formasiList, fetchFormasi } = useFormasiStore();
 
   // Tahun awal ajaran (default: jika saat ini bulan Juli-Desember -> tahun ini, jika Jan-Jun -> tahun lalu)
@@ -167,7 +156,7 @@ export default function LinimasaSetorModule() {
 
   // Santri yang telah difilter dan DIURUTKAN SESUAI FORMASI KELAS (Gambar 3)
   const displayedSantri = useMemo(() => {
-    let filtered = parsedSantriList.filter((s) => {
+    const filtered = parsedSantriList.filter((s) => {
       // 1. Filter Tingkat
       if (activeTingkat !== 'SEMUA') {
         if (s.tingkat !== activeTingkat) return false;
