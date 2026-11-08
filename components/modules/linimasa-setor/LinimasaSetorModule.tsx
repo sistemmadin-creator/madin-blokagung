@@ -773,6 +773,10 @@ export default function LinimasaSetorModule() {
               <span className="w-2.5 h-2.5 rounded-full bg-indigo-700 inline-block shadow-2xs" />
               <span>Hafalan Ke-3+ (Biru Tua)</span>
             </span>
+            <span className="flex items-center gap-1 font-medium text-cyan-800">
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-700 inline-block shadow-2xs" />
+              <span>Tahfidz (Juz)</span>
+            </span>
             <span className="flex items-center gap-1 font-medium text-slate-500">
               <span className="w-2.5 h-2.5 rounded-full bg-white border border-slate-300 inline-block" />
               <span>Belum Setor (Putih)</span>
@@ -918,6 +922,19 @@ export default function LinimasaSetorModule() {
                             setoranLookupMap.get(`${santri.no_induk}_${sunday.tanggal}`) || [];
                           const hasSetoran = records.length > 0;
 
+                          // Cek apakah ada setoran Tahfidz & setoran Wajib/lainnya
+                          const tahfidzRecord = records.find(
+                            (r) => r.kategori === 'Tahfidz' || (r.materi_nama && r.materi_nama.toLowerCase().startsWith('juz '))
+                          );
+                          const nonTahfidzRecords = records.filter((r) => r !== tahfidzRecord);
+
+                          // Ekstrak angka juz jika ada
+                          let juzNumber: string | null = null;
+                          if (tahfidzRecord) {
+                            const match = (tahfidzRecord.materi_nama || tahfidzRecord.item_hafalan || '').match(/\d+/);
+                            juzNumber = match ? match[0] : 'T';
+                          }
+
                           // Hitung tingkat materi tertinggi yang disetorkan pada hari Minggu ini
                           let maxLevel = 0;
                           if (hasSetoran) {
@@ -931,19 +948,25 @@ export default function LinimasaSetorModule() {
                           }
 
                           const levelStyle = getHafalanLevelStyle(maxLevel);
+                          const isTahfidzOnly = Boolean(tahfidzRecord && nonTahfidzRecords.length === 0);
+                          const isDual = Boolean(tahfidzRecord && nonTahfidzRecords.length > 0);
 
                           return (
                             <td
                               key={sunday.tanggal}
                               onClick={() => handleCellClick(santri, sunday)}
                               className={`py-1.5 px-1 text-center border-r border-slate-100 cursor-pointer transition-all hover:ring-2 hover:ring-inset ${
-                                hasSetoran
+                                isDual
+                                  ? 'bg-gradient-to-r from-cyan-50 to-emerald-50 hover:ring-cyan-500'
+                                  : isTahfidzOnly
+                                  ? 'bg-cyan-50/80 hover:bg-cyan-100/70 hover:ring-cyan-500'
+                                  : hasSetoran
                                   ? `${levelStyle.cellBg} ${levelStyle.ringColor}`
                                   : 'bg-white hover:bg-slate-100/60 hover:ring-emerald-500'
                               }`}
                               title={
                                 hasSetoran
-                                  ? `${sunday.labelLengkap}\nSetoran [${levelStyle.label}]: ${records
+                                  ? `${sunday.labelLengkap}\nSetoran: ${records
                                       .map((r) => r.materi_nama || r.item_hafalan)
                                       .join(', ')} (Klik untuk detail)`
                                   : `${sunday.labelLengkap}\nBelum ada setoran (Klik untuk input)`
@@ -951,12 +974,35 @@ export default function LinimasaSetorModule() {
                             >
                               {hasSetoran ? (
                                 <div className="inline-flex flex-col items-center justify-center">
-                                  <span
-                                    className={`inline-flex items-center justify-center w-6 h-6 rounded-lg font-bold text-xs shadow-2xs ${levelStyle.badgeBg} ${levelStyle.badgeText}`}
-                                  >
-                                    ✓
-                                  </span>
-                                  {records.length > 1 && (
+                                  {isDual ? (
+                                    /* Dual Badge: Ada Tahfidz DAN Hafalan Kurikulum/Sunnah */
+                                    <div className="flex items-center gap-0.5" title={`Tahfidz Juz ${juzNumber} + Hafalan Kurikulum`}>
+                                      <span className="inline-flex items-center justify-center px-1 h-5 rounded-md font-bold text-[10px] bg-cyan-700 text-white shadow-2xs">
+                                        J{juzNumber}
+                                      </span>
+                                      <span
+                                        className={`inline-flex items-center justify-center w-5 h-5 rounded-md font-bold text-[10px] shadow-2xs ${levelStyle.badgeBg} ${levelStyle.badgeText}`}
+                                      >
+                                        ✓
+                                      </span>
+                                    </div>
+                                  ) : isTahfidzOnly ? (
+                                    /* Setoran Tahfidz Saja */
+                                    <span
+                                      className="inline-flex items-center justify-center w-6 h-6 rounded-lg font-bold text-xs bg-cyan-700 text-white shadow-2xs"
+                                      title={`Setoran Tahfidz: Juz ${juzNumber}`}
+                                    >
+                                      J{juzNumber}
+                                    </span>
+                                  ) : (
+                                    /* Setoran Reguler (Hijau/Biru/Biru Tua) */
+                                    <span
+                                      className={`inline-flex items-center justify-center w-6 h-6 rounded-lg font-bold text-xs shadow-2xs ${levelStyle.badgeBg} ${levelStyle.badgeText}`}
+                                    >
+                                      ✓
+                                    </span>
+                                  )}
+                                  {records.length > 2 && (
                                     <span className="text-[9px] font-bold text-slate-700 font-mono mt-0.5">
                                       {records.length}x
                                     </span>

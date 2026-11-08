@@ -1,0 +1,1735 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office'
+      xmlns:w='urn:schemas-microsoft-com:office:word'
+      xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+  <meta charset="utf-8">
+  <title>Buku Panduan Pengguna &amp; Administrator Sistem Informasi MADINA Blokagung</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+      <w:Compatibility>
+        <w:UseWord2013TrackBottomHyphenation/>
+      </w:Compatibility>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
+  
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 2.54cm 2.54cm 2.54cm 2.54cm;
+    mso-page-orientation: portrait;
+    mso-header-margin: 1.25cm;
+    mso-footer-margin: 1.25cm;
+    mso-header: h1;
+    mso-footer: f1;
+  }
+  @page CoverPage {
+    margin: 2cm 2cm 2cm 2cm;
+    mso-header: none;
+    mso-footer: none;
+  }
+  body {
+    font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.45;
+    color: #1e293b;
+    background-color: #ffffff;
+  }
+  .cover-section {
+    page: CoverPage;
+    page-break-after: always;
+  }
+  .page-break {
+    page-break-before: always;
+    mso-break-type: section-break;
+  }
+  h1 {
+    font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+    font-size: 20pt;
+    font-weight: bold;
+    color: #064e3b;
+    border-bottom: 2.5pt solid #059669;
+    padding-bottom: 6pt;
+    margin-top: 18pt;
+    margin-bottom: 12pt;
+    page-break-after: avoid;
+  }
+  h2 {
+    font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+    font-size: 14pt;
+    font-weight: bold;
+    color: #0f766e;
+    margin-top: 14pt;
+    margin-bottom: 8pt;
+    border-bottom: 1pt solid #cbd5e1;
+    padding-bottom: 3pt;
+    page-break-after: avoid;
+  }
+  h3 {
+    font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+    font-size: 12pt;
+    font-weight: bold;
+    color: #1e293b;
+    margin-top: 10pt;
+    margin-bottom: 4pt;
+    page-break-after: avoid;
+  }
+  h4 {
+    font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+    font-size: 11pt;
+    font-weight: bold;
+    color: #334155;
+    margin-top: 8pt;
+    margin-bottom: 3pt;
+    page-break-after: avoid;
+  }
+  p {
+    margin-top: 0;
+    margin-bottom: 6pt;
+    text-align: justify;
+  }
+  ul, ol {
+    margin-top: 2pt;
+    margin-bottom: 6pt;
+    padding-left: 22pt;
+  }
+  li {
+    margin-bottom: 3pt;
+  }
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 6pt;
+    margin-bottom: 10pt;
+    font-size: 9.5pt;
+  }
+  table.data-table th {
+    background-color: #064e3b;
+    color: #ffffff;
+    font-weight: bold;
+    text-align: left;
+    padding: 6pt 8pt;
+    border: 1pt solid #04382a;
+  }
+  table.data-table td {
+    padding: 5pt 8pt;
+    border: 1pt solid #cbd5e1;
+    vertical-align: top;
+  }
+  table.data-table tr:nth-child(even) td {
+    background-color: #f8fafc;
+  }
+  .callout-box {
+    margin: 8pt 0;
+    padding: 8pt 12pt;
+    border-radius: 4pt;
+    font-size: 10pt;
+  }
+  .callout-tip {
+    background-color: #f0fdf4;
+    border-left: 4pt solid #16a34a;
+    color: #14532d;
+  }
+  .callout-important {
+    background-color: #eff6ff;
+    border-left: 4pt solid #2563eb;
+    color: #1e3a8a;
+  }
+  .callout-warning {
+    background-color: #fffbeb;
+    border-left: 4pt solid #d97706;
+    color: #78350f;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2pt 6pt;
+    font-size: 8.5pt;
+    font-weight: bold;
+    border-radius: 3pt;
+  }
+  .badge-emerald { background-color: #d1fae5; color: #065f46; border: 1pt solid #a7f3d0; }
+  .badge-blue { background-color: #dbeafe; color: #1e40af; border: 1pt solid #bfdbfe; }
+  .badge-amber { background-color: #fef3c7; color: #92400e; border: 1pt solid #fde68a; }
+  .badge-rose { background-color: #ffe4e6; color: #9f1239; border: 1pt solid #fecdd3; }
+  .badge-slate { background-color: #f1f5f9; color: #475569; border: 1pt solid #cbd5e1; }
+  
+  kbd {
+    background-color: #f1f5f9;
+    border: 1pt solid #cbd5e1;
+    border-radius: 3pt;
+    padding: 1pt 4pt;
+    font-family: Consolas, monospace;
+    font-size: 9pt;
+    color: #0f172a;
+  }
+  code {
+    font-family: Consolas, 'Courier New', monospace;
+    background-color: #f8fafc;
+    border: 0.5pt solid #e2e8f0;
+    padding: 1pt 3pt;
+    font-size: 9.5pt;
+    color: #0f766e;
+  }
+  .cover-title {
+    font-size: 26pt;
+    font-weight: bold;
+    color: #064e3b;
+    text-align: center;
+    line-height: 1.2;
+    margin-top: 40pt;
+  }
+  .cover-subtitle {
+    font-size: 13pt;
+    color: #047857;
+    text-align: center;
+    margin-top: 15pt;
+    margin-bottom: 40pt;
+    line-height: 1.4;
+  }
+  .cover-meta-table {
+    width: 80%;
+    margin: 40pt auto;
+    border-collapse: collapse;
+    font-size: 11pt;
+  }
+  .cover-meta-table td {
+    padding: 6pt 10pt;
+    border-bottom: 1pt solid #e2e8f0;
+  }
+  .toc-item {
+    margin-bottom: 4pt;
+  }
+  .toc-title {
+    font-weight: bold;
+    color: #064e3b;
+  }
+  .toc-sub {
+    padding-left: 18pt;
+    color: #334155;
+  }
+</style>
+
+</head>
+<body>
+  <!-- BAGIAN PENDAHULUAN & SAMPUL -->
+  
+  <!-- HALAMAN SAMPUL -->
+  <div class="cover-section" style="text-align: center; padding-top: 50pt;">
+    <div style="font-size: 14pt; letter-spacing: 2pt; font-weight: bold; color: #047857; text-transform: uppercase;">
+      DOKUMEN PANDUAN RESMI SISTEM INFORMASI TERPADU
+    </div>
+    
+    <div class="cover-title">
+      BUKU PANDUAN PENGGUNA &amp; ADMINISTRATOR<br/>
+      SISTEM INFORMASI MADINA BLOKAGUNG
+    </div>
+
+    <div class="cover-subtitle">
+      Panduan Operasional Terpadu PKM. Kurikulum, PKM. Muhafadzoh, PKM. Kesiswaan,<br/>
+      PKM. Sarana Prasarana, dan Manajemen Portal Warta Berita Publik Pesantren
+    </div>
+
+    <div style="margin: 30pt auto; width: 120pt; height: 3pt; background-color: #059669;"></div>
+
+    <table class="cover-meta-table">
+      <tr>
+        <td style="width: 35%; font-weight: bold; color: #475569;">Lembaga / Institusi</td>
+        <td style="width: 5%;">:</td>
+        <td style="font-weight: bold; color: #064e3b;">Madrasah Diniyyah Al Amiriyyah (MADINA)</td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold; color: #475569;">Pesantren Induk</td>
+        <td>:</td>
+        <td>Pondok Pesantren Darussalam Blokagung, Banyuwangi</td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold; color: #475569;">Versi Aplikasi</td>
+        <td>:</td>
+        <td>Rilis 2.4 (Next.js 14 App Router &amp; Supabase Engine)</td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold; color: #475569;">Tahun Ajaran Aktif</td>
+        <td>:</td>
+        <td>1447–1448 H / 2026–2027 M</td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold; color: #475569;">Penyusun Dokumen</td>
+        <td>:</td>
+        <td>Tim Pengembang Sistem &amp; Dewan Redaksi IT MADINA</td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold; color: #475569;">Tanggal Rilis</td>
+        <td>:</td>
+        <td>November 2026</td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold; color: #475569;">Klasifikasi Dokumen</td>
+        <td>:</td>
+        <td>Panduan Operasional Resmi (Official Standard Operating Procedure)</td>
+      </tr>
+    </table>
+
+    <div style="margin-top: 60pt; font-size: 10pt; color: #64748b;">
+      Dilarang mereproduksi atau mendistribusikan salinan dokumen ini di luar peruntukan resmi operasional<br/>
+      Madrasah Diniyyah Al Amiriyyah Pondok Pesantren Darussalam Blokagung.
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- KATA PENGANTAR -->
+  <div style="padding-top: 10pt;">
+    <h1>KATA PENGANTAR</h1>
+    <p style="font-style: italic; color: #047857; font-weight: bold;">
+      Bismillahirrohmanirrohim. Alhamdulillahi Robbil 'Alamin, wash-sholatu was-salamu 'ala Asyrofil Anbiya'i wal Mursalin, Sayyidina Muhammadin wa 'ala alihi wa shohbihi ajma'in.
+    </p>
+    <p>
+      Segala puji dan syukur kami haturkan ke hadirat Allah Subhanahu wa Ta'ala atas limpahan taufiq, hidayah, serta pertolongan-Nya, sehingga penyusunan <strong>Buku Panduan Pengguna &amp; Administrator Sistem Informasi MADINA Blokagung</strong> ini dapat diselesaikan dengan sempurna. Shalawat serta salam senantiasa tercurah kepada Baginda Nabi Agung Muhammad Shallallahu 'Alaihi wa Sallam, keluarga, sahabat, dan para penerus dakwah beliau.
+    </p>
+    <p>
+      Madrasah Diniyyah Al Amiriyyah (MADINA) Pondok Pesantren Darussalam Blokagung Banyuwangi merupakan salah satu institusi pendidikan diniyyah salafiyah terbesar yang membina ribuan santriawan dan santriwati pada berbagai jenjang: Tingkat Ula, Tingkat Wustho, Tingkat Ulya, hingga Kelas Unggulan dan Program Pendampingan Khusus (Ihfad). Seiring bertambahnya populasi santri, ragam fan kitab kajian, intensitas setoran muhafadzoh, serta mobilitas dewan asatidz yang mengampu di puluhan blok kelas terpisah (Putra dan Putri), digitalisasi tata kelola administrasi menjadi kebutuhan mutlak yang mendesak.
+    </p>
+    <p>
+      Sistem Informasi MADINA Blokagung hadir sebagai solusi komprehensif berbasis teknologi web mutakhir (<em>Next.js 14, Zustand State Architecture, Supabase PostgreSQL Real-time, serta IndexedDB Offline-First Caching</em>). Platform ini dirancang khusus guna merefleksikan seluruh tradisi, terminologi, dan pola kerja autentik di pesantren salafiyah, seperti pembagian rombel (Kls &amp; Bag), penetapan Mustahiq/Wali Kelas, matriks jam mengajar Diniyyah dan Takror, setoran nadzom/lalaran mingguan hari Ahad, absensi mengajar 4 jam pelajaran, konsorsium fan kitab, inventarisasi sapras per lokal, hingga pelaporan otomatis nilai hafalan via WhatsApp kepada para wali santri.
+    </p>
+    <p>
+      Buku panduan ini disusun secara sistematis, terperinci, dan tidak diringkas. Setiap bab mengulas alur kerja nyata, arti label tombol antarmuka, pemfilteran data, pintasan klik kanan, penanganan kendala teknis (<em>troubleshooting</em>), hingga matriks Hak Akses Pengguna (RBAC). Diharapkan buku ini menjadi pegangan wajib bagi Pengurus Harian, Bagian Kurikulum, Bagian Muhafadzoh, Bagian Kesiswaan, Bagian Sapras, Dewan Asatidz, Mustahiq Rombel, maupun Tim Administrator IT MADINA Blokagung.
+    </p>
+    <p>
+      Kami menyampaikan apresiasi dan penghormatan setinggi-tingginya kepada segenap Pengasuh Pondok Pesantren Darussalam Blokagung, Majelis Pimpinan MADINA, serta seluruh pihak yang telah mencurahkan tenaga, doa, dan dedikasi demi terwujudnya sistem ini. Semoga dedikasi ini dinilai sebagai amal jariyah yang mengalirkan keberkahan abadi. Amin ya Rabbal 'Alamin.
+    </p>
+    
+    <table style="width: 100%; margin-top: 30pt; border-collapse: collapse;">
+      <tr>
+        <td style="width: 50%;"></td>
+        <td style="width: 50%; text-align: center;">
+          Blokagung, Banyuwangi, November 2026<br/>
+          <strong>Pimpinan &amp; Tim IT MADINA Blokagung</strong><br/><br/><br/><br/>
+          ( <u>Majelis Pimpinan MADINA</u> )
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- DAFTAR ISI -->
+  <div>
+    <h1>DAFTAR ISI LENGKAP</h1>
+    <div style="border-bottom: 1.5pt solid #047857; margin-bottom: 12pt;"></div>
+
+    <div class="toc-item"><span class="toc-title">KATA PENGANTAR</span></div>
+    <div class="toc-item"><span class="toc-title">DAFTAR ISI LENGKAP</span></div>
+    
+    <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 1: PENGENALAN EKOSISTEM &amp; FITUR GLOBAL APLIKASI</span></div>
+    <div class="toc-item toc-sub">1.1 Gambaran Umum Sistem &amp; Arsitektur Hybrid Real-time/Offline-First</div>
+    <div class="toc-item toc-sub">1.2 Portal Publik &amp; Warta Berita (Landing Page, Feed Berita, dan Sticky TikTok Widget)</div>
+    <div class="toc-item toc-sub">1.3 Autentikasi &amp; Keamanan Sesi Pengurus (Login, Persistent Session, Proteksi Route)</div>
+    <div class="toc-item toc-sub">1.4 Anatomi Antarmuka Ruang Kerja (Desktop Sidebar, Navbar, Mobile BottomNav)</div>
+    <div class="toc-item toc-sub">1.5 Fitur Utilitas Global (Realtime Sync, Engine Undo/Redo, Offline Sync, SundayDatePicker, Filter TA)</div>
+
+    <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 2: BERANDA ANALITIK, DATA MASTER &amp; RUANG KERJA UMUM</span></div>
+    <div class="toc-item toc-sub">2.1 Beranda Analitik &amp; KPI Utama (/dashboard)</div>
+    <div class="toc-item toc-sub">2.2 Manajemen Data Santri (/santri) - Biodata, Ambil Foto Kamera, Import/Export Excel</div>
+    <div class="toc-item toc-sub">2.3 Manajemen Data Dewan Asatidz (/asatidz) - Direktori &amp; Import Excel</div>
+    <div class="toc-item toc-sub">2.4 Workspace Catatan &amp; To-Do List Pengurus (/catatan)</div>
+
+    <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 3: PANDUAN OPERASIONAL PKM. KURIKULUM</span></div>
+    <div class="toc-item toc-sub">3.1 Formasi Kelas &amp; Kapasitas Ruang (/formasi, /formasi/pa, /formasi/pi)</div>
+    <div class="toc-item toc-sub">3.2 Manajemen Fan Mata Pelajaran &amp; Pemetaan Pengajar (/fan/pelajaran, /fan/pengajar)</div>
+    <div class="toc-item toc-sub">3.3 Direktori Pendidik &amp; Mustahiq Kelas (/daftar-pendidik)</div>
+    <div class="toc-item toc-sub">3.4 Pengaturan Hari &amp; Slot Jam KBM (/hari-kbm)</div>
+    <div class="toc-item toc-sub">3.5 Matriks Jadwal KBM (/jadwal-kbm) - Context Menu, Clipboard Bar, dan AutoScheduleSolver</div>
+    <div class="toc-item toc-sub">3.6 Kalender Akademik Terpadu Masehi &amp; Hijriyah (/kalender-kegiatan)</div>
+
+    <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 4: PANDUAN OPERASIONAL PKM. MUHAFADZOH</span></div>
+    <div class="toc-item toc-sub">4.1 Setoran Muhafadzoh Kantor (/setoran)</div>
+    <div class="toc-item toc-sub">4.2 Setoran Mingguan Kelas Mustahiq (/setor-mustahiq &amp; /setor-mustahiq/rekap)</div>
+    <div class="toc-item toc-sub">4.3 Setor Cepat Massal (/setor-cepat)</div>
+    <div class="toc-item toc-sub">4.4 Linimasa Setor Bulanan (/linimasa-setor)</div>
+    <div class="toc-item toc-sub">4.5 Rekapitulasi Ketuntasan Hafalan Santri (/rekap-hafalan)</div>
+    <div class="toc-item toc-sub">4.6 Desain &amp; Cetak Piagam / Syahadah (/piagam)</div>
+    <div class="toc-item toc-sub">4.7 Checklist Serah Terima Piagam (/serah-piagam) [Fitur Terbaru]</div>
+    <div class="toc-item toc-sub">4.8 Broadcast WhatsApp Rapor Digital Hafalan (/kirim-wa)</div>
+
+    <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 5: PANDUAN OPERASIONAL PKM. KESISWAAN</span></div>
+    <div class="toc-item toc-sub">5.1 Presensi Mengajar Harian Dewan Asatidz (/absensi)</div>
+    <div class="toc-item toc-sub">5.2 Portal Presensi Cepat per Blok (/absen-cepat) &amp; Persistent Device Session</div>
+    <div class="toc-item toc-sub">5.3 Presensi Musyawarah &amp; Konsorsium (/absen-konsorsium)</div>
+    <div class="toc-item toc-sub">5.4 Rekapitulasi Kehadiran &amp; Generator Laporan WhatsApp (/rekap-absensi)</div>
+
+    <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 6: PANDUAN OPERASIONAL PKM. SARANA PRASARANA &amp; PUBLIKASI</span></div>
+    <div class="toc-item toc-sub">6.1 Manajemen Sarana &amp; Prasarana (Inventaris, Perbaikan, Logistik, Rekap Audit)</div>
+    <div class="toc-item toc-sub">6.2 CMS Manajemen Warta Berita MADINA (/kelola-berita) - Editor Sisip Foto &amp; Video TikTok</div>
+
+    <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 7: PENGATURAN SISTEM, HAK AKSES (RBAC) &amp; PANDUAN PEMECAHAN MASALAH</span></div>
+    <div class="toc-item toc-sub">7.1 Manajemen Hak Akses Pengguna Berbasis Peran (RBAC Matrix &amp; Otoritas Khusus)</div>
+    <div class="toc-item toc-sub">7.2 Kustomisasi Navigasi Sidebar, Hierarki Kamar, dan Saklar Keamanan</div>
+    <div class="toc-item toc-sub">7.3 Prosedur Operasional Standar (SOP) Transisi Pergantian Tahun Ajaran Baru</div>
+    <div class="toc-item toc-sub">7.4 Tanya Jawab (FAQ) &amp; Panduan Pemecahan Masalah (Troubleshooting)</div>
+  </div>
+  
+
+  <!-- BAB 1: PENGENALAN EKOSISTEM & FITUR GLOBAL APLIKASI -->
+  
+  <div class="page-break"></div>
+  <h1>BAB 1: PENGENALAN EKOSISTEM &amp; FITUR GLOBAL APLIKASI</h1>
+
+  <h2>1.1 Gambaran Umum Sistem &amp; Arsitektur Hybrid Real-Time / Offline-First</h2>
+  <p>
+    Sistem Informasi <strong>MADINA Blokagung</strong> (Madrasah Diniyyah Al Amiriyyah Pondok Pesantren Darussalam Blokagung) adalah aplikasi tata kelola akademik dan kesiswaan berbasis web terpadu yang dibangun dengan kerangka kerja modern <em>Next.js 14 App Router</em>, <em>TypeScript</em>, <em>Tailwind CSS</em>, dan mesin pangkalan data terdistribusi <em>Supabase PostgreSQL</em>.
+  </p>
+  <p>
+    Aplikasi ini dirancang untuk menjawab tantangan geografis dan konektivitas pesantren yang luas, di mana dewan pengurus dan petugas piket harus melakukan input data di ruang kantor maupun di puluhan blok asrama putra dan putri dengan stabilitas sinyal internet yang bervariasi. Oleh karena itu, aplikasi mengimplementasikan arsitektur ganda:
+  </p>
+  <ul>
+    <li><strong>Sinkronisasi Waktu Nyata (Supabase Realtime Channel):</strong> Setiap perubahan data presensi, jadwal, atau setoran langsung terdistribusi ke seluruh browser pengurus lain yang sedang aktif tanpa perlu memuat ulang peramban (<em>refresh</em>).</li>
+    <li><strong>Arsitektur Luring Tangguh (Offline-First via IndexedDB <code>MadinaOfflineDB</code>):</strong> Ketika petugas piket berada di area blank-spot, data input tetap tersimpan secara aman di peramban lokal dan akan dikirimkan secara otomatis (<em>auto-flush</em>) saat koneksi terhubung kembali.</li>
+  </ul>
+
+  
+    <div class="callout-box callout-important">
+      <strong>📌 Prinsip Integritas Pesantren</strong><br/>
+      Seluruh nomenklatur dalam aplikasi ini mempertahankan istilah pesantren salafiyah: Mustahiq/Mustahiqqoh, Munawib/Munawibbah, Lalaran, Nadzom, Syawir, Daur Awwal & Daur Tsani, Fan Kitab, serta pembagian Blok Diniyyah dan Asrama.
+    </div>
+  
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>1.2 Portal Publik &amp; Warta Berita Pesantren (<code>/</code>, <code>/berita</code>, <code>/berita/[slug]</code>)</h2>
+  
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Portal publik berfungsi sebagai etalase resmi madrasah kepada masyarakat luas, wali santri, dan alumni. Portal ini menampilkan profil institusi, visi-misi pendidikan diniyyah, direktori jenjang (Ula, Wustho, Ulya, dan Program Unggulan), agenda kegiatan mendatang, serta majalah warta digital berkala yang mengadopsi standar desain editorial pesantren modern ala Lirboyo.net.
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    <span class="badge badge-emerald">Publik Bebas Akses</span> Seluruh halaman portal publik dapat diakses oleh siapa pun tanpa memerlukan proses autentikasi (login). Rute yang termasuk dalam portal publik mencakup:
+  </p>
+  <ul>
+    <li><code>/</code> : Halaman Beranda Publik (Hero profil, sambutan kepala madrasah, statistik santri, direktori fan, dan highlight berita).</li>
+    <li><code>/berita</code> : Halaman Indeks Arsip Warta Madina dengan filter topik (Kelas Unggulan, Ula, Wustho, Ulya) dan pencarian judul.</li>
+    <li><code>/berita/[slug]</code> : Halaman Baca Artikel Warta Berita 2 Kolom lengkap dengan pemutar video TikTok dan artikel terkait.</li>
+  </ul>
+
+  <h3>(c) Langkah Penggunaan Step-by-Step</h3>
+  <ol>
+    <li><strong>Membuka Halaman Utama:</strong> Arahkan peramban ke alamat domain utama MADINA Blokagung. Pengunjung disambut dengan slider showcase warta berita terbaru pada komponen <code>BeritaShowcaseSection</code>.</li>
+    <li><strong>Membaca Sorotan Warta:</strong> Klik pada kartu berita besar (<em>Hero Lead</em>) di sisi kiri atau salah satu dari 4 kartu mini (<em>Highlight Grid</em>) di sebelah kanan.</li>
+    <li><strong>Menjelajahi Arsip Berita:</strong> Klik menu <strong>Warta Madina</strong> pada navigasi atas atau tombol <em>Lihat Semua Warta</em>. Pengguna dapat memilih filter tab: <em>Semua, Kelas Unggulan, Tingkat Ula, Tingkat Wustho,</em> atau <em>Tingkat Ulya</em>.</li>
+    <li><strong>Membaca Detail Warta (2 Kolom):</strong>
+      <ul>
+        <li><em>Kolom Kiri (Artikel Utama):</em> Berisi foto cover resolusi tinggi, kutipan cuplikan (<em>excerpt</em>), isi berita paragraf penuh, sisipan foto kegiatan (<em>caption</em>), sub-judul bab, serta dawuh masyayikh/kutipan ulama.</li>
+        <li><em>Kolom Kanan (Sticky Widget):</em> Menyajikan <strong>Pemutar Video TikTok MADINA</strong> yang disematkan langsung (dapat diputar tanpa meninggalkan halaman) dan kartu kontak Redaksi Warta Diniyyah.</li>
+      </ul>
+    </li>
+    <li><strong>Membagikan Artikel:</strong> Klik tombol <strong>Salin Tautan</strong> atau tombol <strong>Bagikan ke WhatsApp</strong> di bagian bawah artikel untuk menyebarkan rilis warta kepada wali santri.</li>
+  </ol>
+
+  <h3>(d) Fitur Khusus &amp; Pintasan</h3>
+  <ul>
+    <li><strong>Smart TikTok Video Extractor:</strong> Sistem secara otomatis mengekstrak ID numerik dari tautan TikTok yang diinput pengurus pada CMS (misal: <code>https://www.tiktok.com/@madinblokagung/video/7391823...</code>) dan merendernya dalam format player vertikal 9:16 responsif.</li>
+    <li><strong>Fallback Saluran TikTok Resmi:</strong> Apabila artikel berita tidak menyertakan tautan video khusus, widget kanan secara dinamis menampilkan tombol tautan menuju akun resmi <code>@madinblokagung</code>.</li>
+  </ul>
+
+  <h3>(e) Tips &amp; Penanganan Kendala</h3>
+  
+    <div class="callout-box callout-tip">
+      <strong>💡 Optimalisasi Bandwidth di Lingkungan Pesantren</strong><br/>
+      Komponen gambar pada portal berita telah dilengkapi penanganan <code>onError</code> otomatis. Jika foto gagal dimuat akibat jaringan lambat, sistem akan merender kartu cadangan berpola gradasi emerald dengan ikon buku turots tanpa merusak tata letak halaman.
+    </div>
+  
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>1.3 Autentikasi &amp; Keamanan Sesi Pengurus (<code>/login</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Halaman <code>/login</code> merupakan gerbang otentikasi tunggal bagi Dewan Asatidz, Mustahiq, Petugas Piket, PKM Kurikulum, PKM Muhafadzoh, PKM Kesiswaan, PKM Sapras, hingga Master Admin untuk memasuki ruang kerja administrasi MADINA Blokagung.
+  </p>
+
+  <h3>(b) Hak Akses &amp; Proteksi Rute (<code>middleware.ts</code>)</h3>
+  <p>
+    Semua rute di bawah grup direktori <code>app/(dashboard)/*</code> diproteksi secara ketat oleh <code>middleware.ts</code> Next.js. Mekanisme kerja proteksi rute adalah sebagai berikut:
+  </p>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Kondisi Sesi Pengguna</th>
+        <th style="width: 35%;">Rute yang Dituju</th>
+        <th style="width: 40%;">Aksi Sistem / Pengalihan (Redirect)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Belum Terautentikasi (Tamu)</td>
+        <td>Rute Dashboard (misal: <code>/santri</code>, <code>/absensi</code>)</td>
+        <td>Ditolak dan langsung diarahkan kembali ke <code>/login</code> dengan parameter kembali.</td>
+      </tr>
+      <tr>
+        <td>Sudah Terautentikasi</td>
+        <td>Halaman <code>/login</code></td>
+        <td>Dialihkan langsung ke <code>/dashboard</code> (atau ke <code>/absen-cepat</code> jika akun piket khusus).</td>
+      </tr>
+      <tr>
+        <td>Akun Terautentikasi</td>
+        <td>Halaman yang status aksesnya <code>sembunyikan</code></td>
+        <td>Ditolak oleh verifikasi RBAC dan dialihkan ke halaman peringatan hak akses.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>(c) Langkah Penggunaan Step-by-Step Masuk Sistem</h3>
+  <ol>
+    <li>Ketikkan rute <code>/login</code> pada peramban web.</li>
+    <li>Masukkan <strong>Email Pengurus</strong> atau <strong>Username Resmi</strong> yang telah didaftarkan oleh Master Admin.</li>
+    <li>Ketikkan <strong>Kata Sandi (Password)</strong> akun Anda.</li>
+    <li><em>(Opsional untuk Petugas Piket Lapangan):</em> Centang opsi <strong>Ingat Sesi Perangkat Ini (Persistent Device Session)</strong> jika Anda menggunakan tablet atau ponsel piket bersama di area gerbang asrama.</li>
+    <li>Klik tombol hijau <strong>Masuk ke Ruang Kerja</strong>.</li>
+    <li>Sistem akan memvalidasi kredensial ke Supabase Auth, mengambil profil RBAC dari tabel <code>user_accounts</code>, dan membuka antarmuka dashboard sesuai wewenang akun Anda.</li>
+  </ol>
+
+  <h3>(d) Fitur Khusus: Persistent Absen Cepat Device Session</h3>
+  <p>
+    Bagi petugas piket presensi asatidz harian, Master Admin dapat mengaktifkan bendera otoritas <code>persistent_absen_cepat</code> pada menu Pengaturan RBAC. Karakteristik fitur ini:
+  </p>
+  <ul>
+    <li>Sesi login disimpan secara terisolasi pada brankas lokal peramban (<code>deviceSessionVault.ts</code>) sehingga tidak akan pernah kedaluwarsa (<em>never expires</em>) meskipun aplikasi ditutup.</li>
+    <li>Setiap kali petugas membuka aplikasi web, sistem akan langsung meloncat (<em>bypass</em>) melewati beranda analitik dan membuka layar <code>/absen-cepat</code> secara otomatis.</li>
+    <li>Sesi hanya dapat diakhiri jika petugas secara eksplisit menekan tombol <strong>Keluar Sesi (Logout)</strong> pada menu profil atas.</li>
+  </ul>
+
+  <h3>(e) Tips &amp; Penanganan Kendala</h3>
+  
+    <div class="callout-box callout-warning">
+      <strong>⚠️ Lupa Kata Sandi / Akun Dinonaktifkan</strong><br/>
+      Jika muncul notifikasi "Kredensial tidak valid atau akun dinonaktifkan", segera hubungi Master Admin di Bagian IT Sekretariat MADINA untuk melakukan reset kata sandi atau pengaktifan status akun melalui modul /pengaturan.
+    </div>
+  
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>1.4 Anatomi Antarmuka Ruang Kerja (<code>layout.tsx</code>)</h2>
+  <p>
+    Setelah berhasil masuk, pengguna disajikan tata letak ruang kerja yang intuitif, bersih, dan konsisten di seluruh perangkat:
+  </p>
+  
+  <h3>1. Tampilan Desktop (Layar Lebar &gt; 1024px)</h3>
+  <ul>
+    <li><strong>Sidebar Kiri Dinamis (<code>SidebarDesktop.tsx</code>):</strong>
+      <ul>
+        <li><em>Logo &amp; Identitas Lembaga:</em> Menampilkan lambang resmi MADINA Blokagung dan nama versi sistem.</li>
+        <li><em>Grup Navigasi Terstruktur:</em> Menu dikelompokkan secara hirarkis: <strong>Beranda Utama</strong>, <strong>Data Pokok Pesantren</strong>, <strong>PKM. Kurikulum</strong>, <strong>PKM. Muhafadzoh</strong>, <strong>PKM. Kesiswaan</strong>, <strong>PKM. Sarana Prasarana</strong>, <strong>PKM. Publikasi &amp; Warta</strong>, serta <strong>Pengaturan Sistem</strong>.</li>
+        <li><em>Fitur Lipat (Collapse/Expand):</em> Tombol chevron di sudut sidebar memungkinkan pengurus melipat sidebar menjadi mode ikon ramping agar bidang kerja tabel (seperti Matriks Jadwal dan Formasi) menjadi jauh lebih leluasa.</li>
+      </ul>
+    </li>
+    <li><strong>Bilah Navigasi Atas (<code>Navbar.tsx</code>):</strong>
+      <ul>
+        <li><em>Tombol Buka-Tutup Menu (Hamburger):</em> Membuka atau menyembunyikan sidebar.</li>
+        <li><em>Banner Tahun Ajaran Aktif:</em> Menampilkan label tahun ajaran berjalan (contoh: <code>1447–1448 H / 2026–2027 M [Semester Ganjil]</code>).</li>
+        <li><em>Tombol Undo &amp; Redo Global:</em> Ikon panah melengkung kiri dan kanan lengkap dengan lencana jumlah tumpukan riwayat (<em>history stack count</em>).</li>
+        <li><em>Lonceng Notifikasi Web-Push (<code>NotificationBellPrompt.tsx</code>):</em> Indikator pemberitahuan sistem dan permintaan izin push notification.</li>
+        <li><em>Menu Profil &amp; Wewenang Akun:</em> Menampilkan nama lengkap, peran (Role), tombol cepat Pengaturan Hierarki, Audit Log, dan tombol Keluar (Logout).</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>2. Tampilan Ponsel / Mobile (Layar &lt; 768px)</h3>
+  <p>
+    Pada perangkat seluler yang digunakan asatidz saat berkeliling di asrama, sidebar desktop secara otomatis disembunyikan dan digantikan oleh bilah navigasi bawah <strong><code>BottomNavMobile.tsx</code></strong> yang ramah sentuhan jempol:
+  </p>
+  <ul>
+    <li><strong>Beranda:</strong> Menuju dashboard analitik ringkas.</li>
+    <li><strong>Piket (Absen Cepat):</strong> Pintasan langsung untuk melakukan presensi mengajar guru per blok.</li>
+    <li><strong>Setor:</strong> Akses instan ke formulir setoran muhafadzoh santri.</li>
+    <li><strong>Catatan:</strong> Akses cepat daftar to-do dan agenda kerja pengurus.</li>
+    <li><strong>Menu Lainnya:</strong> Membuka laci navigasi geser (<em>drawer sheet</em>) untuk mengakses seluruh sub-modul lainnya.</li>
+  </ul>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>1.5 Fitur Utilitas Global Aplikasi</h2>
+
+  <h3>1. Mesin Pemulihan Data Global (Engine Undo / Redo Lintas Modul)</h3>
+  <p>
+    Salah satu keunggulan terbesar Sistem Informasi MADINA adalah kehadiran <strong><code>useUndoRedoStore</code></strong>. Fitur ini memungkinkan pengurus membatalkan kesalahan operasional (seperti salah menghapus slot jadwal, salah mengubah status presensi, atau salah memindahkan santri) dengan aman.
+  </p>
+  <ul>
+    <li><strong>Kapasitas Tumpukan (Stack Limit):</strong> Sistem merekam hingga maksimal <strong>5 langkah tindakan terakhir</strong> (<code>MAX_HISTORY_STEPS = 5</code>) untuk menjaga efisiensi memori.</li>
+    <li><strong>Pemberitahuan Mengambang (Floating Undo Toast):</strong> Setiap kali pengurus melakukan perubahan data, sebuah notifikasi toast muncul di sudut layar dengan tombol cepat <strong>Batalkan (Undo)</strong>.</li>
+    <li><strong>Pendeteksi Benturan Status (Undo Conflict Resolution):</strong> Apabila data yang hendak di-undo telah diubah oleh pengurus lain di perangkat yang berbeda, modal dialog <code>UndoConflictModal.tsx</code> akan muncul dan memberikan pilihan: <em>Paksa Timpa (Force Undo)</em> atau <em>Batalkan Pemulihan</em>.</li>
+  </ul>
+
+  <h3>2. Modus Operasional Luring &amp; Antrean Mutasi (Offline-First via <code>OfflineSyncService</code>)</h3>
+  <p>
+    Petugas piket yang bertugas di asrama putri atau lantai atas madrasah sering kali mengalami kendala sinyal internet terputus (<em>offline</em>). Aplikasi mengatasinya secara elegan:
+  </p>
+  <ul>
+    <li><strong>Pendeteksian Status Jaringan:</strong> Komponen <code>OfflineStatusIndicator.tsx</code> akan menampilkan bilah pita kuning di bagian atas aplikasi saat internet terputus, menginformasikan bahwa sistem beralih ke mode luring.</li>
+    <li><strong>Antrean Mutasi IndexedDB:</strong> Setiap klik simpan presensi atau setoran akan dikemas ke dalam objek <code>OfflineMutation</code> dengan status <code>pending</code> di penyimpanan lokal peramban.</li>
+    <li><strong>Sinkronisasi Otomatis Bertahap:</strong> Begitu perangkat mendeteksi sinyal internet kembali (event <code>window.online</code>), layanan <code>OfflineSyncService.flushPendingMutations()</code> secara otomatis mengeksekusi antrean ke server Supabase satu per satu hingga selesai, dan menampilkan lencana hijau bertuliskan <em>"Seluruh data telah tersinkronisasi"</em>.</li>
+  </ul>
+
+  <h3>3. Pemilih Tanggal Khusus Hari Ahad (<code>SundayDatePicker</code>)</h3>
+  <p>
+    Dalam tradisi MADINA Blokagung, setoran lalaran mingguan santri diwajibkan berlangsung pada malam Ahad dan hari Ahad. Komponen <code>SundayDatePicker.tsx</code> dirancang khusus agar input setoran tidak keliru:
+  </p>
+  <ul>
+    <li>Kalender secara cerdas mengunci tanggal di luar hari Ahad sehingga pengguna hanya dapat mengklik tanggal-tanggal yang jatuh tepat pada hari Ahad.</li>
+    <li>Dilengkapi tombol jalan pintas: <em>Ahad Ini, Ahad Depan,</em> dan <em>Ahad Sebelumnya</em>.</li>
+  </ul>
+
+  <h3>4. Pemfilteran Tahun Ajaran &amp; Kalender Hijriyah Global (<code>useTahunAjaranStore</code>)</h3>
+  <p>
+    Sistem bekerja secara multi-tahun ajaran (contoh: <code>2026/2027</code>) dan multi-semester (<em>Semester Ganjil / Daur Awwal</em> dan <em>Semester Genap / Daur Tsani</em>). Seluruh tabel dan rekapitulasi data akan secara otomatis difilter sesuai dengan Tahun Ajaran yang sedang diaktifkan oleh pengurus pada bilah atas aplikasi.
+  </p>
+  
+
+  <!-- BAB 2: BERANDA ANALITIK, DATA MASTER & RUANG KERJA UMUM -->
+  
+  <div class="page-break"></div>
+  <h1>BAB 2: BERANDA ANALITIK, DATA MASTER &amp; RUANG KERJA UMUM</h1>
+
+  <h2>2.1 Beranda Analitik &amp; KPI Utama (<code>/dashboard</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Halaman Beranda Analitik (<code>/dashboard</code>) adalah pusat komando dan kendali visual terpadu bagi pimpinan madrasah, kepala PKM, dan pengurus harian. Halaman ini mengonsolidasikan data dari seluruh departemen secara waktu nyata ke dalam widget KPI, grafik tren kehadiran, visualisasi matriks jam belajar harian, serta papan peringkat (<em>leaderboard</em>) capaian hafalan.
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    <span class="badge badge-emerald">Semua Pengurus Terdaftar</span> Dapat diakses oleh seluruh pengguna yang memiliki akun resmi aktif (Master Admin, Pengurus PKM, Mustahiq, maupun Petugas Piket). Tampilan data dan agregasi angka disesuaikan secara dinamis dengan cakupan wilayah gender (PA/PI) atau blok asrama yang diberikan kepada akun tersebut.
+  </p>
+
+  <h3>(c) Anatomi Widget &amp; Cara Membaca Data</h3>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Nama Widget</th>
+        <th style="width: 35%;">Sumber Data &amp; Komponen</th>
+        <th style="width: 40%;">Arti Indikator &amp; Cara Analisis</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Kartu KPI Utama (<code>KpiCardGrid</code>)</strong></td>
+        <td>Agregasi tabel <code>santri</code>, <code>asatidz</code>, <code>riwayat_absensi</code>, dan <code>setoran_hafalan</code></td>
+        <td>
+          • <strong>Total Santri Aktif:</strong> Jumlah santri terdaftar pada TA aktif (terpisah PA &amp; PI).<br/>
+          • <strong>Dewan Asatidz:</strong> Jumlah guru aktif mengajar.<br/>
+          • <strong>Kehadiran KBM Hari Ini:</strong> Persentase kehadiran asatidz pada Jam 1 s.d. 4.<br/>
+          • <strong>Ketuntasan Muhafadzoh:</strong> Persentase santri yang telah mencapai target materi wajib.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Grafik Tren Kehadiran (<code>AbsensiTrendLineChart</code>)</strong></td>
+        <td>Log presensi 7 s.d. 30 hari terakhir</td>
+        <td>Menampilkan kurva fluktuasi kehadiran guru per hari. Warna hijau menandakan kehadiran di atas 90%, sedangkan warna merah/kuning mengindikasikan lonjakan izin, sakit, atau jadwal badal.</td>
+      </tr>
+      <tr>
+        <td><strong>Matriks KBM Harian (<code>ClassKbmMatrixWidget</code>)</strong></td>
+        <td>Tabel <code>jadwal_kbm</code> &amp; status presensi real-time</td>
+        <td>Memetakan seluruh rombel kelas secara langsung. Menunjukkan kelas mana yang sedang berlangsung, siapa asatidz yang mengajar di lokal, serta deteksi kelas kosong (badal belum terisi).</td>
+      </tr>
+      <tr>
+        <td><strong>Papan Peringkat (<code>LeaderboardWidget</code>)</strong></td>
+        <td>Rekap setoran mingguan <code>setoran_hafalan</code></td>
+        <td>Daftar 10 kelas dan santri dengan capaian setoran lalaran terbanyak minggu ini. Menjadi tolok ukur pemberian penghargaan (<em>reward</em>) bulanan.</td>
+      </tr>
+      <tr>
+        <td><strong>Pusat Aksi Cepat (<code>QuickActionHub</code>)</strong></td>
+        <td>Pintasan modul utama</td>
+        <td>Tombol cepat untuk: <em>Input Absen Cepat, Setor Hafalan, Buat Formasi,</em> dan <em>Cetak Piagam</em>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>(d) Fitur Khusus: Live Status Banner &amp; Activity Ticker</h3>
+  <ul>
+    <li><strong>Live Status Banner:</strong> Menampilkan status sinkronisasi Supabase Realtime Channel secara langsung. Jika terputus, banner beralih ke warna kuning dengan tombol <em>Hubungkan Ulang</em>.</li>
+    <li><strong>Recent Activity Ticker:</strong> Menampilkan deretan aktivitas pengurus secara langsung (misal: "Mustahiq 2B Ula baru saja memverifikasi 32 setoran santri", "Piket Blok A mencatat 1 asatidz badal").</li>
+  </ul>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>2.2 Manajemen Data Santri (<code>/santri</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Modul <code>/santri</code> adalah pangkalan data induk (<em>master database</em>) kependudukan santri MADINA Blokagung. Modul ini mengelola 37 atribut data lengkap untuk setiap santri, mulai dari nomor identitas madrasah, biodata kelahiran, alamat kedaerahan, domisili asrama/kamar pesantren, penempatan rombel diniyyah, hingga kontak wali santri untuk kebutuhan pelaporan WhatsApp.
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <ul>
+    <li><span class="badge badge-emerald">Akses Edit</span> <strong>Master Admin &amp; PKM Kesiswaan:</strong> Dapat menambah santri baru, mengubah seluruh 37 kolom biodata, mengambil foto webcam, serta mengimpor dan mengekspor Excel.</li>
+    <li><span class="badge badge-blue">Akses Baca</span> <strong>Mustahiq &amp; PKM Kurikulum:</strong> Dapat melihat biodata, mencari santri, dan mengekspor daftar santri rombelnya.</li>
+    <li><span class="badge badge-rose">Override RBAC</span> Jika akun memiliki bendera <code>hide_delete_pages: ['santri']</code>, tombol hapus santri akan disembunyikan untuk mencegah kecelakaan penghapusan data.</li>
+  </ul>
+
+  <h3>(c) Langkah Penggunaan Step-by-Step</h3>
+  
+  <h4>1. Menambah / Mengubah Data Santri</h4>
+  <ol>
+    <li>Buka menu <strong>Data Santri</strong> pada sidebar.</li>
+    <li>Klik tombol hijau <strong>+ Tambah Santri</strong> di sudut kanan atas untuk membuka <code>ModalInputSantri.tsx</code> (atau klik ikon pensil pada baris santri untuk mengedit).</li>
+    <li>Isi kolom data wajib:
+      <ul>
+        <li><strong>No. Induk (NIS):</strong> Nomor induk unik madrasah (kunci primer).</li>
+        <li><strong>Gender (PA/PI):</strong> Pilih Putra (PA) atau Putri (PI).</li>
+        <li><strong>Nama Lengkap:</strong> Ketik nama lengkap santri sesuai dokumen akta kelahiran/ijazah.</li>
+        <li><strong>Domisili Pesantren:</strong> Pilih Blok Asrama dan Nomor Kamar.</li>
+        <li><strong>Penempatan Rombel:</strong> Pilih Tingkat (Ula/Wustho/Ulya), Kelas (1/2/3), dan Bagian (A/B/C...).</li>
+        <li><strong>Kontak Wali:</strong> Masukkan nomor telepon/WhatsApp wali santri diawali kode <code>62</code> atau <code>08</code>.</li>
+      </ul>
+    </li>
+    <li>Klik <strong>Simpan Data Santri</strong>.</li>
+  </ol>
+
+  <h4>2. Mengambil Foto Santri Menggunakan Kamera Langsung (<code>CameraCaptureModal</code>)</h4>
+  <ol>
+    <li>Pada formulir biodata santri, klik tombol <strong>Ambil Foto Kamera</strong>.</li>
+    <li>Peramban akan meminta izin akses kamera. Klik <strong>Allow / Izinkan</strong>.</li>
+    <li>Sistem menyalakan sensor kamera dengan bingkai panduan potret standar pasfoto <strong>rasio 3x4</strong>.</li>
+    <li>Gunakan tombol <strong>Ganti Kamera</strong> jika ingin beralih antara kamera depan dan kamera belakang (pada tablet/ponsel).</li>
+    <li>Instruksikan santri untuk tegap menghadap kamera, lalu klik tombol rana (<em>Shutter</em>) berikon kamera.</li>
+    <li>Sistem melalui fungsi <code>cropVideoTo3x4()</code> dan <code>compressImageFile()</code> akan secara otomatis memotong gambar tepat 3x4 dan mengompresnya di bawah ukuran 150 KB untuk menghemat kuota server.</li>
+    <li>Klik <strong>Gunakan Foto Ini</strong> untuk menyematkannya ke profil santri.</li>
+  </ol>
+
+  <h4>3. Prosedur Import &amp; Export Data Santri Excel (<code>ModalImportExcelSantri</code>)</h4>
+  <ol>
+    <li><strong>Unduh Template Resmi:</strong> Klik tombol <strong>Import Excel</strong>, lalu klik tautan <em>Unduh Format Kolom Template Excel (.xlsx)</em>. Jangan mengubah susunan urutan kolom header template.</li>
+    <li><strong>Unggah File:</strong> Seret file Excel yang telah diisi atau klik bidang unggah file.</li>
+    <li><strong>Pratinjau &amp; Validasi Data:</strong> Sistem akan memindai seluruh baris data. Jika terdapat No Induk duplikat atau kolom wajib yang kosong, baris tersebut akan ditandai dengan warna merah.</li>
+    <li><strong>Proses Impor Cerdas (Upsert):</strong> Klik tombol <strong>Mulai Impor Data</strong>. Sistem mengeksekusi operasi upsert: baris dengan No Induk baru akan dibuatkan data baru, sedangkan No Induk yang sudah ada akan diperbarui datanya tanpa menghapus riwayat setoran hafalan yang telah tersimpan sebelumnya.</li>
+  </ol>
+
+  <h3>(d) Fitur Khusus &amp; Pintasan</h3>
+  <ul>
+    <li><strong>Modal Filter Santri Berlapis (<code>ModalFilterSantri.tsx</code>):</strong> Memfilter daftar santri berdasarkan kombinasi multi-kriteria: Gender PA/PI, Tingkat (Ula, Wustho, Ulya), Rombel Kelas, Blok Asrama, serta Daerah Asal Santri (Kabupaten/Provinsi).</li>
+    <li><strong>Kustomisasi Visibilitas Kolom (<code>ModalHideColumns.tsx</code>):</strong> Tabel santri memiliki 37 kolom. Pengurus dapat mencentang kolom mana saja yang ingin dimunculkan atau disembunyikan di layar untuk kenyamanan bekerja.</li>
+    <li><strong>Zoom Foto Cepat (<code>ModalFotoZoom.tsx</code>):</strong> Klik pada lingkaran foto santri di baris tabel untuk memperbesar pasfoto santri ke resolusi penuh.</li>
+  </ul>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>2.3 Manajemen Data Dewan Asatidz (<code>/asatidz</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Modul direktori <code>/asatidz</code> mendokumentasikan seluruh data dewan guru/asatidz MADINA Blokagung. Pangkalan data ini menjadi fondasi relasional bagi pemetaan jadwal KBM, absensi mengajar 4 jam, pengisian jadwal badal, konsorsium fan kitab, serta penugasan Mustahiq rombel.
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    <span class="badge badge-emerald">PKM Kurikulum & Master Admin</span> Memiliki akses penuh untuk menambah, mengedit biodata, menonaktifkan status mengajar asatidz, dan mengimpor file Excel dewan asatidz.
+  </p>
+
+  <h3>(c) Atribut Data &amp; Langkah Pengelolaan</h3>
+  <ul>
+    <li><strong>Nomor Induk Asatidz (NIA):</strong> Kode unik identitas asatidz di pesantren.</li>
+    <li><strong>Nama Lengkap &amp; Gelar:</strong> Nama dewan asatidz beserta singkatan panggilan resmi (digunakan pada laporan WhatsApp singkat).</li>
+    <li><strong>Gender:</strong> Menentukan penugasan mengajar di blok kelas Putra atau Putri.</li>
+    <li><strong>Status Keaktifan:</strong> <code>Aktif Mengajar</code>, <code>Cuti / Izin Khusus</code>, atau <code>Non-Aktif</code>.</li>
+    <li><strong>Kontak &amp; Alamat Domisili:</strong> Nomor telepon/WA pribadi asatidz dan alamat domisili kamar pondok / tempat tinggal.</li>
+  </ul>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>2.4 Workspace Catatan &amp; To-Do List Pengurus (<code>/catatan</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Modul <code>/catatan</code> berfungsi sebagai ruang kerja kolaboratif harian bagi dewan pengurus madrasah untuk mencatat notula rapat, instruksi pimpinan masyayikh, pedoman teknis kurikulum, checklist persiapan ujian (Imtihan), serta daftar tugas (<em>to-do list</em>) yang terintegrasi langsung dengan akun masing-masing pengurus.
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    <span class="badge badge-emerald">Semua Pengurus</span> Setiap pengurus yang login dapat membuat, menyunting, dan mencentang tugas-tugas pada ruang catatan ini.
+  </p>
+
+  <h3>(c) Fitur &amp; Langkah Penggunaan</h3>
+  <ol>
+    <li><strong>Kategorisasi Catatan Berwarna:</strong> Setiap catatan dapat dikelompokkan ke dalam 5 kategori:
+      <ul>
+        <li><code>panduan</code> : Panduan &amp; Sistem IT (Tema Biru).</li>
+        <li><code>kurikulum</code> : PKM. Kurikulum &amp; Jadwal (Tema Emerald).</li>
+        <li><code>muhafadzoh</code> : PKM. Muhafadzoh &amp; Hafalan (Tema Amber).</li>
+        <li><code>kesiswaan</code> : PKM. Kesiswaan &amp; Tatib (Tema Rose).</li>
+        <li><code>umum</code> : Catatan Rapat Umum Pengurus (Tema Slate).</li>
+      </ul>
+    </li>
+    <li><strong>Daftar Tugas Interaktif (Interactive To-Do List):</strong> Pengurus dapat menambahkan poin-poin pekerjaan dengan tingkat prioritas <code>Penting</code> (merah menyala) atau <code>Normal</code>. Tugas yang selesai dikerjakan cukup dicentang, dan sistem akan mencoret teks serta menghitung persentase progres secara otomatis.</li>
+    <li><strong>Sematkan Catatan Penting (Pin Note):</strong> Klik ikon pin (📌) di sudut kartu catatan agar notula instruksi mendesak selalu menempati urutan paling atas di halaman catatan pengurus.</li>
+  </ol>
+  
+
+  <!-- BAB 3: PANDUAN OPERASIONAL PKM. KURIKULUM -->
+  
+  <div class="page-break"></div>
+  <h1>BAB 3: PANDUAN OPERASIONAL PKM. KURIKULUM</h1>
+
+  <h2>3.1 Formasi Kelas &amp; Kapasitas Ruang (<code>/formasi</code>, <code>/formasi/pa</code>, <code>/formasi/pi</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Modul Formasi Kelas adalah pilar arsitektur akademik madrasah. Halaman ini mengatur pemetaan seluruh rombongan belajar (rombel), batas kapasitas maksimal lokal ruang kelas, penugasan Mustahiq/Wali Kelas, serta pembagian hierarki lokasi Kegiatan Belajar Mengajar (KBM) Diniyyah (malam hari) dan Takror (sore/pagi hari).
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    <span class="badge badge-emerald">PKM Kurikulum & Master Admin</span> Memiliki wewenang penuh untuk membuat formasi baru, menjalankan generator massal rombel, mengatur kuota kapasitas ruang, dan menetapkan lokasi gedung.
+  </p>
+
+  <h3>(c) Langkah Penggunaan Step-by-Step</h3>
+  
+  <h4>1. Menavigasi Tampilan Formasi Rombel</h4>
+  <ul>
+    <li><code>/formasi</code> : Menampilkan master seluruh rombongan belajar gabungan (Putra dan Putri).</li>
+    <li><code>/formasi/pa</code> : Menampilkan khusus rombongan belajar santri Putra (Blok A, B, C, D, Induk PA).</li>
+    <li><code>/formasi/pi</code> : Menampilkan khusus rombongan belajar santri Putri (Blok Al-Barokah, Khodijah, Fatimah, Induk PI).</li>
+  </ul>
+
+  <h4>2. Membuat Rombel Otomatis Menggunakan Generator (<code>ModalGeneratorFormasi</code>)</h4>
+  <ol>
+    <li>Buka halaman formasi, klik tombol <strong>+ Generator Formasi Kelas</strong>.</li>
+    <li>Pilih <strong>Tingkat</strong>: <code>ULA</code>, <code>WUSTHO</code>, atau <code>ULYA</code>.</li>
+    <li>Pilih <strong>Gender</strong>: <code>PA</code> (Putra) atau <code>PI</code> (Putri).</li>
+    <li>Pilih <strong>Angka Kelas</strong>: Kelas <code>1</code>, <code>2</code>, atau <code>3</code>.</li>
+    <li>Tentukan rentang abjad rombel: <strong>Bagian Awal</strong> (misal: <code>A</code>) sampai <strong>Bagian Akhir</strong> (misal: <code>J</code>).</li>
+    <li>Tentukan <strong>Kapasitas Maksimal Ruang</strong> per kelas (default standar pesantren: <code>80</code> santri).</li>
+    <li>Klik <strong>Eksekusi Generator</strong>. Sistem secara cerdas akan langsung membuat 10 rombel (misal: 1A, 1B, s.d. 1J) lengkap dengan validasi integritas database pangkalan data.</li>
+  </ol>
+
+  <h4>3. Menata Hierarki Blok KBM (<code>ModalHierarkiBlokKBM</code>)</h4>
+  <p>
+    Pesantren Blokagung memiliki puluhan gedung belajar yang tersebar. Fitur hierarki 2 tingkat memetakan:
+  </p>
+  <ul>
+    <li><strong>Tingkat 1 (Nama Blok / Kompleks Gedung):</strong> Contoh: <em>Gedung Madin Pusat, Blok Al-Barokah, Blok Rusunawa, Asrama Sunan Ampel</em>.</li>
+    <li><strong>Tingkat 2 (Daftar Lokasi Lokal Ruang):</strong> Contoh: <em>Lokal 101, Lokal 102, Aula Gedung Putih, Serambi Masjid Lantai 2</em>.</li>
+    <li>Pengurus dapat mengatur hierarki terpisah untuk <strong>KBM Diniyyah</strong> dan <strong>KBM Takror</strong>. Lokasi yang dipilih pada formasi ini akan otomatis diwariskan ke matriks jadwal dan modul presensi.</li>
+  </ul>
+
+  <h3>(d) Fitur Khusus: Indikator Rasio &amp; Bar Keterisian Santri</h3>
+  <p>
+    Setiap kartu/baris formasi dilengkapi indikator persentase keterisian waktu nyata. Jika kapasitas kelas ditetapkan 80 santri dan saat ini terisi 84 santri, bilah bar akan berubah menjadi warna merah menyala dengan status <strong>Kelebihan Kapasitas (Overload)</strong>, memperingatkan tim kurikulum untuk segera memecah rombel atau memindahkan sebagian santri.
+  </p>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>3.2 Manajemen Fan Mata Pelajaran &amp; Pemetaan Pengajar (<code>/fan/pelajaran</code>, <code>/fan/pengajar</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Modul Fan Pelajaran mengelola kurikulum turots salafiyah: mendata daftar kitab kajian per tingkatan, mengelompokkannya ke dalam rumpun keilmuan (Kelompok Asal), serta memetakan asatidz yang memiliki kompetensi sanad mengajar untuk masing-masing fan kitab.
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    <span class="badge badge-emerald">PKM Kurikulum</span> Akses penuh mengelola master kitab dan penugasan guru pengajar fan.
+  </p>
+
+  <h3>(c) Struktur Kelompok Asal &amp; Fan Kitab</h3>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Kelompok Asal (Rumpun)</th>
+        <th style="width: 35%;">Tingkat Ula</th>
+        <th style="width: 40%;">Tingkat Wustho &amp; Ulya</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Fan Fiqih</strong></td>
+        <td>Mabadi'ul Fiqhiyyah Juz 1–3, Safinatun Naja</td>
+        <td>Fathul Qorib, Fathul Mu'in, Kifayatul Akhyar</td>
+      </tr>
+      <tr>
+        <td><strong>Fan Nahwu &amp; Gramatika</strong></td>
+        <td>Al-Jurumiyyah, Al-Amtsilah At-Tashrifiyyah</td>
+        <td>Mutammimah Al-Ajurumiyyah, Nadzom Imrithi, Alfiyyah Ibnu Malik</td>
+      </tr>
+      <tr>
+        <td><strong>Fan Tauhid / Akidah</strong></td>
+        <td>'Aqidatul Awam, Tijan Ad-Darori</td>
+        <td>Kifayatul Awam, Syarah Ummil Barohin</td>
+      </tr>
+      <tr>
+        <td><strong>Fan Akhlaq &amp; Tasawuf</strong></td>
+        <td>Al-Akhlaq Lil Banin/Banat, Wasoya</td>
+        <td>Ta'limul Muta'allim, Bidayatul Hidayah, Ihya' 'Ulumiddin</td>
+      </tr>
+      <tr>
+        <td><strong>Fan Hadits &amp; Tarikh</strong></td>
+        <td>Khulasoh Nuril Yaqin, Al-Arba'in An-Nawawiyyah</td>
+        <td>Bulughul Marom, Shohih Bukhori, Mustholah Hadits</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>(d) Fitur Khusus: Pemetaan Pengajar Fan (<code>ModalPilihAsatidzFan.tsx</code>)</h3>
+  <p>
+    Pada modul <code>/fan/pengajar</code>, kurikulum dapat memilih seorang asatidz dan menentukan fan kitab apa saja yang diizinkan untuk diampu oleh beliau. Pembatasan ini secara otomatis mengunci menu dropdown saat menyusun jadwal di <code>/jadwal-kbm</code>, sehingga asatidz Fiqih tidak akan keliru ditempatkan pada jam Nahwu.
+  </p>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>3.3 Direktori Pendidik &amp; Mustahiq Kelas (<code>/daftar-pendidik</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Modul <code>/daftar-pendidik</code> menyajikan buku induk dewan asatidz yang bertugas sebagai Mustahiq (Wali Kelas) dan Munawib (Wakil Wali Kelas) pada tahun ajaran aktif. Halaman ini menjadi referensi cepat bagi pimpinan pesantren untuk memantau rombel mana yang belum memiliki Mustahiq resmi.
+  </p>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>3.4 Pengaturan Hari &amp; Jam KBM (<code>/hari-kbm</code>)</h2>
+
+  <h3>(a) Konfigurasi Hari Aktif Pesantren</h3>
+  <p>
+    Berbeda dengan sekolah formal pada umumnya, hari aktif KBM di Pondok Pesantren Darussalam Blokagung berlangsung selama <strong>6 hari aktif per minggu</strong>:
+  </p>
+  <ul>
+    <li><strong>Sabtu s.d. Kamis:</strong> Hari aktif pembelajaran diniyyah reguler.</li>
+    <li><strong>Jumat:</strong> Hari libur umum pesantren (kegiatan ekstra, ro'an akbar, dan ibadah shalat Jumat).</li>
+  </ul>
+
+  <h3>(b) Pembagian Slot Jam Pelajaran (Jam 1 s.d. 4)</h3>
+  <ul>
+    <li><strong>Jam Ke-1 &amp; Jam Ke-2 (KBM Diniyyah Malam Hari):</strong> Sesi utama pembelajaran kitab turots di gedung madrasah (ba'da Isya' s.d. selesai).</li>
+    <li><strong>Jam Ke-3 &amp; Jam Ke-4 (KBM Takror / Bimbingan Khusus):</strong> Sesi musyawarah, lalaran nadzom terarah, dan takror malam di asrama.</li>
+  </ul>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>3.5 Matriks Jadwal KBM (<code>/jadwal-kbm</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Modul Jadwal KBM adalah salah satu modul paling kompleks dan krusial dalam sistem. Modul ini menyajikan matriks kisi interaktif dua arah: jadwal per kelas/rombel dan jadwal mengajar per dewan asatidz.
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    <span class="badge badge-emerald">PKM Kurikulum & Master Admin</span> Akses penuh mengedit slot matriks jadwal, menyalin slot, menukar asatidz, serta menjalankan solver penyusunan jadwal otomatis.
+  </p>
+
+  <h3>(c) Panduan Penggunaan Menu Klik Kanan (Context Menu - <code>ContextMenuKG.tsx</code>)</h3>
+  <p>
+    Untuk mempercepat penyusunan jadwal tanpa membuka formulir yang lambat, tim kurikulum cukup <strong>mengklik kanan</strong> pada salah satu sel slot jadwal di dalam tabel matriks:
+  </p>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Pilihan Menu Klik Kanan</th>
+        <th style="width: 35%;">Ikon &amp; Aksi Sistem</th>
+        <th style="width: 40%;">Deskripsi Fungsi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Edit / Ubah Slot</strong></td>
+        <td><code>UserCog</code> / Membuka <code>ModalInputJadwalKelas</code></td>
+        <td>Mengubah nama fan kitab, memilih guru pengampu dari daftar kompetensi, dan menyesuaikan ruangan.</td>
+      </tr>
+      <tr>
+        <td><strong>Pindah Slot (Cut / Mode Pindah)</strong></td>
+        <td><code>Scissors</code> / Mengaktifkan Clipboard Bar</td>
+        <td>Memotong slot sesi saat ini ke memori clipboard untuk dipindahkan ke hari, jam, atau kelas lain.</td>
+      </tr>
+      <tr>
+        <td><strong>Tempel Slot (Paste)</strong></td>
+        <td><code>ClipboardCheck</code> / Eksekusi Tempel</td>
+        <td>Menempelkan sesi dari clipboard ke sel target. Mengaktifkan algoritma <em>Smart Auto-Sync 4 Poin</em>.</td>
+      </tr>
+      <tr>
+        <td><strong>Tukar Slot (Swap)</strong></td>
+        <td><code>ArrowLeftRight</code> / Pertukaran Dua Arah</td>
+        <td>Menukar secara instan sesi guru A dan guru B pada jam yang sama tanpa merusak data kelas lain.</td>
+      </tr>
+      <tr>
+        <td><strong>Hapus Slot</strong></td>
+        <td><code>Trash2</code> / Konfirmasi Hapus</td>
+        <td>Mengosongkan sesi mengajar pada jam tersebut dan mengembalikan status slot menjadi "KOSONG".</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>(d) Bilah Mengambang Clipboard (<code>FloatingBarClipboardKG.tsx</code>)</h3>
+  <p>
+    Ketika pengurus memilih aksi <em>Pindah Slot (Cut)</em>, sebuah bilah mengambang berwarna gelap dengan garis tepi amber menyala akan muncul di bagian bawah tengah layar. Bilah ini menampilkan ringkasan sesi yang sedang dipotong: <em>Nama Asatidz, Fan Kitab Singkat, Kelas Asal, serta Hari &amp; Jam Asal</em>. Pengurus dapat mengklik sel tujuan untuk menempelkannya, atau menekan tombol <kbd>ESC</kbd> untuk membatalkan mode pindah.
+  </p>
+
+  <h3>(e) Algoritma Smart Auto-Sync 4 Poin</h3>
+  <p>
+    Setiap kali sebuah sesi jadwal diubah atau ditempelkan, sistem secara otomatis memperbarui 4 titik database relasional secara atomik (<em>atomic transaction</em>):
+  </p>
+  <ol>
+    <li>Memperbarui struktur sel jadwal pada rombel kelas target.</li>
+    <li>Memperbarui jadwal mengajar pribadi dewan asatidz terkait pada tabel ringkasan guru.</li>
+    <li>Menghitung ulang total jam mengajar mingguan asatidz secara instan.</li>
+    <li>Menyelaraskan status pemetaan fan pelajaran kurikulum.</li>
+  </ol>
+
+  <h3>(f) Smart Auto-Schedule Solver Engine (<code>AutoScheduleSolverService</code>)</h3>
+  <p>
+    Untuk mengatasi jadwal bentrok di madrasah dengan ratusan kelas, aplikasi menyertakan mesin pemecah kendala otomatis berbasis algoritma <em>Constraint Satisfaction Problem (CSP) Backtracking</em>:
+  </p>
+  <ul>
+    <li><strong>Deteksi Bentrok Guru:</strong> Sistem menandai sel dengan warna merah berkedip jika seorang asatidz terjadwal mengajar di dua rombel berbeda pada hari dan jam yang sama.</li>
+    <li><strong>Deteksi Bentrok Ruangan:</strong> Menandai sel jika satu ruang lokal fisik (misal: Ruang 103) digunakan oleh dua kelas berbeda secara bersamaan.</li>
+    <li><strong>Auto-Solve:</strong> Tombol <em>Susun Jadwal Otomatis</em> akan mencari kombinasi penempatan slot bebas bentrok untuk seluruh mata pelajaran yang belum terisi.</li>
+  </ul>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>3.6 Kalender Akademik Terpadu (<code>/kalender-kegiatan</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Kalender Akademik menyatukan penanggalan Masehi dengan sistem Kalender Hijriyah khas pesantren (dengan penyesuaian hisab/ru'yat rukyatul hilal). Modul ini mendokumentasikan seluruh agenda tahunan: Ujian UUB, Imtihan, Haflah Akhirussanah, libur Romadhon, serta libur musyawarah.
+  </p>
+
+  <h3>(b) Integrasi Otomatis Status Libur KBM ke Modul Absensi</h3>
+  
+    <div class="callout-box callout-important">
+      <strong>📌 Koneksi Kalender ke Absensi Harian</strong><br/>
+      Setiap agenda kalender yang diberi centang <strong>"Liburkan KBM Reguler"</strong> akan secara otomatis menonaktifkan presensi mengajar pada modul Absensi Kesiswaan di tanggal tersebut. Asatidz tidak akan terhitung Alpa atau Terlambat pada hari yang telah ditetapkan sebagai hari libur resmi.
+    </div>
+  
+
+  <h3>(c) Kode Singkatan Agenda Resmi Kalender</h3>
+  <p>
+    Aplikasi menggunakan kode singkatan resmi kegiatan pesantren: <code>PAL</code> (Pembukaan Awal Tahun), <code>NM</code> (Nisfu Sanah), <code>UUB</code> (Ujian Umum Bersama), <code>IMTHN</code> (Ikhtibar Imtihan Akhir), <code>HBH</code> (Halal Bihalal), dan <code>LHR</code> (Libur Hari Raya).
+  </p>
+  
+
+  <!-- BAB 4: PANDUAN OPERASIONAL PKM. MUHAFADZOH -->
+  
+  <div class="page-break"></div>
+  <h1>BAB 4: PANDUAN OPERASIONAL PKM. MUHAFADZOH</h1>
+
+  <h2>4.1 Setoran Muhafadzoh Kantor (<code>/setoran</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Modul Setoran Kantor adalah pusat pelayanan administrasi hafalan resmi MADINA Blokagung. Digunakan oleh petugas piket kantor muhafadzoh untuk mencatat setoran santri di luar jam kelas (setoran mandiri, remidi, atau uji kelayakan syahadah), menerbitkan kartu bukti setoran cetak, dan mengelola target materi hafalan wajib maupun sunnah.
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    <span class="badge badge-emerald">PKM Muhafadzoh & Petugas Kantor</span> Memiliki wewenang menginput capaian, mencetak kartu, dan menyunting konfigurasi materi hafalan (<code>ModalSettingsHafalan.tsx</code>).
+  </p>
+
+  <h3>(c) Langkah Input Setoran &amp; Cetak Kartu Bukti (<code>KartuBuktiSetoran</code>)</h3>
+  <ol>
+    <li>Buka menu <strong>Setoran Muhafadzoh</strong>.</li>
+    <li>Ketikkan <strong>No. Induk (NIS)</strong> atau nama santri pada kotak pencarian cepat. Sistem secara otomatis menarik biodata santri: nama, kelas, nama mustahiq, dan domisili kamar.</li>
+    <li>Pilih <strong>Kategori Hafalan</strong>:
+      <ul>
+        <li><code>Wajib</code> : Target kurikulum pokok sesuai jenjang kelas.</li>
+        <li><code>Sunnah</code> : Hafalan turots pelengkap.</li>
+        <li><code>Tahfidz</code> : Setoran juz Al-Qur'an (Juz 1 s.d. 30).</li>
+        <li><code>Kitab</code> : Hafalan matan nadzom turots (Imrithi, Maqsud, Alfiyyah).</li>
+      </ul>
+    </li>
+    <li>Pilih <strong>Item Hafalan</strong> dan masukkan <strong>Capaian Setor</strong> (misal: <em>Bait 1 s.d. 50</em> atau <em>Surat An-Naba'</em>).</li>
+    <li>Ketikkan nama <strong>Petugas Penjaga Kantor</strong> yang menyimak hafalan.</li>
+    <li>Klik <strong>Simpan Setoran</strong>. Sistem akan menyimpan data dan menampilkan pratinjau fisik <strong>Kartu Bukti Setoran (rasio 6:3)</strong> bergaya sertifikat resmi pesantren klasik berbingkai ganda.</li>
+    <li>Klik tombol <strong>Cetak Kartu</strong> untuk mencetak kartu fisik yang diserahkan kepada santri sebagai tanda bukti sah telah menyetorkan hafalan di kantor.</li>
+  </ol>
+
+  <h3>(d) Konfigurasi Target Numerik vs Kalimat (<code>ModalSettingsHafalan</code>)</h3>
+  <p>
+    Sistem mendukung dua mode evaluasi hafalan:
+  </p>
+  <ul>
+    <li><strong>Target Numerik (Numeric Unit):</strong> Menghitung progres berbasis angka kontinu: unit <code>bait</code>, <code>baris</code>, <code>halaman</code>, atau skor <code>1–100</code>.</li>
+    <li><strong>Target Kalimat / Rangkaian (Sentence / List Target):</strong> Berupa daftar nama surat Al-Qur'an atau bab-bab kitab yang dicentang berurutan.</li>
+  </ul>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>4.2 Setoran Kelas Mingguan Mustahiq (<code>/setor-mustahiq</code> &amp; <code>/setor-mustahiq/rekap</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Dalam tradisi pesantren Blokagung, setiap malam Ahad dan hari Ahad, santri di setiap rombel wajib melaksanakan lalaran mingguan di hadapan Mustahiq (Wali Kelas). Modul <code>/setor-mustahiq</code> dirancang khusus bagi Mustahiq untuk menginput capaian mingguan seluruh santri rombelnya secara efisien, serta memantau rekapitulasi semester melalui <code>/setor-mustahiq/rekap</code>.
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    <span class="badge badge-emerald">Mustahiq Kelas & PKM Muhafadzoh</span> Mustahiq hanya dapat melihat dan menginput data santri yang terdaftar di kelas asuhannya.
+  </p>
+
+  <h3>(c) Langkah Penggunaan Step-by-Step</h3>
+  <ol>
+    <li>Buka menu <strong>Setor Mustahiq</strong>.</li>
+    <li>Pilih tanggal menggunakan <strong><code>SundayDatePicker</code></strong>. Kalender ini secara otomatis mengarahkan pilihan pada hari Ahad aktif.</li>
+    <li>Pilih <strong>Rombel Kelas</strong> yang Anda ampu (contoh: <code>1 A ULA (PA)</code>).</li>
+    <li>Tabel memunculkan seluruh daftar santri di kelas tersebut beserta riwayat setoran minggu lalu.</li>
+    <li>Ketikkan capaian terbaru atau pilih status ketuntasan per santri (<em>Lancar, Kurang Lancar, Tidak Setor</em>).</li>
+    <li>Klik tombol <strong>Simpan Seluruh Capaian Rombel</strong>. Data tersimpan secara instan ke server dan antrean laporan WhatsApp otomatis disiapkan.</li>
+  </ol>
+
+  <h3>(d) Matriks Rekapitulasi Mingguan (<code>/setor-mustahiq/rekap</code>)</h3>
+  <p>
+    Halaman rekap menampilkan matriks kisi kolom tanggal Ahad ke-1 s.d. Ahad ke-16 dalam satu semester. Mustahiq dapat melihat santri mana yang konsisten setor dan santri mana yang sering absen lalaran melalui gradasi warna sel.
+  </p>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>4.3 Setor Cepat Massal (<code>/setor-cepat</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Ketika satu rombel kelas menyetorkan bait nadzom yang sama secara serentak (contoh: 35 santri tuntas bersamaan membaca Bab Kalam bait 1–30), modul <code>/setor-cepat</code> memungkinkan pengurus memperbarui capaian seluruh santri hanya dalam 2 kali klik.
+  </p>
+
+  <h3>(b) Langkah Operasional Setor Massal</h3>
+  <ol>
+    <li>Pilih kelas target dan materi nadzom yang diujikan.</li>
+    <li>Gunakan tombol <strong>Centang Semua (Select All)</strong> pada daftar santri.</li>
+    <li>Hapus centang pada 1 atau 2 santri yang berhalangan atau belum lancar.</li>
+    <li>Ketikkan batas bait yang tuntas dicapai (contoh: <em>Bait 30</em>).</li>
+    <li>Klik tombol <strong>Terapkan Setoran ke Santri Terpilih</strong>. Sistem secara otomatis memperbarui puluhan baris data santri sekaligus.</li>
+  </ol>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>4.4 Linimasa Setor Bulanan (<code>/linimasa-setor</code>)</h2>
+  <p>
+    Modul linimasa menyajikan grafik visual dan kronologi setoran santri dari bulan ke bulan. Membantu pengurus muhafadzoh memantau kurva peningkatan volume hafalan menjelang periode evaluasi Nisfu Sanah dan Imtihan Akhirussanah.
+  </p>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>4.5 Rekapitulasi Ketuntasan Hafalan (<code>/rekap-hafalan</code>)</h2>
+  <p>
+    Menyajikan tabel audit makro untuk pimpinan madrasah mengenai persentase kelulusan target materi wajib per jenjang:
+  </p>
+  <ul>
+    <li><strong>Tingkat Ula:</strong> Juz 'Amma, Nadzom 'Aqidatul Awam, Al-Jurumiyyah, Al-Amtsilah At-Tashrifiyyah.</li>
+    <li><strong>Tingkat Wustho:</strong> Nadzom Imrithi, Maqsud, Syi'ir Ro'sun Sirah, Al-Fara'id.</li>
+    <li><strong>Tingkat Ulya:</strong> Alfiyyah Ibnu Malik (Juz 1 &amp; Juz 2), Jauharotut Tauhid, Sullamul Munauroq.</li>
+  </ul>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>4.6 Desain &amp; Cetak Piagam / Syahadah (<code>/piagam</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Digunakan untuk mencetak sertifikat penghargaan dan Piagam Syahadah resmi bagi santri yang telah dinyatakan khatam/tuntas menyelesaikan target hafalan nadzom.
+  </p>
+
+  <h3>(b) Fitur Kanvas Pratinjau (<code>PiagamCanvasPreview</code>)</h3>
+  <ul>
+    <li><strong>WYSIWYG Interactive Canvas:</strong> Menampilkan bentuk fisik piagam berornamen islami secara persis sebelum dicetak ke kertas linen/karton sertifikat.</li>
+    <li><strong>Kustomisasi Tata Letak:</strong> Menyesuaikan posisi nama santri, nomor piagam, predikat nilai (<em>Jayyid, Jayyid Jiddan, Mumtaz</em>), kaligrafi fan kitab, tanggal Hijriyah, serta tanda tangan digital Kepala Madin dan Ketua PKM Muhafadzoh.</li>
+    <li><strong>Seleksi Santri Massal (<code>ModalSelectSantriPiagam.tsx</code>):</strong> Memilih santri yang tuntas untuk dicetak secara beruntun (<em>batch printing</em>).</li>
+  </ul>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>4.7 Checklist Serah Terima Piagam (<code>/serah-piagam</code>) [FITUR TERBARU]</h2>
+
+  <h3>(a) Tujuan &amp; Filosofi Modul</h3>
+  <p>
+    Sebelum piagam fisik diserahkan kepada santri atau wali santri pada malam Haflah Akhirussanah, sering kali timbul masalah piagam hilang, salah serah, atau belum terdata siapa yang mengambil. Modul <code>/serah-piagam</code> hadir sebagai instrumen checklist dan audit digital serah terima piagam santri berbasis rombongan belajar.
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    <span class="badge badge-emerald">PKM Muhafadzoh & Master Admin</span> Akses penuh mencentang status serah, mengekspor laporan CSV, dan mencetak dokumen serah terima. Didaftarkan pada sistem RBAC dengan ID rute <code>serah-piagam</code>.
+  </p>
+
+  <h3>(c) Tata Letak Antarmuka &amp; Kartu Kelas 3 Kolom (<code>KartuKelasSerahPiagam.tsx</code>)</h3>
+  <p>
+    Antarmuka modul <code>SerahPiagamModule.tsx</code> mengusung tata letak kisi 3 kolom yang lapang dan teratur:
+  </p>
+  <ul>
+    <li><strong>Widget Statistik Interaktif (<code>WidgetStatistikSerahPiagam.tsx</code>):</strong>
+      <ul>
+        <li><em>Total Santri:</em> Menampilkan seluruh populasi santri yang berhak menerima piagam.</li>
+        <li><em>Sudah Menerima:</em> Kotak filter hijau menampilkan jumlah santri yang telah diserahi piagam. Klik kotak ini untuk memfilter tabel hanya menampilkan santri berstatus Menerima.</li>
+        <li><em>Belum Menerima:</em> Kotak filter merah menampilkan jumlah piagam yang masih tertahan di kantor. Klik kotak ini untuk melihat siapa saja yang belum mengambil piagam.</li>
+      </ul>
+    </li>
+    <li><strong>Kartu Rombel 3 Kolom (Desktop Grid):</strong> Menampilkan 9 rombel per halaman (3 baris x 3 kolom). Setiap kartu memuat:
+      <ul>
+        <li>Lencana singkatan rombel (contoh: <code>1A ULA PA</code>).</li>
+        <li>Target Materi Kitab (contoh: <em>Al-Jurumiyyah &amp; Juz 'Amma</em>).</li>
+        <li><strong>Rasio Ketuntasan Serah:</strong> Ditampilkan secara mencolok, misalnya <code>7/30</code> (artinya 7 dari 30 santri telah menerima piagam) beserta bilah persentase warna hijau.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>(d) Prosedur Pencentangan Status "Menerima"</h3>
+  <ol>
+    <li>Gunakan kotak <strong>Pencarian Cepat</strong> atau pilih filter <strong>Tingkat (Ula/Wustho/Ulya)</strong> dan <strong>Gender (PA/PI)</strong>.</li>
+    <li>Temukan kartu kelas santri yang bersangkutan.</li>
+    <li>Pada baris nama santri di dalam kartu kelas, klik kotak centang (<em>Checkbox</em>) <strong>Menerima</strong>.</li>
+    <li>Sistem secara otomatis mencatat stempel waktu penyerahan (<code>tanggal_serah</code>) dan nama akun pengurus yang menyerahkan (<code>diserahkan_oleh</code>) ke pangkalan data Supabase.</li>
+    <li>Angka rasio kartu kelas langsung bertambah (misal dari 7/30 menjadi 8/30) secara waktu nyata.</li>
+  </ol>
+
+  <h3>(e) Ekspor CSV &amp; Cetak Lembar Serah Terima Resmi</h3>
+  <ul>
+    <li><strong>Ekspor CSV:</strong> Klik tombol <strong>Ekspor CSV</strong> untuk mengunduh rekapitulasi penyerahan piagam lengkap dengan No Induk, Nama, Kamar, Kelas, Status Terima, dan Tanggal Penyerahan untuk pelaporan ke pimpinan yayasan.</li>
+    <li><strong>Cetak Daftar Serah Terima:</strong> Klik tombol ikon printer <strong>Cetak Serah Terima</strong> untuk menghasilkan lembar tabel bertanda tangan fisik yang digunakan sebagai bukti serah terima di atas panggung haflah.</li>
+  </ul>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>4.8 Broadcast WhatsApp Rapor Hafalan (<code>/kirim-wa</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Modul <code>/kirim-wa</code> menjembatani komunikasi antara madrasah dengan para wali santri di rumah. Sistem secara otomatis menyusun pesan laporan berkala perkembangan hafalan santri dan mengirimkannya langsung ke nomor WhatsApp wali santri.
+  </p>
+
+  <h3>(b) Arsitektur Integrasi WAHA Proxy &amp; Gateway Baileys</h3>
+  <p>
+    Aplikasi terhubung dengan layanan <em>WhatsApp HTTP API (WAHA) Gateway</em> lokal pesantren (port <code>3008</code>) yang didukung oleh pustaka <code>@adiwajshing/baileys</code>:
+  </p>
+  <ul>
+    <li><strong>Pemeriksaan Sesi QR:</strong> Pengurus memindai QR Code WhatsApp resmi sekretariat madrasah pada modul <code>wahaService.ts</code>.</li>
+    <li><strong>Proxy Anti-CORS:</strong> Pengiriman pesan disalurkan melalui route handler <code>app/api/waha/[...path]/route.ts</code> sehingga aman dari pembatasan peramban.</li>
+    <li><strong>Jeda Acak Anti-Banned (Delay Range):</strong> Untuk mencegah nomor resmi madrasah terblokir oleh pihak WhatsApp karena aktivitas massal (<em>spam</em>), sistem memberlakukan jeda acak antara <strong>4 hingga 7 detik</strong> (<code>delayMin: 4, delayMax: 7</code>) di setiap pengiriman pesan santri.</li>
+  </ul>
+
+  <h3>(c) Template Otomatis Pesan Laporan Rapor Hafalan</h3>
+  <p>
+    Format pesan yang dikirimkan ke wali santri tersusun secara rapi:
+  </p>
+  <div style="background-color: #f0fdf4; border: 1pt solid #bbf7d0; padding: 10pt; border-radius: 6pt; font-family: Consolas, monospace; font-size: 9.5pt; color: #166534;">
+    Assalamu'alaikum Wr. Wb.<br/><br/>
+    Yth. Bapak/Ibu Wali dari Ananda: <strong>{nama}</strong><br/>
+    NIS: {nis} | Kelas: {kelas} | Kamar: {kamar}<br/>
+    Mustahiq: {mustahiq}<br/><br/>
+    Berikut laporan perkembangan setoran hafalan mingguan ananda di <em>Madrasah Diniyyah Al Amiriyyah Blokagung</em>:<br/>
+    • Kategori: Hafalan Wajib<br/>
+    • Target Hafalan: {materi} ({target})<br/>
+    • Capaian Setoran: {capaian} ({persen}%)<br/>
+    • Status: Tuntas / Berjalan<br/><br/>
+    *3 Riwayat Setor Terakhir:*<br/>
+    {riwayat_terakhir}<br/><br/>
+    Wassalamu'alaikum Wr. Wb.<br/>
+    <em>- PKM. Muhafadzoh MADINA Blokagung -</em>
+  </div>
+  
+
+  <!-- BAB 5: PANDUAN OPERASIONAL PKM. KESISWAAN -->
+  
+  <div class="page-break"></div>
+  <h1>BAB 5: PANDUAN OPERASIONAL PKM. KESISWAAN</h1>
+
+  <h2>5.1 Presensi Mengajar Harian Asatidz (<code>/absensi</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <p>
+    Modul Presensi Mengajar Harian (<code>/absensi</code>) adalah instrumen pengawasan kedisiplinan belajar mengajar dewan asatidz di seluruh lokal kelas. Modul ini memantau kehadiran guru secara rinci pada 4 jam pelajaran (Jam 1 s.d. Jam 4), mencatat guru yang terlambat, mengalokasikan asatidz badal (pengganti), serta mengelola tanggal libur KBM.
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    <span class="badge badge-emerald">PKM Kesiswaan & Petugas Piket</span> Memiliki akses untuk mengubah status kehadiran, memilih guru badal, mengisi menit keterlambatan, dan mengatur hari libur operasional.
+  </p>
+
+  <h3>(c) Status Presensi Mengajar &amp; Arti Indikator</h3>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 20%;">Status Kehadiran</th>
+        <th style="width: 15%;">Lencana</th>
+        <th style="width: 30%;">Kriteria &amp; Ketentuan</th>
+        <th style="width: 35%;">Konsekuensi Sistem &amp; Badal</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Hadir</strong></td>
+        <td><span class="badge badge-emerald">Hadir</span></td>
+        <td>Asatidz hadir tepat waktu di ruang kelas dan mengajar penuh selama durasi jam pelajaran.</td>
+        <td>Dihitung 1 poin kehadiran mengajar penuh.</td>
+      </tr>
+      <tr>
+        <td><strong>Izin</strong></td>
+        <td><span class="badge badge-blue">Izin</span></td>
+        <td>Asatidz mengirimkan surat izin resmi ke kantor sekretariat sebelum bel KBM berbunyi.</td>
+        <td>Membutuhkan penunjukan asatidz badal jika kelas belum ada pendamping.</td>
+      </tr>
+      <tr>
+        <td><strong>Sakit</strong></td>
+        <td><span class="badge badge-amber">Sakit</span></td>
+        <td>Asatidz berhalangan mengajar karena kondisi kesehatan dengan konfirmasi pengurus.</td>
+        <td>Terdata dalam laporan riwayat kesehatan asatidz.</td>
+      </tr>
+      <tr>
+        <td><strong>Alfa / Tanpa Keterangan</strong></td>
+        <td><span class="badge badge-rose">Alfa</span></td>
+        <td>Asatidz tidak hadir di lokal kelas tanpa pemberitahuan atau surat izin hingga bel berakhir.</td>
+        <td>Otomatis memotong persentase kedisiplinan dan masuk daftar pantau pimpinan.</td>
+      </tr>
+      <tr>
+        <td><strong>Terlambat</strong></td>
+        <td><span class="badge badge-amber">Terlambat</span></td>
+        <td>Asatidz hadir setelah bel KBM berbunyi dengan selisih waktu tertentu.</td>
+        <td>Petugas wajib menginput menit keterlambatan (misal: 15 menit).</td>
+      </tr>
+      <tr>
+        <td><strong>Badal / Digantikan</strong></td>
+        <td><span class="badge badge-emerald">Badal</span></td>
+        <td>Sesi kelas diisi oleh asatidz pengganti yang ditugaskan oleh petugas piket.</td>
+        <td>Nama guru badal dicatat dan honor/poin mengajar dialokasikan ke guru badal.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>(d) Penggunaan Modal Edit Presensi (<code>ModalEditAbsensi.tsx</code>)</h3>
+  <ol>
+    <li>Pilih tanggal dan hari mengajar pada pemilih tanggal atas.</li>
+    <li>Temukan baris nama asatidz atau kelas target pada tabel sesi.</li>
+    <li>Klik tombol status atau ikon edit untuk membuka modal presensi.</li>
+    <li>Pilih status kehadiran baru (<em>Hadir, Izin, Sakit, Alfa, Terlambat, Badal</em>).</li>
+    <li>Jika memilih status <strong>Badal</strong>, ketikkan atau pilih nama <strong>Asatidz Pengganti</strong> dari daftar dewan guru yang sedang tidak memiliki jadwal mengajar pada jam tersebut.</li>
+    <li>Klik <strong>Simpan Perubahan Presensi</strong>. Sistem memperbarui log kehadiran dan mengaktifkan notifikasi waktu nyata ke perangkat pengurus lain.</li>
+  </ol>
+
+  <h3>(e) Pengaturan Hari Libur KBM (<code>ModalAturLibur.tsx</code>)</h3>
+  <p>
+    Jika terjadi peristiwa insidental (seperti pengajian akbar pondok, ta'ziyah masyayikh, atau banjir), petugas dapat mengklik tombol <strong>Liburkan Tanggal Ini</strong>. Sistem akan mengubah status seluruh sesi mengajar pada hari tersebut menjadi <code>Libur Pesantren</code> dan menonaktifkan penghitungan alpa.
+  </p>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>5.2 Portal Presensi Cepat per Blok (<code>/absen-cepat</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Filosofi Modul</h3>
+  <p>
+    Petugas piket lapangan yang bertugas mengontrol ratusan kelas di lantai asrama tidak mungkin membawa laptop besar atau mengisi formulir panjang satu per satu. Modul <code>/absen-cepat</code> dioptimalkan untuk perangkat ponsel pintar/tablet dengan antarmuka kartu layar sentuh ramah jempol.
+  </p>
+
+  <h3>(b) Alur Kerja Petugas Piket Lapangan</h3>
+  <ol>
+    <li><strong>Pemilihan Jam Aktif:</strong> Pilih tombol tab jam yang sedang berjalan: <strong>Jam 1</strong>, <strong>Jam 2</strong>, <strong>Jam 3</strong>, atau <strong>Jam 4</strong>.</li>
+    <li><strong>Filter Blok Asrama:</strong> Pilih blok tempat bertugas (misal: <em>Blok A Sunan Ampel</em> atau <em>Blok Al-Barokah Putri</em>). Layar hanya akan menampilkan kelas yang berada di blok tersebut.</li>
+    <li><strong>Sistem Kartu Sekali Sentuh:</strong> Setiap kartu kelas menampilkan nama guru dan fan kitab. Secara default kartu berstatus <em>Hadir</em>. Jika guru hadir, petugas tidak perlu melakukan apa pun.</li>
+    <li><strong>Tindakan Cepat Jika Guru Tidak Ada:</strong> Cukup sentuh kartu kelas yang gurunya tidak hadir, pilih status (<em>Izin / Alfa</em>), lalu pilih asatidz badal dari menu cepat pop-up.</li>
+    <li><strong>Presensi Massal (<code>ModalPresensiMassal.tsx</code>):</strong> Jika satu kompleks gedung diliburkan karena kegiatan asrama tertentu, petugas dapat mencentang blok tersebut dan mengubah status seluruh rombel serentak.</li>
+  </ol>
+
+  <h3>(c) Sistem Notifikasi Blok Asrama (<code>ModalNotifAbsenBlok.tsx</code>)</h3>
+  <p>
+    Petugas piket dapat memicu notifikasi siaga ke posko sekretariat jika mendapati ada lebih dari 3 kelas kosong dalam satu blok asrama agar tim piket cadangan segera diberangkatkan ke lokasi.
+  </p>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>5.3 Presensi Musyawarah &amp; Konsorsium (<code>/absen-konsorsium</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Penjadwalan Konsorsium</h3>
+  <p>
+    Konsorsium adalah forum musyawarah ilmiah mingguan dewan asatidz dan pendidik madrasah guna membedah kitab rujukan, menyamakan persepsi materi kurikulum, serta mengevaluasi perkembangan santri.
+  </p>
+  <ul>
+    <li><strong>Konsorsium Mustahiq / Mustahiqqoh:</strong> Dilaksanakan rutin setiap <strong>Hari Kamis Siang / Sore</strong>.</li>
+    <li><strong>Konsorsium Munawib / Munawibbah:</strong> Dilaksanakan rutin setiap <strong>Hari Selasa Siang / Sore</strong>.</li>
+  </ul>
+
+  <h3>(b) Tampilan Kartu &amp; Matriks Presensi Konsorsium</h3>
+  <p>
+    Modul ini mengelompokkan kehadiran berdasarkan 4 jenjang tingkatan: <code>ULA</code>, <code>WUSTHO</code>, <code>ULYA</code>, dan <code>ISTI'DAD</code>. Pengurus dapat mencatat kehadiran koordinator dan anggota konsorsium pada <code>ModalInputPresensiKonsor.tsx</code> serta melihat rekapitulasi semester via <code>ModalDetailMatriksTahunanKonsor.tsx</code>.
+  </p>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>5.4 Rekapitulasi Kehadiran &amp; Generator Laporan WhatsApp (<code>/rekap-absensi</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Analisis Rekap Kehadiran</h3>
+  <p>
+    Menyajikan data analitik kehadiran bulanan dan semesteran untuk seluruh dewan asatidz. Pimpinan dapat menyortir guru dengan tingkat kehadiran tertinggi hingga guru yang sering absen untuk keperluan evaluasi syahriyyah/bisyarah mengajar.
+  </p>
+
+  <h3>(b) Fitur Drilldown Harian (<code>ModalDrilldownRekap.tsx</code> &amp; <code>ModalDrilldownStatusAbsen.tsx</code>)</h3>
+  <p>
+    Setiap angka pada tabel rekap bersifat interaktif. Jika seorang asatidz tercatat memiliki 3 Alfa, pengurus cukup mengklik angka "3" tersebut. Sistem akan membuka modal drilldown yang merinci secara tepat: <em>tanggal berapa saja beliau alpa, hari apa, pada jam ke berapa, di kelas apa, dan fan pelajaran apa yang ditinggalkan</em>.
+  </p>
+
+  <h3>(c) Generator Laporan WhatsApp Siap Kirim (<code>ModalGeneratorWA.tsx</code>)</h3>
+  <p>
+    Setiap malam setelah bel KBM berakhir, tim kesiswaan wajib melaporkan rekap kehadiran guru ke grup WhatsApp Pengurus dan Masyayikh. Fitur ini mengotomatiskan pembuatan format laporan teks:
+  </p>
+  <ol>
+    <li>Klik tombol hijau <strong>Generator Laporan WA</strong> di halaman rekap absensi.</li>
+    <li>Pilih cakupan jam (contoh: <code>Jam 1 &amp; Jam 2</code> atau <code>Semua Jam</code>).</li>
+    <li>Pilih filter gender: <code>SEMUA</code>, <code>PA</code> (Putra), atau <code>PI</code> (Putri).</li>
+    <li>Sistem secara otomatis merangkum data dan menyusun format pesan resmi:
+      <ul>
+        <li>Jumlah total asatidz bertugas malam ini.</li>
+        <li>Jumlah hadir, izin, sakit, dan alpa.</li>
+        <li>Daftar rincian nama asatidz yang tidak hadir beserta kelas dan nama asatidz pengganti (badal).</li>
+      </ul>
+    </li>
+    <li><strong>Kustomisasi Singkatan Nama (<code>ModalSingkatNamaWA.tsx</code>):</strong> Pengurus dapat menyesuaikan singkatan panggilan akrab dewan asatidz (contoh: <em>Ust. Ahmad Baidhowi</em> disingkat menjadi <em>Ust. Baidhowi</em>) agar pesan WhatsApp tidak terlalu panjang dan nyaman dibaca di layar ponsel.</li>
+    <li>Klik tombol <strong>Salin Teks Laporan</strong> atau <strong>Buka WhatsApp Web</strong> untuk langsung menempelkannya ke grup resmi madrasah.</li>
+  </ol>
+  
+
+  <!-- BAB 6: PANDUAN OPERASIONAL PKM. SAPRAS & PUBLIKASI -->
+  
+  <div class="page-break"></div>
+  <h1>BAB 6: PANDUAN OPERASIONAL PKM. SAPRAS &amp; PUBLIKASI</h1>
+
+  <h2>6.1 Manajemen Sarana &amp; Prasarana (<code>/sapras/*</code>)</h2>
+
+  <h3>(a) Gambaran Umum Modul Sarana Prasarana</h3>
+  <p>
+    Kelancaran kegiatan belajar mengajar di puluhan gedung madrasah sangat bergantung pada kesiapan fisik ruang kelas dan ketersediaan alat tulis kantor (ATK). Ruang kerja Sarana Prasarana (<code>SaprasWorkspaceModule.tsx</code>) mengintegrasikan 4 pilar pengelolaan fasilitas:
+  </p>
+  <ul>
+    <li><code>/sapras/inventaris-kelas</code> : Pendataan kondisi fisik inventaris per lokal kelas.</li>
+    <li><code>/sapras/perbaikan</code> : Sistem tiket pengajuan pelaporan kerusakan dan penanganan teknisi.</li>
+    <li><code>/sapras/logistik</code> : Buku stok dan mutasi distribusi ATK (spidol, tinta, penghapus).</li>
+    <li><code>/sapras/rekap</code> : Laporan audit berkala persentase kelayakan sarana belajar.</li>
+  </ul>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    <span class="badge badge-emerald">PKM Sapras & Master Admin</span> Memiliki izin untuk memutakhirkan kondisi kelas, menindaklanjuti tiket perbaikan, menambah stok gudang logistik, dan mengunduh audit rekap.
+  </p>
+
+  <h3>(c) Standar Klasifikasi Kondisi Inventaris</h3>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 20%;">Kategori Kondisi</th>
+        <th style="width: 15%;">Lencana</th>
+        <th style="width: 35%;">Definisi Fisik Lapangan</th>
+        <th style="width: 30%;">Tindak Lanjut Rekomendasi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>BAIK</strong></td>
+        <td><span class="badge badge-emerald">Baik & Layak</span></td>
+        <td>Fasilitas utuh, bersih, dan berfungsi normal tanpa hambatan (contoh: papan tulis licin, meja guru kokoh).</td>
+        <td>Pemeliharaan berkala dan pembersihan rutin.</td>
+      </tr>
+      <tr>
+        <td><strong>RUSAK_RINGAN</strong></td>
+        <td><span class="badge badge-amber">Rusak Ringan</span></td>
+        <td>Terdapat cacat estetika atau fungsi minor namun masih dapat dipakai (contoh: list papan lepas sebagian, cat meja terkelupas).</td>
+        <td>Penjadwalan perbaikan ringan oleh tukang pondok.</td>
+      </tr>
+      <tr>
+        <td><strong>RUSAK_BERAT</strong></td>
+        <td><span class="badge badge-rose">Rusak Berat</span></td>
+        <td>Fasilitas patah, retak parah, atau tidak dapat difungsikan (contoh: papan tulis berlubang, kaki meja patah).</td>
+        <td>Penggantian unit baru atau renovasi menyeluruh.</td>
+      </tr>
+      <tr>
+        <td><strong>BELUM_ADA</strong></td>
+        <td><span class="badge badge-slate">Belum Ada</span></td>
+        <td>Ruang kelas belum memiliki fasilitas dasar tersebut.</td>
+        <td>Pengadaan inventaris baru dari logistik pusat.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>(d) Alur Pengajuan Tiket Kerusakan &amp; Perbaikan (<code>/sapras/perbaikan</code>)</h3>
+  <ol>
+    <li>Mustahiq atau petugas piket yang mendapati fasilitas kelas rusak mengklik tombol <strong>+ Buat Laporan Kerusakan</strong>.</li>
+    <li>Pilih <strong>Rombel Kelas / Lokasi Gedung</strong> yang mengalami kerusakan.</li>
+    <li>Pilih jenis fasilitas yang bermasalah (<em>Papan Tulis, Meja Guru, Lampu/Penerangan, Kipas Angin, Kunci Pintu</em>).</li>
+    <li>Tentukan <strong>Tingkat Urgensi</strong>:
+      <ul>
+        <li><code>Mendesak</code> : Menghentikan jalannya KBM (contoh: seluruh lampu padam, papan tulis jatuh).</li>
+        <li><code>Sedang</code> : Mengganggu kenyamanan namun KBM masih dapat berjalan.</li>
+        <li><code>Rendah</code> : Perbaikan kosmetik atau pemeliharaan berkala.</li>
+      </ul>
+    </li>
+    <li>Unggah foto bukti kerusakan dan ketikkan keterangan detail masalah.</li>
+    <li>Tim PKM Sapras meninjau tiket dan memperbarui statusnya secara bertahap:
+      <br/><code>Diajukan</code> ➔ <code>Dalam Penanganan Teknisi</code> ➔ <code>Selesai Diperbaiki</code>.
+    </li>
+  </ol>
+
+  <h3>(e) Manajemen Logistik &amp; Distribusi ATK KBM (<code>/sapras/logistik</code>)</h3>
+  <p>
+    Modul logistik memantau keluar-masuk barang habis pakai:
+  </p>
+  <ul>
+    <li><strong>Pencatatan Stok Gudang:</strong> Menghitung sisa kuota botol tinta whiteboard, puluhan kotak spidol, dan penghapus busa.</li>
+    <li><strong>Distribusi Rutin Mingguan:</strong> Setiap hari Sabtu sore sebelum bel mengajar berbunyi, perwakilan kelas mengambil paket spidol dan tinta. Petugas mencatat tanggal pengambilan dan nama santri pengambil untuk mencegah pemborosan ATK.</li>
+  </ul>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>6.2 CMS Manajemen Warta Berita MADINA (<code>/kelola-berita</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Filosofi Modul</h3>
+  <p>
+    Modul <code>/kelola-berita</code> adalah sistem manajemen konten (CMS) internal yang dirancang khusus untuk tim redaksi jurnalistik santri MADINA Blokagung. Modul ini memungkinkan pembuatan artikel berita, pengarsipan foto kegiatan turots, serta publikasi rilis pers yang langsung tayang pada portal publik pesantren.
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    <span class="badge badge-emerald">Redaksi Warta & Master Admin</span> Memiliki akses untuk membuat draf berita, menyunting teks, mengunggah foto kegiatan, menyematkan tautan video TikTok, dan menerbitkan (<em>publish</em>) artikel.
+  </p>
+
+  <h3>(c) Langkah Menulis &amp; Menerbitkan Artikel (<code>ModalFormBerita.tsx</code>)</h3>
+  <ol>
+    <li>Buka menu <strong>Kelola Berita</strong> pada sidebar.</li>
+    <li>Klik tombol hijau <strong>+ Tulis Berita Baru</strong>.</li>
+    <li>Isi kolom-kolom utama berita:
+      <ul>
+        <li><strong>Judul Berita:</strong> Ketik judul artikel yang menarik dan informatif.</li>
+        <li><strong>Slug URL Otomatis:</strong> Sistem secara otomatis menghasilkan tautan ramah SEO saat judul diketik (misal: <em>"evaluasi-daur-tsani-kelas-unggulan"</em>).</li>
+        <li><strong>Topik Berita:</strong> Pilih kategori: <code>Kelas Unggulan</code>, <code>Tingkat ULA</code>, <code>Tingkat WUSTHO</code>, atau <code>Tingkat ULYA</code>.</li>
+        <li><strong>Tipe Tampilan (Display Type):</strong>
+          <br/>• <code>Hero Lead</code> : Artikel unggulan besar sebelah kiri dengan gambar dominan.
+          <br/>• <code>Highlight Grid</code> : Tampil pada salah satu dari 4 kotak sorotan di sisi kanan slider.
+          <br/>• <code>Regular</code> : Tampil pada daftar umpan artikel berita berkala di bawah slider.
+        </li>
+        <li><strong>Unggah Foto Cover:</strong> Masukkan URL foto cover atau unggah langsung gambar beresolusi tajam. Sistem secara otomatis mengompres foto cover untuk kenyamanan pembaca.</li>
+        <li><strong>Cuplikan Ringkasan (Excerpt):</strong> Tuliskan 1 hingga 2 kalimat pembuka yang menggugah selera baca.</li>
+      </ul>
+    </li>
+    <li>Pilih status publikasi: <code>Published</code> (langsung tayang) atau <code>Draft</code> (disimpan sebagai konsep).</li>
+    <li>Klik <strong>Simpan &amp; Publikasikan Warta</strong>.</li>
+  </ol>
+
+  <h3>(d) Fitur Khusus: Klik Kanan di Editor untuk Sisip Foto Kegiatan</h3>
+  <p>
+    Salah satu inovasi penting pada antarmuka penulisan berita adalah kemudahan menyisipkan dokumentasi foto di tengah paragraf teks tanpa harus mengetik kode manual:
+  </p>
+  <ol>
+    <li>Pada area teks konten berita (<em>Textarea Content</em>), letakkan kursor pada baris baru di mana Anda ingin menaruh foto dokumentasi.</li>
+    <li><strong>Klik Kanan Mouse</strong> pada posisi tersebut. Menu konteks pop-up <strong>Sisip Foto Kegiatan di Tengah Teks</strong> akan muncul tepat di posisi kursor.</li>
+    <li>Pilih salah satu cara input:
+      <ul>
+        <li><em>Metode Unggah Cepat:</em> Klik <strong>Pilih File dari Komputer/Ponsel</strong>. Foto akan dikompres dan diunggah secara instan.</li>
+        <li><em>Metode Tautan Gambar:</em> Tempelkan URL gambar yang sudah ada di internet.</li>
+      </ul>
+    </li>
+    <li>Ketikkan <strong>Teks Keterangan Foto (Caption)</strong>, misalnya: <em>"Suasana syawir kubro santri tingkat Ulya di serambi masjid"</em>.</li>
+    <li>Klik <strong>Sisipkan ke Dalam Teks</strong>.</li>
+    <li>Sistem secara otomatis menginjeksikan sintaks markdown khusus:
+      <br/><code>![Suasana syawir kubro santri tingkat Ulya](https://...)</code>
+    </li>
+    <li>Ketika artikel dibuka oleh pengunjung di halaman publik <code>/berita/[slug]</code>, sistem akan merender gambar tersebut dalam bingkai foto sudut melengkung profesional lengkap dengan teks <em>"Foto: Suasana syawir kubro..."</em> di bagian bawahnya.</li>
+  </ol>
+
+  <h3>(e) Panduan Menyematkan Video TikTok Resmi (<code>tiktok_url</code>)</h3>
+  <p>
+    Untuk menarik minat generasi muda dan wali santri milenial, sistem warta MADINA mendukung integrasi video pendek TikTok:
+  </p>
+  <ol>
+    <li>Buka aplikasi TikTok atau browser, lalu salin tautan video kegiatan resmi madrasah (contoh: <code>https://www.tiktok.com/@madinblokagung/video/7391829182739182</code>).</li>
+    <li>Pada formulir pembuatan berita, tempelkan tautan tersebut ke dalam kolom input <strong>Tautan Video TikTok (tiktok_url)</strong>.</li>
+    <li>Simpan artikel.</li>
+    <li>Sistem pada fungsi <code>extractTikTokVideoId()</code> akan mengambil ID angka unik video tersebut dan menampilkan pemutar video interaktif vertikal 9:16 di bilah samping (<em>Sticky Widget</em>) halaman pembaca. Pengunjung dapat menonton video langsung di portal madrasah tanpa dialihkan ke aplikasi lain.</li>
+  </ol>
+  
+
+  <!-- BAB 7: PENGATURAN SISTEM, HAK AKSES (RBAC) & TROUBLESHOOTING -->
+  
+  <div class="page-break"></div>
+  <h1>BAB 7: PENGATURAN SISTEM, HAK AKSES (RBAC) &amp; PANDUAN PEMECAHAN MASALAH</h1>
+
+  <h2>7.1 Manajemen Hak Akses Pengguna Berbasis Peran (<code>/pengaturan</code>)</h2>
+
+  <h3>(a) Konsep Arsitektur RBAC MADINA Blokagung</h3>
+  <p>
+    Sistem Informasi MADINA Blokagung menerapkan model keamanan tingkat lanjut <em>Role-Based Access Control (RBAC)</em> yang dipadukan dengan <em>Granular Authority Overrides</em>. Setiap akun pengurus (pada tabel <code>user_accounts</code>) memiliki pemetaan izin akses individual untuk <strong>28 modul halaman utama</strong> (sebagaimana tercantum dalam <code>APP_PAGE_CATALOG</code> pada <code>types/rbac.ts</code>).
+  </p>
+
+  <h3>(b) Tiga Tingkat Mode Akses Halaman (<code>PageAccessMode</code>)</h3>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 20%;">Mode Akses</th>
+        <th style="width: 15%;">Lencana</th>
+        <th style="width: 35%;">Perilaku Antarmuka (UI)</th>
+        <th style="width: 30%;">Tingkat Keamanan Server</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>edit</strong></td>
+        <td><span class="badge badge-emerald">Akses Penuh (Edit)</span></td>
+        <td>Pengguna dapat melihat halaman, membuka formulir input, mengubah data, dan menghapus data (kecuali dibatasi oleh otoritas khusus).</td>
+        <td>Diizinkan melakukan operasi INSERT, UPDATE, dan DELETE pada pangkalan data Supabase.</td>
+      </tr>
+      <tr>
+        <td><strong>baca</strong></td>
+        <td><span class="badge badge-blue">Hanya Baca (Read-Only)</span></td>
+        <td>Pengguna dapat melihat tabel, menggunakan filter pencarian, dan mencetak dokumen, namun seluruh tombol simpan/tambah/edit/hapus disembunyikan.</td>
+        <td>Hanya diizinkan melakukan operasi SELECT data.</td>
+      </tr>
+      <tr>
+        <td><strong>sembunyikan</strong></td>
+        <td><span class="badge badge-rose">Akses Ditutup (Hidden)</span></td>
+        <td>Menu halaman dihilangkan sama sekali dari Sidebar dan BottomNav. Jika pengguna mengetikkan URL langsung, sistem akan memblokir dan mengalihkan ke dashboard.</td>
+        <td>Permintaan dibatalkan oleh <code>canViewPage()</code> dan middleware proteksi rute.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>(c) Matriks Katalog 28 Modul Halaman Resmi (<code>APP_PAGE_CATALOG</code>)</h3>
+  <p>
+    Seluruh halaman yang dapat dikonfigurasi izinnya oleh Master Admin mencakup:
+  </p>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">ID Modul (AppPageId)</th>
+        <th style="width: 35%;">Label Halaman &amp; Rute URL</th>
+        <th style="width: 20%;">Kelompok Menu</th>
+        <th style="width: 20%;">Dukungan Override</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>dashboard</code></td><td>Dashboard Utama (<code>/dashboard</code>)</td><td>Beranda Utama</td><td>Read-Only</td></tr>
+      <tr><td><code>santri</code></td><td>Data Santri (<code>/santri</code>)</td><td>Data Pokok</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>asatidz</code></td><td>Data Asatidz (<code>/asatidz</code>)</td><td>Data Pokok</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>catatan</code></td><td>Catatan &amp; To-Do List (<code>/catatan</code>)</td><td>Ruang Kerja</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>jadwal-kbm</code></td><td>Jadwal KBM Per Kelas (<code>/jadwal-kbm</code>)</td><td>PKM. Kurikulum</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>hari-kbm</code></td><td>Hari &amp; Jam KBM (<code>/hari-kbm</code>)</td><td>PKM. Kurikulum</td><td>Edit Override</td></tr>
+      <tr><td><code>kalender-kegiatan</code></td><td>Kalender Akademik (<code>/kalender-kegiatan</code>)</td><td>PKM. Kurikulum</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>formasi</code></td><td>Formasi Kelas PA &amp; PI (<code>/formasi/*</code>)</td><td>PKM. Kurikulum</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>fan-pelajaran</code></td><td>Daftar Fan Pelajaran (<code>/fan/pelajaran</code>)</td><td>PKM. Kurikulum</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>fan-pengajar</code></td><td>Pengajar Fan (<code>/fan/pengajar</code>)</td><td>PKM. Kurikulum</td><td>Edit Override</td></tr>
+      <tr><td><code>daftar-pendidik</code></td><td>Daftar Pendidik (<code>/daftar-pendidik</code>)</td><td>PKM. Kurikulum</td><td>Read-Only</td></tr>
+      <tr><td><code>setoran</code></td><td>Setoran Muhafadzoh (<code>/setoran</code>)</td><td>PKM. Muhafadzoh</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>setor-mustahiq</code></td><td>Setor Mustahiq (<code>/setor-mustahiq/*</code>)</td><td>PKM. Muhafadzoh</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>setor-cepat</code></td><td>Setor Cepat (<code>/setor-cepat</code>)</td><td>PKM. Muhafadzoh</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>linimasa-setor</code></td><td>Linimasa Setor (<code>/linimasa-setor</code>)</td><td>PKM. Muhafadzoh</td><td>Edit Override</td></tr>
+      <tr><td><code>rekap-hafalan</code></td><td>Rekap Hafalan (<code>/rekap-hafalan</code>)</td><td>PKM. Muhafadzoh</td><td>Read-Only</td></tr>
+      <tr><td><code>piagam</code></td><td>Cetak Piagam (<code>/piagam</code>)</td><td>PKM. Muhafadzoh</td><td>Edit Override</td></tr>
+      <tr><td><code>serah-piagam</code></td><td>Serah Piagam Santri (<code>/serah-piagam</code>)</td><td>PKM. Muhafadzoh</td><td>Edit Override</td></tr>
+      <tr><td><code>kirim-wa</code></td><td>Kirim WA Rapor (<code>/kirim-wa</code>)</td><td>PKM. Muhafadzoh</td><td>Edit Override</td></tr>
+      <tr><td><code>absensi</code></td><td>Absensi Asatidz (<code>/absensi</code>)</td><td>PKM. Kesiswaan</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>absen-cepat</code></td><td>Absen Cepat (<code>/absen-cepat</code>)</td><td>PKM. Kesiswaan</td><td>Edit Override</td></tr>
+      <tr><td><code>absen-konsorsium</code></td><td>Absen Konsorsium (<code>/absen-konsorsium</code>)</td><td>PKM. Kesiswaan</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>rekap-absensi</code></td><td>Rekap Absensi (<code>/rekap-absensi/*</code>)</td><td>PKM. Kesiswaan</td><td>Read-Only</td></tr>
+      <tr><td><code>sapras-inventaris</code></td><td>Inventaris Kelas (<code>/sapras/inventaris-kelas</code>)</td><td>PKM. Sapras</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>sapras-perbaikan</code></td><td>Perbaikan Sapras (<code>/sapras/perbaikan</code>)</td><td>PKM. Sapras</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>sapras-logistik</code></td><td>Logistik ATK KBM (<code>/sapras/logistik</code>)</td><td>PKM. Sapras</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>sapras-rekap</code></td><td>Rekap &amp; Audit Sapras (<code>/sapras/rekap</code>)</td><td>PKM. Sapras</td><td>Read-Only</td></tr>
+      <tr><td><code>kelola-berita</code></td><td>CMS Warta Berita (<code>/kelola-berita</code>)</td><td>PKM. Publikasi</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>pengaturan</code></td><td>Pengaturan Sistem (<code>/pengaturan</code>)</td><td>Pengaturan</td><td>Master Admin Only</td></tr>
+    </tbody>
+  </table>
+
+  <h3>(d) Otoritas Khusus (<code>SpecialAuthorities</code>)</h3>
+  <p>
+    Selain mode akses halaman dasar, Master Admin dapat menyematkan pembatasan wewenang khusus melalui komponen <code>AccountAuthorityManager.tsx</code>:
+  </p>
+  <ul>
+    <li><strong>Cakupan Blok Asrama (<code>blok_scope</code>):</strong> Menentukan apakah akun dapat melihat data di <code>'SEMUA'</code> blok asrama atau hanya dibatasi pada array blok tertentu (contoh: <code>['Blok A', 'Blok B']</code>).</li>
+    <li><strong>Cakupan Gender (<code>gender_scope</code>):</strong> Mengunci pandangan akun hanya pada santri/asatidz <code>'putra'</code>, <code>'putri'</code>, atau <code>'semua'</code>. Sangat berguna untuk pengurus madrasah putri yang tidak boleh melihat data santri putra.</li>
+    <li><strong>Sembunyikan Tombol Ubah (<code>hide_edit_pages</code>):</strong> Meskipun halaman berstatus <code>edit</code>, tombol "Ubah / Edit" disembunyikan sehingga pengguna hanya bisa menginput data baru tanpa boleh mengubah data lama yang sudah tercatat.</li>
+    <li><strong>Sembunyikan Tombol Hapus (<code>hide_delete_pages</code>):</strong> Tombol ikon tempat sampah (<em>Delete</em>) disembunyikan untuk mencegah hilangnya berkas penting.</li>
+    <li><strong>Saklar Perangkat Piket (<code>persistent_absen_cepat</code>):</strong> Mengikat sesi login tanpa batas waktu pada perangkat tablet/ponsel piket dan langsung mengarahkan pengguna ke layar Absen Cepat setiap kali web dibuka.</li>
+  </ul>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>7.2 Kustomisasi Navigasi, Hierarki Kamar, dan Saklar Keamanan</h2>
+
+  <h3>1. Editor Penataan Menu Sidebar (<code>SidebarConfigEditor.tsx</code>)</h3>
+  <p>
+    Pengurus dapat mengatur urutan menu navigasi sesuai alur kerja bulanan:
+  </p>
+  <ul>
+    <li>Menyeret (<em>drag and drop</em>) urutan grup menu ke atas atau ke bawah.</li>
+    <li>Mengubah nama label grup menu (misal: <em>"PKM. Muhafadzoh"</em> diubah menjadi <em>"Divisi Tahfidz &amp; Lalaran"</em>).</li>
+    <li>Menyembunyikan modul yang sedang tidak digunakan pada awal tahun ajaran.</li>
+  </ul>
+
+  <h3>2. Pembangun Pohon Hierarki Asrama &amp; Kamar (<code>ModalHierarchyBuilder.tsx</code>)</h3>
+  <p>
+    Struktur tata ruang Pondok Pesantren Darussalam Blokagung memiliki hierarki:
+    <br/><strong>Pesantren ➔ Kompleks / Blok Asrama ➔ Kamar Santri</strong>.
+    <br/>Melalui modal ini, admin dapat menambah nama blok baru (misal pembangunan asrama santri baru di lantai 3) serta mendaftarkan nomor-nomor kamar di bawahnya. Perubahan hierarki ini akan otomatis menjadi pilihan dropdown pada modul santri dan formasi.
+  </p>
+
+  <h3>3. Saklar Keamanan Global Aplikasi (<code>AppSecuritySwitchPanel.tsx</code>)</h3>
+  <p>
+    Fitur <code>isAppSecurityEnabled</code> adalah saklar darurat (<em>kill switch</em>) yang dapat diaktifkan jika terdeteksi aktivitas mencurigakan pada jaringan pesantren. Ketika diaktifkan, seluruh sesi non-admin akan dikunci ke mode hanya-baca (<em>read-only lockdown</em>).
+  </p>
+
+  <h3>4. Riwayat Audit Log Pengurus (<code>ModalAuditLogs.tsx</code>)</h3>
+  <p>
+    Setiap tindakan penting yang terjadi di dalam aplikasi dicatat secara transparan: <em>Siapa yang melakukan, Apa yang diubah, Nilai data sebelum dan sesudah perubahan, Waktu kejadian, serta Alamat IP perangkat</em>. Audit log menjamin akuntabilitas pengurus dan mencegah lempar tanggung jawab.
+  </p>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>7.3 Prosedur Operasional Standar (SOP) Pergantian Tahun Ajaran Baru</h2>
+  <p>
+    Menjelang tahun ajaran baru (contoh: transisi dari 2025/2026 ke 2026/2027), Bagian Administrasi Pusat wajib mengikuti SOP berikut:
+  </p>
+  <ol>
+    <li><strong>Pencadangan Pangkalan Data (Full Database Backup):</strong> Unduh file cadangan data santri, absensi, dan riwayat setoran muhafadzoh tahun lalu ke format Excel atau SQL dump.</li>
+    <li><strong>Aktivasi Tahun Ajaran Baru di <code>CardPengaturanTahunAjaran.tsx</code>:</strong>
+      <ul>
+        <li>Klik tombol <strong>+ Tambah Tahun Ajaran Baru</strong>.</li>
+        <li>Ketikkan tahun awal Masehi (misal: <code>2026</code> untuk TA <code>2026/2027</code>).</li>
+        <li>Sistem secara otomatis menghitung padanan penanggalan Hijriyah (misal: <code>1447–1448 H</code>).</li>
+        <li>Tentukan <strong>Offset Kalender Hijriyah</strong> (biasanya <code>-1</code> atau <code>0</code> hari sesuai penetapan sidang itsbat).</li>
+        <li>Pilih semester awal: <code>Semester Ganjil (Daur Awwal)</code>.</li>
+        <li>Klik <strong>Simpan &amp; Aktifkan Tahun Ajaran</strong>.</li>
+      </ul>
+    </li>
+    <li><strong>Kloning Formasi Rombel:</strong> Jalankan generator formasi kelas di <code>/formasi</code> untuk menyiapkan lokal ruang kelas rombel baru.</li>
+    <li><strong>Kenaikan Kelas &amp; Mutasi Santri:</strong> Perbarui data tingkat dan kelas santri secara massal melalui fitur Import Excel Update.</li>
+    <li><strong>Penyusunan Jadwal Baru:</strong> Rancang matriks jadwal KBM baru pada <code>/jadwal-kbm</code>. Riwayat absensi dan setoran tahun ajaran sebelumnya akan diarsipkan secara aman tanpa terhapus.</li>
+  </ol>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>7.4 Tanya Jawab (FAQ) &amp; Panduan Pemecahan Masalah (Troubleshooting)</h2>
+
+  <h3>1. Data presensi atau setoran yang saya input tidak muncul di laptop pengurus lain. Mengapa?</h3>
+  <p>
+    <strong>Penyebab:</strong> Koneksi WebSocket Supabase Realtime di peramban Anda terputus akibat gangguan sinyal WiFi pesantren.<br/>
+    <strong>Solusi:</strong> Periksa <em>Live Status Banner</em> di sudut dashboard. Jika berwarna oranye atau tertulis "Terputus", klik tombol <strong>Hubungkan Ulang (Reconnect)</strong> atau muat ulang peramban (<kbd>Ctrl + F5</kbd>). Jika sedang offline, data Anda tetap aman tersimpan di antrean IndexedDB dan akan terkirim otomatis begitu internet tersambung kembali.
+  </p>
+
+  <h3>2. Layanan Kirim WhatsApp (WAHA) gagal mengirim pesan dan berstatus "SCAN_QR_CODE" atau "FAILED". Bagaimana mengatasinya?</h3>
+  <p>
+    <strong>Penyebab:</strong> Sesi Baileys pada server WAHA gateway terputus karena nomor WhatsApp madrasah logout dari perangkat tertaut.<br/>
+    <strong>Solusi:</strong>
+  </p>
+  <ul>
+    <li>Buka server lokal tempat gateway WAHA berjalan (port <code>3008</code>) atau jalankan file skrip <code>start-waha-gateway.bat</code> di folder proyek.</li>
+    <li>Buka modul <code>/kirim-wa</code>, lalu klik tombol <strong>Pindai QR Code WhatsApp</strong>.</li>
+    <li>Buka aplikasi WhatsApp di ponsel resmi madrasah ➔ Perangkat Tertaut ➔ Tautkan Perangkat ➔ Arahkan kamera ke QR Code yang muncul di layar laptop. Status akan segera berubah menjadi <span class="badge badge-emerald">WORKING</span>.</li>
+  </ul>
+
+  <h3>3. Saat mengimpor data santri dari Excel muncul pesan "Gagal: Format Kolom Tidak Cocok". Apa yang salah?</h3>
+  <p>
+    <strong>Penyebab:</strong> Nama header kolom di baris pertama file Excel diubah atau urutan kolom bergeser dari format template bawaan sistem.<br/>
+    <strong>Solusi:</strong> Unduh ulang template resmi melalui tautan <em>Unduh Format Kolom Template Excel</em> pada modal impor. Salin data santri Anda ke dalam file template baru tersebut tanpa mengubah judul kolom pada baris ke-1, lalu unggah kembali.
+  </p>
+
+  <h3>4. Menu navigasi tertentu di Sidebar tiba-tiba hilang dari akun saya. Apa penyebabnya?</h3>
+  <p>
+    <strong>Penyebab:</strong> Akun Anda mungkin telah diatur oleh Master Admin ke mode <code>sembunyikan</code> untuk modul tersebut, atau cakupan gender Anda disetel ke Putra/Putri saja.<br/>
+    <strong>Solusi:</strong> Hubungi Administrator IT MADINA di ruang sekretariat untuk memeriksa pengaturan izin akun Anda pada matriks RBAC <code>/pengaturan</code>.
+  </p>
+  
+</body>
+</html>

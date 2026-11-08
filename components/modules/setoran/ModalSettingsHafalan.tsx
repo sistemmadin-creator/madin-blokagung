@@ -36,9 +36,11 @@ import {
   ItemHafalanDetail,
   HafalanConfig,
   TargetUnitNumeric,
+  SantriTahfidzItem,
+  ModeAlurTahfidz,
 } from '@/types/setoran';
 
-type ActiveTabType = 'wajib' | 'sunnah' | 'kitab' | 'penjaga';
+type ActiveTabType = 'wajib' | 'sunnah' | 'kitab' | 'tahfidz' | 'penjaga';
 
 export default function ModalSettingsHafalan() {
   const { isSettingsOpen, closeSettings, config, saveConfig } = useMuhafadzohStore();
@@ -56,6 +58,12 @@ export default function ModalSettingsHafalan() {
   const [localWajib, setLocalWajib] = useState<Record<string, ItemHafalanDetail[]>>({});
   const [localSunnah, setLocalSunnah] = useState<Record<string, ItemHafalanDetail[]>>({});
   const [localKitab, setLocalKitab] = useState<Record<string, ItemHafalanDetail[]>>({});
+
+  // Tahfidz Local State
+  const [localStandarMaksimalJuz, setLocalStandarMaksimalJuz] = useState<number>(3);
+  const [localSantriTahfidzList, setLocalSantriTahfidzList] = useState<SantriTahfidzItem[]>([]);
+  const [santriTahfidzSearch, setSantriTahfidzSearch] = useState('');
+  const [isDropdownSantriTahfidzOpen, setIsDropdownSantriTahfidzOpen] = useState(false);
 
   // Accordion states
   const [openGroupKeys, setOpenGroupKeys] = useState<Record<string, boolean>>({});
@@ -124,6 +132,11 @@ export default function ModalSettingsHafalan() {
       setSelectedPenjagaBebas([...(config.penjagaBebas || [])]);
       setPenjagaSearch('');
       setIsDropdownPenjagaOpen(false);
+
+      setLocalStandarMaksimalJuz(config.tahfidz?.standarMaksimalJuz || 3);
+      setLocalSantriTahfidzList([...(config.tahfidz?.santriTahfidzList || [])]);
+      setSantriTahfidzSearch('');
+      setIsDropdownSantriTahfidzOpen(false);
       setSearchQuery('');
       setFilterTingkat('all');
       setFilterTargetType('all');
@@ -424,6 +437,70 @@ export default function ModalSettingsHafalan() {
     setSelectedPenjagaBebas(selectedPenjagaBebas.filter((_, i) => i !== idx));
   };
 
+  // Tahfidz Handlers
+  const handleAddSantriTahfidz = (santri: any) => {
+    const noInduk = String(santri.no_induk || santri[1] || '').trim();
+    if (!noInduk) return;
+    if (localSantriTahfidzList.some((s) => norm(s.no_induk) === norm(noInduk))) {
+      alert('Santri ini sudah terdaftar dalam program tahfidz.');
+      return;
+    }
+    const rawTk = norm(santri.tingkat || santri[26]);
+    const tk = rawTk.includes('WUSTHO') ? 'WUSTHO' : rawTk.includes('ULYA') ? 'ULYA' : 'ULA';
+    const kls = String(santri.din_kls || santri[24] || '1');
+    const bag = String(santri.din_bag || santri[25] || 'A').toUpperCase();
+    const papi = norm(santri.pa_pi || santri[4]) === 'PI' ? 'PI' : 'PA';
+
+    const newItem: SantriTahfidzItem = {
+      no_induk: noInduk,
+      nama: String(santri.nama || santri[5] || '').trim(),
+      tingkat: tk,
+      din_kls: kls,
+      din_bag: bag,
+      pa_pi: papi,
+      mode: 'simultan',
+      tanggalBergabung: new Date().toISOString().split('T')[0],
+    };
+
+    setLocalSantriTahfidzList([...localSantriTahfidzList, newItem]);
+    setSantriTahfidzSearch('');
+    setIsDropdownSantriTahfidzOpen(false);
+  };
+
+  const handleRemoveSantriTahfidz = (noInduk: string) => {
+    setLocalSantriTahfidzList(
+      localSantriTahfidzList.filter((s) => norm(s.no_induk) !== norm(noInduk))
+    );
+  };
+
+  const handleChangeSantriTahfidzMode = (noInduk: string, mode: ModeAlurTahfidz) => {
+    setLocalSantriTahfidzList(
+      localSantriTahfidzList.map((s) => (norm(s.no_induk) === norm(noInduk) ? { ...s, mode } : s))
+    );
+  };
+
+  const handleChangeSantriCustomJuz = (noInduk: string, customJuz?: number) => {
+    setLocalSantriTahfidzList(
+      localSantriTahfidzList.map((s) =>
+        norm(s.no_induk) === norm(noInduk) ? { ...s, customTargetJuz: customJuz } : s
+      )
+    );
+  };
+
+  const filteredSantriForTahfidz = useMemo(() => {
+    if (!santriTahfidzSearch.trim()) return [];
+    const q = norm(santriTahfidzSearch);
+    const registeredIds = new Set(localSantriTahfidzList.map((s) => norm(s.no_induk)));
+    return santriList
+      .filter((s: any) => {
+        const id = norm(s.no_induk || s[1]);
+        const nama = norm(s.nama || s[5]);
+        if (registeredIds.has(id)) return false;
+        return id.includes(q) || nama.includes(q);
+      })
+      .slice(0, 8);
+  }, [santriList, santriTahfidzSearch, localSantriTahfidzList]);
+
   // Save all configuration
   const handleSave = async () => {
     setIsSaving(true);
@@ -444,6 +521,10 @@ export default function ModalSettingsHafalan() {
       hafSunnah: cleanMap(localSunnah),
       hafKitab: cleanMap(localKitab),
       penjagaBebas: selectedPenjagaBebas,
+      tahfidz: {
+        standarMaksimalJuz: Number(localStandarMaksimalJuz) || 3,
+        santriTahfidzList: localSantriTahfidzList,
+      },
     };
 
     const success = await saveConfig(newConfig);
@@ -533,6 +614,20 @@ export default function ModalSettingsHafalan() {
 
           <button
             type="button"
+            data-testid="tab-pengaturan-tahfidz"
+            onClick={() => setActiveTab('tahfidz')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap transition ${
+              activeTab === 'tahfidz'
+                ? 'border-cyan-600 text-cyan-800 dark:text-cyan-400 bg-cyan-50/50 dark:bg-cyan-950/30'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-cyan-600" />
+            <span>Pengaturan Tahfidz</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('penjaga')}
             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap transition ${
               activeTab === 'penjaga'
@@ -547,7 +642,7 @@ export default function ModalSettingsHafalan() {
 
         {/* Content Area */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900/50 space-y-4">
-          {activeTab !== 'penjaga' ? (
+          {activeTab === 'wajib' || activeTab === 'sunnah' || activeTab === 'kitab' ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-800/60 space-y-3">
               {/* Toolbar Builder ala Gambar 2 */}
               <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -1161,6 +1256,263 @@ export default function ModalSettingsHafalan() {
                   />
                 </div>
               )}
+            </div>
+          ) : activeTab === 'tahfidz' ? (
+            /* Tab 4: Pengaturan Tahfidz */
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-800/60 space-y-6">
+              {/* Header Edukatif */}
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-cyan-50/70 border border-cyan-200 text-cyan-950 dark:bg-cyan-950/30 dark:border-cyan-900 dark:text-cyan-200 text-xs leading-relaxed">
+                <Sparkles className="w-5 h-5 text-cyan-700 dark:text-cyan-400 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block font-bold text-sm text-cyan-900 dark:text-cyan-200 mb-1">
+                    Pengaturan Standar &amp; Pemetaan Santri Program Tahfidz
+                  </strong>
+                  Atur batas standar target juz tahfidz madrasah, daftarkan santri yang mengikuti program tahfidz, serta tentukan mode alurnya: apakah memproses 2 hafalan sekaligus (simultan) atau fokus mendahulukan tahfidz terlebih dahulu sebelum hafalan wajib.
+                </div>
+              </div>
+
+              {/* 1. Mengatur Standar Hafalan Tahfidz */}
+              <div className="space-y-3 p-4 rounded-xl bg-slate-50 border border-slate-200 dark:bg-slate-900/40 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-cyan-700" />
+                    1. Standar Target Hafalan Tahfidz (Maksimal Juz)
+                  </label>
+                  <span className="text-[11px] font-semibold text-cyan-700 bg-cyan-100/70 px-2.5 py-0.5 rounded-full">
+                    Default: 3 Juz
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      data-testid="input-standar-maksimal-juz"
+                      min={1}
+                      max={30}
+                      value={localStandarMaksimalJuz}
+                      onChange={(e) =>
+                        setLocalStandarMaksimalJuz(
+                          Math.max(1, Math.min(30, parseInt(e.target.value, 10) || 1))
+                        )
+                      }
+                      className="w-24 text-center font-bold text-base px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Juz</span>
+                  </div>
+                  <p className="text-xs text-slate-500 flex-1">
+                    Angka ini menjadi batas maksimal saat Mustahiq mengisi setoran santri tahfidz (pilihan Juz 1 s.d. Juz {localStandarMaksimalJuz}).
+                  </p>
+                </div>
+              </div>
+
+              {/* 2. Memilih Santri yang Tahfidz */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-emerald-700" />
+                      2. Memilih Santri yang Tahfidz
+                    </label>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Pilih santri untuk didaftarkan ke program tahfidz dan tentukan jalur setoran santri tersebut.
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-700">
+                    {localSantriTahfidzList.length} Santri Terdaftar
+                  </span>
+                </div>
+
+                {/* Search & Add Input Box */}
+                <div className="relative">
+                  <div className="flex items-center gap-2 p-2 rounded-xl border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-800 shadow-2xs">
+                    <Search className="w-4 h-4 text-slate-400 ms-1" />
+                    <input
+                      type="text"
+                      data-testid="search-santri-tahfidz"
+                      value={santriTahfidzSearch}
+                      onChange={(e) => {
+                        setSantriTahfidzSearch(e.target.value);
+                        setIsDropdownSantriTahfidzOpen(true);
+                      }}
+                      onFocus={() => setIsDropdownSantriTahfidzOpen(true)}
+                      placeholder="Ketik nama atau NIS santri untuk ditambahkan ke program Tahfidz..."
+                      className="w-full text-xs py-1 px-1 border-0 focus:outline-none bg-transparent dark:text-white"
+                    />
+                    {santriTahfidzSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSantriTahfidzSearch('');
+                          setIsDropdownSantriTahfidzOpen(false);
+                        }}
+                        className="p-1 text-slate-400 hover:text-slate-600 rounded-md cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Dropdown Suggestions */}
+                  {isDropdownSantriTahfidzOpen && filteredSantriForTahfidz.length > 0 && (
+                    <div className="absolute left-0 top-full mt-1.5 w-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl z-50 max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700">
+                      {filteredSantriForTahfidz.map((s: any) => {
+                        const id = String(s.no_induk || s[1] || '').trim();
+                        const nama = String(s.nama || s[5] || '').trim();
+                        const kls = String(s.din_kls || s[24] || '1');
+                        const bag = String(s.din_bag || s[25] || 'A').toUpperCase();
+                        const tk = norm(s.tingkat || s[26]);
+                        const papi = norm(s.pa_pi || s[4]) === 'PI' ? 'PI' : 'PA';
+
+                        return (
+                          <div
+                            key={id}
+                            onClick={() => handleAddSantriTahfidz(s)}
+                            className="p-2.5 text-xs hover:bg-emerald-50 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-between transition"
+                          >
+                            <div>
+                              <strong className="text-slate-800 dark:text-slate-100">{nama}</strong>
+                              <span className="text-slate-400 font-mono text-[11px] ml-2">NIS: {id}</span>
+                              <span className="text-slate-500 text-[11px] ml-2">
+                                ({kls} {bag} {tk} - {papi})
+                              </span>
+                            </div>
+                            <span className="px-2.5 py-1 rounded-md bg-emerald-600 text-white font-bold text-[11px]">
+                              + Tambah
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* List Santri Tahfidz Aktif */}
+                <div className="space-y-3">
+                  {localSantriTahfidzList.length === 0 ? (
+                    <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-400 text-xs italic">
+                      Belum ada santri yang ditambahkan ke Program Tahfidz. Ketik nama atau NIS santri di kolom pencarian di atas untuk menambahkan.
+                    </div>
+                  ) : (
+                    localSantriTahfidzList.map((st, idx) => (
+                      <div
+                        key={st.no_induk || idx}
+                        className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 shadow-2xs space-y-3"
+                      >
+                        {/* Header Santri */}
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-cyan-100 text-cyan-800 font-bold text-xs flex items-center justify-center">
+                              {idx + 1}
+                            </span>
+                            <div>
+                              <strong className="text-sm text-slate-900 dark:text-white">
+                                {st.nama}
+                              </strong>
+                              <span className="text-slate-400 font-mono text-xs ml-2">
+                                NIS: {st.no_induk}
+                              </span>
+                              <span className="text-slate-500 text-xs ml-2">
+                                • Kelas: {st.din_kls} {st.din_bag} {st.tingkat} ({st.pa_pi})
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                              <span>Target:</span>
+                              <input
+                                type="number"
+                                min={1}
+                                max={30}
+                                placeholder={String(localStandarMaksimalJuz)}
+                                value={st.customTargetJuz || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                                  handleChangeSantriCustomJuz(st.no_induk, val);
+                                }}
+                                className="w-14 text-center font-bold px-2 py-1 rounded border border-slate-300 text-xs"
+                                title="Override target juz khusus santri ini (opsional)"
+                              />
+                              <span>Juz</span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSantriTahfidz(st.no_induk)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                              title="Hapus dari program tahfidz"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Opsi Alur / Jalur Hafalan */}
+                        <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-2">
+                          <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
+                            Pilih Alur Hafalan Santri Ini:
+                          </span>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            {/* Opsi 1: Simultan 2 Hafalan Sekaligus */}
+                            <label
+                              onClick={() => handleChangeSantriTahfidzMode(st.no_induk, 'simultan')}
+                              className={`flex items-start gap-2.5 p-3 rounded-xl border transition cursor-pointer ${
+                                st.mode === 'simultan'
+                                  ? 'bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20'
+                                  : 'bg-slate-50/70 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`mode_${st.no_induk}`}
+                                checked={st.mode === 'simultan'}
+                                onChange={() => handleChangeSantriTahfidzMode(st.no_induk, 'simultan')}
+                                className="mt-0.5 text-emerald-700"
+                              />
+                              <div>
+                                <strong className="text-xs text-slate-900 block">
+                                  2 Hafalan Sekaligus (Simultan)
+                                </strong>
+                                <p className="text-[11px] text-slate-500 leading-tight mt-0.5">
+                                  Menampilkan 2 kolom input sekaligus (Tahfidz di atas, Hafalan Wajib di bawah) dan 2 progress bar pada tabel.
+                                </p>
+                              </div>
+                            </label>
+
+                            {/* Opsi 2: Tahfidz Didahulukan */}
+                            <label
+                              onClick={() => handleChangeSantriTahfidzMode(st.no_induk, 'didahulukan')}
+                              className={`flex items-start gap-2.5 p-3 rounded-xl border transition cursor-pointer ${
+                                st.mode === 'didahulukan'
+                                  ? 'bg-cyan-50/80 border-cyan-500 ring-2 ring-cyan-500/20'
+                                  : 'bg-slate-50/70 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`mode_${st.no_induk}`}
+                                checked={st.mode === 'didahulukan'}
+                                onChange={() => handleChangeSantriTahfidzMode(st.no_induk, 'didahulukan')}
+                                className="mt-0.5 text-cyan-700"
+                              />
+                              <div>
+                                <strong className="text-xs text-slate-900 block">
+                                  Tahfidz Didahulukan (Prioritas)
+                                </strong>
+                                <p className="text-[11px] text-slate-500 leading-tight mt-0.5">
+                                  Santri fokus menyelesaikan target Tahfidz ({st.customTargetJuz || localStandarMaksimalJuz} Juz) terlebih dahulu sebelum hafalan wajib terbuka.
+                                </p>
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
             /* Tab 4: Akses Penjaga Bebas */

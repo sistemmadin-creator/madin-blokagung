@@ -16,6 +16,7 @@ import {
   Search,
   Eye,
   X,
+  Sparkles,
 } from 'lucide-react';
 import { cariMustahiqSantri, norm } from '@/lib/utils/setoranHelper';
 import * as XLSX from 'xlsx';
@@ -27,6 +28,10 @@ interface SantriStatusRow {
   no: number;
   noInduk: string;
   nama: string;
+  isTahfidz?: boolean;
+  tahfidzMode?: string;
+  tahfidzProgressJuz?: number;
+  tahfidzTargetJuz?: number;
   hasWajib: boolean;
   hasSunnah: boolean;
   hasKitab: boolean;
@@ -65,7 +70,7 @@ export default function RekapHafalanPage() {
   const { santriList, fetchSantri, isLoading: loadingSantri } = useSantriStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
   const { formasiList, fetchFormasi } = useFormasiStore();
-  const { setoranList, fetchSetoranData, isLoading: loadingSetoran } = useMuhafadzohStore();
+  const { config, setoranList, fetchSetoranData, isLoading: loadingSetoran } = useMuhafadzohStore();
   const { logs: mustahiqLogs, activeStates, fetchMustahiqData, isLoading: loadingMustahiq } =
     useSetorMustahiqStore();
 
@@ -232,10 +237,39 @@ export default function RekapHafalanPage() {
           const hasSunnah = pSet.has('SUNNAH');
           const hasKitab = pSet.has('KITAB');
 
+          // Data Tahfidz jika terdaftar
+          const tahfidzItem = (config?.tahfidz?.santriTahfidzList || []).find(
+            (ts) => norm(ts.no_induk) === norm(noInduk)
+          );
+          const isTahfidz = Boolean(tahfidzItem);
+          const tahfidzTargetJuz = tahfidzItem?.customTargetJuz || config?.tahfidz?.standarMaksimalJuz || 3;
+          const tahfidzMode = tahfidzItem?.mode || 'simultan';
+
+          let tahfidzProgressJuz = 0;
+          if (isTahfidz) {
+            const completedJuzSet = new Set<number>();
+            mustahiqLogs
+              .filter(
+                (l) =>
+                  norm(l.no_induk) === norm(noInduk) &&
+                  (l.kategori === 'Tahfidz' ||
+                    (l.materi_nama && l.materi_nama.toLowerCase().startsWith('juz ')))
+              )
+              .forEach((l) => {
+                const match = (l.materi_nama || '').match(/\d+/);
+                if (match) completedJuzSet.add(parseInt(match[0], 10));
+              });
+            tahfidzProgressJuz = completedJuzSet.size;
+          }
+
           return {
             no: idx + 1,
             noInduk,
             nama,
+            isTahfidz,
+            tahfidzMode,
+            tahfidzProgressJuz,
+            tahfidzTargetJuz,
             hasWajib,
             hasSunnah,
             hasKitab,
@@ -793,7 +827,15 @@ export default function RekapHafalanPage() {
                               {s.no}
                             </td>
                             <td className="py-2 px-3 font-semibold text-slate-800">
-                              <div>{s.nama}</div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span>{s.nama}</span>
+                                {s.isTahfidz && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-bold bg-cyan-100 text-cyan-900 border border-cyan-300">
+                                    <Sparkles className="w-2.5 h-2.5 text-cyan-600" />
+                                    <span>Tahfidz: Juz {s.tahfidzProgressJuz}/{s.tahfidzTargetJuz}</span>
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-[10px] text-slate-400 font-mono font-normal">
                                 NIS: {s.noInduk}
                               </div>

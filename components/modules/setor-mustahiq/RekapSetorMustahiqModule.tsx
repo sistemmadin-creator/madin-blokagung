@@ -46,7 +46,7 @@ interface SantriRekapEntry {
 
 interface HafalanRowInCard {
   item: ItemHafalanDetail;
-  kategori: 'Wajib' | 'Sunnah' | 'Kitab';
+  kategori: 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz';
   targetPreview: string;
   selesaiList: SantriRekapEntry[];
   prosesList: SantriRekapEntry[];
@@ -301,7 +301,7 @@ export default function RekapSetorMustahiqModule() {
         string,
         {
           item: ItemHafalanDetail;
-          kategori: 'Wajib' | 'Sunnah' | 'Kitab';
+          kategori: 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz';
           orderIndex: number;
           selesaiList: SantriRekapEntry[];
           prosesList: SantriRekapEntry[];

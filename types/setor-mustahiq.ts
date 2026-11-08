@@ -8,7 +8,7 @@ export interface SetorMustahiqLog {
   din_kls: string;
   din_bag: string;
   materi_nama: string;
-  kategori: 'Wajib' | 'Sunnah' | 'Kitab';
+  kategori: 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz';
   target_type: 'numeric' | 'sentence';
   tanggal: string; // YYYY-MM-DD
   tahun: number;
@@ -29,14 +29,14 @@ export interface SetorMustahiqLog {
 export interface SantriActiveHafalanState {
   no_induk: string;
   active_materi_nama: string;
-  active_kategori: 'Wajib' | 'Sunnah' | 'Kitab';
+  active_kategori: 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz';
   completed_materi: string[];
   updated_at: string;
 }
 
 export interface MateriOptionWithStatus {
   item: ItemHafalanDetail;
-  kategori: 'Wajib' | 'Sunnah' | 'Kitab';
+  kategori: 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz';
   orderIndex: number;
   isCompleted: boolean;
   isCurrentActive: boolean;
@@ -60,7 +60,7 @@ export interface SantriSetorMustahiqRow {
   config_key: string; // Contoh: 'ULA_1'
   mustahiq: string;
   active_item: ItemHafalanDetail;
-  active_kategori: 'Wajib' | 'Sunnah' | 'Kitab';
+  active_kategori: 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz';
   completed_materi: string[];
   total_capaian_angka: number;
   target_akhir_angka: number;
@@ -75,4 +75,13 @@ export interface SantriSetorMustahiqRow {
   status_sub_text: string;
   proses_ratio_text: string;
   proses_full_text: string;
+
+  // Properti Khusus Program Tahfidz
+  is_tahfidz?: boolean;
+  tahfidz_mode?: 'simultan' | 'didahulukan';
+  tahfidz_target_juz?: number;
+  tahfidz_progress_juz?: number;
+  tahfidz_progress_pct?: number;
+  tahfidz_completed_juz?: number[];
+  is_tahfidz_completed?: boolean;
 }

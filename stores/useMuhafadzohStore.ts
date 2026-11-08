@@ -20,6 +20,10 @@ const DEFAULT_CONFIG: HafalanConfig = {
   hafSunnah: {},
   hafKitab: {},
   penjagaBebas: [],
+  tahfidz: {
+    standarMaksimalJuz: 3,
+    santriTahfidzList: [],
+  },
 };
 
 interface MuhafadzohState {
@@ -113,6 +117,10 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
                 hafSunnah: parsedCfg.hafSunnah || {},
                 hafKitab: parsedCfg.hafKitab || {},
                 penjagaBebas: pb,
+                tahfidz: parsedCfg.tahfidz || {
+                  standarMaksimalJuz: 3,
+                  santriTahfidzList: [],
+                },
               },
             });
           }
@@ -506,6 +514,10 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
         hafSunnah: newConfig.hafSunnah,
         hafKitab: newConfig.hafKitab,
         penjagaBebas: newConfig.penjagaBebas.join(', '),
+        tahfidz: newConfig.tahfidz || {
+          standarMaksimalJuz: 3,
+          santriTahfidzList: [],
+        },
       };
 
       if (typeof window !== 'undefined') {

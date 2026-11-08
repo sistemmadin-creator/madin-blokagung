@@ -15,6 +15,8 @@ import {
   MessageSquare,
   AlertCircle,
   Calendar,
+  Sparkles,
+  Lock,
 } from 'lucide-react';
 import { SundayOption } from '@/lib/utils/sundayHelper';
 import SundayDatePicker from '@/components/ui/SundayDatePicker';
@@ -121,6 +123,11 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // State Khusus Setoran Tahfidz
+  const [selectedJuzTahfidz, setSelectedJuzTahfidz] = useState<number>(1);
+  const [catatanTahfidz, setCatatanTahfidz] = useState<string>('');
+  const [isSubmittingTahfidz, setIsSubmittingTahfidz] = useState<boolean>(false);
+
   // Modal Ganti Hafalan Selanjutnya
   const [isGantiHafalanOpen, setIsGantiHafalanOpen] = useState<boolean>(false);
 
@@ -130,6 +137,34 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
   useEffect(() => {
     setTglSetor(sunday.tanggal);
   }, [sunday.tanggal]);
+
+  // Otomatis arahkan ke juz berikutnya yang belum disetor
+  useEffect(() => {
+    if (santriRow.is_tahfidz) {
+      const target = santriRow.tahfidz_target_juz || 3;
+      const completed = santriRow.tahfidz_completed_juz || [];
+      for (let i = 1; i <= target; i++) {
+        if (!completed.includes(i)) {
+          setSelectedJuzTahfidz(i);
+          break;
+        }
+      }
+    }
+  }, [santriRow.is_tahfidz, santriRow.tahfidz_target_juz, santriRow.tahfidz_completed_juz]);
+
+  // Log riwayat gabungan
+  const riwayatLogs = useMemo(() => {
+    if (santriRow.is_tahfidz) {
+      return logs
+        .filter(
+          (l) =>
+            norm(l.no_induk) === norm(santriRow.no_induk) &&
+            (l.tahun === tahun || !l.tahun)
+        )
+        .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+    }
+    return prog.matchingLogs;
+  }, [santriRow, logs, tahun, prog.matchingLogs]);
 
   // Click outside listener untuk dropdown kalimat
   useEffect(() => {
@@ -284,6 +319,75 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
     }
   };
 
+  const handleSubmitTahfidzOnly = async () => {
+    if (!santriRow.is_tahfidz) return;
+    setErrorMsg('');
+    const juzNum = Number(selectedJuzTahfidz) || 1;
+    const noteVal = catatanTahfidz.trim() || undefined;
+
+    setIsSubmittingTahfidz(true);
+    try {
+      const itemDetail = {
+        id: `tahfidz_juz_${juzNum}`,
+        nama: `Juz ${juzNum}`,
+        kategori: 'Tahfidz' as const,
+        targetType: 'numeric' as const,
+        targetAkhirAngka: 1,
+        satuanAngka: 'Juz',
+      };
+
+      await addLogSetoran(
+        {
+          no_induk: santriRow.no_induk,
+          nama_santri: santriRow.nama,
+          tingkat: santriRow.tingkat,
+          din_kls: santriRow.din_kls,
+          din_bag: santriRow.din_bag,
+          materi_nama: `Juz ${juzNum}`,
+          kategori: 'Tahfidz',
+          target_type: 'numeric',
+          tanggal: tglSetor,
+          tahun,
+          tambah_angka: 1,
+          catatan: noteVal,
+          mustahiq: santriRow.mustahiq,
+        },
+        itemDetail
+      );
+
+      await addSetoran({
+        no_induk: santriRow.no_induk,
+        nama: santriRow.nama,
+        tanggal: tglSetor,
+        item_hafalan: `Juz ${juzNum}`,
+        kategori: 'Tahfidz',
+        penjaga: santriRow.mustahiq || 'Mustahiq Kelas',
+        mustahiq: santriRow.mustahiq,
+        tingkat: santriRow.tingkat,
+        din_kls: santriRow.din_kls,
+        din_bag: santriRow.din_bag,
+        capaian: `Juz ${juzNum}`,
+      });
+
+      const nextJuz = Math.min(juzNum + 1, santriRow.tahfidz_target_juz || 3);
+      setSelectedJuzTahfidz(nextJuz);
+      setCatatanTahfidz('');
+      fetchMustahiqData();
+      fetchSetoranData();
+      onSuccess();
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Gagal menyimpan setoran tahfidz.');
+    } finally {
+      setIsSubmittingTahfidz(false);
+    }
+  };
+
+  const handleSubmitBothSetoran = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    await handleSubmitTahfidzOnly();
+    await handleSubmitSetoran(e || ({} as any));
+  };
+
   // Handler Hapus Log
   const handleDeleteLog = async (logId: string) => {
     if (!window.confirm('Hapus rekaman setoran ini? Capaian santri akan dihitung ulang otomatis.')) return;
@@ -294,7 +398,7 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
   };
 
   // Handler Ganti Target Hafalan
-  const handlePilihMateriBaru = async (materiNama: string, kat: 'Wajib' | 'Sunnah' | 'Kitab') => {
+  const handlePilihMateriBaru = async (materiNama: string, kat: 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz') => {
     await switchActiveHafalan(
       santriRow.no_induk,
       santriRow.nama,
@@ -364,6 +468,12 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
                 <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold">
                   Hafalan {santriRow.active_kategori}
                 </span>
+                {santriRow.is_tahfidz && (
+                  <span className="px-2.5 py-1 rounded-full bg-cyan-100 text-cyan-900 border border-cyan-300 text-xs font-bold flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
+                    Tahfidz ({santriRow.tahfidz_mode === 'simultan' ? '2 Hafalan Sekaligus' : 'Tahfidz Didahulukan'})
+                  </span>
+                )}
               </div>
             </div>
 
@@ -375,11 +485,11 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
               </span>
             </div>
 
-            {/* Capaian Progress Bar */}
+            {/* Capaian Progress Bar Wajib */}
             <div className="pt-2 border-t border-slate-100 space-y-1.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-600 font-medium">
-                  Capaian Setoran Hafalan:
+                  Capaian Setoran Hafalan Wajib:
                 </span>
                 <span className="font-bold text-emerald-800 font-mono">
                   {santriRow.status_badge_text} ({santriRow.progress_pct}%)
@@ -392,6 +502,27 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
                 />
               </div>
             </div>
+
+            {/* Capaian Tahfidz Bar jika Santri Tahfidz */}
+            {santriRow.is_tahfidz && (
+              <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-cyan-900 font-semibold flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
+                    Capaian Standar Tahfidz:
+                  </span>
+                  <span className="font-bold text-cyan-800 font-mono">
+                    Juz {santriRow.tahfidz_progress_juz} / {santriRow.tahfidz_target_juz} ({santriRow.tahfidz_progress_pct}%)
+                  </span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-cyan-600 rounded-full transition-all duration-300"
+                    style={{ width: `${santriRow.tahfidz_progress_pct}%` }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Banner Status & Tombol "Ganti Hafalan Selanjutnya" */}
             {santriRow.is_target_met ? (
@@ -479,12 +610,16 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
             )}
           </div>
 
-          {/* 2. Form Proses Setoran (Gambar 2) */}
+          {/* 2. Form Proses Setoran (Gambar 2 - Dual Flow Tahfidz & Wajib) */}
           <div className="space-y-2">
             <div>
               <h4 className="text-sm font-bold text-slate-900">Proses Setoran</h4>
               <p className="text-xs text-slate-500">
-                {santriRow.active_item.targetType === 'numeric'
+                {santriRow.is_tahfidz && santriRow.tahfidz_mode === 'simultan'
+                  ? 'Santri Tahfidz (2 Hafalan Sekaligus): Anda dapat menginput setoran Tahfidz (Juz) dan Hafalan Wajib secara simultan.'
+                  : santriRow.is_tahfidz && santriRow.tahfidz_mode === 'didahulukan'
+                  ? 'Santri Tahfidz (Tahfidz Didahulukan): Selesaikan target standar Juz Tahfidz sebelum menyetor materi hafalan wajib.'
+                  : santriRow.active_item.targetType === 'numeric'
                   ? `Input pertambahan ${santriRow.satuan_label.toLowerCase()} setoran santri pada hari Minggu yang dipilih.`
                   : `Pilih tahapan ${santriRow.satuan_label.toLowerCase()} yang telah disetorkan santri kepada Mustahiq.`}
               </p>
@@ -497,221 +632,819 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
               </div>
             )}
 
-            <form
-              onSubmit={handleSubmitSetoran}
-              className="p-4 rounded-xl bg-emerald-50/40 border border-emerald-100 space-y-3"
-            >
-              {/* Pemilih Hari Minggu pada Bulannya */}
+            {/* Pemilih Hari Minggu pada Bulannya Bersama */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
               <SundayDatePicker
                 value={tglSetor}
                 onChange={(dateIso) => setTglSetor(dateIso)}
                 label={`Tanggal Setor (Hari Minggu ${sunday.mingguKe} - ${sunday.labelLengkap})`}
               />
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                {/* Input Numerik / Kalimat */}
-                {santriRow.active_item.targetType === 'numeric' ? (
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Tambah {santriRow.satuan_label} *
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={1000}
-                      placeholder="1, 2, 5, 13..."
-                      value={tambahAngka}
-                      onChange={(e) => setTambahAngka(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-600"
-                      required
-                    />
+            {/* KONDISI A: Santri Tahfidz dengan Mode SIMULTAN (2 Hafalan Sekaligus) */}
+            {santriRow.is_tahfidz && santriRow.tahfidz_mode === 'simultan' ? (
+              <div className="space-y-3">
+                {/* BLOK 1: Input Setoran Tahfidz */}
+                <div className="p-4 rounded-xl bg-cyan-50/60 border border-cyan-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-cyan-700" />
+                      <h5 className="text-xs font-bold text-cyan-950 uppercase tracking-wide">
+                        1. Setoran Tahfidz (Standar: {santriRow.tahfidz_target_juz} Juz)
+                      </h5>
+                    </div>
+                    <span className="text-[11px] font-mono font-bold text-cyan-800 bg-cyan-100/80 px-2 py-0.5 rounded border border-cyan-300">
+                      Juz {santriRow.tahfidz_progress_juz} / {santriRow.tahfidz_target_juz} Tuntas
+                    </span>
                   </div>
-                ) : (
-                  <div className="relative" ref={kalimatDropdownRef}>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
-                      <span>Pilih {santriRow.satuan_label} *</span>
-                      <span className="text-[10px] text-emerald-700 font-semibold">
-                        {selectedKalimatList.length > 0 ? `${selectedKalimatList.length} Dipilih` : ''}
-                      </span>
-                    </label>
 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-cyan-900 mb-1">
+                        Pilih Juz *
+                      </label>
+                      <select
+                        data-testid="select-juz-tahfidz"
+                        value={selectedJuzTahfidz}
+                        onChange={(e) => setSelectedJuzTahfidz(Number(e.target.value))}
+                        className="w-full bg-white border border-cyan-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-cyan-600"
+                      >
+                        {Array.from(
+                          { length: santriRow.tahfidz_target_juz || 3 },
+                          (_, i) => i + 1
+                        ).map((j) => {
+                          const isDone = Boolean(santriRow.tahfidz_completed_juz?.includes(j));
+                          return (
+                            <option key={j} value={j}>
+                              Juz {j} {isDone ? '(Sudah Disetor ✓)' : ''}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-cyan-900 mb-1">
+                        Catatan Tahfidz (Opsional)
+                      </label>
+                      <input
+                        type="text"
+                        data-testid="input-catatan-tahfidz"
+                        placeholder="Surah / ayat / juz..."
+                        value={catatanTahfidz}
+                        onChange={(e) => setCatatanTahfidz(e.target.value)}
+                        className="w-full bg-white border border-cyan-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-cyan-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
                     <button
                       type="button"
-                      onClick={() => setIsKalimatDropdownOpen((v) => !v)}
-                      className="w-full bg-white border border-slate-200 hover:border-emerald-500 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 text-left flex items-center justify-between gap-1 transition-colors"
+                      onClick={() => handleSubmitTahfidzOnly()}
+                      disabled={isSubmittingTahfidz}
+                      data-testid="btn-simpan-tahfidz-only"
+                      className="px-3.5 py-1.5 rounded-lg bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
                     >
-                      <span className="truncate">
-                        {selectedKalimatList.length === 0
-                          ? `Pilih ${santriRow.satuan_label}...`
-                          : `${selectedKalimatList.length} ${santriRow.satuan_label}: ${selectedKalimatList.slice(0, 2).join(', ')}${selectedKalimatList.length > 2 ? '...' : ''}`}
-                      </span>
-                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <Plus className="w-3.5 h-3.5" />
+                      Simpan Setoran Tahfidz (Juz {selectedJuzTahfidz})
                     </button>
+                  </div>
+                </div>
 
-                    {/* Dropdown Menu Multi-Select Kalimat */}
-                    {isKalimatDropdownOpen && (
-                      <div className="absolute left-0 top-full mt-1.5 w-72 sm:w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 p-2.5 space-y-2 max-h-80 flex flex-col">
-                        <div className="relative">
-                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                          <input
-                            type="text"
-                            placeholder="Cari surah/kalimat..."
-                            value={kalimatSearch}
-                            onChange={(e) => setKalimatSearch(e.target.value)}
-                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
-                          />
-                        </div>
+                {/* BLOK 2: Input Hafalan Wajib */}
+                <div className="p-4 rounded-xl bg-emerald-50/40 border border-emerald-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <BookOpen className="w-4 h-4 text-emerald-700" />
+                      <h5 className="text-xs font-bold text-emerald-950 uppercase tracking-wide">
+                        2. Setoran Hafalan Wajib ({santriRow.active_item?.nama})
+                      </h5>
+                    </div>
+                    <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded border border-emerald-300">
+                      {santriRow.status_badge_text} ({santriRow.progress_pct}%)
+                    </span>
+                  </div>
 
-                        {/* Tombol Cepat Pilihan */}
-                        <div className="flex items-center gap-1.5 flex-wrap pt-0.5 pb-1 border-b border-slate-100 text-[10px]">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const uncompleted = sentencesList.filter(
-                                (s) => !prog.completedSentences.some((cs) => norm(cs) === norm(s))
-                              );
-                              setSelectedKalimatList(uncompleted.slice(0, 3));
-                            }}
-                            className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold cursor-pointer"
-                          >
-                            +3 Berikutnya
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const uncompleted = sentencesList.filter(
-                                (s) => !prog.completedSentences.some((cs) => norm(cs) === norm(s))
-                              );
-                              setSelectedKalimatList(uncompleted);
-                            }}
-                            className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
-                          >
-                            Semua Belum
-                          </button>
-                          {selectedKalimatList.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedKalimatList([])}
-                              className="px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold ml-auto cursor-pointer"
-                            >
-                              Reset
-                            </button>
-                          )}
-                        </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    {santriRow.active_item?.targetType === 'numeric' ? (
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Tambah {santriRow.satuan_label} *
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={1000}
+                          data-testid="input-tambah-angka"
+                          placeholder="1, 2, 5, 13..."
+                          value={tambahAngka}
+                          onChange={(e) => setTambahAngka(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-600"
+                        />
+                      </div>
+                    ) : (
+                      <div className="relative" ref={kalimatDropdownRef}>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                          <span>Pilih {santriRow.satuan_label} *</span>
+                          <span className="text-[10px] text-emerald-700 font-semibold">
+                            {selectedKalimatList.length > 0 ? `${selectedKalimatList.length} Dipilih` : ''}
+                          </span>
+                        </label>
 
-                        {/* List Kalimat dengan Checkbox */}
-                        <div className="overflow-y-auto space-y-1 flex-1 pr-1">
-                          {sentencesList
-                            .filter((k) => (kalimatSearch ? norm(k).includes(norm(kalimatSearch)) : true))
-                            .map((kal, idx) => {
-                              const isDone = prog.completedSentences.some(
-                                (cs) => norm(cs) === norm(kal)
-                              );
-                              const isSelected = selectedKalimatList.some(
-                                (s) => norm(s) === norm(kal)
-                              );
-                              return (
-                                <div
-                                  key={`${kal}_${idx}`}
-                                  onClick={() => {
-                                    setSelectedKalimatList((prev) =>
-                                      prev.some((s) => norm(s) === norm(kal))
-                                        ? prev.filter((s) => norm(s) !== norm(kal))
-                                        : [...prev, kal]
-                                    );
-                                  }}
-                                  className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition-all ${
-                                    isSelected
-                                      ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold'
-                                      : 'hover:bg-slate-50 text-slate-700 border border-transparent'
-                                  }`}
+                        <button
+                          type="button"
+                          onClick={() => setIsKalimatDropdownOpen((v) => !v)}
+                          className="w-full bg-white border border-slate-200 hover:border-emerald-500 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 text-left flex items-center justify-between gap-1 transition-colors"
+                        >
+                          <span className="truncate">
+                            {selectedKalimatList.length === 0
+                              ? `Pilih ${santriRow.satuan_label}...`
+                              : `${selectedKalimatList.length} ${santriRow.satuan_label}: ${selectedKalimatList.slice(0, 2).join(', ')}${selectedKalimatList.length > 2 ? '...' : ''}`}
+                          </span>
+                          <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        </button>
+
+                        {isKalimatDropdownOpen && (
+                          <div className="absolute left-0 top-full mt-1.5 w-72 sm:w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 p-2.5 space-y-2 max-h-80 flex flex-col">
+                            <div className="relative">
+                              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                              <input
+                                type="text"
+                                placeholder="Cari surah/kalimat..."
+                                value={kalimatSearch}
+                                onChange={(e) => setKalimatSearch(e.target.value)}
+                                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5 pb-1 border-b border-slate-100 text-[10px]">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const uncompleted = sentencesList.filter(
+                                    (s) => !prog.completedSentences.some((cs) => norm(cs) === norm(s))
+                                  );
+                                  setSelectedKalimatList(uncompleted.slice(0, 3));
+                                }}
+                                className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold cursor-pointer"
+                              >
+                                +3 Berikutnya
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const uncompleted = sentencesList.filter(
+                                    (s) => !prog.completedSentences.some((cs) => norm(cs) === norm(s))
+                                  );
+                                  setSelectedKalimatList(uncompleted);
+                                }}
+                                className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
+                              >
+                                Semua Belum
+                              </button>
+                              {selectedKalimatList.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedKalimatList([])}
+                                  className="px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold ml-auto cursor-pointer"
                                 >
-                                  <div className="flex items-center gap-2">
-                                    <input
-                                      type="checkbox"
-                                      checked={isSelected}
-                                      onChange={() => {}}
-                                      className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 cursor-pointer pointer-events-none"
-                                    />
-                                    <span>
-                                      {idx + 1}. {kal}
-                                    </span>
-                                  </div>
-                                  {isDone && (
-                                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
-                                      Sudah Disetor
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })}
-                        </div>
+                                  Reset
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="overflow-y-auto space-y-1 flex-1 pr-1">
+                              {sentencesList
+                                .filter((k) => (kalimatSearch ? norm(k).includes(norm(kalimatSearch)) : true))
+                                .map((kal, idx) => {
+                                  const isDone = prog.completedSentences.some(
+                                    (cs) => norm(cs) === norm(kal)
+                                  );
+                                  const isSelected = selectedKalimatList.some(
+                                    (s) => norm(s) === norm(kal)
+                                  );
+                                  return (
+                                    <div
+                                      key={`${kal}_${idx}`}
+                                      onClick={() => {
+                                        setSelectedKalimatList((prev) =>
+                                          prev.some((s) => norm(s) === norm(kal))
+                                            ? prev.filter((s) => norm(s) !== norm(kal))
+                                            : [...prev, kal]
+                                        );
+                                      }}
+                                      className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition-all ${
+                                        isSelected
+                                          ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold'
+                                          : 'hover:bg-slate-50 text-slate-700 border border-transparent'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected}
+                                          onChange={() => {}}
+                                          className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 cursor-pointer pointer-events-none"
+                                        />
+                                        <span>
+                                          {idx + 1}. {kal}
+                                        </span>
+                                      </div>
+                                      {isDone && (
+                                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
+                                          Sudah Disetor
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Catatan (Opsional)
+                      </label>
+                      <input
+                        type="text"
+                        data-testid="input-catatan-setor"
+                        placeholder="Surah / bait / keterangan..."
+                        value={catatan}
+                        onChange={(e) => setCatatan(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
+                      />
+                    </div>
+                  </div>
+
+                  {selectedKalimatList.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                      <span className="text-[11px] text-slate-500 font-semibold">
+                        Pilihan ({selectedKalimatList.length}):
+                      </span>
+                      {selectedKalimatList.map((kal) => (
+                        <span
+                          key={kal}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-bold"
+                        >
+                          <span>{kal}</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedKalimatList((prev) =>
+                                prev.filter((s) => norm(s) !== norm(kal))
+                              )
+                            }
+                            className="text-emerald-700 hover:text-emerald-950 cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={(e) => handleSubmitSetoran(e)}
+                      disabled={isSubmitting}
+                      data-testid="btn-simpan-setoran-wajib"
+                      className="px-3.5 py-1.5 rounded-lg bg-[#134e3a] hover:bg-[#0f3d2e] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Simpan Setoran Wajib
+                      {selectedKalimatList.length > 0 && ` (${selectedKalimatList.length} Kalimat)`}
+                    </button>
+                  </div>
+                </div>
+
+                {/* BLOK 3: Tombol Cepat Simpan Keduanya Sekaligus */}
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-cyan-50 to-emerald-50 border border-emerald-200/80 flex items-center justify-between gap-3">
+                  <div className="text-xs text-slate-700">
+                    <span className="font-bold text-slate-900 flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
+                      Simpan 2 Hafalan Sekaligus?
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Simpan Juz {selectedJuzTahfidz} (Tahfidz) & materi Wajib secara bersamaan dalam satu klik.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSubmitBothSetoran()}
+                    disabled={isSubmitting || isSubmittingTahfidz}
+                    data-testid="btn-simpan-keduanya"
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-emerald-700 hover:from-cyan-700 hover:to-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 shrink-0"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    ⚡ Simpan Keduanya Sekaligus
+                  </button>
+                </div>
+              </div>
+            ) : santriRow.is_tahfidz && santriRow.tahfidz_mode === 'didahulukan' ? (
+              /* KONDISI B: Santri Tahfidz dengan Mode DIDAHULUKAN */
+              <div className="space-y-3">
+                {/* BLOK TAHFIDZ (Aktif) */}
+                <div className="p-4 rounded-xl bg-cyan-50/60 border border-cyan-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-cyan-700" />
+                      <h5 className="text-xs font-bold text-cyan-950 uppercase tracking-wide">
+                        Setoran Tahfidz (Prioritas Didahulukan)
+                      </h5>
+                    </div>
+                    <span className="text-[11px] font-mono font-bold text-cyan-800 bg-cyan-100/80 px-2 py-0.5 rounded border border-cyan-300">
+                      Juz {santriRow.tahfidz_progress_juz} / {santriRow.tahfidz_target_juz} Tuntas
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-cyan-900 mb-1">
+                        Pilih Juz *
+                      </label>
+                      <select
+                        data-testid="select-juz-tahfidz"
+                        value={selectedJuzTahfidz}
+                        onChange={(e) => setSelectedJuzTahfidz(Number(e.target.value))}
+                        className="w-full bg-white border border-cyan-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-cyan-600"
+                      >
+                        {Array.from(
+                          { length: santriRow.tahfidz_target_juz || 3 },
+                          (_, i) => i + 1
+                        ).map((j) => {
+                          const isDone = Boolean(santriRow.tahfidz_completed_juz?.includes(j));
+                          return (
+                            <option key={j} value={j}>
+                              Juz {j} {isDone ? '(Sudah Disetor ✓)' : ''}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-cyan-900 mb-1">
+                        Catatan Tahfidz (Opsional)
+                      </label>
+                      <input
+                        type="text"
+                        data-testid="input-catatan-tahfidz"
+                        placeholder="Surah / ayat / juz..."
+                        value={catatanTahfidz}
+                        onChange={(e) => setCatatanTahfidz(e.target.value)}
+                        className="w-full bg-white border border-cyan-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-cyan-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSubmitTahfidzOnly()}
+                      disabled={isSubmittingTahfidz}
+                      data-testid="btn-simpan-tahfidz-only"
+                      className="px-3.5 py-1.5 rounded-lg bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Simpan Setoran Tahfidz (Juz {selectedJuzTahfidz})
+                    </button>
+                  </div>
+                </div>
+
+                {/* BLOK WAJIB: Terkunci jika belum tuntas, atau terbuka jika sudah tuntas */}
+                {!santriRow.is_tahfidz_completed ? (
+                  <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200 text-amber-900 space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+                      <Lock className="w-4 h-4 text-amber-600" />
+                      <span>Hafalan Wajib Ditangguhkan (Prioritas Tahfidz)</span>
+                    </div>
+                    <p className="text-xs text-amber-800">
+                      Santri ini berada dalam mode <strong>Tahfidz Didahulukan</strong>. Santri difokuskan menyelesaikan target standar Tahfidz (<strong>{santriRow.tahfidz_target_juz} Juz</strong>) terlebih dahulu sebelum dapat menyetorkan materi hafalan wajib kurikulum.
+                    </p>
+                    <p className="text-[11px] font-mono font-semibold text-amber-900">
+                      Capaian saat ini: {santriRow.tahfidz_progress_juz} dari {santriRow.tahfidz_target_juz} Juz ({santriRow.tahfidz_progress_pct}%)
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-emerald-50/40 border border-emerald-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <BookOpen className="w-4 h-4 text-emerald-700" />
+                        <h5 className="text-xs font-bold text-emerald-950 uppercase tracking-wide">
+                          Setoran Hafalan Wajib ({santriRow.active_item?.nama})
+                        </h5>
+                      </div>
+                      <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded border border-emerald-300">
+                        {santriRow.status_badge_text}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      {santriRow.active_item?.targetType === 'numeric' ? (
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Tambah {santriRow.satuan_label} *
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={1000}
+                            data-testid="input-tambah-angka"
+                            placeholder="1, 2, 5, 13..."
+                            value={tambahAngka}
+                            onChange={(e) => setTambahAngka(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-600"
+                          />
+                        </div>
+                      ) : (
+                        <div className="relative" ref={kalimatDropdownRef}>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                            <span>Pilih {santriRow.satuan_label} *</span>
+                            <span className="text-[10px] text-emerald-700 font-semibold">
+                              {selectedKalimatList.length > 0 ? `${selectedKalimatList.length} Dipilih` : ''}
+                            </span>
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={() => setIsKalimatDropdownOpen((v) => !v)}
+                            className="w-full bg-white border border-slate-200 hover:border-emerald-500 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 text-left flex items-center justify-between gap-1 transition-colors"
+                          >
+                            <span className="truncate">
+                              {selectedKalimatList.length === 0
+                                ? `Pilih ${santriRow.satuan_label}...`
+                                : `${selectedKalimatList.length} ${santriRow.satuan_label}: ${selectedKalimatList.slice(0, 2).join(', ')}${selectedKalimatList.length > 2 ? '...' : ''}`}
+                            </span>
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          </button>
+
+                          {isKalimatDropdownOpen && (
+                            <div className="absolute left-0 top-full mt-1.5 w-72 sm:w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 p-2.5 space-y-2 max-h-80 flex flex-col">
+                              <div className="relative">
+                                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                  type="text"
+                                  placeholder="Cari surah/kalimat..."
+                                  value={kalimatSearch}
+                                  onChange={(e) => setKalimatSearch(e.target.value)}
+                                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
+                                />
+                              </div>
+
+                              <div className="flex items-center gap-1.5 flex-wrap pt-0.5 pb-1 border-b border-slate-100 text-[10px]">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const uncompleted = sentencesList.filter(
+                                      (s) => !prog.completedSentences.some((cs) => norm(cs) === norm(s))
+                                    );
+                                    setSelectedKalimatList(uncompleted.slice(0, 3));
+                                  }}
+                                  className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold cursor-pointer"
+                                >
+                                  +3 Berikutnya
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const uncompleted = sentencesList.filter(
+                                      (s) => !prog.completedSentences.some((cs) => norm(cs) === norm(s))
+                                    );
+                                    setSelectedKalimatList(uncompleted);
+                                  }}
+                                  className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
+                                >
+                                  Semua Belum
+                                </button>
+                                {selectedKalimatList.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedKalimatList([])}
+                                    className="px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold ml-auto cursor-pointer"
+                                  >
+                                    Reset
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="overflow-y-auto space-y-1 flex-1 pr-1">
+                                {sentencesList
+                                  .filter((k) => (kalimatSearch ? norm(k).includes(norm(kalimatSearch)) : true))
+                                  .map((kal, idx) => {
+                                    const isDone = prog.completedSentences.some(
+                                      (cs) => norm(cs) === norm(kal)
+                                    );
+                                    const isSelected = selectedKalimatList.some(
+                                      (s) => norm(s) === norm(kal)
+                                    );
+                                    return (
+                                      <div
+                                        key={`${kal}_${idx}`}
+                                        onClick={() => {
+                                          setSelectedKalimatList((prev) =>
+                                            prev.some((s) => norm(s) === norm(kal))
+                                              ? prev.filter((s) => norm(s) !== norm(kal))
+                                              : [...prev, kal]
+                                          );
+                                        }}
+                                        className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition-all ${
+                                          isSelected
+                                            ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold'
+                                            : 'hover:bg-slate-50 text-slate-700 border border-transparent'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => {}}
+                                            className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 cursor-pointer pointer-events-none"
+                                          />
+                                          <span>
+                                            {idx + 1}. {kal}
+                                          </span>
+                                        </div>
+                                        {isDone && (
+                                          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
+                                            Sudah Disetor
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Catatan (Opsional)
+                        </label>
+                        <input
+                          type="text"
+                          data-testid="input-catatan-setor"
+                          placeholder="Surah / bait / keterangan..."
+                          value={catatan}
+                          onChange={(e) => setCatatan(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
+                        />
+                      </div>
+                    </div>
+
+                    {selectedKalimatList.length > 0 && (
+                      <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                        <span className="text-[11px] text-slate-500 font-semibold">
+                          Pilihan ({selectedKalimatList.length}):
+                        </span>
+                        {selectedKalimatList.map((kal) => (
+                          <span
+                            key={kal}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-bold"
+                          >
+                            <span>{kal}</span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedKalimatList((prev) =>
+                                  prev.filter((s) => norm(s) !== norm(kal))
+                                )
+                              }
+                              className="text-emerald-700 hover:text-emerald-950 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={(e) => handleSubmitSetoran(e)}
+                        disabled={isSubmitting}
+                        data-testid="btn-simpan-setoran-wajib"
+                        className="px-3.5 py-1.5 rounded-lg bg-[#134e3a] hover:bg-[#0f3d2e] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Simpan Setoran Wajib
+                        {selectedKalimatList.length > 0 && ` (${selectedKalimatList.length} Kalimat)`}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* KONDISI C: Santri Reguler (Bukan Tahfidz) */
+              <form
+                onSubmit={handleSubmitSetoran}
+                className="p-4 rounded-xl bg-emerald-50/40 border border-emerald-100 space-y-3"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {santriRow.active_item.targetType === 'numeric' ? (
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Tambah {santriRow.satuan_label} *
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={1000}
+                        placeholder="1, 2, 5, 13..."
+                        value={tambahAngka}
+                        onChange={(e) => setTambahAngka(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-600"
+                        required
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative" ref={kalimatDropdownRef}>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                        <span>Pilih {santriRow.satuan_label} *</span>
+                        <span className="text-[10px] text-emerald-700 font-semibold">
+                          {selectedKalimatList.length > 0 ? `${selectedKalimatList.length} Dipilih` : ''}
+                        </span>
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsKalimatDropdownOpen((v) => !v)}
+                        className="w-full bg-white border border-slate-200 hover:border-emerald-500 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 text-left flex items-center justify-between gap-1 transition-colors"
+                      >
+                        <span className="truncate">
+                          {selectedKalimatList.length === 0
+                            ? `Pilih ${santriRow.satuan_label}...`
+                            : `${selectedKalimatList.length} ${santriRow.satuan_label}: ${selectedKalimatList.slice(0, 2).join(', ')}${selectedKalimatList.length > 2 ? '...' : ''}`}
+                        </span>
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      </button>
+
+                      {isKalimatDropdownOpen && (
+                        <div className="absolute left-0 top-full mt-1.5 w-72 sm:w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 p-2.5 space-y-2 max-h-80 flex flex-col">
+                          <div className="relative">
+                            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                              type="text"
+                              placeholder="Cari surah/kalimat..."
+                              value={kalimatSearch}
+                              onChange={(e) => setKalimatSearch(e.target.value)}
+                              className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-1.5 flex-wrap pt-0.5 pb-1 border-b border-slate-100 text-[10px]">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const uncompleted = sentencesList.filter(
+                                  (s) => !prog.completedSentences.some((cs) => norm(cs) === norm(s))
+                                );
+                                setSelectedKalimatList(uncompleted.slice(0, 3));
+                              }}
+                              className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold cursor-pointer"
+                            >
+                              +3 Berikutnya
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const uncompleted = sentencesList.filter(
+                                  (s) => !prog.completedSentences.some((cs) => norm(cs) === norm(s))
+                                );
+                                setSelectedKalimatList(uncompleted);
+                              }}
+                              className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
+                            >
+                              Semua Belum
+                            </button>
+                            {selectedKalimatList.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedKalimatList([])}
+                                className="px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold ml-auto cursor-pointer"
+                              >
+                                Reset
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="overflow-y-auto space-y-1 flex-1 pr-1">
+                            {sentencesList
+                              .filter((k) => (kalimatSearch ? norm(k).includes(norm(kalimatSearch)) : true))
+                              .map((kal, idx) => {
+                                const isDone = prog.completedSentences.some(
+                                  (cs) => norm(cs) === norm(kal)
+                                );
+                                const isSelected = selectedKalimatList.some(
+                                  (s) => norm(s) === norm(kal)
+                                );
+                                return (
+                                  <div
+                                    key={`${kal}_${idx}`}
+                                    onClick={() => {
+                                      setSelectedKalimatList((prev) =>
+                                        prev.some((s) => norm(s) === norm(kal))
+                                          ? prev.filter((s) => norm(s) !== norm(kal))
+                                          : [...prev, kal]
+                                      );
+                                    }}
+                                    className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition-all ${
+                                      isSelected
+                                        ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold'
+                                        : 'hover:bg-slate-50 text-slate-700 border border-transparent'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => {}}
+                                        className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 cursor-pointer pointer-events-none"
+                                      />
+                                      <span>
+                                        {idx + 1}. {kal}
+                                      </span>
+                                    </div>
+                                    {isDone && (
+                                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
+                                        Sudah Disetor
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Catatan (Opsional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Surah / bait / keterangan..."
+                      value={catatan}
+                      onChange={(e) => setCatatan(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
+                    />
+                  </div>
+                </div>
+
+                {selectedKalimatList.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                    <span className="text-[11px] text-slate-500 font-semibold">
+                      Pilihan ({selectedKalimatList.length}):
+                    </span>
+                    {selectedKalimatList.map((kal) => (
+                      <span
+                        key={kal}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-bold"
+                      >
+                        <span>{kal}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedKalimatList((prev) =>
+                              prev.filter((s) => norm(s) !== norm(kal))
+                            )
+                          }
+                          className="text-emerald-700 hover:text-emerald-950 cursor-pointer"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
                   </div>
                 )}
 
-                {/* Catatan Opsional */}
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Catatan (Opsional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Surah / bait / keterangan..."
-                    value={catatan}
-                    onChange={(e) => setCatatan(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
-                  />
-                </div>
-              </div>
-
-              {/* Badges Pilihan Kalimat */}
-              {selectedKalimatList.length > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                  <span className="text-[11px] text-slate-500 font-semibold">
-                    Pilihan ({selectedKalimatList.length}):
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] text-slate-500 italic">
+                    *Target penuh materi ini: {formatTargetPreview(santriRow.active_item)}
                   </span>
-                  {selectedKalimatList.map((kal) => (
-                    <span
-                      key={kal}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-bold"
-                    >
-                      <span>{kal}</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedKalimatList((prev) =>
-                            prev.filter((s) => norm(s) !== norm(kal))
-                          )
-                        }
-                        className="text-emerald-700 hover:text-emerald-950 cursor-pointer"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-4 py-2 rounded-lg bg-[#134e3a] hover:bg-[#0f3d2e] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Simpan Setoran</span>
+                    {selectedKalimatList.length > 0 && (
+                      <span>({selectedKalimatList.length} Kalimat)</span>
+                    )}
+                  </button>
                 </div>
-              )}
-
-              {/* Tombol Simpan Setoran */}
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] text-slate-500 italic">
-                  *Target penuh materi ini: {formatTargetPreview(santriRow.active_item)}
-                </span>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 rounded-lg bg-[#134e3a] hover:bg-[#0f3d2e] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Simpan Setoran</span>
-                  {selectedKalimatList.length > 0 && (
-                    <span>({selectedKalimatList.length} Kalimat)</span>
-                  )}
-                </button>
-              </div>
-            </form>
+              </form>
+            )}
           </div>
 
           {/* 3. Riwayat Setor (Gambar 2) */}
@@ -719,7 +1452,7 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <History className="w-3.5 h-3.5 text-slate-500" />
-                Riwayat Setor ({santriRow.active_item.nama})
+                Riwayat Setor {santriRow.is_tahfidz ? '(Semua Hafalan & Tahfidz)' : `(${santriRow.active_item.nama})`}
               </h4>
               <div className="flex items-center gap-2">
                 <Link
@@ -732,78 +1465,97 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
                   <span>Kirim WA Rapor</span>
                 </Link>
                 <span className="text-[11px] text-slate-400">
-                  {prog.matchingLogs.length} Catatan
+                  {riwayatLogs.length} Catatan
                 </span>
               </div>
             </div>
 
-            {prog.matchingLogs.length === 0 ? (
+            {riwayatLogs.length === 0 ? (
               <div className="p-6 rounded-xl border border-slate-200 text-center text-xs text-slate-400">
-                Belum ada riwayat setoran untuk materi{' '}
-                <span className="font-semibold text-slate-600">
-                  {santriRow.active_item.nama}
-                </span>{' '}
-                di tahun {tahun}.
+                Belum ada riwayat setoran di tahun {tahun}.
               </div>
             ) : (
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
+              <div className="border border-slate-200 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 font-semibold">
+                  <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200">
+                    <tr className="text-[11px] text-slate-500 font-semibold">
                       <th className="py-2 px-3 w-10">No</th>
                       <th className="py-2 px-3">Tanggal</th>
+                      <th className="py-2 px-3">Materi / Kategori</th>
                       <th className="py-2 px-3 text-center">
-                        Tambah {santriRow.satuan_label}
+                        Capaian
                       </th>
                       <th className="py-2 px-3">Rincian Status</th>
                       <th className="py-2 px-3 text-right">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {prog.matchingLogs.map((log, idx) => (
-                      <tr key={log.id} className="hover:bg-slate-50">
-                        <td className="py-2 px-3 text-slate-400 font-mono text-[11px]">
-                          {idx + 1}
-                        </td>
-                        <td className="py-2 px-3 font-semibold text-slate-800">
-                          {log.tanggal}
-                        </td>
-                        <td className="py-2 px-3 text-center font-bold text-emerald-700">
-                          {log.target_type === 'sentence'
-                            ? `+1 ${santriRow.satuan_label}`
-                            : `+${log.tambah_angka || 0} ${santriRow.satuan_label}`}
-                        </td>
-                        <td className="py-2 px-3 text-slate-600">
-                          {log.target_type === 'sentence' ? (
+                    {riwayatLogs.map((log, idx) => {
+                      const isTahfidzLog = log.kategori === 'Tahfidz' || (log.materi_nama && log.materi_nama.toLowerCase().startsWith('juz '));
+                      return (
+                        <tr key={log.id} className="hover:bg-slate-50">
+                          <td className="py-2 px-3 text-slate-400 font-mono text-[11px]">
+                            {idx + 1}
+                          </td>
+                          <td className="py-2 px-3 font-semibold text-slate-800">
+                            {log.tanggal}
+                            {log.catatan && (
+                              <p className="text-[10px] font-sans text-slate-400 italic">
+                                {log.catatan}
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-2 px-3">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 font-semibold text-[11px]">
-                                {log.kalimat_dipilih}
+                              <span className="font-semibold text-slate-800">
+                                {log.materi_nama}
                               </span>
-                              {log.catatan && (
-                                <span className="text-slate-400 text-[11px]">
-                                  • {log.catatan}
-                                </span>
-                              )}
+                              <span
+                                className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+                                  isTahfidzLog
+                                    ? 'bg-cyan-100 text-cyan-800 border border-cyan-300'
+                                    : log.kategori === 'Kitab'
+                                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                    : log.kategori === 'Sunnah'
+                                    ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                                    : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                }`}
+                              >
+                                {isTahfidzLog ? 'Tahfidz' : log.kategori || 'Wajib'}
+                              </span>
                             </div>
-                          ) : (
-                            <span>
-                              Kumulatif: {log.kumulatif_angka || 0} {santriRow.satuan_label}{' '}
-                              {log.catatan && `• ${log.catatan}`}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2 px-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteLog(log.id)}
-                            className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
-                            title="Hapus rekaman ini"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            {isTahfidzLog ? (
+                              <span className="px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-800 font-bold border border-cyan-200 text-[11px]">
+                                {log.materi_nama}
+                              </span>
+                            ) : log.target_type === 'sentence' ? (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 text-[11px]">
+                                {log.kalimat_dipilih || '1 Kalimat'}
+                              </span>
+                            ) : (
+                              <span className="font-bold text-emerald-700 font-mono">
+                                +{log.tambah_angka || 0} {log.satuan_angka || santriRow.satuan_label}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-slate-600 font-mono text-[11px]">
+                            {log.status_ringkas || '-'}
+                          </td>
+                          <td className="py-2 px-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLog(log.id)}
+                              className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                              title="Hapus rekaman ini"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

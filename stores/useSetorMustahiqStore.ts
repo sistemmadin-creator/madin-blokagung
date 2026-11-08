@@ -64,12 +64,12 @@ export function getMateriListForTingkat(
   configKey: string
 ): Array<{
   item: ItemHafalanDetail;
-  kategori: 'Wajib' | 'Sunnah' | 'Kitab';
+  kategori: 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz';
   orderIndex: number;
 }> {
   const result: Array<{
     item: ItemHafalanDetail;
-    kategori: 'Wajib' | 'Sunnah' | 'Kitab';
+    kategori: 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz';
     orderIndex: number;
   }> = [];
 
@@ -254,7 +254,7 @@ export function computeMateriProgressForSantri(
 export function findItemInAllConfigs(
   config: HafalanConfig,
   materiNama: string
-): { item: ItemHafalanDetail; kategori: 'Wajib' | 'Sunnah' | 'Kitab' } | null {
+): { item: ItemHafalanDetail; kategori: 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz' } | null {
   const targetNorm = norm(materiNama);
   if (!targetNorm) return null;
 
@@ -446,6 +446,49 @@ export function buildSantriSetorRow(
     .filter((v) => v && v !== '-')
     .join('') || santri.kamar || '-';
 
+  // Deteksi & Perhitungan Program Tahfidz
+  const tahfidzEntry = (config?.tahfidz?.santriTahfidzList || []).find(
+    (t) => norm(t.no_induk) === norm(noInduk)
+  );
+
+  let isTahfidz = false;
+  let tahfidzMode: 'simultan' | 'didahulukan' | undefined = undefined;
+  let tahfidzTargetJuz = config?.tahfidz?.standarMaksimalJuz || 3;
+  let tahfidzProgressJuz = 0;
+  let tahfidzProgressPct = 0;
+  let tahfidzCompletedJuz: number[] = [];
+  let isTahfidzCompleted = false;
+
+  if (tahfidzEntry) {
+    isTahfidz = true;
+    tahfidzMode = tahfidzEntry.mode || 'simultan';
+    if (tahfidzEntry.customTargetJuz && tahfidzEntry.customTargetJuz > 0) {
+      tahfidzTargetJuz = tahfidzEntry.customTargetJuz;
+    }
+
+    const completedJuzSet = new Set<number>();
+    logs.forEach((l) => {
+      if (norm(l.no_induk) === norm(noInduk)) {
+        if (norm(l.kategori) === 'TAHFIDZ' || norm(l.materi_nama).startsWith('JUZ ')) {
+          const match = (l.materi_nama || l.status_ringkas || '').match(/Juz\s+(\d+)/i);
+          if (match) {
+            completedJuzSet.add(parseInt(match[1], 10));
+          } else if (l.kumulatif_angka && l.kumulatif_angka > 0) {
+            completedJuzSet.add(Math.min(l.kumulatif_angka, tahfidzTargetJuz));
+          }
+        }
+      }
+    });
+
+    tahfidzCompletedJuz = Array.from(completedJuzSet).sort((a, b) => a - b);
+    tahfidzProgressJuz = tahfidzCompletedJuz.length;
+    tahfidzProgressPct = Math.min(
+      Math.round((tahfidzProgressJuz / tahfidzTargetJuz) * 100),
+      100
+    );
+    isTahfidzCompleted = tahfidzProgressJuz >= tahfidzTargetJuz;
+  }
+
   return {
     no_induk: noInduk,
     nama: String(santri.nama || '').trim(),
@@ -476,6 +519,15 @@ export function buildSantriSetorRow(
     status_sub_text: `${currentOpt.item.nama} (${currentOpt.kategori})`,
     proses_ratio_text: prog.prosesRatioText,
     proses_full_text: prog.prosesFullText,
+
+    // Properti Khusus Program Tahfidz
+    is_tahfidz: isTahfidz,
+    tahfidz_mode: tahfidzMode,
+    tahfidz_target_juz: tahfidzTargetJuz,
+    tahfidz_progress_juz: tahfidzProgressJuz,
+    tahfidz_progress_pct: tahfidzProgressPct,
+    tahfidz_completed_juz: tahfidzCompletedJuz,
+    is_tahfidz_completed: isTahfidzCompleted,
   };
 }
 
@@ -511,7 +563,7 @@ interface SetorMustahiqStoreState {
     noInduk: string,
     namaSantri: string,
     nextMateriNama: string,
-    nextKategori: 'Wajib' | 'Sunnah' | 'Kitab',
+    nextKategori: 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz',
     markCurrentCompleted?: string,
     skipHistory?: boolean
   ) => Promise<boolean>;

@@ -68,9 +68,29 @@ export interface ItemHafalanDetail {
 
 export type HafalanItemType = string | ItemHafalanDetail;
 
+export type ModeAlurTahfidz = 'simultan' | 'didahulukan';
+
+export interface SantriTahfidzItem {
+  no_induk: string;
+  nama: string;
+  tingkat?: string;
+  din_kls?: string;
+  din_bag?: string;
+  pa_pi?: 'PA' | 'PI';
+  mode: ModeAlurTahfidz; // 'simultan' (2 hafalan) | 'didahulukan' (tahfidz prioritas)
+  customTargetJuz?: number; // Override batas juz (opsional, jika beda dari standar global)
+  tanggalBergabung?: string; // YYYY-MM-DD
+}
+
+export interface TahfidzConfig {
+  standarMaksimalJuz: number; // Default: 3
+  santriTahfidzList: SantriTahfidzItem[];
+}
+
 export interface HafalanConfig {
   hafWajib: Record<string, HafalanItemType[]>;
   hafSunnah: Record<string, HafalanItemType[]>;
   hafKitab: Record<string, HafalanItemType[]>;
   penjagaBebas: string[];
+  tahfidz?: TahfidzConfig;
 }
