@@ -17,6 +17,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { SundayOption } from '@/lib/utils/sundayHelper';
+import SundayDatePicker from '@/components/ui/SundayDatePicker';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
@@ -195,6 +196,7 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
 
         setTambahAngka('');
         setCatatan('');
+        fetchMustahiqData();
         fetchSetoranData();
         onSuccess();
       } catch (err: any) {
@@ -271,6 +273,7 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
 
         setSelectedKalimatList([]);
         setCatatan('');
+        fetchMustahiqData();
         fetchSetoranData();
         onSuccess();
       } catch (err: any) {
@@ -285,6 +288,7 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
   const handleDeleteLog = async (logId: string) => {
     if (!window.confirm('Hapus rekaman setoran ini? Capaian santri akan dihitung ulang otomatis.')) return;
     await deleteLogSetoran(logId);
+    fetchMustahiqData();
     fetchSetoranData();
     onSuccess();
   };
@@ -497,29 +501,14 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
               onSubmit={handleSubmitSetoran}
               className="p-4 rounded-xl bg-emerald-50/40 border border-emerald-100 space-y-3"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Tanggal Setor (Hari Minggu yang Dipilih) */}
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
-                    <span>Tanggal Setor</span>
-                    <span className="text-[10px] text-emerald-700 font-bold">
-                      Minggu {sunday.mingguKe}
-                    </span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      value={tglSetor}
-                      onChange={(e) => setTglSetor(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-600 font-medium"
-                      required
-                    />
-                  </div>
-                  <p className="text-[10px] text-emerald-800 font-medium mt-1">
-                    ✓ {sunday.labelLengkap}
-                  </p>
-                </div>
+              {/* Pemilih Hari Minggu pada Bulannya */}
+              <SundayDatePicker
+                value={tglSetor}
+                onChange={(dateIso) => setTglSetor(dateIso)}
+                label={`Tanggal Setor (Hari Minggu ${sunday.mingguKe} - ${sunday.labelLengkap})`}
+              />
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 {/* Input Numerik / Kalimat */}
                 {santriRow.active_item.targetType === 'numeric' ? (
                   <div>

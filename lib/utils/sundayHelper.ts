@@ -233,3 +233,71 @@ export function sortSantriByFormasiHierarchy<
     return String(a.no_induk || '').localeCompare(String(b.no_induk || ''));
   });
 }
+
+export interface HafalanLevelStyle {
+  level: number;
+  label: string;
+  badgeBg: string;
+  badgeText: string;
+  cellBg: string;
+  ringColor: string;
+}
+
+/**
+ * Mengembalikan styling warna gradasi multi-hafalan:
+ * - Level 0: Belum Setor (Putih)
+ * - Level 1: Hafalan Ke-1 (Hijau)
+ * - Level 2: Hafalan Ke-2 (Biru)
+ * - Level 3: Hafalan Ke-3 (Biru Tua / Indigo)
+ * - Level 4+: Hafalan Ke-4+ (Biru Sangat Tua / Deep Navy, makin banyak makin pekat)
+ */
+export function getHafalanLevelStyle(level: number): HafalanLevelStyle {
+  switch (level) {
+    case 1:
+      return {
+        level: 1,
+        label: 'Hafalan Ke-1',
+        badgeBg: 'bg-emerald-600',
+        badgeText: 'text-white',
+        cellBg: 'bg-emerald-50/70',
+        ringColor: 'hover:ring-emerald-500',
+      };
+    case 2:
+      return {
+        level: 2,
+        label: 'Hafalan Ke-2',
+        badgeBg: 'bg-blue-600',
+        badgeText: 'text-white',
+        cellBg: 'bg-sky-50/80',
+        ringColor: 'hover:ring-blue-500',
+      };
+    case 3:
+      return {
+        level: 3,
+        label: 'Hafalan Ke-3',
+        badgeBg: 'bg-indigo-700',
+        badgeText: 'text-white',
+        cellBg: 'bg-indigo-50/90',
+        ringColor: 'hover:ring-indigo-500',
+      };
+    default:
+      if (level >= 4) {
+        return {
+          level,
+          label: `Hafalan Ke-${level}`,
+          badgeBg: 'bg-slate-900',
+          badgeText: 'text-white',
+          cellBg: 'bg-blue-100/90',
+          ringColor: 'hover:ring-slate-700',
+        };
+      }
+      return {
+        level: 0,
+        label: 'Belum Setor',
+        badgeBg: 'bg-transparent',
+        badgeText: 'text-slate-300',
+        cellBg: 'bg-white',
+        ringColor: 'hover:ring-emerald-500',
+      };
+  }
+}

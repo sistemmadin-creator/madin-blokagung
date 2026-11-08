@@ -17,8 +17,14 @@ import {
   getAcademicYearMonths,
   sortSantriByFormasiHierarchy,
   formatKelasMadin,
+  getHafalanLevelStyle,
   SundayOption,
 } from '@/lib/utils/sundayHelper';
+import {
+  useSetorMustahiqStore,
+  getMateriListForTingkat,
+} from '@/stores/useSetorMustahiqStore';
+import { norm } from '@/lib/utils/setoranHelper';
 import { SetoranHafalan } from '@/types/setoran';
 import ModalInputSetorMinggu from './ModalInputSetorMinggu';
 
@@ -93,7 +99,8 @@ function parseSantri(s: any): ParsedSantri {
 
 export default function LinimasaSetorModule() {
   const { santriList, fetchSantri, isLoading: loadingSantri } = useSantriStore();
-  const { setoranList, fetchSetoranData } = useMuhafadzohStore();
+  const { config, setoranList, fetchSetoranData } = useMuhafadzohStore();
+  const { logs, activeStates, fetchMustahiqData } = useSetorMustahiqStore();
   const { formasiList, fetchFormasi } = useFormasiStore();
 
   // Tahun awal ajaran (default: jika saat ini bulan Juli-Desember -> tahun ini, jika Jan-Jun -> tahun lalu)
@@ -132,12 +139,22 @@ export default function LinimasaSetorModule() {
     records: SetoranHafalan[];
   } | null>(null);
 
-  // Load data awal
+  // Load data awal lintas modul
   useEffect(() => {
     if (santriList.length === 0) fetchSantri();
     if (setoranList.length === 0) fetchSetoranData();
     if (formasiList.length === 0) fetchFormasi();
-  }, [santriList.length, setoranList.length, formasiList.length, fetchSantri, fetchSetoranData, fetchFormasi]);
+    if (logs.length === 0) fetchMustahiqData();
+  }, [
+    santriList.length,
+    setoranList.length,
+    formasiList.length,
+    logs.length,
+    fetchSantri,
+    fetchSetoranData,
+    fetchFormasi,
+    fetchMustahiqData,
+  ]);
 
   // Parsing & Normalisasi Seluruh Data Santri
   const parsedSantriList = useMemo(() => {
@@ -219,8 +236,38 @@ export default function LinimasaSetorModule() {
   }, [displayedSantri, activeClassSet]);
 
   // Lookup Cepat Setoran: Map `${no_induk}_${isoDate}` -> SetoranHafalan[]
+  // Mengintegrasikan sumber data logs (Setor Cepat, Setor Kelas, Rekap) & legacy setoranList
   const setoranLookupMap = useMemo(() => {
-    const map = new Map<string, SetoranHafalan[]>();
+    const map = new Map<string, any[]>();
+
+    // 1. Prioritas Utama: Setor Mustahiq Logs
+    logs.forEach((log) => {
+      const isoDate = normalizeToIsoDate(log.tanggal);
+      const noInduk = String(log.no_induk || '').trim();
+      if (!isoDate || !noInduk) return;
+
+      const key = `${noInduk}_${isoDate}`;
+      const existing = map.get(key) || [];
+      existing.push({
+        id: log.id,
+        no_induk: log.no_induk,
+        nama: log.nama_santri,
+        item_hafalan: log.materi_nama,
+        materi_nama: log.materi_nama,
+        kategori: log.kategori,
+        target_type: log.target_type,
+        capaian:
+          log.target_type === 'sentence'
+            ? log.kalimat_dipilih
+            : `${log.tambah_angka || 0} ${log.satuan_angka || ''}`,
+        penjaga: log.mustahiq || 'Mustahiq',
+        tanggal: log.tanggal,
+        tahun: log.tahun,
+      });
+      map.set(key, existing);
+    });
+
+    // 2. Legacy / External Setoran List dari useMuhafadzohStore
     setoranList.forEach((rec) => {
       const isoDate = normalizeToIsoDate(rec.tanggal);
       const noInduk = String(rec.no_induk || '').trim();
@@ -228,11 +275,66 @@ export default function LinimasaSetorModule() {
 
       const key = `${noInduk}_${isoDate}`;
       const existing = map.get(key) || [];
-      existing.push(rec);
-      map.set(key, existing);
+      const alreadyHas = existing.some(
+        (e) => norm(e.item_hafalan || e.materi_nama) === norm(rec.item_hafalan)
+      );
+      if (!alreadyHas) {
+        existing.push({
+          id: rec.id || `rec_${Math.random()}`,
+          no_induk: rec.no_induk,
+          nama: rec.nama,
+          item_hafalan: rec.item_hafalan,
+          materi_nama: rec.item_hafalan,
+          kategori: rec.kategori,
+          capaian: rec.capaian,
+          penjaga: rec.penjaga,
+          tanggal: rec.tanggal,
+          tahun: rec.tanggal ? parseInt(rec.tanggal.split('-')[0], 10) : undefined,
+        });
+        map.set(key, existing);
+      }
     });
+
     return map;
-  }, [setoranList]);
+  }, [logs, setoranList]);
+
+  // Mapping Level Hafalan per Santri: no_induk -> Map<materi_norm, levelNumber>
+  // Menghitung urutan materi yang dihafalkan santri (Hafalan Ke-1, Ke-2, Ke-3, dst.)
+  const santriMateriLevelMap = useMemo(() => {
+    const map = new Map<string, Map<string, number>>();
+
+    parsedSantriList.forEach((s) => {
+      const noInduk = s.no_induk;
+      const configKey = `${s.tingkat}_${s.din_kls}`;
+      const materiList = getMateriListForTingkat(config, configKey);
+      const mLevelMap = new Map<string, number>();
+
+      let nextLevel = 1;
+      // 1. Daftarkan materi kurikulum kelas ini secara berurutan
+      materiList.forEach((m) => {
+        const key = norm(m.item.nama);
+        if (!mLevelMap.has(key)) {
+          mLevelMap.set(key, nextLevel++);
+        }
+      });
+
+      // 2. Tambahkan materi dari logs santri ini berdasarkan urutan kemunculan tanggal
+      const santriLogs = logs
+        .filter((l) => String(l.no_induk).trim() === noInduk)
+        .sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || ''));
+
+      santriLogs.forEach((l) => {
+        const key = norm(l.materi_nama);
+        if (!mLevelMap.has(key)) {
+          mLevelMap.set(key, nextLevel++);
+        }
+      });
+
+      map.set(noInduk, mLevelMap);
+    });
+
+    return map;
+  }, [parsedSantriList, config, logs]);
 
   // Bulan-bulan yang aktif ditampilkan berdasarkan multi-select
   const displayedMonths = useMemo(() => {
@@ -658,16 +760,25 @@ export default function LinimasaSetorModule() {
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-[11px]">
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-              <span>Sudah Setor</span>
+          <div className="flex items-center gap-3 text-[11px] flex-wrap">
+            <span className="flex items-center gap-1 font-medium text-slate-700">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block shadow-2xs" />
+              <span>Hafalan Ke-1 (Hijau)</span>
             </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-              <span>Belum Setor</span>
+            <span className="flex items-center gap-1 font-medium text-slate-700">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block shadow-2xs" />
+              <span>Hafalan Ke-2 (Biru)</span>
             </span>
-            <span className="text-slate-400">| Klik sel untuk detail/input setoran</span>
+            <span className="flex items-center gap-1 font-medium text-slate-700">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-700 inline-block shadow-2xs" />
+              <span>Hafalan Ke-3+ (Biru Tua)</span>
+            </span>
+            <span className="flex items-center gap-1 font-medium text-slate-500">
+              <span className="w-2.5 h-2.5 rounded-full bg-white border border-slate-300 inline-block" />
+              <span>Belum Setor (Putih)</span>
+            </span>
+            <span className="text-slate-300 hidden sm:inline">|</span>
+            <span className="text-slate-400 italic">Klik sel untuk detail/input setoran</span>
           </div>
         </div>
 
@@ -800,35 +911,53 @@ export default function LinimasaSetorModule() {
                         </span>
                       </td>
 
-                      {/* Sel-Sel Pertemuan Hari Minggu (Interaktif) */}
+                      {/* Sel-Sel Pertemuan Hari Minggu (Interaktif dengan Gradasi Warna Multi-Hafalan) */}
                       {displayedMonths.map((m) =>
                         m.sundays.map((sunday) => {
                           const records =
                             setoranLookupMap.get(`${santri.no_induk}_${sunday.tanggal}`) || [];
                           const hasSetoran = records.length > 0;
 
+                          // Hitung tingkat materi tertinggi yang disetorkan pada hari Minggu ini
+                          let maxLevel = 0;
+                          if (hasSetoran) {
+                            const sMap = santriMateriLevelMap.get(santri.no_induk);
+                            records.forEach((r) => {
+                              const matKey = norm(r.materi_nama || r.item_hafalan || '');
+                              const lvl = sMap?.get(matKey) || 1;
+                              if (lvl > maxLevel) maxLevel = lvl;
+                            });
+                            if (maxLevel === 0) maxLevel = 1;
+                          }
+
+                          const levelStyle = getHafalanLevelStyle(maxLevel);
+
                           return (
                             <td
                               key={sunday.tanggal}
                               onClick={() => handleCellClick(santri, sunday)}
-                              className={`py-1.5 px-1 text-center border-r border-slate-100 cursor-pointer transition-all hover:ring-2 hover:ring-emerald-500 hover:ring-inset ${
-                                hasSetoran ? 'bg-emerald-50/50' : 'hover:bg-slate-100/60'
+                              className={`py-1.5 px-1 text-center border-r border-slate-100 cursor-pointer transition-all hover:ring-2 hover:ring-inset ${
+                                hasSetoran
+                                  ? `${levelStyle.cellBg} ${levelStyle.ringColor}`
+                                  : 'bg-white hover:bg-slate-100/60 hover:ring-emerald-500'
                               }`}
                               title={
                                 hasSetoran
-                                  ? `${sunday.labelLengkap}\nSetoran: ${records
-                                      .map((r) => r.item_hafalan)
+                                  ? `${sunday.labelLengkap}\nSetoran [${levelStyle.label}]: ${records
+                                      .map((r) => r.materi_nama || r.item_hafalan)
                                       .join(', ')} (Klik untuk detail)`
                                   : `${sunday.labelLengkap}\nBelum ada setoran (Klik untuk input)`
                               }
                             >
                               {hasSetoran ? (
                                 <div className="inline-flex flex-col items-center justify-center">
-                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-600 text-white font-bold text-xs shadow-2xs">
+                                  <span
+                                    className={`inline-flex items-center justify-center w-6 h-6 rounded-lg font-bold text-xs shadow-2xs ${levelStyle.badgeBg} ${levelStyle.badgeText}`}
+                                  >
                                     ✓
                                   </span>
                                   {records.length > 1 && (
-                                    <span className="text-[9px] font-bold text-emerald-800 font-mono mt-0.5">
+                                    <span className="text-[9px] font-bold text-slate-700 font-mono mt-0.5">
                                       {records.length}x
                                     </span>
                                   )}
@@ -861,6 +990,7 @@ export default function LinimasaSetorModule() {
           sunday={selectedCell.sunday}
           existingRecords={selectedCell.records}
           onSuccess={() => {
+            fetchMustahiqData();
             fetchSetoranData();
             // Re-fetch records untuk sel yang sedang aktif
             setTimeout(() => {

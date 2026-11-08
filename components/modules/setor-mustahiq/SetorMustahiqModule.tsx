@@ -42,6 +42,7 @@ import {
 import { SantriSetorMustahiqRow, MateriOptionWithStatus } from '@/types/setor-mustahiq';
 import { formatTargetPreview, norm } from '@/lib/utils/setoranHelper';
 import ModalSettingsHafalan from '@/components/modules/setoran/ModalSettingsHafalan';
+import SundayDatePicker from '@/components/ui/SundayDatePicker';
 
 const CARDS_PER_PAGE = 6;
 const TABLE_PAGE_SIZE = 30;
@@ -594,6 +595,21 @@ export default function SetorMustahiqModule() {
         },
         item
       );
+      try {
+        await useMuhafadzohStore.getState().addSetoran({
+          no_induk: row.no_induk,
+          nama: row.nama,
+          tanggal: tglSetor,
+          item_hafalan: item.nama,
+          kategori: row.active_kategori,
+          penjaga: row.mustahiq || 'Mustahiq Kelas',
+          mustahiq: row.mustahiq,
+          tingkat: row.tingkat,
+          din_kls: row.din_kls,
+          din_bag: row.din_bag,
+          capaian: `${numVal} ${row.satuan_label}`,
+        });
+      } catch {}
       setIsSubmitting(false);
     } else {
       const itemsToSubmit =
@@ -654,6 +670,21 @@ export default function SetorMustahiqModule() {
           item
         );
       }
+      try {
+        await useMuhafadzohStore.getState().addSetoran({
+          no_induk: row.no_induk,
+          nama: row.nama,
+          tanggal: tglSetor,
+          item_hafalan: item.nama,
+          kategori: row.active_kategori,
+          penjaga: row.mustahiq || 'Mustahiq Kelas',
+          mustahiq: row.mustahiq,
+          tingkat: row.tingkat,
+          din_kls: row.din_kls,
+          din_bag: row.din_bag,
+          capaian: itemsToSubmit.join(', '),
+        });
+      } catch {}
       setSelectedKalimatList([]);
       setKalimatDipilih('');
       setIsSubmitting(false);
@@ -1613,20 +1644,14 @@ export default function SetorMustahiqModule() {
                     onSubmit={handleSubmitSetoran}
                     className="p-4 rounded-xl bg-emerald-50/40 border border-emerald-100 space-y-3"
                   >
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                          Tanggal Setor
-                        </label>
-                        <input
-                          type="date"
-                          value={tglSetor}
-                          onChange={(e) => setTglSetor(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
-                          required
-                        />
-                      </div>
+                    {/* Pemilih Hari Minggu pada Bulannya */}
+                    <SundayDatePicker
+                      value={tglSetor}
+                      onChange={(dateIso) => setTglSetor(dateIso)}
+                      label="Tanggal Setor (Ditetapkan Hari Minggu pada Bulannya)"
+                    />
 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                       {selectedSantriDetail.row.active_item.targetType === 'numeric' ? (
                         <div>
                           <label className="block text-[11px] font-bold text-slate-700 mb-1">

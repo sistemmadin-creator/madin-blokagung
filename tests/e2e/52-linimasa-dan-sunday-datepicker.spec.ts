@@ -51,7 +51,7 @@ test.describe('E2E: Sunday Date Picker & Modul Linimasa Setor Santri', () => {
     ).toBeVisible({ timeout: 25000 });
   });
 
-  test('3. Matriks Linimasa Setor Santri: Multi-Header Minggu Dinamis, Filter Switch Tingkat, Pembatasan 3 Kelas, dan Format Kelas Baru', async ({
+  test('3. Matriks Linimasa Setor: Legenda Gradasi Multi-Hafalan, Filter Tingkat, Pembatasan 3 Kelas, dan Format Kelas Baru', async ({
     page,
   }) => {
     await gotoWithAuth(page, '/linimasa-setor');
@@ -91,29 +91,34 @@ test.describe('E2E: Sunday Date Picker & Modul Linimasa Setor Santri', () => {
     await expect(btnSemuaBulan).toBeVisible();
     await btnSemuaBulan.click();
 
-    // 3. Verifikasi Header Tabel Matriks (NO, NAMA SANTRI, KELAS)
+    // 3. Verifikasi Legenda Gradasi Warna Multi-Hafalan
+    await expect(page.getByText('Hafalan Ke-1 (Hijau)')).toBeVisible();
+    await expect(page.getByText('Hafalan Ke-2 (Biru)')).toBeVisible();
+    await expect(page.getByText('Hafalan Ke-3+ (Biru Tua)')).toBeVisible();
+    await expect(page.getByText('Belum Setor (Putih)')).toBeVisible();
+
+    // 4. Verifikasi Header Tabel Matriks (NO, NAMA SANTRI, KELAS)
     await expect(page.getByRole('columnheader', { name: 'NO', exact: true })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'NAMA SANTRI', exact: true })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'KELAS', exact: true })).toBeVisible();
 
-    // 4. Verifikasi Pembatasan 3 Kelas
+    // 5. Verifikasi Pembatasan 3 Kelas
     const labelTigaKelas = page.getByText('Menampilkan 3 Kelas:');
     await expect(labelTigaKelas).toBeVisible();
 
-    // 5. Verifikasi Format Kolom Kelas Baru: contoh '1 A ULA (PA)' atau serupa
+    // 6. Verifikasi Format Kolom Kelas Baru: contoh '1 A ULA (PA)' atau serupa
     await page.waitForSelector('tbody tr.group', { timeout: 30000 });
     const firstClassCell = page.locator('tbody tr.group').first().locator('td').nth(2);
     await expect(firstClassCell).toBeVisible();
     const classText = await firstClassCell.textContent();
-    // Format harus mencakup tingkat dan (PA)/(PI), contoh '1 A ULA (PA)'
     expect(classText).toMatch(/\b(ULA|WUSTHO|ULYA)\b.*\((PA|PI)\)/i);
 
-    // 6. Verifikasi Tombol Export Excel
+    // 7. Verifikasi Tombol Export Excel
     const btnExport = page.getByRole('button', { name: /Export Excel/i });
     await expect(btnExport).toBeVisible();
   });
 
-  test('4. Interaktivitas Sel: Klik sel hari Minggu membuka modal detail setoran lengkap (Gambar 2)', async ({
+  test('4. Interaktivitas Sel Linimasa: Klik sel membuka modal detail dengan Sunday Date Picker', async ({
     page,
   }) => {
     await gotoWithAuth(page, '/linimasa-setor');
@@ -128,12 +133,16 @@ test.describe('E2E: Sunday Date Picker & Modul Linimasa Setor Santri', () => {
     // Klik sel tersebut
     await firstRowFirstSundayCell.click();
 
-    // Verifikasi modal Detail Setoran Hafalan Santri (Gambar 2) muncul
+    // Verifikasi modal Detail Setoran Hafalan Santri muncul
     await expect(
       page.getByRole('heading', { name: 'Detail Setoran Hafalan Santri' })
     ).toBeVisible({ timeout: 15000 });
 
-    // Verifikasi form input setoran dengan tombol Simpan Setoran
+    // Verifikasi SundayDatePicker muncul di dalam modal Linimasa
+    const sundayBtnInModal = page.getByRole('button', { name: /Minggu 1/i }).first();
+    await expect(sundayBtnInModal).toBeVisible();
+
+    // Verifikasi tombol Simpan Setoran
     await expect(page.getByRole('button', { name: /Simpan Setoran/i })).toBeVisible();
 
     // Pastikan tombol Tutup berfungsi
@@ -143,5 +152,42 @@ test.describe('E2E: Sunday Date Picker & Modul Linimasa Setor Santri', () => {
 
     // Modal tertutup
     await expect(page.getByRole('heading', { name: 'Detail Setoran Hafalan Santri' })).not.toBeVisible();
+  });
+
+  test('5. Setor Kelas (Mustahiq): Modal santri terpasang Sunday Date Picker khusus hari Minggu', async ({
+    page,
+  }) => {
+    await gotoWithAuth(page, '/setor-mustahiq');
+
+    // Pastikan halaman Setor Kelas termuat
+    await expect(
+      page.getByRole('heading', { name: /Setoran Mingguan Santri/i })
+    ).toBeVisible({ timeout: 25000 });
+
+    // Beralih ke mode tabel untuk memilih santri
+    const btnModeTabel = page.getByTestId('btn-mode-tabel');
+    await expect(btnModeTabel).toBeVisible({ timeout: 15000 });
+    await btnModeTabel.click();
+
+    const setorBtn = page.getByRole('button', { name: 'Setor', exact: true }).first();
+    await expect(setorBtn).toBeVisible({ timeout: 15000 });
+    await setorBtn.click();
+
+    // Verifikasi modal Detail Setoran Hafalan Santri terbuka
+    const detailDialog = page.getByTestId('modal-detail-setor-mustahiq');
+    await expect(detailDialog).toBeVisible({ timeout: 15000 });
+
+    // Verifikasi bahwa SundayDatePicker aktif dengan tombol-tombol hari Minggu
+    const sundayPickerLabel = detailDialog.getByText('Tanggal Setor (Ditetapkan Hari Minggu pada Bulannya)');
+    await expect(sundayPickerLabel).toBeVisible({ timeout: 10000 });
+
+    const sundayPill = detailDialog.getByRole('button', { name: /Minggu 1/i }).first();
+    await expect(sundayPill).toBeVisible();
+
+    // Tutup modal
+    const closeBtn = detailDialog.getByRole('button', { name: 'Tutup' });
+    if (await closeBtn.isVisible()) {
+      await closeBtn.click();
+    }
   });
 });

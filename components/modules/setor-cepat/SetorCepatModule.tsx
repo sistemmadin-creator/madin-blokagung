@@ -478,6 +478,21 @@ export default function SetorCepatModule() {
       );
       setIsSubmitting(false);
       if (ok) {
+        try {
+          await useMuhafadzohStore.getState().addSetoran({
+            no_induk: row.no_induk,
+            nama: row.nama,
+            tanggal: tglSetor,
+            item_hafalan: item.nama,
+            kategori: row.active_kategori,
+            penjaga: row.mustahiq || 'Mustahiq Kelas',
+            mustahiq: row.mustahiq,
+            tingkat: row.tingkat,
+            din_kls: row.din_kls,
+            din_bag: row.din_bag,
+            capaian: `${numVal} ${row.satuan_label}`,
+          });
+        } catch {}
         setTambahAngka('');
         setCatatan('');
       }
@@ -511,6 +526,21 @@ export default function SetorCepatModule() {
 
       setIsSubmitting(false);
       if (ok) {
+        try {
+          await useMuhafadzohStore.getState().addSetoran({
+            no_induk: row.no_induk,
+            nama: row.nama,
+            tanggal: tglSetor,
+            item_hafalan: item.nama,
+            kategori: row.active_kategori,
+            penjaga: row.mustahiq || 'Mustahiq Kelas',
+            mustahiq: row.mustahiq,
+            tingkat: row.tingkat,
+            din_kls: row.din_kls,
+            din_bag: row.din_bag,
+            capaian: selectedKalimatList.join(', '),
+          });
+        } catch {}
         setSelectedKalimatList([]);
         setCatatan('');
       }

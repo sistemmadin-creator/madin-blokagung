@@ -427,6 +427,8 @@ interface SetorMustahiqStoreState {
   isLoading: boolean;
 
   fetchMustahiqData: () => Promise<void>;
+  handleRealtimeMustahiqLogs: (newLogs: any) => void;
+  handleRealtimeMustahiqStates: (newStates: any) => void;
   addLogSetoran: (
     payload: Omit<SetorMustahiqLog, 'id' | 'created_at' | 'status_ringkas' | 'kumulatif_angka'>,
     itemDetail: ItemHafalanDetail,
@@ -555,6 +557,40 @@ export const useSetorMustahiqStore = create<SetorMustahiqStoreState>((set, get) 
       console.error('Fetch Setor Mustahiq error:', err.message);
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  handleRealtimeMustahiqLogs: (newLogs: any) => {
+    let parsed = newLogs;
+    if (typeof parsed === 'string') {
+      try {
+        parsed = JSON.parse(parsed);
+      } catch {}
+    }
+    if (Array.isArray(parsed)) {
+      set({ logs: parsed });
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(LS_SETOR_MUSTAHIQ_LOGS, JSON.stringify(parsed));
+        } catch {}
+      }
+    }
+  },
+
+  handleRealtimeMustahiqStates: (newStates: any) => {
+    let parsed = newStates;
+    if (typeof parsed === 'string') {
+      try {
+        parsed = JSON.parse(parsed);
+      } catch {}
+    }
+    if (parsed && typeof parsed === 'object') {
+      set({ activeStates: parsed });
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(LS_SETOR_MUSTAHIQ_STATES, JSON.stringify(parsed));
+        } catch {}
+      }
     }
   },
 

@@ -4,6 +4,7 @@ import {
   getAcademicYearMonths,
   sortSantriByFormasiHierarchy,
   formatKelasMadin,
+  getHafalanLevelStyle,
 } from '@/lib/utils/sundayHelper';
 
 describe('Sunday Helper & Linimasa Sorting (Unit Tests)', () => {
@@ -82,5 +83,35 @@ describe('Sunday Helper & Linimasa Sorting (Unit Tests)', () => {
     expect(formatKelasMadin('1', 'A', 'ULA', 'PA')).toBe('1 A ULA (PA)');
     expect(formatKelasMadin('1', 'B', 'WUSTHO', 'PI')).toBe('1 B WUSTHO (PI)');
     expect(formatKelasMadin('2', 'A', 'ULYA', 'PA')).toBe('2 A ULYA (PA)');
+  });
+
+  it('6. Menghitung gradasi warna progresif multi-hafalan (Hijau, Biru, Biru Tua, Putih)', () => {
+    // Belum Setor -> Putih
+    const lvl0 = getHafalanLevelStyle(0);
+    expect(lvl0.label).toBe('Belum Setor');
+    expect(lvl0.cellBg).toBe('bg-white');
+
+    // Hafalan Ke-1 -> Hijau
+    const lvl1 = getHafalanLevelStyle(1);
+    expect(lvl1.label).toBe('Hafalan Ke-1');
+    expect(lvl1.badgeBg).toBe('bg-emerald-600');
+    expect(lvl1.cellBg).toContain('emerald');
+
+    // Hafalan Ke-2 -> Biru
+    const lvl2 = getHafalanLevelStyle(2);
+    expect(lvl2.label).toBe('Hafalan Ke-2');
+    expect(lvl2.badgeBg).toBe('bg-blue-600');
+    expect(lvl2.cellBg).toContain('sky');
+
+    // Hafalan Ke-3 -> Biru Tua / Indigo
+    const lvl3 = getHafalanLevelStyle(3);
+    expect(lvl3.label).toBe('Hafalan Ke-3');
+    expect(lvl3.badgeBg).toBe('bg-indigo-700');
+    expect(lvl3.cellBg).toContain('indigo');
+
+    // Hafalan Ke-4+ -> Biru Sangat Gelap / Midnight (semakin banyak semakin pekat)
+    const lvl4 = getHafalanLevelStyle(4);
+    expect(lvl4.label).toBe('Hafalan Ke-4');
+    expect(lvl4.badgeBg).toBe('bg-slate-900');
   });
 });

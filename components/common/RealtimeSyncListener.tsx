@@ -8,6 +8,11 @@ import { useJadwalStore, KEY_DB_JADWAL_ASATIDZ } from '@/stores/useJadwalStore';
 import { useAbsensiStore, KEY_DB_ABSENSI, KEY_DB_LIBUR } from '@/stores/useAbsensiStore';
 import { useMuhafadzohStore, KEY_DB_RIWAYAT_MUHAFADZOH } from '@/stores/useMuhafadzohStore';
 import { useKonsorsiumStore, KEY_DB_KONSORSIUM } from '@/stores/useKonsorsiumStore';
+import {
+  useSetorMustahiqStore,
+  KEY_DB_SETOR_MUSTAHIQ_LOGS,
+  KEY_DB_SETOR_MUSTAHIQ_STATES,
+} from '@/stores/useSetorMustahiqStore';
 
 export default function RealtimeSyncListener() {
   const [isConnected, setIsConnected] = useState(false);
@@ -47,6 +52,10 @@ export default function RealtimeSyncListener() {
             useMuhafadzohStore.getState().handleRealtimeMuhafadzoh(val);
           } else if (key === KEY_DB_KONSORSIUM) {
             useKonsorsiumStore.getState().handleRealtimeKonsorsium(val);
+          } else if (key === KEY_DB_SETOR_MUSTAHIQ_LOGS) {
+            useSetorMustahiqStore.getState().handleRealtimeMustahiqLogs(val);
+          } else if (key === KEY_DB_SETOR_MUSTAHIQ_STATES) {
+            useSetorMustahiqStore.getState().handleRealtimeMustahiqStates(val);
           }
         }
       )
