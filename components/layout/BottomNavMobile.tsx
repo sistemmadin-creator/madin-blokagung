@@ -242,6 +242,22 @@ export default function BottomNavMobile() {
             <span>Rekap Setor Mustahiq</span>
           </Link>
           <Link
+            href="/setor-cepat"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800"
+          >
+            <Zap className="w-4 h-4 text-amber-500" />
+            <span>Setor Cepat</span>
+          </Link>
+          <Link
+            href="/linimasa-setor"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-sm font-semibold text-emerald-800"
+          >
+            <CalendarDays className="w-4 h-4 text-emerald-600" />
+            <span>Linimasa Setor Santri</span>
+          </Link>
+          <Link
             href="/rekap-hafalan"
             onClick={() => setActiveMenu(null)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800"
@@ -426,6 +442,8 @@ export default function BottomNavMobile() {
           className={`flex flex-col items-center justify-center py-1 flex-1 relative transition-colors ${
             activeMenu === 'muhafadzoh' ||
             pathname.includes('setoran') ||
+            pathname.includes('setor-cepat') ||
+            pathname.includes('linimasa-setor') ||
             pathname.includes('rekap-hafalan') ||
             pathname.includes('piagam')
               ? 'text-madin-700 font-bold'

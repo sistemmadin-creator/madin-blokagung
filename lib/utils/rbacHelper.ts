@@ -157,6 +157,7 @@ export function resolvePageIdFromPathname(pathname: string): AppPageId | null {
   if (clean.startsWith('/daftar-pendidik')) return 'daftar-pendidik';
   if (clean.startsWith('/setor-mustahiq')) return 'setor-mustahiq';
   if (clean.startsWith('/setor-cepat')) return 'setor-cepat';
+  if (clean.startsWith('/linimasa-setor')) return 'linimasa-setor';
   if (clean.startsWith('/setoran')) return 'setoran';
   if (clean.startsWith('/rekap-hafalan')) return 'rekap-hafalan';
   if (clean.startsWith('/piagam')) return 'piagam';
