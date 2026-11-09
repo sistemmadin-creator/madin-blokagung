@@ -143,7 +143,7 @@ test.describe('E2E: Sunday Date Picker & Modul Linimasa Setor Santri', () => {
     await expect(sundayBtnInModal).toBeVisible();
 
     // Verifikasi tombol Simpan Setoran
-    await expect(page.getByRole('button', { name: /Simpan Setoran/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Simpan Setoran/i }).first()).toBeVisible();
 
     // Pastikan tombol Tutup berfungsi
     const btnTutup = page.getByRole('button', { name: 'Tutup' });

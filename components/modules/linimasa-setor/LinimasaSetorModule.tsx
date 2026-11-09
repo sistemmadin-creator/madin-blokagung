@@ -8,6 +8,9 @@ import {
   Download,
   ChevronDown,
   SlidersHorizontal,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useSantriStore } from '@/stores/useSantriStore';
@@ -23,10 +26,12 @@ import {
 import {
   useSetorMustahiqStore,
   getMateriListForTingkat,
+  computeMateriProgressForSantri,
 } from '@/stores/useSetorMustahiqStore';
 import { norm } from '@/lib/utils/setoranHelper';
 import { SetoranHafalan } from '@/types/setoran';
 import ModalInputSetorMinggu from './ModalInputSetorMinggu';
+import ModalAturSilabus, { ACADEMIC_MONTHS } from './ModalAturSilabus';
 
 type TingkatTab = 'SEMUA' | 'ULA' | 'WUSTHO' | 'ULYA';
 
@@ -99,7 +104,7 @@ function parseSantri(s: any): ParsedSantri {
 
 export default function LinimasaSetorModule() {
   const { santriList, fetchSantri, isLoading: loadingSantri } = useSantriStore();
-  const { config, setoranList, fetchSetoranData } = useMuhafadzohStore();
+  const { config, silabusConfig, setoranList, fetchSetoranData } = useMuhafadzohStore();
   const { logs, activeStates, fetchMustahiqData } = useSetorMustahiqStore();
   const { formasiList, fetchFormasi } = useFormasiStore();
 
@@ -111,6 +116,13 @@ export default function LinimasaSetorModule() {
 
   // Switch Tingkat (Semua, ULA, WUSTHO, ULYA)
   const [activeTingkat, setActiveTingkat] = useState<TingkatTab>('SEMUA');
+
+  // Modal Atur Silabus Target Hafalan
+  const [isModalSilabusOpen, setIsModalSilabusOpen] = useState<boolean>(false);
+  // Bulan acuan evaluasi: 'auto' (sesuai waktu saat ini) atau 0..11 (Juli s.d Juni)
+  const [evalMonthOverride, setEvalMonthOverride] = useState<number | 'auto'>('auto');
+  // Filter stabilo silabus
+  const [filterSilabusStatus, setFilterSilabusStatus] = useState<'SEMUA' | 'MERAH' | 'KUNING' | 'PUTIH'>('SEMUA');
 
   // Multi-select Filter Bulan yang Ditampilkan
   // Default: Seluruh 12 bulan (1 tahun penuh) aktif
@@ -161,6 +173,146 @@ export default function LinimasaSetorModule() {
     return santriList.map(parseSantri);
   }, [santriList]);
 
+  // Indeks Bulan Kalender Akademik Saat Ini (0 = Juli s/d 11 = Juni)
+  const currentAcademicMonthIndex = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth(); // 0 = Jan, 6 = Jul, 11 = Des
+
+    if (y === startYear) {
+      if (m >= 6) return m - 6; // Juli(6) -> 0, ..., Des(11) -> 5
+      return 0; // Awal tahun ajaran
+    } else if (y === startYear + 1) {
+      if (m <= 5) return m + 6; // Jan(0) -> 6, ..., Jun(5) -> 11
+      return 11; // Akhir tahun ajaran
+    } else if (y < startYear) {
+      return 0;
+    } else {
+      return 11;
+    }
+  }, [startYear]);
+
+  // Bulan Efektif yang Digunakan untuk Evaluasi Silabus Santri
+  const effectiveEvalMonthIndex = useMemo(() => {
+    if (evalMonthOverride === 'auto') return currentAcademicMonthIndex;
+    return evalMonthOverride;
+  }, [evalMonthOverride, currentAcademicMonthIndex]);
+
+  // Evaluasi Status Kepatuhan Silabus Target per Santri: Map<no_induk, { status: 'merah' | 'kuning' | 'putih'; reason: string; item: string }>
+  const santriSilabusStatusMap = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        status: 'merah' | 'kuning' | 'putih';
+        reason: string;
+        item: string;
+      }
+    >();
+
+    const targetMonth = effectiveEvalMonthIndex;
+
+    parsedSantriList.forEach((santri) => {
+      const noInduk = santri.no_induk;
+      const cleanNoInduk = norm(noInduk);
+      const configKey = `${norm(santri.tingkat)}_${norm(santri.din_kls)}`;
+
+      // Ambil aturan silabus kelas/tingkat
+      const rules = silabusConfig[configKey] || silabusConfig[santri.displayKelas] || [];
+
+      if (!rules || rules.length === 0) {
+        map.set(noInduk, {
+          status: 'putih',
+          reason: 'Belum ada silabus target',
+          item: '',
+        });
+        return;
+      }
+
+      const manualDoneSet = new Set(
+        (activeStates[noInduk]?.completed_materi || []).map((m: string) => norm(m))
+      );
+      const santriLogs = logs.filter((l) => norm(l.no_induk) === cleanNoInduk);
+
+      let worstStatus: 'merah' | 'kuning' | 'putih' = 'putih';
+      let worstReason = '';
+      let worstItem = '';
+
+      for (const rule of rules) {
+        const itemNorm = norm(rule.materi_nama);
+        let isCompleted = manualDoneSet.has(itemNorm);
+
+        if (!isCompleted) {
+          const matchingConfigItem = getMateriListForTingkat(config, configKey).find(
+            (m) => norm(m.item.nama) === itemNorm
+          )?.item || {
+            id: `item_${itemNorm}`,
+            nama: rule.materi_nama,
+            targetType: rule.target_type || 'sentence',
+            sentences: ['Muqodimah', 'Mubtada', 'Khobar', 'Rofa', 'Jer'],
+          };
+
+          const prog = computeMateriProgressForSantri(
+            noInduk,
+            matchingConfigItem as any,
+            santriLogs,
+            startYear
+          );
+
+          if (prog.isCompleted) {
+            isCompleted = true;
+          } else {
+            const hasLegacy = setoranList.some(
+              (r) => norm(r.no_induk) === cleanNoInduk && norm(r.item_hafalan) === itemNorm
+            );
+            if (hasLegacy) {
+              isCompleted = true;
+            }
+          }
+        }
+
+        // Jika materi ini sudah selesai, lanjut ke materi berikutnya
+        if (isCompleted) continue;
+
+        // Jika belum selesai, cek posisi bulan acuan relatif terhadap batas silabus
+        const dariIdx = rule.dari_bulan_index;
+        const sampaiIdx = rule.sampai_bulan_index;
+
+        if (targetMonth > sampaiIdx) {
+          // Warna Merah: ketika sudah melewati bulan yang sudah ditentukan & belum tuntas
+          worstStatus = 'merah';
+          worstReason = `Melewati target bulan ${rule.sampai_bulan_nama || 'akhir'} untuk hafalan ${rule.materi_nama}`;
+          worstItem = rule.materi_nama;
+          break; // Merah adalah prioritas tertinggi, langsung break
+        } else if (targetMonth >= dariIdx && targetMonth <= sampaiIdx) {
+          // Warna Kuning: ketika tersisa bulan yang menjadi capaian & belum tuntas
+          worstStatus = 'kuning';
+          worstReason = `Sedang dalam periode capaian target hafalan ${rule.materi_nama} (s.d. ${rule.sampai_bulan_nama})`;
+          worstItem = rule.materi_nama;
+        } else {
+          // Warna Putih: ketika masih jauh dari bulan yang menjadi capaian (targetMonth < dariIdx)
+          // Tetap putih
+        }
+      }
+
+      map.set(noInduk, {
+        status: worstStatus,
+        reason: worstReason,
+        item: worstItem,
+      });
+    });
+
+    return map;
+  }, [
+    parsedSantriList,
+    silabusConfig,
+    activeStates,
+    logs,
+    config,
+    setoranList,
+    startYear,
+    effectiveEvalMonthIndex,
+  ]);
+
   // Hitung jumlah santri untuk masing-masing tab tingkat
   const tingkatCounts = useMemo(() => {
     const counts: Record<TingkatTab, number> = { SEMUA: 0, ULA: 0, WUSTHO: 0, ULYA: 0 };
@@ -190,12 +342,17 @@ export default function LinimasaSetorModule() {
         const matchKelas = s.displayKelas.toLowerCase().includes(q);
         if (!matchNama && !matchNis && !matchKelas) return false;
       }
+      // 4. Filter Status Stabilo Silabus
+      if (filterSilabusStatus !== 'SEMUA') {
+        const stat = santriSilabusStatusMap.get(s.no_induk)?.status || 'putih';
+        if (stat.toUpperCase() !== filterSilabusStatus) return false;
+      }
       return true;
     });
 
     // Urutkan menggunakan algoritma Formasi Kelas (Gambar 3)
     return sortSantriByFormasiHierarchy(filtered);
-  }, [parsedSantriList, activeTingkat, filterGender, searchQuery]);
+  }, [parsedSantriList, activeTingkat, filterGender, searchQuery, filterSilabusStatus, santriSilabusStatusMap]);
 
   // Batasi baris tabel hanya 3 kelas saja
   const [classPage, setClassPage] = useState<number>(0);
@@ -470,7 +627,7 @@ export default function LinimasaSetorModule() {
           </p>
         </div>
 
-        {/* Toolbar Tahun Ajaran & Ekspor */}
+        {/* Toolbar Tahun Ajaran, Bulan Acuan, Atur Silabus & Ekspor */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Pemilih Tahun Ajaran */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700">
@@ -488,6 +645,44 @@ export default function LinimasaSetorModule() {
               ))}
             </select>
           </div>
+
+          {/* Pemilih Bulan Acuan Evaluasi Silabus */}
+          <div
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700"
+            title="Bulan acuan untuk mengevaluasi apakah target hafalan santri sudah lewat (merah), sedang berjalan (kuning), atau belum masuk jadwal (putih)"
+          >
+            <Clock className="w-4 h-4 text-emerald-700" />
+            <span>Bulan Acuan:</span>
+            <select
+              value={evalMonthOverride}
+              onChange={(e) =>
+                setEvalMonthOverride(
+                  e.target.value === 'auto' ? 'auto' : parseInt(e.target.value, 10)
+                )
+              }
+              className="bg-transparent font-bold text-emerald-800 outline-none cursor-pointer"
+            >
+              <option value="auto">
+                Otomatis ({ACADEMIC_MONTHS[currentAcademicMonthIndex]?.name || 'Berjalan'})
+              </option>
+              {ACADEMIC_MONTHS.map((m) => (
+                <option key={m.index} value={m.index}>
+                  Bulan {m.name} ({m.semester})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Tombol Atur Silabus Target (Permintaan User) */}
+          <button
+            type="button"
+            onClick={() => setIsModalSilabusOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+            title="Buka pop-up untuk mengatur silabus target hafalan (Wajib & Sunnah) serta rentang dari bulan s/d sampai bulan"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            <span>Atur Silabus</span>
+          </button>
 
           {/* Tombol Ekspor Excel */}
           <button
@@ -582,6 +777,22 @@ export default function LinimasaSetorModule() {
               >
                 PI
               </button>
+            </div>
+
+            {/* Filter Status Stabilo Silabus */}
+            <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-xl border border-slate-200 text-xs">
+              <span className="text-[11px] font-semibold text-slate-500">Stabilo:</span>
+              <select
+                value={filterSilabusStatus}
+                onChange={(e) => setFilterSilabusStatus(e.target.value as any)}
+                className="bg-transparent font-bold text-slate-800 outline-none cursor-pointer text-xs"
+                title="Filter baris santri berdasarkan status stabilo silabus"
+              >
+                <option value="SEMUA">Semua Santri</option>
+                <option value="MERAH">🔴 Melewati Target (Merah)</option>
+                <option value="KUNING">🟡 Bulan Capaian (Kuning)</option>
+                <option value="PUTIH">⚪ Aman / Selesai (Putih)</option>
+              </select>
             </div>
 
             {/* Tombol Buka Popover Multi-select Bulan */}
@@ -760,7 +971,30 @@ export default function LinimasaSetorModule() {
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-[11px] flex-wrap">
+          <div className="flex items-center gap-2.5 text-[11px] flex-wrap">
+            {/* Indikator Stabilo Silabus (Permintaan User) */}
+            <span
+              className="flex items-center gap-1 font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200"
+              title="Stabilo Merah: Santri sudah melewati bulan batas target silabus hafalan dan belum tuntas"
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block shadow-2xs" />
+              <span>Stabilo Merah: Melewati Target</span>
+            </span>
+            <span
+              className="flex items-center gap-1 font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200"
+              title="Stabilo Kuning: Santri sedang berada dalam rentang atau bulan batas capaian target hafalan"
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block shadow-2xs" />
+              <span>Stabilo Kuning: Bulan Capaian</span>
+            </span>
+            <span
+              className="flex items-center gap-1 font-medium text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200"
+              title="Stabilo Putih: Santri aman / sudah menyelesaikan target / target hafalan belum masuk jadwal"
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block" />
+              <span>Stabilo Putih: Aman / Selesai</span>
+            </span>
+            <span className="text-slate-300 hidden sm:inline">|</span>
             <span className="flex items-center gap-1 font-medium text-slate-700">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block shadow-2xs" />
               <span>Hafalan Ke-1 (Hijau)</span>
@@ -874,6 +1108,28 @@ export default function LinimasaSetorModule() {
                     (s) => s.displayKelas === santri.displayKelas
                   ).length;
 
+                  // Status Silabus Santri (Merah / Kuning / Putih)
+                  const silabusStatus = santriSilabusStatusMap.get(santri.no_induk) || {
+                    status: 'putih',
+                    reason: '',
+                    item: '',
+                  };
+                  const isRed = silabusStatus.status === 'merah';
+                  const isYellow = silabusStatus.status === 'kuning';
+
+                  // Kelas Styling Stabilo Baris & Kolom Sticky
+                  const rowClasses = isRed
+                    ? 'bg-rose-50/80 hover:bg-rose-100/70 border-l-4 border-l-rose-500 transition-colors group'
+                    : isYellow
+                    ? 'bg-amber-50/80 hover:bg-amber-100/70 border-l-4 border-l-amber-500 transition-colors group'
+                    : 'hover:bg-emerald-50/30 transition-colors group';
+
+                  const stickyColClasses = isRed
+                    ? 'bg-rose-50 group-hover:bg-rose-100/90 text-rose-950'
+                    : isYellow
+                    ? 'bg-amber-50 group-hover:bg-amber-100/90 text-amber-950'
+                    : 'bg-white group-hover:bg-emerald-50/50 text-slate-900';
+
                   return (
                     <React.Fragment key={santri.no_induk || idx}>
                       {isNewClass && (
@@ -892,16 +1148,36 @@ export default function LinimasaSetorModule() {
                           </td>
                         </tr>
                       )}
-                      <tr className="hover:bg-emerald-50/30 transition-colors group">
+                      <tr className={rowClasses}>
                       {/* Kolom 1: No Urut (Sticky Left) */}
-                      <td className="py-2 px-2 text-center sticky left-0 z-20 bg-white group-hover:bg-emerald-50/50 border-r border-slate-200 text-slate-500 font-mono text-[11px]">
+                      <td className={`py-2 px-2 text-center sticky left-0 z-20 ${stickyColClasses} border-r border-slate-200 font-mono text-[11px]`}>
                         {idx + 1}
                       </td>
 
-                      {/* Kolom 2: Nama Santri (Sticky Left) */}
-                      <td className="py-2 px-3 sticky left-12 z-20 bg-white group-hover:bg-emerald-50/50 border-r border-slate-200">
-                        <div className="font-bold text-slate-900 truncate max-w-[200px]">
-                          {santri.nama}
+                      {/* Kolom 2: Nama Santri & Indikator Silabus (Sticky Left) */}
+                      <td className={`py-2 px-3 sticky left-12 z-20 ${stickyColClasses} border-r border-slate-200`}>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold truncate max-w-[190px]">
+                            {santri.nama}
+                          </span>
+                          {isRed && (
+                            <span
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-200 text-rose-900 border border-rose-300 shadow-2xs"
+                              title={silabusStatus.reason}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
+                              <span>Melewati Target</span>
+                            </span>
+                          )}
+                          {isYellow && (
+                            <span
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-200 text-amber-950 border border-amber-300 shadow-2xs"
+                              title={silabusStatus.reason}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+                              <span>Bulan Capaian</span>
+                            </span>
+                          )}
                         </div>
                         <div className="text-[10px] text-slate-400 font-mono">
                           NIS: {santri.no_induk}
@@ -909,8 +1185,14 @@ export default function LinimasaSetorModule() {
                       </td>
 
                       {/* Kolom 3: Kelas (Sticky Left) */}
-                      <td className="py-2 px-3 sticky left-68 z-20 bg-white group-hover:bg-emerald-50/50 border-r border-slate-300">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                      <td className={`py-2 px-3 sticky left-68 z-20 ${stickyColClasses} border-r border-slate-300`}>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                          isRed
+                            ? 'bg-rose-100 text-rose-800 border-rose-200'
+                            : isYellow
+                            ? 'bg-amber-100 text-amber-800 border-amber-200'
+                            : 'bg-slate-100 text-slate-700 border-slate-200'
+                        }`}>
                           {santri.displayKelas}
                         </span>
                       </td>
@@ -962,6 +1244,10 @@ export default function LinimasaSetorModule() {
                                   ? 'bg-cyan-50/80 hover:bg-cyan-100/70 hover:ring-cyan-500'
                                   : hasSetoran
                                   ? `${levelStyle.cellBg} ${levelStyle.ringColor}`
+                                  : isRed
+                                  ? 'bg-rose-50/40 hover:bg-rose-100/60 hover:ring-rose-400'
+                                  : isYellow
+                                  ? 'bg-amber-50/40 hover:bg-amber-100/60 hover:ring-amber-400'
                                   : 'bg-white hover:bg-slate-100/60 hover:ring-emerald-500'
                               }`}
                               title={
@@ -1009,7 +1295,9 @@ export default function LinimasaSetorModule() {
                                   )}
                                 </div>
                               ) : (
-                                <span className="inline-block w-4 h-4 rounded text-slate-300 group-hover:text-slate-400 font-bold text-xs">
+                                <span className={`inline-block w-4 h-4 rounded font-bold text-xs ${
+                                  isRed ? 'text-rose-400 group-hover:text-rose-600' : isYellow ? 'text-amber-400 group-hover:text-amber-600' : 'text-slate-300 group-hover:text-slate-400'
+                                }`}>
                                   -
                                 </span>
                               )}
@@ -1049,6 +1337,13 @@ export default function LinimasaSetorModule() {
           }}
         />
       )}
+
+      {/* Modal Atur Silabus Target Hafalan (Permintaan User) */}
+      <ModalAturSilabus
+        isOpen={isModalSilabusOpen}
+        onClose={() => setIsModalSilabusOpen(false)}
+        startYear={startYear}
+      />
     </div>
   );
 }

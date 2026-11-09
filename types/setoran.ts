@@ -54,6 +54,9 @@ export interface ItemHafalanDetail {
   id: string;
   nama: string;
   targetType: 'numeric' | 'sentence';
+  kategori?: string;
+  targetAkhirAngka?: number;
+  satuanAngka?: string;
   // Konfigurasi target angka (baris, halaman, bait, skor 1-100)
   numericUnit?: TargetUnitNumeric;
   customUnit?: string;
@@ -94,3 +97,18 @@ export interface HafalanConfig {
   penjagaBebas: string[];
   tahfidz?: TahfidzConfig;
 }
+
+export interface SilabusItemRule {
+  materi_id?: string;
+  materi_nama: string;
+  kategori: 'Wajib' | 'Sunnah';
+  target_type?: 'numeric' | 'sentence';
+  target_preview?: string;
+  dari_bulan_index: number; // 0 = Juli, 1 = Agustus, ..., 11 = Juni
+  sampai_bulan_index: number; // 0 = Juli, 1 = Agustus, ..., 11 = Juni
+  dari_bulan_nama?: string;
+  sampai_bulan_nama?: string;
+}
+
+export type SilabusConfigMap = Record<string, SilabusItemRule[]>;
+
