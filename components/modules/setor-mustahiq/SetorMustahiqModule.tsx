@@ -1280,6 +1280,16 @@ export default function SetorMustahiqModule() {
                                   {s.status_badge_text}
                                 </span>
                               </div>
+                            ) : s.is_tahfidz && s.tahfidz_mode === 'didahulukan' ? (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="font-mono text-[10px] font-bold text-cyan-800 flex items-center gap-0.5">
+                                  <Sparkles className="w-2.5 h-2.5 text-cyan-600 shrink-0" />
+                                  Juz {s.tahfidz_progress_juz}/{s.tahfidz_target_juz}
+                                </span>
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-100 text-cyan-800 font-bold uppercase tracking-wider">
+                                  Tahfidz Utama
+                                </span>
+                              </div>
                             ) : (
                               <span
                                 title={s.status_sub_text}
@@ -1328,6 +1338,21 @@ export default function SetorMustahiqModule() {
                                       {s.proses_ratio_text}
                                     </span>
                                   </div>
+                                </div>
+                              ) : s.is_tahfidz && s.tahfidz_mode === 'didahulukan' ? (
+                                <div
+                                  className="flex items-center justify-end gap-1.5"
+                                  title={`Tahfidz Utama: Juz ${s.tahfidz_progress_juz}/${s.tahfidz_target_juz} (${s.tahfidz_progress_pct}%)`}
+                                >
+                                  <div className="w-14 h-1.5 bg-cyan-100 rounded-full overflow-hidden shrink-0">
+                                    <div
+                                      className="h-full rounded-full transition-all bg-cyan-500"
+                                      style={{ width: `${s.tahfidz_progress_pct}%` }}
+                                    />
+                                  </div>
+                                  <span className="font-mono text-[10px] text-cyan-800 font-bold w-10 text-right shrink-0">
+                                    {s.tahfidz_progress_juz}/{s.tahfidz_target_juz}J
+                                  </span>
                                 </div>
                               ) : (
                                 <>
@@ -1560,14 +1585,35 @@ export default function SetorMustahiqModule() {
                       </td>
                       {visibleCols.status && (
                         <td className="py-3.5 px-3">
-                          <div className="inline-flex flex-col">
-                            <span className="px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200/80 text-emerald-800 font-mono text-[11px] font-bold w-fit">
-                              {s.status_badge_text}
-                            </span>
-                            <span className="text-[10px] text-slate-400 mt-0.5 font-mono truncate max-w-[220px]">
-                              {s.status_sub_text}
-                            </span>
-                          </div>
+                          {s.is_tahfidz && s.tahfidz_mode === 'simultan' ? (
+                            <div className="inline-flex flex-col gap-0.5">
+                              <span className="px-2 py-0.5 rounded-md bg-cyan-50 border border-cyan-200 text-cyan-800 font-mono text-[11px] font-bold w-fit">
+                                Juz {s.tahfidz_progress_juz}/{s.tahfidz_target_juz}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 font-mono text-[10px] font-semibold w-fit">
+                                {s.status_badge_text}
+                              </span>
+                            </div>
+                          ) : s.is_tahfidz && s.tahfidz_mode === 'didahulukan' ? (
+                            <div className="inline-flex flex-col gap-0.5">
+                              <span className="px-2.5 py-1 rounded-md bg-cyan-50 border border-cyan-200 text-cyan-800 font-mono text-[11px] font-bold w-fit flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-cyan-600 shrink-0" />
+                                Juz {s.tahfidz_progress_juz}/{s.tahfidz_target_juz}
+                              </span>
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-100 text-cyan-800 font-bold uppercase w-fit tracking-wide">
+                                Tahfidz Utama
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex flex-col">
+                              <span className="px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200/80 text-emerald-800 font-mono text-[11px] font-bold w-fit">
+                                {s.status_badge_text}
+                              </span>
+                              <span className="text-[10px] text-slate-400 mt-0.5 font-mono truncate max-w-[220px]">
+                                {s.status_sub_text}
+                              </span>
+                            </div>
+                          )}
                         </td>
                       )}
                       {visibleCols.kamar && (
@@ -1619,6 +1665,21 @@ export default function SetorMustahiqModule() {
                                     style={{ width: `${s.progress_pct}%` }}
                                   />
                                 </div>
+                              </div>
+                            </div>
+                          ) : s.is_tahfidz && s.tahfidz_mode === 'didahulukan' ? (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between text-[11px] font-mono">
+                                <span className="font-bold text-cyan-800">
+                                  Tahfidz (Prioritas): Juz {s.tahfidz_progress_juz}/{s.tahfidz_target_juz}
+                                </span>
+                                <span className="text-cyan-600 font-semibold">{s.tahfidz_progress_pct}%</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-cyan-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all bg-cyan-500"
+                                  style={{ width: `${s.tahfidz_progress_pct}%` }}
+                                />
                               </div>
                             </div>
                           ) : (

@@ -194,6 +194,10 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
               hafSunnah: val.hafSunnah || {},
               hafKitab: val.hafKitab || {},
               penjagaBebas: pb,
+              tahfidz: val.tahfidz || {
+                standarMaksimalJuz: 3,
+                santriTahfidzList: [],
+              },
             };
             try {
               if (typeof window !== 'undefined') {

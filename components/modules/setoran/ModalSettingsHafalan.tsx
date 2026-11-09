@@ -1457,8 +1457,7 @@ export default function ModalSettingsHafalan() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                             {/* Opsi 1: Simultan 2 Hafalan Sekaligus */}
                             <label
-                              onClick={() => handleChangeSantriTahfidzMode(st.no_induk, 'simultan')}
-                              className={`flex items-start gap-2.5 p-3 rounded-xl border transition cursor-pointer ${
+                              className={`flex items-start gap-2.5 p-3 rounded-xl border transition cursor-pointer select-none ${
                                 st.mode === 'simultan'
                                   ? 'bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20'
                                   : 'bg-slate-50/70 border-slate-200 hover:bg-slate-100'
@@ -1467,9 +1466,10 @@ export default function ModalSettingsHafalan() {
                               <input
                                 type="radio"
                                 name={`mode_${st.no_induk}`}
+                                value="simultan"
                                 checked={st.mode === 'simultan'}
                                 onChange={() => handleChangeSantriTahfidzMode(st.no_induk, 'simultan')}
-                                className="mt-0.5 text-emerald-700"
+                                className="mt-0.5 text-emerald-700 cursor-pointer"
                               />
                               <div>
                                 <strong className="text-xs text-slate-900 block">
@@ -1483,8 +1483,7 @@ export default function ModalSettingsHafalan() {
 
                             {/* Opsi 2: Tahfidz Didahulukan */}
                             <label
-                              onClick={() => handleChangeSantriTahfidzMode(st.no_induk, 'didahulukan')}
-                              className={`flex items-start gap-2.5 p-3 rounded-xl border transition cursor-pointer ${
+                              className={`flex items-start gap-2.5 p-3 rounded-xl border transition cursor-pointer select-none ${
                                 st.mode === 'didahulukan'
                                   ? 'bg-cyan-50/80 border-cyan-500 ring-2 ring-cyan-500/20'
                                   : 'bg-slate-50/70 border-slate-200 hover:bg-slate-100'
@@ -1493,9 +1492,10 @@ export default function ModalSettingsHafalan() {
                               <input
                                 type="radio"
                                 name={`mode_${st.no_induk}`}
+                                value="didahulukan"
                                 checked={st.mode === 'didahulukan'}
                                 onChange={() => handleChangeSantriTahfidzMode(st.no_induk, 'didahulukan')}
-                                className="mt-0.5 text-cyan-700"
+                                className="mt-0.5 text-cyan-700 cursor-pointer"
                               />
                               <div>
                                 <strong className="text-xs text-slate-900 block">
@@ -1599,7 +1599,19 @@ export default function ModalSettingsHafalan() {
           </button>
           <div className="flex items-center gap-3">
             <span className="text-xs text-slate-500 hidden sm:inline">
-              Total <strong className="text-emerald-700 dark:text-emerald-400">{totalItemsCount}</strong> materi hafalan aktif
+              {activeTab === 'tahfidz' ? (
+                <>
+                  Total <strong className="text-cyan-700 dark:text-cyan-400">{localSantriTahfidzList.length}</strong> santri terdaftar program Tahfidz
+                </>
+              ) : activeTab === 'penjaga' ? (
+                <>
+                  Total <strong className="text-purple-700 dark:text-purple-400">{selectedPenjagaBebas.length}</strong> Asatidz akses bebas
+                </>
+              ) : (
+                <>
+                  Total <strong className="text-emerald-700 dark:text-emerald-400">{totalItemsCount}</strong> materi hafalan aktif
+                </>
+              )}
             </span>
             <button
               type="button"

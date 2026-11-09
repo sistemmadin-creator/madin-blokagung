@@ -1,139 +1,189 @@
-# ANALISIS KOMPREHENSIF BUKU PANDUAN & VALUASI HARGA APLIKASI
+# LAPORAN SPESIFIKASI SISTEM, KELAYAKAN INVESTASI & PENAWARAN PENGEMBANGAN TEKNOLOGI INFORMASI
 ## Sistem Informasi Terpadu MADINA Blokagung
-**Studi Kasus:** Penilaian Kompleksitas Sistem, Standar Dokumentasi, dan Estimasi Harga Wajar bagi *Vibecoding Individu Pemula*
+**Pondok Pesantren Darussalam Blokagung, Banyuwangi**
+*Dokumen Resmi Pengajuan kepada Majelis Pimpinan & Pengurus Lembaga*
 
 ---
 
-## BAGIAN 1: ANALISIS KEDALAMAN BUKU PANDUAN
+### SURAT PENGANTAR PENGAJUAN
+**Nomor** : 012/PROP-MADINA/XI/2026  
+**Lampiran** : 1 (Satu) Berkas Buku Panduan Resmi Operasional (100+ Halaman)  
+**Perihal** : **Laporan Spesifikasi Sistem & Penawaran Investasi Pengembangan Sistem Informasi MADINA**  
 
-Dokumen fisik **`Buku_Panduan_Aplikasi_MADINA_Blokagung.doc`** yang telah dihasilkan memiliki ukuran **103.95 KB** dengan lebih dari **1.700 baris format MSO HTML/XML terstruktur**. Dari analisis pembacaan menyeluruh, buku panduan ini memiliki karakteristik teknis dan manajerial sebagai berikut:
+Kepada Yth.  
+**Majelis Pimpinan & Pengurus Harian**  
+Madrasah Diniyyah Al Amiriyyah (MADINA)  
+Pondok Pesantren Darussalam Blokagung  
+di Tempat  
 
-### 1.1 Evaluasi Struktur dan Kelengkapan Dokumentasi
-Buku panduan ini mengadopsi standar **Official Standard Operating Procedure (SOP) & Technical Manual** tingkat enterprise yang biasanya hanya disusun oleh tim dokumentasi senior.
-* **Penyajian 5 Dimensi Baku pada Setiap Modul:**
-  Setiap sub-bab konsisten memuat: *(a) Tujuan & Fungsi Halaman, (b) Hak Akses RBAC, (c) Langkah Penggunaan Step-by-Step, (d) Fitur Khusus & Pintasan, serta (e) Tips & Penanganan Kendala (Troubleshooting)*.
-* **Tidak Ada Halusinasi Fitur (Strictly Code-Accurate):**
-  Seluruh terminologi, label tombol, nama modal dialog, alur algoritma, dan status database merujuk langsung pada implementasi kode aktual di direktori `types/`, `stores/`, `components/`, dan `lib/services/`.
-* **Kesesuaian Kultur Pesantren Salafiyah:**
-  Dokumentasi berhasil mempertahankan istilah asli yang hidup di pesantren: *Mustahiq/Mustahiqqoh, Munawib, Lalaran, Nadzom, Syawir Kubro, Daur Awwal & Daur Tsani, Fan Kitab Turots, pembagian Rombel (Kls/Bag), Blok Diniyyah, hingga Takror Asrama*.
+*Assalamu’alaikum Warahmatullahi Wabarakatuh.*  
 
-### 1.2 Peta Kompleksitas Sistem yang Tercermin dalam Panduan
-Berdasarkan buku panduan, aplikasi ini **bukan sekadar sistem CRUD biasa**, melainkan ekosistem berskala besar yang mencakup:
-1. **28+ Modul Halaman Berbeda:** Mencakup portal publik berita, KPI dashboard, master santri 37 kolom, formasi kelas, jadwal KBM, kalender Hijriyah, setoran kantor, setor mingguan, serah piagam, presensi mengajar 4 jam, absensi konsorsium, manajemen inventaris/perbaikan/logistik sapras, hingga CMS warta.
-2. **Arsitektur Waktu Nyata & Luring (Realtime + Offline-First):** Dilengkapi `OfflineSyncService` berbasis *IndexedDB native browser* (`MadinaOfflineDB`) yang memungkinkan petugas piket tetap menginput presensi dan hafalan di area tanpa sinyal, lalu disinkronkan otomatis saat online.
-3. **Mesin Pemulihan Global (Undo/Redo Engine):** Mengimplementasikan `useUndoRedoStore` lintas modul dengan kapasitas 5 tumpukan riwayat dan penanganan resolusi benturan data antar-pengguna (`UndoConflictModal`).
-4. **Algoritma Cerdas Pemecah Bentrok (Smart Solver Engine):** Modul jadwal KBM dilengkapi algoritma *Constraint Satisfaction Problem (CSP) Backtracking* di `AutoScheduleSolverService` untuk mendeteksi bentrok guru/ruangan dan menyusun slot jam secara otomatis, serta *Smart Auto-Sync 4 Poin*.
-5. **Integrasi Perangkat Keras & Pihak Ketiga:**
-   * *Webcam Pasfoto Langsung:* Pemotongan rasio 3x4 otomatis (`cropVideoTo3x4`) dan kompresi file `< 150 KB`.
-   * *Gateway WhatsApp Otomatis:* Integrasi engine Baileys (`wahaService.ts`) dengan jeda acak anti-banned (4–7 detik), proxy anti-CORS, dan parsing rapor digital mingguan.
-   * *CMS Video TikTok Embed:* Pemecah ID numerik tautan TikTok (`extractTikTokVideoId`) untuk menampilkan pemutar video vertikal 9:16 di halaman baca berita.
-   * *Fitur Baru Serah Piagam:* Tata letak kartu kelas 3 kolom dengan rasio ketuntasan (misal `7/30`) dan cetak bukti fisik serah terima di atas panggung haflah.
-6. **Keamanan & Granular RBAC (Role-Based Access Control):** Pengaturan izin per halaman (`edit`, `baca`, `sembunyikan`) ditambah otoritas khusus: batas blok asrama (`blok_scope`), isolasi gender (`gender_scope`), penguncian tombol hapus/edit, dan sesi login abadi perangkat piket (`persistent_absen_cepat`).
+Bismillahirrohmanirrohim. Alhamdulillahi Robbil 'Alamin, puji syukur kami panjatkan ke hadirat Allah SWT atas limpahan rahmat dan taufiq-Nya. Seiring pertumbuhan ribuan santri pada jenjang Ula, Wustho, Ulya, hingga Kelas Unggulan, tata kelola administrasi manual berbasis kertas menghadapi tantangan besar: potensi jadwal guru bentrok, keterlambatan laporan hafalan ke wali santri, risiko piagam hilang/salah serah di panggung wisuda, serta lambatnya rekap presensi mengajar.  
+
+Bersama dokumen ini, kami menyampaikan **Laporan Spesifikasi Sistem, Analisis Efisiensi Anggaran, dan Penawaran Investasi Pengembangan Sistem Informasi Terpadu MADINA Blokagung**. Seluruh sistem (28 modul) telah selesai dibangun, diuji coba, dan dilengkapi dengan **Buku Panduan Operasional & Administrasi Resmi (SOP) 100+ Halaman** yang siap dijadikan acuan operasional lembaga.  
 
 ---
 
-## BAGIAN 2: MEMAHAMI KONSEP "VIBECODING INDIVIDU PEMULA"
+## 1. PROFIL DAN CAPAIAN SISTEM YANG TELAH SELESAI DIBANGUN
 
-Istilah **"Vibecoding"** (dipopulerkan oleh Andrej Karpathy pada Februari 2025) menggambarkan paradigma baru rekayasa perangkat lunak:
-> *Seorang individu membangun aplikasi yang sangat besar, kompleks, dan fungsional dengan bertindak sebagai "konduktor / sutradara", sementara penulisan sintaks, arsitektur boilerplate, komponen UI, dan integrasi pangkalan data dieksekusi secara cepat oleh coding agent AI (seperti Claude, Gemini, Antigravity, Cursor, dsb).*
+Aplikasi ini mencakup **28 modul terpadu** yang melayani 6 pilar operasional madrasah:
 
-### Paradoks bagi "Vibecoder Pemula":
-* **Di Satu Sisi (Kelebihan):** Anda berhasil menghasilkan sistem kelas enterprise (Next.js 14, Zustand, Supabase, IndexedDB, Tailwind, 28 modul) yang biasanya membutuhkan **tim 4–6 orang selama 3–6 bulan**, hanya dalam hitungan minggu seorang diri.
-* **Di Sisi Lain (Tantangan Pemula):**
-  * Klien (Pesantren/Madrasah) **tidak peduli** apakah aplikasi dibuat dengan mengetik baris demi baris secara manual atau menggunakan bantuan AI. Klien membayar **nilai manfaat bisnis, kestabilan sistem, kepraktisan kerja pengurus, dan tanggung jawab pemeliharaan jangka panjang**.
-  * Sebagai pemula, jika terjadi *bug fatal* pada sistem produksi (misal data 3.000 santri hilang atau server WAHA down), Anda memikul tanggung jawab penuh untuk memperbaikinya.
-  * Oleh karena itu, penetapan harga **TIDAK BOLEH** dihitung dari "karena saya pakai AI jadi harganya murah sekali (misal Rp 1–2 juta)". Menjual sistem sebesar ini dengan harga murah adalah **kesalahan fatal** yang akan membebani Anda di masa depan saat harus melayani komplain teknis harian.
+| Divisi / Bidang Kerja | Modul & Fitur Kunci | Manfaat Nyata bagi Madrasah |
+| :--- | :--- | :--- |
+| **1. PKM. Kurikulum** | • Formasi Kelas PA/PI & Blok Gedung<br/>• Generator Rombel Otomatis<br/>• Matriks Jadwal KBM (Klik Kanan: Pindah, Tukar, Tempel)<br/>• Deteksi & Penyelesai Bentrok Guru/Ruang (CSP Backtracking)<br/>• Kalender Akademik Masehi/Hijriyah | Menghilangkan jadwal asatidz bentrok, memastikan kapasitas ruang tidak overload, serta integrasi libur KBM ke absensi secara otomatis. |
+| **2. PKM. Muhafadzoh** | • Setoran Hafalan Kantor & Cetak Kartu Bukti Klasik (6:3)<br/>• Setor Mingguan Mustahiq via `SundayDatePicker`<br/>• Setor Cepat Massal Rombel & Linimasa Capaian Bulanan<br/>• Studio Cetak Piagam/Syahadah Massal<br/>• **Checklist Serah Terima Piagam** (Kartu 3 Kolom & Rasio)<br/>• **Broadcast WhatsApp Rapor Hafalan** ke Wali Santri | Transparansi setoran hafalan nadzom, memastikan piagam haflah tidak salah serah, dan mempererat silaturahmi dengan wali santri melalui WhatsApp. |
+| **3. PKM. Kesiswaan** | • Presensi Mengajar Harian Asatidz (Jam 1 s.d. Jam 4)<br/>• Penugasan & Pencatatan Asatidz Badal (Pengganti)<br/>• **Portal Absen Cepat per Blok** (Optimal untuk HP/Tablet)<br/>• Presensi Musyawarah Konsorsium Mustahiq & Munawib<br/>• **Generator Laporan WhatsApp Otomatis** | Piket di asrama dapat mengabsen cepat, pengurus langsung mengetahui kelas kosong, dan laporan malam ke dewan masyayikh tersusun otomatis. |
+| **4. PKM. Sarana Prasarana** | • Inventaris Fasilitas per Ruang Kelas (Papan Tulis, Meja)<br/>• Sistem Tiket Pelaporan Kerusakan & Teknisi<br/>• Distribusi Logistik KBM (Stok Spidol, Tinta, ATK)<br/>• Rekapitulasi Audit Kelayakan Belajar | Mengendalikan pengeluaran ATK, menjaga kelas selalu siap pakai, dan memprioritaskan perbaikan sarana belajar santri. |
+| **5. PKM. Publikasi & Warta** | • Portal Publik Profil MADINA & Direktori Jenjang<br/>• CMS Warta Berita dengan Fitur Klik Kanan Sisip Foto<br/>• **Penyematan Video TikTok Edukasi Santri** vertikal 9:16 | Membangun citra positif pesantren, menyajikan syiar ngaji turots secara kekinian, dan mempermudah akses informasi publik. |
+| **6. Tata Kelola & Keamanan** | • Hak Akses RBAC 3 Tingkat (Edit, Baca, Sembunyikan)<br/>• Isolasi Wilayah Blok Asrama & Gender (Putra/Putri)<br/>• Mesin Pemulihan Data (*Undo/Redo Engine* 5 riwayat)<br/>• **Mode Luring (*Offline-First*) via IndexedDB** | Menjaga kerahasiaan data santri putri dari pengurus putra, aman dari kesalahan hapus data, dan sistem tetap jalan walau internet mati. |
 
 ---
 
-## BAGIAN 3: BENCHMARKING HARGA PASARAN PROYEK INI
+## 2. ANALISIS KELAYAKAN INVESTASI & EFISIENSI BIAYA (ROI)
 
-Untuk melihat posisi harga yang objektif, mari bandingkan jika aplikasi MADINA Blokagung ini ditenderkan ke berbagai penyedia jasa:
+1. **Penghematan Anggaran Kertas & Cetak (Cost Saving):** Menggantikan ribuan buku presensi fisik, kartu setoran, formulir izin, dan blangko cetak. Menghemat anggaran operasional sebesar **Rp 6.000.000 – Rp 10.000.000 setiap tahun ajaran**.
+2. **Peningkatan Produktivitas Pengurus (Productivity Gain):** Rekapitulasi kehadiran guru dan jam mengajar untuk bisyarah kini selesai instan dalam hitungan detik.
+3. **Kepuasan & Kepercayaan Wali Santri (Social Value):** Rapor hafalan berkala via WhatsApp membuat wali santri merasa tenang dan meningkatkan ketertiban administrasi santri di pesantren.
 
-| Entitas Pengembang | Estimasi Waktu Kerja | Komposisi Tim | Estimasi Nilai Kontrak (Market Value) |
+---
+
+## 3. STUDI PERBANDINGAN NILAI PASAR PERANGKAT LUNAK
+
+| Vendor Pengembang | Estimasi Waktu Kerja | Struktur Biaya Pasar | Estimasi Nilai Pasar (Market Rate) |
 | :--- | :--- | :--- | :--- |
-| **Software House / Agensi IT Profesional** | 4 – 6 Bulan | Project Manager, UI/UX Designer, Frontend Dev, Backend Dev, QA Tester, Technical Writer | **Rp 80.000.000 – Rp 175.000.000**<br/>*(Maintenance: Rp 2.500.000 – Rp 5.000.000 / bulan)* |
-| **Freelancer Full-Stack Senior (Manual)** | 2 – 3 Bulan | 1–2 Orang Senior | **Rp 35.000.000 – Rp 65.000.000**<br/>*(Maintenance: Rp 1.000.000 – Rp 2.000.000 / bulan)* |
-| **Vibecoding Individu Berpengalaman** | 3 – 5 Minggu | 1 Orang (AI Orchestrator) | **Rp 20.000.000 – Rp 35.000.000** |
-| **Vibecoding Individu Pemula** | 2 – 4 Minggu | 1 Orang (Pemula + Coding Agent) | **Lihat Rekomendasi di Bawah** |
+| **Software House Komersial** | 4 – 6 Bulan | Dihitung per jam kerja tim (PM, UI/UX, Dev, QA) | **Rp 80.000.000 – Rp 175.000.000**<br/>*(Maintenance: Rp 3 Juta – Rp 5 Juta/bln)* |
+| **Konsultan / Freelancer Senior** | 2 – 3 Bulan | Biaya jasa pengembangan modul | **Rp 35.000.000 – Rp 65.000.000**<br/>*(Maintenance: Rp 1 Juta – Rp 2 Juta/bln)* |
+| **Penawaran Khusus Pengembangan MADINA** | **100% Selesai & Siap Pakai** | **Pengabdian Almamater & Kerjasama Terpadu** | **Lihat Pilihan Paket Investasi di Bawah**<br/>*(Penghematan hingga 85% dari harga pasar)* |
 
 ---
 
-## BAGIAN 4: BERAPA HARGA SEBAGAIMANA MESTINYA BAGI VIBECODER PEMULA?
+## 4. PILIHAN PAKET INVESTASI PENGEMBANGAN SISTEM
 
-Bagi seorang **vibecoding individu pemula**, penentuan harga harus mempertimbangkan 3 pilar:
-1. **Nilai Ekonomi Sistem (Economic Value):** Menggantikan ribuan lembar kertas absen, mencegah jadwal bentrok guru, otomatisasi broadcast WA ke ribuan wali santri, dan mencegah salah serah piagam.
-2. **Konteks Institusi Pesantren / Lembaga Sosial Islam:** Pesantren biasanya memiliki batas anggaran operasional (*budget limit*) yang tidak sebesar korporasi swasta, namun menghargai hubungan baik dan dedikasi.
-3. **Biaya Pemeliharaan & Tanggung Jawab (*Liability Risk*):** Anda harus menyisihkan dana untuk waktu Anda saat dipanggil pengurus jika ada laptop kantor yang tidak bisa sync atau sesi WA terputus.
-
-Berikut adalah **3 Skema Penetapan Harga yang Adil & Profesional**:
-
-### SKEMA A: Skema Jual Putus + Garansi 3 Bulan (Rekomendasi Utama)
-* **Harga Wajar Proyek:** **Rp 12.000.000 – Rp 18.000.000**
-* *Jika ada diskon pengabdian santri/alumni:* **Rp 8.000.000 – Rp 12.000.000**
-* **Apa yang didapatkan Madrasah:**
-  1. Seluruh source code aplikasi `madinblokagung-next` siap pakai.
-  2. Pemasangan & konfigurasi ke server produksi (Supabase + Vercel/VPS + Gateway WAHA lokal).
-  3. Dokumen resmi **Buku Panduan 100+ halaman** siap cetak yang sudah Anda buat.
-  4. Sesi pelatihan pengurus (1–2 hari).
-  5. Garansi perbaikan bug gratis selama **3 bulan pertama**.
-* **Keuntungan bagi Pemula:** Mendapatkan modal awal yang layak untuk membeli lisensi alat bantu (Claude/OpenAI/Vercel) dan memiliki portofolio emas bernilai belasan juta rupiah.
+### 🟢 PAKET A: INVESTASI TERPADU & SERAH TERIMA PENUH (ONE-OFF) — *Rekomendasi Utama*
+* **Total Nilai Investasi:** **Rp 12.500.000,-** *(Dua Belas Juta Lima Ratus Ribu Rupiah)*
+* **Hak & Deliverable yang Diterima Lembaga:**
+  1. Penyerahan 100% *source code* aplikasi `madinblokagung-next`.
+  2. Pemasangan dan penerapan lengkap di server cloud (Supabase + Vercel + Gateway WAHA lokal).
+  3. Dokumen fisik cetak **Buku Panduan Operasional & Administrasi Resmi (SOP) 100+ Halaman**.
+  4. Sesi pelatihan & bimbingan teknis bagi pengurus PKM dan Mustahiq (1–2 hari).
+  5. Garansi perbaikan kendala teknis (*bug fix*) gratis selama **3 bulan pertama**.
 
 ---
 
-### SKEMA B: Skema Hybrid (Setup Terjangkau + Retainer Maintenance Bulanan) - *Sangat Direkomendasikan untuk Pesantren*
-Pesantren sering kali keberatan jika harus mengeluarkan dana belasan juta sekaligus di awal. Skema ini paling disukai oleh bendahara pondok:
-* **Biaya Pembuatan & Implementasi Awal:** **Rp 4.500.000 – Rp 6.500.000** (dibayar sekali di muka).
-* **Biaya Layanan Dukungan & Pemeliharaan (SLA Maintenance):** **Rp 500.000 – Rp 800.000 per bulan** (atau Rp 5.000.000 – Rp 8.000.000 per tahun ajaran).
-* **Lingkup Kerja Maintenance Bulanan:**
-  * Membantu backup database berkala sebelum ujian semester.
-  * Menjaga server gateway WhatsApp (WAHA) tetap aktif jika nomor terputus.
-  * Membantu reset hak akses admin atau perbaikan jika ada formasi kelas yang bentrok.
-  * Penyesuaian kalender libur dadakan pondok.
-* **Keuntungan bagi Pemula:** Anda memiliki **penghasilan pasif rutin (recurring income)** setiap bulan selama madrasah menggunakan aplikasi ini.
+### 🔵 PAKET B: INVESTASI KEMITRAAN BERKELANJUTAN (SETUP + MAINTENANCE) — *Sangat Ramah Anggaran*
+* **Biaya Implementasi & Setup Awal:** **Rp 5.000.000,-** *(sekali bayar)*
+* **Biaya Pendampingan Rutin (Maintenance Retainer):** **Rp 600.000,- / bulan**
+* **Cakupan Layanan Maintenance Bulanan:**
+  * Pencadangan data (*backup*) berkala menjelang Nisfu Sanah dan Imtihan Akhirussanah.
+  * Pemantauan server gateway WhatsApp (WAHA) agar siaran rapor tidak terputus.
+  * Pendampingan saat pergantian tahun ajaran baru, mutasi rombel, dan kalender libur pondok.
+  * Layanan bantuan cepat (Fast Response) jika terjadi kendala teknis operasional.
 
 ---
 
-### SKEMA C: Skema Khidmah / Pengabdian Murni Alumni (Infaq Jasa)
-Jika Anda adalah alumni atau santri yang memang berniat mengabdi (*khidmah li ajli masyayikh*):
-* **Biaya Jasa Aplikasi:** Sukarela / Bebas (biasanya pesantren tetap memberikan *bisyarah* tanda terima kasih di kisaran **Rp 2.500.000 – Rp 5.000.000**).
-* **Biaya Operasional Wajib (Harus Dikeluarkan dari Kas Madrasah):**
-  * Biaya sewa domain resmi (misal `madinblokagung.com` atau `madina.sch.id`): ~Rp 150.000 – Rp 250.000 / tahun.
-  * Server Cloud Supabase (bisa mulai dari Free Tier, atau Pro Tier ~$25/bln jika santri > 3.000).
-  * Pengadaan 1 unit Mini PC / Laptop bekas di kantor sekretariat untuk server gateway WhatsApp Baileys 24 jam.
+### 🟡 PAKET C: PENGABDIAN KHIDMAH ALMAMATER (INFAQ DEDIKASI)
+* **Bisyarah / Jasa Pengembangan:** Menyesuaikan sepenuhnya dengan kebijakan dan kerelaan Majelis Pimpinan Madrasah.
+* **Kewajiban Lembaga:** Menanggung biaya infrastruktur resmi atas nama madrasah (domain dan PC server kantor).
 
 ---
 
-## BAGIAN 5: RANGKUMAN BIAYA INFRASTRUKTUR YANG HARUS DISIAPKAN LEMBAGA
+## 5. BIAYA INFRASTRUKTUR PIHAK KETIGA (SERVER & DOMAIN)
 
-Jelaskan kepada pihak madrasah bahwa biaya pembuatan software **terpisah** dari biaya infrastruktur server fisik/cloud:
+### 5.1 Estimasi Biaya Dasar (Baseline Operasional Awal)
 
 | Komponen Infrastruktur | Kebutuhan | Estimasi Biaya | Keterangan |
 | :--- | :--- | :--- | :--- |
-| **Domain Resmi Madrasah** | `.com` / `.sch.id` | Rp 150.000 – Rp 250.000 / tahun | Pembayaran langsung atas nama yayasan. |
-| **Hosting Frontend (Next.js)** | Vercel Hobby / Cloud VPS | Rp 0 (Free) s.d. Rp 100.000 / bulan | Free tier Vercel sangat cukup untuk ribuan santri. |
-| **Database PostgreSQL & Auth** | Supabase Managed | Rp 0 (Free Tier) s.d. $25/bulan (~Rp 400.000) | Free tier mencakup 500 MB data (cukup untuk ribuan baris santri). |
-| **Server Gateway WAHA (WhatsApp)** | Laptop/PC Kantor yang selalu hidup | Rp 0 (menggunakan komputer piket kantor) | Menjalankan file `start-waha-gateway.bat` lokal tanpa sewa VPS luar. |
+| **Domain Resmi Madrasah** | `madinblokagung.com` / `.sch.id` | Rp 150.000 – Rp 250.000 / tahun | Identitas resmi lembaga di internet. |
+| **Hosting Aplikasi (Next.js)** | Vercel Platform | **Rp 0,- (Gratis)** | Paket gratis sangat mumpuni melayani ribuan akses. |
+| **Database & Auth (PostgreSQL)** | Supabase Managed Cloud | **Rp 0,- (Gratis)** s.d. $25/bln | Paket gratis 500 MB cukup untuk skala awal/pilot project. |
+| **Server Gateway WhatsApp** | PC/Laptop Kantor Sekretariat | **Rp 0,- (Aset yang Ada)** | Dijalankan pada komputer piket kantor tanpa sewa VPS luar. |
 
 ---
 
-## BAGIAN 6: STRATEGI & TIPS KOMUNIKASI BAGI VIBECODER PEMULA
+### 5.2 Skenario Skala Penuh (7.000 Santri, Dewan Asatidz Aktif, & Ketuntasan Hafalan Masif)
 
-1. **Gunakan Buku Panduan Sebagai "Senjata" Presentasi:**
-   Tunjukkan file `Buku_Panduan_Aplikasi_MADINA_Blokagung.doc` kepada Kepala Madrasah atau Pimpinan PKM. Ketika mereka melihat buku panduan setebal 100+ halaman dengan bab terperinci, mereka akan langsung menyadari bahwa aplikasi ini dikerjakan dengan standar profesional dan kredibel, sehingga tidak akan menawar harga terlalu rendah.
-2. **Jangan Fokus Menjual "Teknologinya", Jual "Solusinya":**
-   Pimpinan pesantren tidak tertarik mendengar istilah *Next.js 14, IndexedDB, atau CSP Backtracking*. Sampaikanlah:
-   * *"Aplikasi ini memastikan tidak ada guru yang bentrok jadwal mengajar di 2 kelas yang berbeda."*
-   * *"Setoran hafalan santri langsung terkirim otomatis ke HP wali santri, sehingga wali santri merasa tenang di rumah."*
-   * *"Petugas piket di asrama tetap bisa mengabsen walau tidak ada sinyal WiFi."*
-   * *"Penyerahan piagam kelulusan tidak akan salah orang karena ada sistem rasio kartu 3 kolom."*
-3. **Buat Kontrak Tertulis (MoU Sederhana):**
-   Tuliskan kesepakatan: batas fitur yang dikerjakan, jadwal pembayaran termin (DP 30% - Uji Coba 40% - Pelunasan & Serah Terima Buku Panduan 30%), dan masa garansi 3 bulan. Ini melindungi Anda dari permintaan revisi tak terbatas (*scope creep*).
+Ketika sistem beroperasi penuh pada skala riil pesantren besar dengan parameter:
+* **Data Asatidz:** ~150 s.d. 200 dewan asatidz aktif mengajar.
+* **Data Santri:** Bertambah hingga **7.000 santri aktif** (lengkap 37 atribut data + foto profil webcam 3x4).
+* **Absensi Asatidz (1 Tahun Penuh):** 150–200 asatidz x ~15 jam mengajar/minggu x 38 minggu efektif KBM = **~85.000 s.d. 114.000 baris riwayat presensi** di tabel `riwayat_absensi`.
+* **Setoran Hafalan Santri (Tingkat Ketuntasan Nyata):**
+  * *90% Santri Hafalan Wajib Tuntas:* 6.300 santri x 15 kali setoran bertahap = **~94.500 transaksi**.
+  * *70% Santri Hafalan Sunnah Tuntas:* 4.900 santri x 8 kali setoran bertahap = **~39.200 transaksi**.
+  * *30% Santri Hafalan Kitab Tuntas:* 2.100 santri x 12 kali setoran nadzom = **~25.200 transaksi**.
+  * *15% Santri Hafalan Tahfidz Tuntas:* 1.050 santri x 20 kali setoran juz = **~21.000 transaksi**.
+  * **Total Transaksi Setoran per Tahun: ~179.900 baris data setoran hafalan!**
 
 ---
 
-### KESIMPULAN AKHIR
-Untuk aplikasi kaliber **MADINA Blokagung** (28 modul terpadu lengkap dengan mesin jadwal, offline sync, WAHA, dan buku panduan resmi):
-* **Nilai Riil Pasar Software House:** **Rp 80 Juta – Rp 150 Juta**.
-* **Harga Wajar & Bermartabat bagi Vibecoder Pemula:** **Rp 8 Juta – Rp 15 Juta** (jual putus) **ATAU** **Rp 5 Juta (setup) + Rp 500.000/bulan (maintenance)**.
-* Jangan pernah menjualnya di bawah angka tersebut, karena kompleksitas sistem dan nilai tanggung jawab pemeliharaannya jauh melampaui aplikasi web sederhana biasa.
+### 5.3 Analisis Dampak Teknis & Titik Batas Kapasitas (*Capacity Thresholds*)
+
+#### 1. Pangkalan Data PostgreSQL (Supabase Cloud)
+* **Kalkulasi Volume Data:**
+  * Master Santri (7.000 baris x 37 kolom): ~20 MB.
+  * Pasfoto Profil Terkompresi (7.000 santri x ~100 KB): ~700 MB storage file.
+  * Log Absensi Asatidz 1 Tahun (~100.000 baris): ~45 MB.
+  * Transaksi Setoran Hafalan 1 Tahun (~180.000 baris): ~85 MB.
+  * Struktur Relasi Jadwal, Sapras, Konsorsium, & Audit Logs: ~60 MB.
+  * Indeks Pencarian Cepat (B-Tree Indexes): ~120 MB.
+  * **Total Ukuran Database di Tahun Pertama:** **~650 MB s.d. 950 MB** (bertambah ~350 MB setiap tahun ajaran berikutnya).
+* **Batas Free Tier Supabase:**
+  Paket gratis Supabase dibatasi maksimal **500 MB database**. Pada skenario 7.000 santri dan ~300.000 transaksi tahunan di atas, kuota 500 MB **PASTI terlampaui** pada pertengahan tahun ajaran (semester genap). Jika kuota habis, database akan terkunci ke status *read-only*.
+* **Rekomendasi Wajib Upgrade:**
+  Madrasah **wajib mengalokasikan anggaran untuk Supabase Pro Tier ($25/bulan atau ~Rp 400.000/bulan)**.
+* **Keuntungan yang Didapat Lembaga (Supabase Pro):**
+  * Batas database melonjak menjadi **8 GB** (sangat aman menampung data 7.000 santri selama 7–10 tahun ke depan).
+  * Kuota media storage **100 GB** (sangat longgar untuk puluhan ribu pasfoto santri dan dokumen piagam).
+  * Kuota bandwidth keluar (*egress*) **250 GB/bulan**.
+  * **500 Concurrent Realtime Connections** (menjamin tidak ada koneksi terputus saat ratusan mustahiq dan petugas piket menginput data serentak di hari Ahad).
+  * **Daily Automated Backup (Retensi 7 Hari)** yang dijamin oleh cloud AWS/Supabase, melindungi data madrasah dari bencana kehilangan data.
+
+#### 2. Hosting Aplikasi Web (Vercel Platform)
+* **Analisis Beban Trafik:** Akses harian dari 150 asatidz, puluhan petugas piket, dan ribuan wali santri menghasilkan transfer data sekitar 25 GB – 45 GB per bulan.
+* **Rekomendasi:** Madrasah **tetap dapat menggunakan Vercel Free Tier (Rp 0,- / Gratis)**, karena batas gratis Vercel menyediakan 100 GB bandwidth bulanan. Seluruh aset gambar berat dialirkan langsung melalui CDN Supabase Storage, bukan melalui server Vercel.
+* *Opsi Cadangan:* Jika saat momen puncak Haflah Akhirussanah trafik wali santri membludak, madrasah dapat mengaktifkan Vercel Pro ($20/bulan / ~Rp 320.000) hanya untuk 1 bulan tersebut.
+
+#### 3. Server Gateway WhatsApp (WAHA / Baileys) untuk 7.000 Santri
+* **Karakteristik Pengiriman:** Mengirimkan siaran rapor hafalan berkala ke 7.000 nomor WhatsApp wali santri. Dengan jeda acak anti-banned 5 detik per nomor, antrean siaran diselesaikan secara bertahap dalam **~9,7 jam** (dijalankan bergelombang per rombel kelas).
+* **Dua Opsi Penempatan Server Gateway:**
+  * **Opsi A (Komputer Kantor Sekretariat - Rp 0,-):** Memanfaatkan 1 unit PC kantor (minimal prosesor Intel Core i3 / Ryzen 3, RAM 8 GB, koneksi LAN stabil, dan UPS penstabil daya) untuk menjalankan skrip `start-waha-gateway.bat`.
+  * **Opsi B (Sewa Cloud VPS Linux Lokal - Rp 100.000 – Rp 150.000 / bulan):** *Sangat direkomendasikan* untuk skala 7.000 santri agar bot WhatsApp madrasah berjalan 24 jam nonstop di cloud tanpa risiko mati saat kantor pesantren mati lampu.
+
+---
+
+### 5.4 Rangkuman Anggaran Maintenance Infrastruktur Tahunan (Skenario 7.000 Santri)
+
+Berikut adalah kalkulasi transparan pemeliharaan infrastruktur cloud & server yang dibayarkan langsung oleh yayasan/madrasah kepada penyedia layanan:
+
+| Komponen Infrastruktur | Spesifikasi Layanan | Skema Pembayaran | Estimasi Biaya Tahunan |
+| :--- | :--- | :--- | :--- |
+| **Domain Resmi Madrasah** | Domain `.sch.id` / `.com` | Tahunan | Rp 150.000 – Rp 250.000 / tahun |
+| **Hosting Aplikasi (Next.js)** | Vercel Platform (Hobby Tier) | Bulanan | **Rp 0,- (Gratis)** |
+| **Database & Auth (PostgreSQL)** | Supabase Pro Tier ($25/bln) | Bulanan (~Rp 400.000/bln) | Rp 4.800.000 / tahun |
+| **Server Gateway WhatsApp** | PC Kantor Madrasah *(Opsi A)*<br/>Cloud VPS Linux *(Opsi B)* | Aset Kantor<br/>Bulanan (~Rp 100.000/bln) | **Rp 0,-** *(Opsi A)*<br/>Rp 1.200.000 / tahun *(Opsi B)* |
+| **Cadangan SSL & Bandwidth** | Let's Encrypt / Vercel Edge CDN | Otomatis | **Rp 0,- (Gratis)** |
+| **TOTAL BIAYA INFRASTRUKTUR (OPSI A - PC KANTOR)** | | **Tahunan** | **Rp 4.950.000 – Rp 5.050.000 / tahun**<br/>*(~Rp 415.000 / bulan)* |
+| **TOTAL BIAYA INFRASTRUKTUR (OPSI B - CLOUD VPS)** | | **Tahunan** | **Rp 6.150.000 – Rp 6.250.000 / tahun**<br/>*(~Rp 515.000 / bulan)* |
+
+> 💡 **Analisis Efisiensi Biaya per Santri (Rasio Anggaran Sangat Hemat):**  
+> Dengan total biaya infrastruktur sekitar **Rp 5.000.000 / tahun** untuk melayani **7.000 santri**, maka biaya operasional server per santri hanya sebesar:  
+> $$\frac{\text{Rp } 5.000.000}{7.000 \text{ santri}} \approx \mathbf{Rp\ 714,-\ \text{per santri per tahun!}}$$  
+> Angka ini jauh lebih murah dibandingkan biaya pengadaan 1 lembar kartu ujian atau 1 buku presensi fisik, namun menghadirkan efisiensi kelas dunia bagi tata kelola madrasah.
+
+---
+
+## 6. JADWAL IMPLEMENTASI CEPAT
+
+* **Hari ke-1 s.d. ke-2:** Penyelarasan domain resmi dan server produksi.
+* **Hari ke-3 s.d. ke-4:** Migrasi data santri dan asatidz via Import Excel.
+* **Hari ke-5 s.d. ke-6:** Pelatihan teknis pengurus PKM dan dewan mustahiq.
+* **Hari ke-7:** Serah terima Buku Panduan Fisik dan sistem aktif penuh (*Go-Live*).
+
+---
+
+## 7. LEMBAR PENGESAHAN
+
+Blokagung, ............................... 2026  
+
+| Menyetujui & Mengesahkan,<br/>**Majelis Pimpinan MADINA Blokagung** | Diajukan Oleh,<br/>**Tim Pengembang Sistem MADINA** |
+| :---: | :---: |
+| <br/><br/><br/><br/>( .............................................................. )<br/>NIP / Jabatan: | <br/><br/><br/><br/>( .............................................................. )<br/>Koordinator Rekayasa Sistem |
