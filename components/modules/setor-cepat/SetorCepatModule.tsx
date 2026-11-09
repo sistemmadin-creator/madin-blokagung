@@ -39,6 +39,7 @@ import {
   formatTargetPreview,
   norm,
   getDaftarTingkatKelasDiniyyah,
+  isPureTahfidz,
 } from '@/lib/utils/setoranHelper';
 import SundayDatePicker from '@/components/ui/SundayDatePicker';
 
@@ -56,6 +57,7 @@ export default function SetorCepatModule() {
     addLogSetoranBatch,
     deleteLogSetoran,
     switchActiveHafalan,
+    deduplicateSantriLogs,
   } = useSetorMustahiqStore();
 
   const {
@@ -442,6 +444,7 @@ export default function SetorCepatModule() {
 
   // Toggle sentence selection
   const handleToggleSentence = (sentence: string) => {
+    if (completedSentencesSet.has(norm(sentence))) return;
     setSelectedKalimatList((prev) => {
       const isAlreadyChosen = prev.some((s) => norm(s) === norm(sentence));
       if (isAlreadyChosen) {
@@ -545,8 +548,11 @@ export default function SetorCepatModule() {
       }
     } else {
       // Sentence multi-select submit
-      if (selectedKalimatList.length === 0) {
-        alert(`Pilih minimal satu ${row.satuan_label} yang disetorkan santri.`);
+      const itemsToSubmit = selectedKalimatList.filter(
+        (kal) => !selectedSantriDetail.prog.completedSentences.some((cs) => norm(cs) === norm(kal))
+      );
+      if (itemsToSubmit.length === 0) {
+        alert(`Pilih minimal satu ${row.satuan_label} yang belum pernah disetorkan santri.`);
         return;
       }
       const noteVal = catatan.trim() || undefined;
@@ -567,7 +573,7 @@ export default function SetorCepatModule() {
           catatan: noteVal,
           mustahiq: row.mustahiq,
         },
-        selectedKalimatList,
+        itemsToSubmit,
         item
       );
 
@@ -585,7 +591,7 @@ export default function SetorCepatModule() {
             tingkat: row.tingkat,
             din_kls: row.din_kls,
             din_bag: row.din_bag,
-            capaian: selectedKalimatList.join(', '),
+            capaian: itemsToSubmit.join(', '),
           });
         } catch {}
         setSelectedKalimatList([]);
@@ -601,6 +607,10 @@ export default function SetorCepatModule() {
     if (!row.is_tahfidz) return;
 
     const juzNum = Number(selectedJuzTahfidz) || 1;
+    if (row.tahfidz_completed_juz?.includes(juzNum)) {
+      alert(`Juz ${juzNum} sudah pernah disetor dan tuntas untuk santri ${row.nama}.`);
+      return;
+    }
     const noteVal = catatanTahfidz.trim() || undefined;
 
     setIsSubmittingTahfidz(true);
@@ -650,8 +660,13 @@ export default function SetorCepatModule() {
           });
         } catch {}
 
-        const nextJuz = Math.min(juzNum + 1, row.tahfidz_target_juz || 3);
-        setSelectedJuzTahfidz(nextJuz);
+        const remainingJuz = Array.from(
+          { length: row.tahfidz_target_juz || 3 },
+          (_, i) => i + 1
+        ).find((j) => !row.tahfidz_completed_juz?.includes(j) && j !== juzNum);
+        if (remainingJuz) {
+          setSelectedJuzTahfidz(remainingJuz);
+        }
         setCatatanTahfidz('');
       }
     } finally {
@@ -662,6 +677,12 @@ export default function SetorCepatModule() {
   const handleSubmitBothSetoran = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!selectedSantriDetail) return;
+    const { row } = selectedSantriDetail;
+    const juzNum = Number(selectedJuzTahfidz) || 1;
+    if (row.tahfidz_completed_juz?.includes(juzNum)) {
+      alert(`Juz ${juzNum} sudah pernah disetor. Silakan gunakan tombol Simpan Setoran Wajib.`);
+      return;
+    }
     await handleSubmitTahfidzOnly();
     await handleSubmitSetoran();
   };
@@ -1200,7 +1221,7 @@ export default function SetorCepatModule() {
                                 ).map((j) => {
                                   const isDone = Boolean(selectedSantriDetail.row.tahfidz_completed_juz?.includes(j));
                                   return (
-                                    <option key={j} value={j}>
+                                    <option key={j} value={j} disabled={isDone}>
                                       Juz {j} {isDone ? '(Sudah Disetor ✓)' : ''}
                                     </option>
                                   );
@@ -1227,7 +1248,7 @@ export default function SetorCepatModule() {
                             <button
                               type="button"
                               onClick={() => handleSubmitTahfidzOnly()}
-                              disabled={isSubmittingTahfidz}
+                              disabled={isSubmittingTahfidz || selectedSantriDetail.row.tahfidz_completed_juz?.includes(Number(selectedJuzTahfidz))}
                               data-testid="btn-simpan-tahfidz-only"
                               className="px-3.5 py-1.5 rounded-lg bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
                             >
@@ -1345,27 +1366,33 @@ export default function SetorCepatModule() {
                                           return (
                                             <div
                                               key={`${kal}_${idx}`}
-                                              onClick={() => handleToggleSentence(kal)}
-                                              className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition-all ${
-                                                isSelected
-                                                  ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold'
-                                                  : 'hover:bg-slate-50 text-slate-700 border border-transparent'
+                                              onClick={() => {
+                                                if (isDone) return;
+                                                handleToggleSentence(kal);
+                                              }}
+                                              className={`flex items-center justify-between p-2 rounded-lg text-xs transition-all ${
+                                                isDone
+                                                  ? 'bg-slate-50 text-slate-400 opacity-60 cursor-not-allowed border border-dashed border-slate-200'
+                                                  : isSelected
+                                                  ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold cursor-pointer'
+                                                  : 'hover:bg-slate-50 text-slate-700 border border-transparent cursor-pointer'
                                               }`}
                                             >
                                               <div className="flex items-center gap-2">
                                                 <input
                                                   type="checkbox"
-                                                  checked={isSelected}
+                                                  checked={isSelected || isDone}
+                                                  disabled={isDone}
                                                   onChange={() => {}}
-                                                  className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 cursor-pointer pointer-events-none"
+                                                  className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 pointer-events-none"
                                                 />
-                                                <span>
+                                                <span className={isDone ? 'line-through text-slate-400' : ''}>
                                                   {idx + 1}. {kal}
                                                 </span>
                                               </div>
                                               {isDone && (
-                                                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
-                                                  Sudah Disetor
+                                                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                                  ✓ Sudah Tuntas
                                                 </span>
                                               )}
                                             </div>
@@ -1431,27 +1458,39 @@ export default function SetorCepatModule() {
                         </div>
 
                         {/* BLOK 3: Tombol Cepat Simpan Keduanya Sekaligus */}
-                        <div className="p-3.5 rounded-xl bg-gradient-to-r from-cyan-50 to-emerald-50 border border-emerald-200/80 flex items-center justify-between gap-3">
-                          <div className="text-xs text-slate-700">
-                            <span className="font-bold text-slate-900 flex items-center gap-1">
-                              <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
-                              Simpan 2 Hafalan Sekaligus?
-                            </span>
-                            <span className="text-[11px] text-slate-500">
-                              Simpan Juz {selectedJuzTahfidz} (Tahfidz) & materi Wajib secara bersamaan dalam satu klik.
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleSubmitBothSetoran()}
-                            disabled={isSubmitting || isSubmittingTahfidz}
-                            data-testid="btn-simpan-keduanya"
-                            className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-emerald-700 hover:from-cyan-700 hover:to-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 shrink-0"
-                          >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            ⚡ Simpan Keduanya Sekaligus
-                          </button>
-                        </div>
+                        {(() => {
+                          const isCurrentTahfidzDone = Boolean(selectedSantriDetail.row.tahfidz_completed_juz?.includes(Number(selectedJuzTahfidz)));
+                          const isWajibReady = selectedKalimatList.length > 0;
+                          const isBothDisabled = isCurrentTahfidzDone || !isWajibReady || isSubmitting || isSubmittingTahfidz;
+
+                          return (
+                            <div className="p-3.5 rounded-xl bg-gradient-to-r from-cyan-50 to-emerald-50 border border-emerald-200/80 flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+                              <div className="text-xs text-slate-700">
+                                <span className="font-bold text-slate-900 flex items-center gap-1">
+                                  <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
+                                  Simpan 2 Hafalan Sekaligus?
+                                </span>
+                                <span className="text-[11px] text-slate-500 block mt-0.5">
+                                  {isCurrentTahfidzDone
+                                    ? `Juz ${selectedJuzTahfidz} sudah tuntas disetor. Gunakan tombol 'Simpan Setoran Wajib' di atas.`
+                                    : !isWajibReady
+                                    ? `Pilih tahapan kalimat hafalan wajib terlebih dahulu.`
+                                    : `Simpan Juz ${selectedJuzTahfidz} (Tahfidz) & materi Wajib secara bersamaan.`}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleSubmitBothSetoran()}
+                                disabled={isBothDisabled}
+                                data-testid="btn-simpan-keduanya"
+                                className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-emerald-700 hover:from-cyan-700 hover:to-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 shrink-0"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                ⚡ Simpan Keduanya Sekaligus
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </div>
                     ) : selectedSantriDetail.row.is_tahfidz && selectedSantriDetail.row.tahfidz_mode === 'didahulukan' ? (
                       /* KONDISI B: Santri Tahfidz dengan Mode DIDAHULUKAN */
@@ -1487,7 +1526,7 @@ export default function SetorCepatModule() {
                                 ).map((j) => {
                                   const isDone = Boolean(selectedSantriDetail.row.tahfidz_completed_juz?.includes(j));
                                   return (
-                                    <option key={j} value={j}>
+                                    <option key={j} value={j} disabled={isDone}>
                                       Juz {j} {isDone ? '(Sudah Disetor ✓)' : ''}
                                     </option>
                                   );
@@ -1514,7 +1553,7 @@ export default function SetorCepatModule() {
                             <button
                               type="button"
                               onClick={() => handleSubmitTahfidzOnly()}
-                              disabled={isSubmittingTahfidz}
+                              disabled={isSubmittingTahfidz || selectedSantriDetail.row.tahfidz_completed_juz?.includes(Number(selectedJuzTahfidz))}
                               data-testid="btn-simpan-tahfidz-only"
                               className="px-3.5 py-1.5 rounded-lg bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
                             >
@@ -1646,27 +1685,33 @@ export default function SetorCepatModule() {
                                             return (
                                               <div
                                                 key={`${kal}_${idx}`}
-                                                onClick={() => handleToggleSentence(kal)}
-                                                className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition-all ${
-                                                  isSelected
-                                                    ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold'
-                                                    : 'hover:bg-slate-50 text-slate-700 border border-transparent'
+                                                onClick={() => {
+                                                  if (isDone) return;
+                                                  handleToggleSentence(kal);
+                                                }}
+                                                className={`flex items-center justify-between p-2 rounded-lg text-xs transition-all ${
+                                                  isDone
+                                                    ? 'bg-slate-50 text-slate-400 opacity-60 cursor-not-allowed border border-dashed border-slate-200'
+                                                    : isSelected
+                                                    ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold cursor-pointer'
+                                                    : 'hover:bg-slate-50 text-slate-700 border border-transparent cursor-pointer'
                                                 }`}
                                               >
                                                 <div className="flex items-center gap-2">
                                                   <input
                                                     type="checkbox"
-                                                    checked={isSelected}
+                                                    checked={isSelected || isDone}
+                                                    disabled={isDone}
                                                     onChange={() => {}}
-                                                    className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 cursor-pointer pointer-events-none"
+                                                    className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 pointer-events-none"
                                                   />
-                                                  <span>
+                                                  <span className={isDone ? 'line-through text-slate-400' : ''}>
                                                     {idx + 1}. {kal}
                                                   </span>
                                                 </div>
                                                 {isDone && (
-                                                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
-                                                    Sudah Disetor
+                                                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                                    ✓ Sudah Tuntas
                                                   </span>
                                                 )}
                                               </div>
@@ -1839,27 +1884,33 @@ export default function SetorCepatModule() {
                                         return (
                                           <div
                                             key={`${kal}_${idx}`}
-                                            onClick={() => handleToggleSentence(kal)}
-                                            className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition-all ${
-                                              isSelected
-                                                ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold'
-                                                : 'hover:bg-slate-50 text-slate-700 border border-transparent'
+                                            onClick={() => {
+                                              if (isDone) return;
+                                              handleToggleSentence(kal);
+                                            }}
+                                            className={`flex items-center justify-between p-2 rounded-lg text-xs transition-all ${
+                                              isDone
+                                                ? 'bg-slate-50 text-slate-400 opacity-60 cursor-not-allowed border border-dashed border-slate-200'
+                                                : isSelected
+                                                ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold cursor-pointer'
+                                                : 'hover:bg-slate-50 text-slate-700 border border-transparent cursor-pointer'
                                             }`}
                                           >
                                             <div className="flex items-center gap-2">
                                               <input
                                                 type="checkbox"
-                                                checked={isSelected}
+                                                checked={isSelected || isDone}
+                                                disabled={isDone}
                                                 onChange={() => {}}
-                                                className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 cursor-pointer pointer-events-none"
+                                                className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 pointer-events-none"
                                               />
-                                              <span>
+                                              <span className={isDone ? 'line-through text-slate-400' : ''}>
                                                 {idx + 1}. {kal}
                                               </span>
                                             </div>
                                             {isDone && (
-                                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
-                                                Sudah Disetor
+                                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                                ✓ Sudah Tuntas
                                               </span>
                                             )}
                                           </div>
@@ -1935,6 +1986,49 @@ export default function SetorCepatModule() {
                       Riwayat Setor {selectedSantriDetail.row.is_tahfidz ? '(Semua Hafalan & Tahfidz)' : `(${selectedSantriDetail.row.active_item?.nama})`}
                     </h4>
                     <div className="flex items-center gap-2">
+                      {(() => {
+                        const seenSentences = new Set<string>();
+                        const seenJuz = new Set<string>();
+                        let dupFound = false;
+                        for (const l of riwayatLogs) {
+                          if (isPureTahfidz(l.materi_nama, l.kategori)) {
+                            const jKey = norm(l.materi_nama);
+                            if (seenJuz.has(jKey)) {
+                              dupFound = true;
+                              break;
+                            }
+                            seenJuz.add(jKey);
+                          } else if (l.target_type === 'sentence' && l.kalimat_dipilih) {
+                            const sKey = `${norm(l.materi_nama)}_${norm(l.kalimat_dipilih)}`;
+                            if (seenSentences.has(sKey)) {
+                              dupFound = true;
+                              break;
+                            }
+                            seenSentences.add(sKey);
+                          }
+                        }
+                        if (dupFound && canEdit) {
+                          return (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (
+                                  confirm(
+                                    `Ditemukan data setoran duplikat untuk ${selectedSantriDetail.row.nama}. Bersihkan entri ganda sekarang?`
+                                  )
+                                ) {
+                                  await deduplicateSantriLogs(selectedSantriDetail.row.no_induk);
+                                }
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-bold transition-colors cursor-pointer"
+                            >
+                              <Sparkles className="w-3 h-3 text-amber-600" />
+                              <span>Rapikan Duplikat</span>
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
                       <Link
                         href={`/kirim-wa?santri=${encodeURIComponent(
                           selectedSantriDetail.row.no_induk
@@ -1971,7 +2065,7 @@ export default function SetorCepatModule() {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {riwayatLogs.map((l, i) => {
-                            const isTahfidzLog = l.kategori === 'Tahfidz' || (l.materi_nama && l.materi_nama.toLowerCase().startsWith('juz '));
+                            const isTahfidzLog = isPureTahfidz(l.materi_nama, l.kategori);
                             return (
                               <tr key={l.id} className="hover:bg-slate-50">
                                 <td className="py-2.5 px-3 font-mono text-slate-400">
@@ -2021,7 +2115,9 @@ export default function SetorCepatModule() {
                                   )}
                                 </td>
                                 <td className="py-2.5 px-3 text-slate-600 font-mono text-[11px]">
-                                  {l.status_ringkas || '-'}
+                                  {isTahfidzLog && l.status_ringkas && l.status_ringkas.toLowerCase().includes('baris')
+                                    ? `Tahfidz: ${l.materi_nama} (Tuntas)`
+                                    : l.status_ringkas || '-'}
                                 </td>
                                 <td className="py-2.5 px-3 text-right">
                                   {canDelete && (

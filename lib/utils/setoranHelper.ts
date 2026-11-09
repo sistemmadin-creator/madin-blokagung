@@ -306,3 +306,14 @@ export function formatTargetPreview(item: ItemHafalanDetail): string {
   const preview = s.slice(0, 3).join(', ') + (s.length > 3 ? '...' : '');
   return `${s.length} ${item.sentenceUnitLabel || 'Kalimat'} (${preview})`;
 }
+
+/**
+ * Validasi apakah suatu materi merupakan program Tahfidz Al-Qur'an murni (Juz 1 s.d. 30),
+ * bukan materi kurikulum wajib kitab seperti "Juz Amma' (An-Naas - Adh-Dhuha)".
+ */
+export function isPureTahfidz(materiNama: string, kategori?: string): boolean {
+  const m = norm(materiNama);
+  if (m.includes('JUZ AMMA')) return false;
+  if (norm(kategori) === 'TAHFIDZ') return true;
+  return /^juz\s+\d+$/i.test(String(materiNama || '').trim());
+}

@@ -45,6 +45,7 @@ import {
   formatTargetPreview,
   norm,
   getDaftarTingkatKelasDiniyyah,
+  isPureTahfidz,
 } from '@/lib/utils/setoranHelper';
 import ModalSettingsHafalan from '@/components/modules/setoran/ModalSettingsHafalan';
 import SundayDatePicker from '@/components/ui/SundayDatePicker';
@@ -71,6 +72,7 @@ export default function SetorMustahiqModule() {
     deleteLogSetoran,
     deleteSantriLogsBatch,
     switchActiveHafalan,
+    deduplicateSantriLogs,
   } = useSetorMustahiqStore();
 
   const {
@@ -481,6 +483,17 @@ export default function SetorMustahiqModule() {
     return selectedSantriDetail.prog.matchingLogs;
   }, [selectedSantriDetail, logs, tahun]);
 
+  const hasDuplicateLogs = useMemo(() => {
+    const seen = new Set<string>();
+    for (const l of riwayatLogs) {
+      const sub = l.kalimat_dipilih ? norm(l.kalimat_dipilih) : norm(l.materi_nama);
+      const key = `${norm(l.materi_nama)}_${sub}`;
+      if (seen.has(key)) return true;
+      seen.add(key);
+    }
+    return false;
+  }, [riwayatLogs]);
+
   // Set default sentence dropdown when opening Detail Modal for sentence-based item
   useEffect(() => {
     if (selectedSantriDetail) {
@@ -673,15 +686,20 @@ export default function SetorMustahiqModule() {
       } catch {}
       setIsSubmitting(false);
     } else {
-      const itemsToSubmit =
+      const rawItems =
         selectedKalimatList.length > 0
           ? selectedKalimatList
           : kalimatDipilih.trim()
           ? [kalimatDipilih.trim()]
           : [];
 
+      // Saring hanya kalimat yang BELUM pernah disetor
+      const itemsToSubmit = rawItems.filter(
+        (kal) => !selectedSantriDetail.prog.completedSentences.some((cs) => norm(cs) === norm(kal))
+      );
+
       if (itemsToSubmit.length === 0) {
-        alert(`Pilih tahapan ${row.satuan_label} yang disetorkan.`);
+        alert(`Pilih tahapan ${row.satuan_label} yang belum pernah disetorkan santri.`);
         return;
       }
       const noteVal = catatan.trim() || undefined;
@@ -759,6 +777,10 @@ export default function SetorMustahiqModule() {
     if (!row.is_tahfidz) return;
 
     const juzNum = Number(selectedJuzTahfidz) || 1;
+    if (row.tahfidz_completed_juz?.includes(juzNum)) {
+      alert(`Juz ${juzNum} sudah pernah disetor dan tuntas untuk santri ${row.nama}.`);
+      return;
+    }
     const noteVal = catatanTahfidz.trim() || undefined;
 
     setIsSubmittingTahfidz(true);
@@ -807,8 +829,13 @@ export default function SetorMustahiqModule() {
         });
       } catch {}
 
-      const nextJuz = Math.min(juzNum + 1, row.tahfidz_target_juz || 3);
-      setSelectedJuzTahfidz(nextJuz);
+      const remainingJuz = Array.from(
+        { length: row.tahfidz_target_juz || 3 },
+        (_, i) => i + 1
+      ).find((j) => !row.tahfidz_completed_juz?.includes(j) && j !== juzNum);
+      if (remainingJuz) {
+        setSelectedJuzTahfidz(remainingJuz);
+      }
       setCatatanTahfidz('');
     } finally {
       setIsSubmittingTahfidz(false);
@@ -818,6 +845,12 @@ export default function SetorMustahiqModule() {
   const handleSubmitBothSetoran = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!selectedSantriDetail) return;
+    const { row } = selectedSantriDetail;
+    const juzNum = Number(selectedJuzTahfidz) || 1;
+    if (row.tahfidz_completed_juz?.includes(juzNum)) {
+      alert(`Juz ${juzNum} sudah pernah disetor. Silakan gunakan tombol Simpan Setoran Wajib.`);
+      return;
+    }
     await handleSubmitTahfidzOnly();
     await handleSubmitSetoran();
   };
@@ -2006,8 +2039,8 @@ export default function SetorMustahiqModule() {
                               ).map((j) => {
                                 const isDone = Boolean(selectedSantriDetail.row.tahfidz_completed_juz?.includes(j));
                                 return (
-                                  <option key={j} value={j}>
-                                    Juz {j} {isDone ? '(Sudah Disetor ✓)' : ''}
+                                  <option key={j} value={j} disabled={isDone}>
+                                    Juz {j} {isDone ? '(Sudah Disetor ✓ - Terkunci)' : ''}
                                   </option>
                                 );
                               })}
@@ -2163,32 +2196,36 @@ export default function SetorMustahiqModule() {
                                           <div
                                             key={`${kal}_${idx}`}
                                             onClick={() => {
+                                              if (isDone) return; // Kunci: tidak bisa diklik jika sudah disetor
                                               setSelectedKalimatList((prev) =>
                                                 prev.some((s) => norm(s) === norm(kal))
                                                   ? prev.filter((s) => norm(s) !== norm(kal))
                                                   : [...prev, kal]
                                               );
                                             }}
-                                            className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition-all ${
-                                              isSelected
-                                                ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold'
-                                                : 'hover:bg-slate-50 text-slate-700 border border-transparent'
+                                            className={`flex items-center justify-between p-2 rounded-lg text-xs transition-all ${
+                                              isDone
+                                                ? 'opacity-50 cursor-not-allowed bg-slate-100 select-none text-slate-400'
+                                                : isSelected
+                                                ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold cursor-pointer'
+                                                : 'hover:bg-slate-50 text-slate-700 border border-transparent cursor-pointer'
                                             }`}
                                           >
                                             <div className="flex items-center gap-2">
                                               <input
                                                 type="checkbox"
+                                                disabled={isDone}
                                                 checked={isSelected}
                                                 onChange={() => {}}
                                                 className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 cursor-pointer pointer-events-none"
                                               />
-                                              <span>
+                                              <span className={isDone ? 'line-through text-slate-400' : ''}>
                                                 {idx + 1}. {kal}
                                               </span>
                                             </div>
                                             {isDone && (
-                                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
-                                                Sudah Disetor
+                                              <span className="text-[10px] font-bold text-slate-500 bg-slate-200/80 px-1.5 py-0.5 rounded">
+                                                ✓ Sudah Tuntas
                                               </span>
                                             )}
                                           </div>
@@ -2258,27 +2295,39 @@ export default function SetorMustahiqModule() {
                       </div>
 
                       {/* BLOK 3: Tombol Cepat Simpan Keduanya Sekaligus */}
-                      <div className="p-3.5 rounded-xl bg-gradient-to-r from-cyan-50 to-emerald-50 border border-emerald-200/80 flex items-center justify-between gap-3">
-                        <div className="text-xs text-slate-700">
-                          <span className="font-bold text-slate-900 flex items-center gap-1">
-                            <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
-                            Simpan 2 Hafalan Sekaligus?
-                          </span>
-                          <span className="text-[11px] text-slate-500">
-                            Simpan Juz {selectedJuzTahfidz} (Tahfidz) & materi Wajib secara bersamaan dalam satu klik.
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleSubmitBothSetoran()}
-                          disabled={isSubmitting || isSubmittingTahfidz}
-                          data-testid="btn-simpan-keduanya"
-                          className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-emerald-700 hover:from-cyan-700 hover:to-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 shrink-0"
-                        >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          ⚡ Simpan Keduanya Sekaligus
-                        </button>
-                      </div>
+                      {(() => {
+                        const isCurrentTahfidzDone = Boolean(selectedSantriDetail.row.tahfidz_completed_juz?.includes(selectedJuzTahfidz));
+                        const isWajibReady = selectedKalimatList.length > 0 || Boolean(kalimatDipilih.trim());
+                        const isBothDisabled = isCurrentTahfidzDone || !isWajibReady || isSubmitting || isSubmittingTahfidz;
+
+                        return (
+                          <div className="p-3.5 rounded-xl bg-gradient-to-r from-cyan-50 to-emerald-50 border border-emerald-200/80 flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+                            <div className="text-xs text-slate-700">
+                              <span className="font-bold text-slate-900 flex items-center gap-1">
+                                <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
+                                Simpan 2 Hafalan Sekaligus?
+                              </span>
+                              <span className="text-[11px] text-slate-500 block mt-0.5">
+                                {isCurrentTahfidzDone
+                                  ? `Juz ${selectedJuzTahfidz} sudah tuntas disetor. Gunakan tombol 'Simpan Setoran Wajib' di atas.`
+                                  : !isWajibReady
+                                  ? `Pilih tahapan kalimat hafalan wajib terlebih dahulu.`
+                                  : `Simpan Juz ${selectedJuzTahfidz} (Tahfidz) & materi Wajib secara bersamaan.`}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleSubmitBothSetoran()}
+                              disabled={isBothDisabled}
+                              data-testid="btn-simpan-keduanya"
+                              className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-emerald-700 hover:from-cyan-700 hover:to-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 shrink-0"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              ⚡ Simpan Keduanya Sekaligus
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </div>
                   ) : selectedSantriDetail.row.is_tahfidz && selectedSantriDetail.row.tahfidz_mode === 'didahulukan' ? (
                     /* KONDISI B: Santri Tahfidz dengan Mode DIDAHULUKAN */
@@ -2314,8 +2363,8 @@ export default function SetorMustahiqModule() {
                               ).map((j) => {
                                 const isDone = Boolean(selectedSantriDetail.row.tahfidz_completed_juz?.includes(j));
                                 return (
-                                  <option key={j} value={j}>
-                                    Juz {j} {isDone ? '(Sudah Disetor ✓)' : ''}
+                                  <option key={j} value={j} disabled={isDone}>
+                                    Juz {j} {isDone ? '(Sudah Disetor ✓ - Terkunci)' : ''}
                                   </option>
                                 );
                               })}
@@ -2562,32 +2611,36 @@ export default function SetorMustahiqModule() {
                                         <div
                                           key={`${kal}_${idx}`}
                                           onClick={() => {
+                                            if (isDone) return; // Kunci: tidak bisa diklik jika sudah disetor
                                             setSelectedKalimatList((prev) =>
                                               prev.some((s) => norm(s) === norm(kal))
                                                 ? prev.filter((s) => norm(s) !== norm(kal))
                                                 : [...prev, kal]
                                             );
                                           }}
-                                          className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition-all ${
-                                            isSelected
-                                              ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold'
-                                              : 'hover:bg-slate-50 text-slate-700 border border-transparent'
+                                          className={`flex items-center justify-between p-2 rounded-lg text-xs transition-all ${
+                                            isDone
+                                              ? 'opacity-50 cursor-not-allowed bg-slate-100 select-none text-slate-400'
+                                              : isSelected
+                                              ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold cursor-pointer'
+                                              : 'hover:bg-slate-50 text-slate-700 border border-transparent cursor-pointer'
                                           }`}
                                         >
                                           <div className="flex items-center gap-2">
                                             <input
                                               type="checkbox"
+                                              disabled={isDone}
                                               checked={isSelected}
                                               onChange={() => {}}
                                               className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 cursor-pointer pointer-events-none"
                                             />
-                                            <span>
+                                            <span className={isDone ? 'line-through text-slate-400' : ''}>
                                               {idx + 1}. {kal}
                                             </span>
                                           </div>
                                           {isDone && (
-                                            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
-                                              Sudah Disetor
+                                            <span className="text-[10px] font-bold text-slate-500 bg-slate-200/80 px-1.5 py-0.5 rounded">
+                                              ✓ Sudah Tuntas
                                             </span>
                                           )}
                                         </div>
@@ -2674,6 +2727,26 @@ export default function SetorMustahiqModule() {
                       : `(${selectedSantriDetail.row.active_item.nama})`}
                   </h4>
                   <div className="flex items-center gap-2">
+                    {hasDuplicateLogs && canDelete && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (
+                            confirm(
+                              `Sistem mendeteksi ada catatan setoran ganda pada ${selectedSantriDetail.row.nama}. Bersihkan entri duplikat sekarang?`
+                            )
+                          ) {
+                            await deduplicateSantriLogs(selectedSantriDetail.row.no_induk);
+                            alert('Data setoran ganda berhasil dibersihkan!');
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-bold cursor-pointer transition-colors shadow-2xs"
+                        title="Bersihkan entri setoran ganda untuk santri ini"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-600" />
+                        <span>Rapikan Duplikat</span>
+                      </button>
+                    )}
                     <Link
                       href={`/kirim-wa?santri=${encodeURIComponent(
                         selectedSantriDetail.row.no_induk
@@ -2709,9 +2782,7 @@ export default function SetorMustahiqModule() {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {riwayatLogs.map((l, i) => {
-                          const isTahfidzLog =
-                            norm(l.kategori) === 'TAHFIDZ' ||
-                            norm(l.materi_nama).startsWith('JUZ ');
+                          const isTahfidzLog = isPureTahfidz(l.materi_nama, l.kategori);
                           return (
                             <tr key={l.id} className="hover:bg-slate-50">
                               <td className="py-2.5 px-3 font-mono text-slate-400">
@@ -2757,7 +2828,9 @@ export default function SetorMustahiqModule() {
                                 )}
                               </td>
                               <td className="py-2.5 px-3 font-mono text-[11px] text-emerald-800 font-semibold">
-                                {l.status_ringkas}
+                                {isTahfidzLog && String(l.status_ringkas || '').includes('Baris')
+                                  ? `Tahfidz: ${l.materi_nama} (Tuntas)`
+                                  : l.status_ringkas}
                               </td>
                               <td className="py-2.5 px-3 text-right">
                                 {canDelete && (

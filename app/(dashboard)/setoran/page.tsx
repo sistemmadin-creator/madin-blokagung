@@ -368,6 +368,19 @@ export default function SetoranPage() {
     if (editingRecord && editOldKey) {
       success = await updateSetoran(record, editOldKey);
     } else {
+      const isDuplicate = setoranList.some(
+        (s) =>
+          String(s.no_induk).trim() === String(noInduk).trim() &&
+          norm(s.item_hafalan) === norm(itemHafalan) &&
+          s.tanggal === formattedTgl
+      );
+      if (isDuplicate) {
+        alert(
+          `Santri ${namaSantri} sudah tercatat menyetorkan "${itemHafalan}" pada tanggal ${formattedTgl}. Simpan data duplikat dibatalkan.`
+        );
+        setIsSubmitting(false);
+        return;
+      }
       success = await addSetoran(record);
     }
 

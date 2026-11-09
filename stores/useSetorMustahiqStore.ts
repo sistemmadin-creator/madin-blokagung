@@ -14,6 +14,7 @@ import {
   cariMustahiqSantri,
   norm,
   normalizeToItemDetail,
+  isPureTahfidz,
 } from '@/lib/utils/setoranHelper';
 
 export const KEY_DB_SETOR_MUSTAHIQ_LOGS = 'SETOR_MUSTAHIQ_LOGS_DATA';
@@ -469,7 +470,7 @@ export function buildSantriSetorRow(
     const completedJuzSet = new Set<number>();
     logs.forEach((l) => {
       if (norm(l.no_induk) === norm(noInduk)) {
-        if (norm(l.kategori) === 'TAHFIDZ' || norm(l.materi_nama).startsWith('JUZ ')) {
+        if (isPureTahfidz(l.materi_nama, l.kategori)) {
           const match = (l.materi_nama || l.status_ringkas || '').match(/Juz\s+(\d+)/i);
           if (match) {
             completedJuzSet.add(parseInt(match[1], 10));
@@ -567,6 +568,7 @@ interface SetorMustahiqStoreState {
     markCurrentCompleted?: string,
     skipHistory?: boolean
   ) => Promise<boolean>;
+  deduplicateSantriLogs: (noInduk: string) => Promise<boolean>;
 }
 
 async function persistMustahiqLogs(logs: SetorMustahiqLog[]) {
@@ -707,7 +709,8 @@ export const useSetorMustahiqStore = create<SetorMustahiqStoreState>((set, get) 
   addLogSetoran: async (payload, itemDetail, skipHistory = false) => {
     try {
       const prevLogs = [...get().logs];
-      const unitLabel = getUnitLabel(itemDetail);
+      const isTahfidz = isPureTahfidz(payload.materi_nama, payload.kategori);
+      const unitLabel = isTahfidz ? 'Juz' : getUnitLabel(itemDetail);
 
       // Hitung capaian kumulatif setelah penambahan ini
       const existingProg = computeMateriProgressForSantri(
@@ -722,13 +725,33 @@ export const useSetorMustahiqStore = create<SetorMustahiqStoreState>((set, get) 
 
       if (payload.target_type === 'sentence') {
         const chosen = payload.kalimat_dipilih || '';
-        const newCount = existingProg.completedSentences.some(
+        const alreadyDone = existingProg.completedSentences.some(
           (s) => norm(s) === norm(chosen)
-        )
-          ? existingProg.completedSentencesCount
-          : existingProg.completedSentencesCount + 1;
+        );
+        if (alreadyDone) {
+          console.warn(`[DUPLICATE BLOCKED] Kalimat "${chosen}" sudah pernah disetor oleh santri ${payload.no_induk}`);
+          return false;
+        }
+        const newCount = existingProg.completedSentencesCount + 1;
         kumulatifAngka = newCount;
         statusRingkas = `${unitLabel}: ${chosen} (${newCount}/${existingProg.totalSentencesCount})`;
+      } else if (isTahfidz) {
+        const match = payload.materi_nama.match(/\d+/);
+        const juzNum = match ? parseInt(match[0], 10) : null;
+        if (juzNum !== null) {
+          const isJuzDone = prevLogs.some(
+            (l) =>
+              norm(l.no_induk) === norm(payload.no_induk) &&
+              isPureTahfidz(l.materi_nama, l.kategori) &&
+              (l.materi_nama.match(/\d+/)?.[0] === String(juzNum))
+          );
+          if (isJuzDone) {
+            console.warn(`[DUPLICATE BLOCKED] Juz ${juzNum} sudah pernah disetor oleh santri ${payload.no_induk}`);
+            return false;
+          }
+        }
+        kumulatifAngka = 1;
+        statusRingkas = `Juz ${juzNum || 1} (Tuntas)`;
       } else {
         const added = Number(payload.tambah_angka) || 0;
         kumulatifAngka = existingProg.totalCapaianAngka + added;
@@ -740,11 +763,12 @@ export const useSetorMustahiqStore = create<SetorMustahiqStoreState>((set, get) 
         ...payload,
         id: `sm_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         kumulatif_angka: kumulatifAngka,
-        target_akhir_angka:
-          payload.target_type === 'sentence'
-            ? existingProg.totalSentencesCount
-            : Number(itemDetail.numericEnd) || 100,
-        satuan_angka: unitLabel,
+        target_akhir_angka: isTahfidz
+          ? 1
+          : payload.target_type === 'sentence'
+          ? existingProg.totalSentencesCount
+          : Number(itemDetail.numericEnd) || 100,
+        satuan_angka: isTahfidz ? 'Juz' : unitLabel,
         status_ringkas: statusRingkas,
         created_at: new Date().toISOString(),
       };
@@ -804,9 +828,10 @@ export const useSetorMustahiqStore = create<SetorMustahiqStoreState>((set, get) 
         );
 
         const alreadyDone = prog.completedSentences.some((s) => norm(s) === norm(chosen));
-        const newCount = alreadyDone
-          ? prog.completedSentencesCount
-          : prog.completedSentencesCount + 1;
+        if (alreadyDone) {
+          continue; // Lewati kalimat yang sudah disetor agar tidak terjadi duplikasi
+        }
+        const newCount = prog.completedSentencesCount + 1;
         const kumulatifAngka = newCount;
         const statusRingkas = `${unitLabel}: ${chosen} (${newCount}/${prog.totalSentencesCount})`;
         const idx = sentences.findIndex((s) => norm(s) === norm(chosen));
@@ -1022,6 +1047,44 @@ export const useSetorMustahiqStore = create<SetorMustahiqStoreState>((set, get) 
     } catch (err: any) {
       console.error('Gagal mengganti hafalan selanjutnya:', err);
       alert('Gagal mengganti hafalan: ' + err.message);
+      return false;
+    }
+  },
+
+  deduplicateSantriLogs: async (noInduk: string) => {
+    try {
+      const allLogs = get().logs;
+      const santriLogs = allLogs.filter((l) => norm(l.no_induk) === norm(noInduk));
+      const otherLogs = allLogs.filter((l) => norm(l.no_induk) !== norm(noInduk));
+
+      const seenKeys = new Set<string>();
+      const dedupedSantriLogs: SetorMustahiqLog[] = [];
+      let removedCount = 0;
+
+      santriLogs.forEach((l) => {
+        const sub = l.kalimat_dipilih ? norm(l.kalimat_dipilih) : norm(l.materi_nama);
+        const key = `${norm(l.materi_nama)}_${sub}`;
+        if (seenKeys.has(key)) {
+          removedCount++;
+        } else {
+          seenKeys.add(key);
+          dedupedSantriLogs.push(l);
+        }
+      });
+
+      if (removedCount === 0) return true;
+
+      const finalLogs = [...otherLogs, ...dedupedSantriLogs];
+      set({ logs: finalLogs });
+      await persistMustahiqLogs(finalLogs);
+
+      await logActivity(
+        'DEDUPLIKASI SETORAN',
+        `Membersihkan ${removedCount} data setoran ganda untuk santri NIS: ${noInduk}`
+      );
+      return true;
+    } catch (err: any) {
+      console.error('Gagal deduplikasi log setoran:', err);
       return false;
     }
   },
