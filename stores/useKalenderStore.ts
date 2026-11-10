@@ -75,6 +75,7 @@ interface KalenderPersistedPayload {
   hijriOffsetByTA: Record<string, number>;
   aturanLiburByKode: Record<KodeKegiatanKalender, boolean>;
   agendaMapByTA: Record<string, Record<string, AgendaKalenderItem>>;
+  isNeutralizedV4?: boolean;
 }
 
 interface KalenderState {
@@ -432,10 +433,16 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
       return;
     }
 
-    const mergedAturan: Record<KodeKegiatanKalender, boolean> = {
-      ...buildDefaultAturanLibur(),
-      ...(loaded?.aturanLiburByKode || {}),
-    };
+    const isNeutralizedV4 = loaded?.isNeutralizedV4 === true;
+    let mergedAturan: Record<KodeKegiatanKalender, boolean>;
+    if (!isNeutralizedV4) {
+      mergedAturan = buildDefaultAturanLibur();
+    } else {
+      mergedAturan = {
+        ...buildDefaultAturanLibur(),
+        ...(loaded?.aturanLiburByKode || {}),
+      };
+    }
 
     const mergedOffsets: Record<string, number> = {
       '2026/2027': 0,
@@ -456,6 +463,17 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
       ...defaultAgendaByTA,
       ...(loaded?.agendaMapByTA || {}),
     };
+
+    // Bila belum dinetralkan, pastikan semua agenda dinetralkan dari status Libur KBM
+    if (!isNeutralizedV4) {
+      Object.values(mergedAgendaByTA).forEach((taMap) => {
+        Object.values(taMap || {}).forEach((item) => {
+          if (item) {
+            item.isLiburKbm = false;
+          }
+        });
+      });
+    }
 
     // Hapus kunci lama 2025/2026 agar tidak mencemari sinkronisasi
     delete mergedAgendaByTA['2025/2026'];
@@ -482,6 +500,16 @@ export const useKalenderStore = create<KalenderState>((set, get) => ({
       agendaMapByTA: mergedAgendaByTA,
       isLoading: false,
     });
+
+    if (!isNeutralizedV4) {
+      void persistKalenderState({
+        activeTahunAjaran: activeTA,
+        hijriOffsetByTA: mergedOffsets,
+        aturanLiburByKode: mergedAturan,
+        agendaMapByTA: mergedAgendaByTA,
+        isNeutralizedV4: true,
+      });
+    }
 
     await pushAgendaLiburToAbsensiStore(
       mergedAgendaByTA,

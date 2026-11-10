@@ -60,6 +60,8 @@ export default function AbsenCepatPage() {
     terapkanStatusMassal,
     tandaiSemuaHadirJam,
     simpanAbsensiJam,
+    setHariLibur,
+    netralkanSemuaHariLibur,
   } = useAbsensiStore();
 
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
@@ -73,6 +75,7 @@ export default function AbsenCepatPage() {
   const [sortBy, setSortBy] = useState<SortOptionCepat>('blok_asc');
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [forceBukaPresensi, setForceBukaPresensi] = useState<boolean>(true);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -191,8 +194,13 @@ export default function AbsenCepatPage() {
     return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
   }, []);
 
+  useEffect(() => {
+    setForceBukaPresensi(true);
+  }, [selectedDate]);
+
   const currentLibur = liburMapByDate[selectedDate] || null;
   const isHariJumat = hari === 'Jumat';
+  const isPresensiTerkunci = isHariJumat || (Boolean(currentLibur) && !forceBukaPresensi);
   const allSesiJam = useMemo(
     () => sesiHariIni[selectedJam] || [],
     [sesiHariIni, selectedJam]
@@ -782,106 +790,126 @@ export default function AbsenCepatPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Toolbar Aksi Massal Kontekstual */}
-            {selectedKeys.length > 0 && (
-              <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-lg">
-                <span className="text-[11px] font-extrabold text-amber-900 mr-1">
-                  {selectedKeys.length} Dipilih:
+            {isPresensiTerkunci ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-amber-800 bg-amber-100/80 border border-amber-300 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                  <CalendarOff className="w-3.5 h-3.5" />
+                  Presensi Jam Ini Terkunci ({isHariJumat ? 'Hari Jumat' : currentLibur?.kategori || 'Libur'})
                 </span>
-                <button
-                  type="button"
-                  onClick={() => handleBulkStatus('Hadir')}
-                  className="px-2 py-1 rounded text-[11px] font-bold bg-emerald-600 text-white hover:bg-emerald-700"
-                >
-                  Hadir
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleBulkStatus('Izin')}
-                  className="px-2 py-1 rounded text-[11px] font-bold bg-sky-600 text-white hover:bg-sky-700"
-                >
-                  Izin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleBulkStatus('Sakit')}
-                  className="px-2 py-1 rounded text-[11px] font-bold bg-amber-500 text-white hover:bg-amber-600"
-                >
-                  Sakit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleBulkStatus('Alfa')}
-                  className="px-2 py-1 rounded text-[11px] font-bold bg-rose-600 text-white hover:bg-rose-700"
-                >
-                  Alfa
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedKeys([])}
-                  className="px-2 py-1 rounded text-[11px] font-semibold text-slate-600 hover:bg-amber-100"
-                >
-                  Batal
-                </button>
+                {!isHariJumat && (
+                  <button
+                    type="button"
+                    onClick={() => setForceBukaPresensi(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs transition cursor-pointer"
+                  >
+                    Buka Presensi
+                  </button>
+                )}
               </div>
+            ) : (
+              <>
+                {/* Toolbar Aksi Massal Kontekstual */}
+                {selectedKeys.length > 0 && (
+                  <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-lg">
+                    <span className="text-[11px] font-extrabold text-amber-900 mr-1">
+                      {selectedKeys.length} Dipilih:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleBulkStatus('Hadir')}
+                      className="px-2 py-1 rounded text-[11px] font-bold bg-emerald-600 text-white hover:bg-emerald-700"
+                    >
+                      Hadir
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBulkStatus('Izin')}
+                      className="px-2 py-1 rounded text-[11px] font-bold bg-sky-600 text-white hover:bg-sky-700"
+                    >
+                      Izin
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBulkStatus('Sakit')}
+                      className="px-2 py-1 rounded text-[11px] font-bold bg-amber-500 text-white hover:bg-amber-600"
+                    >
+                      Sakit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBulkStatus('Alfa')}
+                      className="px-2 py-1 rounded text-[11px] font-bold bg-rose-600 text-white hover:bg-rose-700"
+                    >
+                      Alfa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedKeys([])}
+                      className="px-2 py-1 rounded text-[11px] font-semibold text-slate-600 hover:bg-amber-100"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                )}
+
+                {/* Tombol Penetapan Presensi Massal (Inspirasi LPTQ) */}
+                <button
+                  type="button"
+                  onClick={() => setIsBulkModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-800 hover:bg-emerald-900 text-white shadow-xs transition-colors"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Presensi Massal</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsWAOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                  Chat WA
+                </button>
+
+                {/* Tombol Kirim Notif (Web Push ke HP) */}
+                <button
+                  type="button"
+                  onClick={() => setIsPushModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-800 hover:bg-emerald-900 text-white shadow-xs transition-colors"
+                >
+                  <BellRing className="w-3.5 h-3.5 text-emerald-200" />
+                  Kirim Notif
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTandaiSemuaHadir}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors"
+                >
+                  <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  Tandai Semua Hadir
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isSaving || allSesiJam.length === 0}
+                  onClick={handleSimpanJamIni}
+                  aria-label="Simpan Jam Ini"
+                  className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold text-white shadow-sm transition-colors disabled:opacity-50 ${
+                    unsavedCountJam > 0
+                      ? 'bg-amber-600 hover:bg-amber-700 ring-2 ring-amber-300'
+                      : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  {isSaving
+                    ? 'Menyimpan...'
+                    : unsavedCountJam > 0
+                    ? `Simpan Jam Ini (${unsavedCountJam})`
+                    : 'Simpan Jam Ini'}
+                </button>
+              </>
             )}
-
-            {/* Tombol Penetapan Presensi Massal (Inspirasi LPTQ) */}
-            <button
-              type="button"
-              onClick={() => setIsBulkModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-800 hover:bg-emerald-900 text-white shadow-xs transition-colors"
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Presensi Massal</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsWAOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-              Chat WA
-            </button>
-
-            {/* Tombol Kirim Notif (Web Push ke HP) */}
-            <button
-              type="button"
-              onClick={() => setIsPushModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-800 hover:bg-emerald-900 text-white shadow-xs transition-colors"
-            >
-              <BellRing className="w-3.5 h-3.5 text-emerald-200" />
-              Kirim Notif
-            </button>
-
-            <button
-              type="button"
-              onClick={handleTandaiSemuaHadir}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors"
-            >
-              <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
-              Tandai Semua Hadir
-            </button>
-
-            <button
-              type="button"
-              disabled={isSaving || allSesiJam.length === 0}
-              onClick={handleSimpanJamIni}
-              aria-label="Simpan Jam Ini"
-              className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold text-white shadow-sm transition-colors disabled:opacity-50 ${
-                unsavedCountJam > 0
-                  ? 'bg-amber-600 hover:bg-amber-700 ring-2 ring-amber-300'
-                  : 'bg-emerald-600 hover:bg-emerald-700'
-              }`}
-            >
-              <Save className="w-3.5 h-3.5" />
-              {isSaving
-                ? 'Menyimpan...'
-                : unsavedCountJam > 0
-                ? `Simpan Jam Ini (${unsavedCountJam})`
-                : 'Simpan Jam Ini'}
-            </button>
           </div>
         </div>
 
@@ -974,19 +1002,50 @@ export default function AbsenCepatPage() {
             DAFTAR KARTU RINGKAS DIKELOMPOKKAN PER BLOK
         ================================================================== */}
         <div className="p-4 space-y-5">
-          {currentLibur ? (
-            <div className="py-12 text-center space-y-2">
-              <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
-                <CalendarOff className="w-6 h-6" />
+          {/* Smart Non-Blocking Alert Banner jika ada agenda kalender / libur tapi presensi dibuka */}
+          {currentLibur && !isPresensiTerkunci && (
+            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5">
+                  <CalendarOff className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-extrabold text-xs text-amber-950">
+                      Agenda Kalender: {currentLibur.kategori}
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900">
+                      {currentLibur.keterangan || 'Agenda Khusus'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 mt-0.5">
+                    KBM reguler bertepatan dengan agenda ini. Sesi presensi pengajar tetap dibuka dan dapat diisi normal di bawah.
+                  </p>
+                </div>
               </div>
-              <h3 className="text-sm font-extrabold text-slate-800">
-                Hari Libur / Event: {currentLibur.kategori}
-              </h3>
-              <p className="text-xs text-slate-500">
-                {currentLibur.keterangan || 'KBM reguler diliburkan pada tanggal ini.'}
-              </p>
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <button
+                  type="button"
+                  onClick={() => setForceBukaPresensi(false)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-bold border border-amber-400 text-amber-900 bg-amber-100 hover:bg-amber-200 transition cursor-pointer"
+                >
+                  Kunci Presensi
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await setHariLibur(selectedDate, null);
+                    showToast('success', 'Status libur tanggal ini berhasil dinetralkan.');
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Hapus Libur
+                </button>
+              </div>
             </div>
-          ) : isHariJumat ? (
+          )}
+
+          {isHariJumat ? (
             <div className="py-12 text-center space-y-2">
               <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
                 <CalendarOff className="w-6 h-6" />
@@ -997,6 +1056,38 @@ export default function AbsenCepatPage() {
               <p className="text-xs text-slate-500">
                 Tidak ada sesi jadwal KBM reguler pada hari Jumat.
               </p>
+            </div>
+          ) : isPresensiTerkunci ? (
+            <div className="py-12 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+                <CalendarOff className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-extrabold text-slate-800">
+                Hari Libur / Event: {currentLibur?.kategori}
+              </h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                {currentLibur?.keterangan || 'KBM reguler diliburkan pada tanggal ini.'}
+              </p>
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForceBukaPresensi(true)}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs cursor-pointer"
+                >
+                  Tetap Buka Presensi Sesi Ini
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await setHariLibur(selectedDate, null);
+                    setForceBukaPresensi(true);
+                    showToast('success', 'Status libur tanggal ini berhasil dinetralkan.');
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Hapus Status Libur
+                </button>
+              </div>
             </div>
           ) : groupedByBlok.length === 0 ? (
             <div className="py-12 text-center text-xs text-slate-400">
@@ -1151,7 +1242,7 @@ export default function AbsenCepatPage() {
         </div>
 
         {/* Footer Pagination Halaman Absen Cepat */}
-        {pageSize !== -1 && totalPages > 1 && (
+        {!isPresensiTerkunci && pageSize !== -1 && totalPages > 1 && (
           <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
             <span className="text-slate-600 font-medium">
               Menampilkan{' '}

@@ -800,7 +800,15 @@ export function KalenderKegiatanModule() {
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleOpenAturanModal}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-xs font-bold text-amber-900 cursor-pointer shadow-2xs"
+                >
+                  <Settings2 className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Atur Libur / Masuk KBM</span>
+                </button>
                 <button
                   type="button"
                   onClick={handleExportExcel}
@@ -1543,21 +1551,36 @@ export function KalenderKegiatanModule() {
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsAturanModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 cursor-pointer"
+                  onClick={() => {
+                    const neutral = {} as Record<KodeKegiatanKalender, boolean>;
+                    DAFTAR_KODE_LEGENDA_RESMI.forEach((k) => {
+                      neutral[k] = false;
+                    });
+                    setDraftAturanLibur(neutral);
+                  }}
+                  className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
                 >
-                  Batal
+                  Netralkan Semua (KBM Masuk)
                 </button>
-                <button
-                  type="submit"
-                  data-testid="btn-simpan-aturan-kalender"
-                  className="px-5 py-2 rounded-xl bg-[#134e3a] hover:bg-[#0f3d2e] text-white text-xs font-bold cursor-pointer"
-                >
-                  Simpan Aturan &amp; Sinkron Absensi
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAturanModalOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    data-testid="btn-simpan-aturan-kalender"
+                    className="px-5 py-2 rounded-xl bg-[#134e3a] hover:bg-[#0f3d2e] text-white text-xs font-bold cursor-pointer"
+                  >
+                    Simpan Aturan &amp; Sinkron Absensi
+                  </button>
+                </div>
               </div>
             </form>
           </div>

@@ -303,6 +303,7 @@ interface AbsensiState {
     actorName?: string,
     skipHistory?: boolean
   ) => Promise<boolean>;
+  netralkanSemuaHariLibur: (actorName?: string) => Promise<boolean>;
   restoreAbsensiRawMap: (
     targetRawMap: Record<string, BucketAbsensiCompact>,
     logDesc?: string
@@ -1591,6 +1592,31 @@ export const useAbsensiStore = create<AbsensiState>((set, get) => ({
       return true;
     } catch (err: any) {
       console.error('Set libur error:', err.message);
+      return false;
+    }
+  },
+
+  netralkanSemuaHariLibur: async (actorName = 'Master Administrator') => {
+    set({ liburMapByDate: {} });
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(LS_CACHE_LIBUR, JSON.stringify({}));
+      } catch {}
+    }
+    try {
+      await supabase
+        .from('app_settings')
+        .upsert(
+          { key: KEY_DB_LIBUR, value: {}, updated_at: new Date().toISOString() },
+          { onConflict: 'key' }
+        );
+      await logActivity(
+        'Netralkan Hari Libur',
+        `Seluruh hari libur selain Jumat dinetralkan oleh ${actorName}`
+      );
+      return true;
+    } catch (err) {
+      console.error('Netralkan libur error:', err);
       return false;
     }
   },

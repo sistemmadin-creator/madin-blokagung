@@ -173,6 +173,7 @@ export default function AbsensiAsatidzPage() {
   const [isConfirmHapusPilihOpen, setIsConfirmHapusPilihOpen] = useState<boolean>(false);
   const [isConfirmHapusSemuaOpen, setIsConfirmHapusSemuaOpen] = useState<boolean>(false);
   const [isDeletingRiwayat, setIsDeletingRiwayat] = useState<boolean>(false);
+  const [forceBukaPresensi, setForceBukaPresensi] = useState<boolean>(true);
 
   const showToast = (type: 'success' | 'error', text: string) => {
     setToastMsg({ type, text });
@@ -228,6 +229,7 @@ export default function AbsensiAsatidzPage() {
   useEffect(() => {
     setSelectedByJam({ 1: [], 2: [], 3: [], 4: [] });
     setOpenExtraDropdownKey(null);
+    setForceBukaPresensi(true);
   }, [selectedDate]);
 
   const currentLibur = liburMapByDate[selectedDate] || null;
@@ -235,7 +237,7 @@ export default function AbsensiAsatidzPage() {
 
   // Hitung KPI Hari Ini lintas Jam 1 - 4
   const kpiStats = useMemo(() => {
-    if (isHariJumat || currentLibur) {
+    if (isHariJumat || (currentLibur && !forceBukaPresensi)) {
       return { total: 0, hadir: 0, izinSakit: 0, alfa: 0, terlambatGanti: 0 };
     }
 
@@ -789,13 +791,22 @@ export default function AbsensiAsatidzPage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setHariLibur(selectedDate, null)}
-            className="px-3.5 py-2 rounded-lg text-xs font-bold bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 shadow-sm transition-colors shrink-0"
-          >
-            Batalkan Status Libur
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setForceBukaPresensi((prev) => !prev)}
+              className="px-3.5 py-2 rounded-lg text-xs font-bold border border-amber-400 text-amber-900 bg-amber-100 hover:bg-amber-200 transition-colors shadow-xs"
+            >
+              {forceBukaPresensi ? 'Kunci Presensi' : 'Tetap Buka Presensi'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setHariLibur(selectedDate, null)}
+              className="px-3.5 py-2 rounded-lg text-xs font-bold bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 shadow-sm transition-colors"
+            >
+              Batalkan Status Libur
+            </button>
+          </div>
         </div>
       )}
 
@@ -847,7 +858,7 @@ export default function AbsensiAsatidzPage() {
                 Kegiatan Belajar Mengajar reguler diliburkan setiap hari Jumat. Silakan pilih tanggal lain untuk mengisi absensi harian.
               </p>
             </div>
-          ) : currentLibur ? (
+          ) : currentLibur && !forceBukaPresensi ? (
             <div className="bg-white rounded-xl border border-amber-200 p-10 text-center space-y-3 shadow-sm">
               <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
                 <CalendarOff className="w-6 h-6" />
@@ -858,11 +869,18 @@ export default function AbsensiAsatidzPage() {
               <p className="text-xs text-slate-600 max-w-md mx-auto">
                 {currentLibur.keterangan || 'KBM reguler diliburkan pada tanggal ini.'}
               </p>
-              <div className="pt-2">
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForceBukaPresensi(true)}
+                  className="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs cursor-pointer"
+                >
+                  Tetap Buka Presensi Sesi Ini
+                </button>
                 <button
                   type="button"
                   onClick={() => setHariLibur(selectedDate, null)}
-                  className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition shadow-xs"
+                  className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition shadow-xs cursor-pointer"
                 >
                   Batalkan Status Libur
                 </button>
