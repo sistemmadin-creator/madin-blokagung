@@ -353,6 +353,32 @@ export default function SerahIjazahPage() {
                   </div>
                   <span className="text-xs font-bold text-slate-600 font-mono">{ratio}</span>
                 </div>
+
+                {/* Identitas Mustahiq / Mustahiqoh Rombel */}
+                <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <div
+                      className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 ${
+                        formasi.pa_pi === 'PI'
+                          ? 'bg-rose-100 text-rose-700'
+                          : 'bg-emerald-100 text-[#0f766e]'
+                      }`}
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="truncate">
+                      <span className="text-[11px] font-semibold text-slate-500 mr-1">
+                        {formasi.pa_pi === 'PI' ? 'Mustahiqoh:' : 'Mustahiq:'}
+                      </span>
+                      <span className="font-bold text-slate-800 text-[11px]">
+                        {formasi.wali_kelas_text
+                          ? `${formasi.pa_pi === 'PI' ? 'Usth. ' : 'Ust. '}${formasi.wali_kelas_text.replace(/^(ust\.|ustadz\.|ustadzah\.|usth\.)\s*/i, '')}`
+                          : 'Belum ditentukan'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="w-full bg-slate-200 h-1.5 rounded-full mt-2.5 overflow-hidden">
                   <div
                     className="bg-[#0f766e] h-full transition-all duration-300 rounded-full"
@@ -461,8 +487,8 @@ export default function SerahIjazahPage() {
                     <span>Pilih Tgl</span>
                   </button>
                 </div>
-                <span className="text-slate-400 text-[10px] truncate max-w-[120px]">
-                  {formasi.wali_kelas_text || '-'}
+                <span className="text-slate-400 text-[10px] font-medium">
+                  {santri.length} Santri Terdaftar
                 </span>
               </div>
             </div>

@@ -77,16 +77,64 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
         iconName: 'GraduationCap',
       },
       {
-        id: 'item-ebtadin-serah-ijazah',
-        title: 'Serah Ijazah',
-        href: '/ebtadin/serah-ijazah',
-        iconName: 'Award',
+        id: 'item-ebtadin-ujian',
+        title: 'Tentang Ujian',
+        href: '/ebtadin/ujian',
+        iconName: 'FileText',
+        children: [
+          {
+            id: 'sub-ebtadin-rekap-ujian',
+            title: 'Rekap Ujian',
+            href: '/ebtadin/ujian',
+            iconName: 'FileText',
+          },
+          {
+            id: 'sub-ebtadin-arsip-ujian',
+            title: 'Rekap & Arsip Ujian Angkatan',
+            href: '/ebtadin/ujian/rekap-angkatan',
+            iconName: 'BarChart2',
+          },
+        ],
       },
       {
-        id: 'item-ebtadin-rekap',
-        title: 'Rekap & Arsip Angkatan',
-        href: '/ebtadin/rekap-angkatan',
-        iconName: 'BarChart2',
+        id: 'item-ebtadin-kelulusan',
+        title: 'Tentang Lulus',
+        href: '/ebtadin/kelulusan',
+        iconName: 'CheckSquare',
+        children: [
+          {
+            id: 'sub-ebtadin-rekap-lulus',
+            title: 'Rekap Lulus',
+            href: '/ebtadin/kelulusan',
+            iconName: 'CheckSquare',
+          },
+          {
+            id: 'sub-ebtadin-arsip-lulus',
+            title: 'Rekap & Arsip Lulus Angkatan',
+            href: '/ebtadin/kelulusan/rekap-angkatan',
+            iconName: 'BarChart2',
+          },
+        ],
+      },
+      {
+        id: 'item-ebtadin-ijazah',
+        title: 'Tentang Ijazah',
+        href: '/ebtadin/serah-ijazah',
+        iconName: 'Award',
+        children: [
+          {
+            id: 'sub-ebtadin-serah-ijazah',
+            title: 'Serah Ijazah',
+            href: '/ebtadin/serah-ijazah',
+            iconName: 'Award',
+          },
+          {
+            id: 'sub-ebtadin-arsip-ijazah',
+            title: 'Rekap & Arsip Ijazah Angkatan',
+            href: '/ebtadin/rekap-angkatan',
+            iconName: 'BarChart2',
+          },
+        ],
       },
     ],
   },
@@ -233,8 +281,17 @@ function mergeMissingDefaultItems(loadedGroups: ConfigMenuGroup[]): ConfigMenuGr
     const defGroup = DEFAULT_SIDEBAR_GROUPS.find((dg) => dg.id === g.id);
     if (!defGroup) return g;
 
-    const missingItems = defGroup.items.filter((dit) => !existingItemIds.has(dit.id));
-    const updatedItems = [...g.items];
+    let currentItems = [...g.items];
+    if (g.id === 'grp-ebtadin') {
+      // Hapus flat items lama yang sekarang berpindah menjadi submenu
+      currentItems = currentItems.filter(
+        (it) => it.id !== 'item-ebtadin-serah-ijazah' && it.id !== 'item-ebtadin-rekap'
+      );
+    }
+
+    const currentItemIds = new Set(currentItems.map((it) => it.id));
+    const missingItems = defGroup.items.filter((dit) => !currentItemIds.has(dit.id));
+    const updatedItems = [...currentItems];
 
     if (missingItems.length > 0) {
       missingItems.forEach((mit) => {

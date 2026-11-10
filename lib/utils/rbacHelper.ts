@@ -172,6 +172,10 @@ export function resolvePageIdFromPathname(pathname: string): AppPageId | null {
   if (clean.startsWith('/sapras/rekap')) return 'sapras-rekap';
   if (clean.startsWith('/sapras')) return 'sapras-inventaris';
   if (clean.startsWith('/kelola-berita')) return 'kelola-berita';
+  if (clean.startsWith('/ebtadin/ujian/rekap-angkatan')) return 'ebtadin-ujian-rekap';
+  if (clean.startsWith('/ebtadin/ujian')) return 'ebtadin-ujian';
+  if (clean.startsWith('/ebtadin/kelulusan/rekap-angkatan')) return 'ebtadin-kelulusan-rekap';
+  if (clean.startsWith('/ebtadin/kelulusan')) return 'ebtadin-kelulusan';
   if (clean.startsWith('/ebtadin/rekap-angkatan')) return 'ebtadin-rekap';
   if (clean.startsWith('/ebtadin/serah-ijazah')) return 'ebtadin-serah-ijazah';
   if (clean.startsWith('/ebtadin')) return 'ebtadin';

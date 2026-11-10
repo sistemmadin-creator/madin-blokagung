@@ -30,6 +30,10 @@ export type AppPageId =
   | 'sapras-rekap'
   | 'kelola-berita'
   | 'ebtadin'
+  | 'ebtadin-ujian'
+  | 'ebtadin-ujian-rekap'
+  | 'ebtadin-kelulusan'
+  | 'ebtadin-kelulusan-rekap'
   | 'ebtadin-serah-ijazah'
   | 'ebtadin-rekap'
   | 'pengaturan';
@@ -312,6 +316,38 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     supportsDeleteOverride: false,
   },
   {
+    id: 'ebtadin-ujian',
+    label: 'Rekap Ujian',
+    group: 'EBTADIN',
+    routes: ['/ebtadin/ujian'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: false,
+  },
+  {
+    id: 'ebtadin-ujian-rekap',
+    label: 'Rekap & Arsip Ujian Angkatan',
+    group: 'EBTADIN',
+    routes: ['/ebtadin/ujian/rekap-angkatan'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: false,
+  },
+  {
+    id: 'ebtadin-kelulusan',
+    label: 'Rekap Lulus',
+    group: 'EBTADIN',
+    routes: ['/ebtadin/kelulusan'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: false,
+  },
+  {
+    id: 'ebtadin-kelulusan-rekap',
+    label: 'Rekap & Arsip Lulus Angkatan',
+    group: 'EBTADIN',
+    routes: ['/ebtadin/kelulusan/rekap-angkatan'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: false,
+  },
+  {
     id: 'ebtadin-serah-ijazah',
     label: 'Serah Ijazah',
     group: 'EBTADIN',
@@ -321,7 +357,7 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
   },
   {
     id: 'ebtadin-rekap',
-    label: 'Rekap & Arsip Angkatan',
+    label: 'Rekap & Arsip Ijazah Angkatan',
     group: 'EBTADIN',
     routes: ['/ebtadin/rekap-angkatan'],
     supportsEditOverride: true,

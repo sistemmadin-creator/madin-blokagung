@@ -105,6 +105,9 @@ export default function SidebarDesktop() {
     'Setor Mustahiq': true,
     'Rekap Absensi': true,
     'Pengaturan': true,
+    'Tentang Ujian': true,
+    'Tentang Lulus': true,
+    'Tentang Ijazah': true,
   });
 
   useEffect(() => {

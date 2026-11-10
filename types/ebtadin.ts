@@ -91,3 +91,49 @@ export interface EbtadinSerahIjazah {
   alasan_penahanan?: string | null;
   catatan?: string | null;
 }
+
+export interface EbtadinAlasanOption {
+  id: string;
+  kategori: 'UJIAN' | 'LULUS';
+  kode: string;
+  label: string;
+  urutan: number;
+  is_active: boolean;
+}
+
+export interface EbtadinPesertaUjian {
+  id: string;
+  tahun_ebtadin_id: string;
+  ebtadin_santri_id: string;
+  ebtadin_formasi_id: string;
+  no_induk: string;
+  nama_santri: string;
+  tingkat: string;
+  din_kls: string;
+  din_bag: string;
+  is_ikut_ujian: boolean;
+  alasan_kode?: string | null;
+  alasan_teks?: string | null;
+  catatan?: string | null;
+  tanggal_verifikasi?: string | null;
+  dicatat_oleh?: string | null;
+}
+
+export interface EbtadinKelulusan {
+  id: string;
+  tahun_ebtadin_id: string;
+  ebtadin_santri_id: string;
+  ebtadin_formasi_id: string;
+  no_induk: string;
+  nama_santri: string;
+  tingkat: string;
+  din_kls: string;
+  din_bag: string;
+  is_lulus: boolean;
+  alasan_kode?: string | null;
+  alasan_teks?: string | null;
+  predikat?: 'MUMTAZ' | 'JAYYID JIDDAN' | 'JAYYID' | 'MAQBUL' | 'RASP' | string | null;
+  catatan?: string | null;
+  tanggal_penetapan?: string | null;
+  ditetapkan_oleh?: string | null;
+}
