@@ -27,6 +27,20 @@ function LoginFormContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRestoringDeviceSession, setIsRestoringDeviceSession] = useState(false);
+  const [publicPortalUrl, setPublicPortalUrl] = useState('/');
+
+  // Deteksi URL portal publik agar tombol kembali mengarah ke domain utama
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname.toLowerCase();
+      if (host.includes('localhost') || host === '127.0.0.1') {
+        const port = window.location.port ? `:${window.location.port}` : '';
+        setPublicPortalUrl(`http://localhost${port}/`);
+      } else {
+        setPublicPortalUrl('https://www.madinblokagung.com/');
+      }
+    }
+  }, []);
 
   // Jika perangkat ini memiliki sesi Otoritas Spesial (Perangkat Tetap Absen Cepat) yang aktif,
   // pulihkan sesi secara otomatis tanpa perlu mengetik username & kata sandi lagi.
@@ -276,13 +290,13 @@ function LoginFormContent() {
       </form>
 
       <div className="mt-6 pt-5 border-t border-slate-200 flex items-center justify-between gap-2">
-        <Link
-          href="/"
+        <a
+          href={publicPortalUrl}
           className="inline-flex items-center gap-2 min-h-[44px] px-2 rounded-lg text-xs font-semibold text-slate-700 hover:text-[#0b5751] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0f766e] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           <span>Kembali ke Beranda Publik</span>
-        </Link>
+        </a>
         <span className="text-[11px] text-slate-600 font-medium">
           PP. Darussalam Blokagung
         </span>

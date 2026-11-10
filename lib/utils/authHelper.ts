@@ -59,7 +59,7 @@ export function extractUserProfile(user: User | null): ActiveUserProfile | null 
 
 // Restrict post-login redirects to internal paths to prevent open-redirect attacks.
 export function sanitizeNextPath(nextParam: string | null | undefined): string {
-  if (!nextParam) return '/beranda';
+  if (!nextParam) return '/dashboard';
   const trimmed = nextParam.trim();
   if (
     !trimmed.startsWith('/') ||
@@ -67,7 +67,7 @@ export function sanitizeNextPath(nextParam: string | null | undefined): string {
     trimmed.startsWith('/\\') ||
     trimmed.startsWith('/login')
   ) {
-    return '/beranda';
+    return '/dashboard';
   }
   return trimmed;
 }
