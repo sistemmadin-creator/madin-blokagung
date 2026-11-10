@@ -31,6 +31,7 @@ export type AppPageId =
   | 'kelola-berita'
   | 'ebtadin'
   | 'ebtadin-serah-ijazah'
+  | 'ebtadin-rekap'
   | 'pengaturan';
 
 export type GenderScope = 'semua' | 'putra' | 'putri';
@@ -315,6 +316,14 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     label: 'Serah Ijazah',
     group: 'EBTADIN',
     routes: ['/ebtadin/serah-ijazah'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: false,
+  },
+  {
+    id: 'ebtadin-rekap',
+    label: 'Rekap & Arsip Angkatan',
+    group: 'EBTADIN',
+    routes: ['/ebtadin/rekap-angkatan'],
     supportsEditOverride: true,
     supportsDeleteOverride: false,
   },

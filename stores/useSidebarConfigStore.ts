@@ -82,6 +82,12 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
         href: '/ebtadin/serah-ijazah',
         iconName: 'Award',
       },
+      {
+        id: 'item-ebtadin-rekap',
+        title: 'Rekap & Arsip Angkatan',
+        href: '/ebtadin/rekap-angkatan',
+        iconName: 'BarChart2',
+      },
     ],
   },
   {

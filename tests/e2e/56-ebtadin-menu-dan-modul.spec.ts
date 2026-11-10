@@ -14,7 +14,7 @@ async function gotoWithAuth(page: Page, targetPath: string) {
 test.describe('E2E: Pengujian Grup Menu EBTADIN dan Seluruh Sub-Modulnya', () => {
   test.setTimeout(90000);
 
-  test('1. Sidebar menampilkan Grup Menu EBTADIN dan menu Pusat Kendali & Serah Ijazah', async ({
+  test('1. Sidebar menampilkan Grup Menu EBTADIN dan menu Pusat Kendali, Serah Ijazah, & Rekap Angkatan', async ({
     page,
   }) => {
     await gotoWithAuth(page, '/ebtadin');
@@ -23,17 +23,24 @@ test.describe('E2E: Pengujian Grup Menu EBTADIN dan Seluruh Sub-Modulnya', () =>
     const sidebar = page.getByRole('complementary');
     await expect(sidebar.getByText('EBTADIN', { exact: true })).toBeVisible({ timeout: 25000 });
 
-    // Menu "Pusat Kendali EBTADIN" dan "Serah Ijazah" harus ada di sidebar
+    // Menu "Pusat Kendali EBTADIN", "Serah Ijazah", dan "Rekap & Arsip Angkatan" harus ada di sidebar
     const linkPusatKendali = sidebar.getByRole('link', { name: 'Pusat Kendali EBTADIN', exact: true });
     const linkSerahIjazah = sidebar.getByRole('link', { name: 'Serah Ijazah', exact: true });
+    const linkRekapAngkatan = sidebar.getByRole('link', { name: 'Rekap & Arsip Angkatan', exact: true });
 
     await expect(linkPusatKendali).toBeVisible();
     await expect(linkSerahIjazah).toBeVisible();
+    await expect(linkRekapAngkatan).toBeVisible();
 
     // Klik menu Serah Ijazah dari sidebar
     await linkSerahIjazah.click();
     await page.waitForURL('**/ebtadin/serah-ijazah**', { timeout: 30000 });
     await expect(page.getByRole('heading', { name: /Serah Ijazah Santri/i })).toBeVisible();
+
+    // Klik menu Rekap & Arsip Angkatan dari sidebar
+    await linkRekapAngkatan.click();
+    await page.waitForURL('**/ebtadin/rekap-angkatan**', { timeout: 30000 });
+    await expect(page.getByRole('heading', { name: /Rekap & Arsip Angkatan EBTADIN/i })).toBeVisible();
 
     // Kembali ke Pusat Kendali via sidebar
     await linkPusatKendali.click();
@@ -98,7 +105,7 @@ test.describe('E2E: Pengujian Grup Menu EBTADIN dan Seluruh Sub-Modulnya', () =>
     await expect(page.getByText(/Serah Ijazah Santri/i)).toBeVisible();
   });
 
-  test('3. Modul Serah Ijazah (/ebtadin/serah-ijazah): Ringkasan Metrik, Filter, & Interaksi Tanda Terima', async ({
+  test('3. Modul Serah Ijazah (/ebtadin/serah-ijazah): Multi-Angkatan, Tanggal Penyerahan, & Modal Edit', async ({
     page,
   }) => {
     await gotoWithAuth(page, '/ebtadin/serah-ijazah');
@@ -107,6 +114,10 @@ test.describe('E2E: Pengujian Grup Menu EBTADIN dan Seluruh Sub-Modulnya', () =>
     await expect(
       page.getByRole('heading', { name: /Serah Ijazah Santri/i })
     ).toBeVisible({ timeout: 25000 });
+
+    // Dropdown Multi-Angkatan di header
+    const selectAngkatan = page.locator('select').first();
+    await expect(selectAngkatan).toBeVisible();
 
     // Tombol toolbar atas
     await expect(page.getByRole('button', { name: /Segarkan/i })).toBeVisible();
@@ -126,15 +137,19 @@ test.describe('E2E: Pengujian Grup Menu EBTADIN dan Seluruh Sub-Modulnya', () =>
     const firstRombelBadge = page.locator('span', { hasText: /ULA|WUSTHO|ULYA/i }).first();
     await expect(firstRombelBadge).toBeVisible({ timeout: 20000 });
 
-    // Test interaksi toggle status terima pada santri pertama jika ada
-    const btnToggle = page.locator('table button').first();
-    if (await btnToggle.isVisible()) {
-      await btnToggle.click();
-      // Tunggu aksi toggle
-      await page.waitForTimeout(500);
-      // Balikkan kembali ke kondisi semula
-      await btnToggle.click();
-    }
+    // Verifikasi fitur pemilihan tanggal serentak per rombel (Modal Batch Date)
+    const btnPilihTgl = page.getByRole('button', { name: /Pilih Tgl/i }).first();
+    await expect(btnPilihTgl).toBeVisible();
+    await btnPilihTgl.click();
+
+    // Verifikasi Modal Batch Tanggal terbuka
+    const modalBatch = page.locator('div.fixed.inset-0', { hasText: /Serah Ijazah Massal/i });
+    await expect(modalBatch).toBeVisible();
+    await expect(modalBatch.locator('input[type="date"]')).toBeVisible();
+
+    // Tutup modal batch dengan tombol Batal
+    await modalBatch.getByRole('button', { name: 'Batal', exact: true }).click();
+    await expect(modalBatch).not.toBeVisible();
   });
 
   test('4. Modul Data Santri EBTADIN (/ebtadin/santri): Tabel Calon Penerima Ijazah, Pencarian, & Filter', async ({
@@ -217,5 +232,66 @@ test.describe('E2E: Pengujian Grup Menu EBTADIN dan Seluruh Sub-Modulnya', () =>
     // Verifikasi tabel formasi putri
     const firstRowPi = page.locator('tbody tr').first();
     await expect(firstRowPi).toBeVisible({ timeout: 20000 });
+  });
+
+  test('7. Modul Rekap & Arsip Angkatan (/ebtadin/rekap-angkatan): Matriks Angkatan, Audit Mengendap, & Notifikasi WhatsApp', async ({
+    page,
+  }) => {
+    await gotoWithAuth(page, '/ebtadin/rekap-angkatan');
+
+    // 1. Verifikasi Heading & 4 Kartu Metrik
+    await expect(
+      page.getByRole('heading', { name: /Rekap & Arsip Angkatan EBTADIN/i })
+    ).toBeVisible({ timeout: 25000 });
+
+    await expect(page.getByText('Total Angkatan', { exact: true })).toBeVisible();
+    await expect(page.getByText('Total Peserta Terdaftar', { exact: true })).toBeVisible();
+    await expect(page.getByText('Ijazah Diserahkan', { exact: true })).toBeVisible();
+    await expect(page.getByText('Ijazah Mengendap', { exact: true })).toBeVisible();
+
+    // 2. Verifikasi 3 Tab Utama
+    const tabMatriks = page.getByRole('button', { name: /Matriks Lintas Angkatan/i });
+    const tabAudit = page.getByRole('button', { name: /Audit Ijazah Mengendap/i });
+    const tabCari = page.getByRole('button', { name: /Pencarian Global Alumni/i });
+
+    await expect(tabMatriks).toBeVisible();
+    await expect(tabAudit).toBeVisible();
+    await expect(tabCari).toBeVisible();
+
+    // 3. Tab 1: Matriks Lintas Angkatan - Verifikasi Tabel
+    await expect(page.getByText(/Matriks Progres Serah Ijazah Per Angkatan/i)).toBeVisible();
+    const tableMatriksRow = page.locator('table tbody tr').first();
+    await expect(tableMatriksRow).toBeVisible({ timeout: 20000 });
+
+    // 4. Tab 2: Audit Ijazah Mengendap - Filter & Notifikasi WhatsApp
+    await tabAudit.click();
+    await expect(page.getByText(/Daftar Ijazah Belum Diambil/i)).toBeVisible();
+
+    // Tombol Kirim WA pada baris pertama audit
+    const btnKirimWa = page.locator('tbody tr').first().getByRole('button', { name: /Kirim WA/i });
+    if (await btnKirimWa.isVisible()) {
+      await btnKirimWa.click();
+
+      // Verifikasi Modal Kirim Pengingat WhatsApp
+      const modalWa = page.locator('div.fixed.inset-0', { hasText: /Kirim Pengingat Pengambilan Ijazah/i });
+      await expect(modalWa).toBeVisible();
+      await expect(modalWa.getByPlaceholder(/08123456789/i)).toBeVisible();
+      await expect(modalWa.getByRole('button', { name: /Buka di WhatsApp/i })).toBeVisible();
+
+      // Tutup modal dengan tombol Batal
+      await modalWa.getByRole('button', { name: 'Batal', exact: true }).click();
+      await expect(modalWa).not.toBeVisible();
+    }
+
+    // 5. Tab 3: Pencarian Global Alumni
+    await tabCari.click();
+    await expect(page.getByText(/Pencarian Arsip Ijazah & Alumni Lintas Angkatan/i)).toBeVisible();
+
+    const inputGlobalSearch = page.getByPlaceholder(/Jordi Onsu/i);
+    await expect(inputGlobalSearch).toBeVisible();
+    await inputGlobalSearch.fill('Jordi');
+
+    // Verifikasi hasil pencarian muncul
+    await expect(page.locator('span', { hasText: /Ditemukan .* riwayat alumni/i })).toBeVisible({ timeout: 10000 });
   });
 });

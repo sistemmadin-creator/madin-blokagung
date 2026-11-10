@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { supabase } from '@/lib/supabase/client';
 import { EbtadinSerahIjazah } from '@/types/ebtadin';
 interface SerahIjazahState {
@@ -10,7 +10,23 @@ interface SerahIjazahState {
   searchKeyword: string;
   fetchRecords: (tahunId: string) => Promise<void>;
   toggleMenerima: (id: string, currentStatus: boolean, username?: string) => Promise<void>;
+  updateDetailSerah: (
+    id: string,
+    updates: {
+      is_menerima: boolean;
+      tanggal_serah: string | null;
+      penerima_nama?: string | null;
+      diserahkan_oleh?: string | null;
+      catatan?: string | null;
+    }
+  ) => Promise<void>;
   batchSetKelasMenerima: (formasiId: string, isMenerima: boolean, username?: string) => Promise<void>;
+  batchSetKelasMenerimaWithDate: (
+    formasiId: string,
+    isMenerima: boolean,
+    tanggal: string | null,
+    username?: string
+  ) => Promise<void>;
   setFilterTingkat: (t: string) => void;
   setFilterKelas: (k: string) => void;
   setFilterStatus: (s: 'SEMUA' | 'SUDAH' | 'BELUM') => void;
@@ -47,7 +63,7 @@ export const useSerahIjazahStore = create<SerahIjazahState>((set, get) => ({
     const now = newStatus ? new Date().toISOString() : null;
     set((state) => ({
       records: state.records.map((r) =>
-        r.id === id ? { ...r, is_menerima: newStatus, tanggal_serah: now } : r
+        r.id === id ? { ...r, is_menerima: newStatus, tanggal_serah: now, diserahkan_oleh: newStatus ? username : null } : r
       ),
     }));
     try {
@@ -57,6 +73,37 @@ export const useSerahIjazahStore = create<SerahIjazahState>((set, get) => ({
           is_menerima: newStatus,
           tanggal_serah: now,
           diserahkan_oleh: newStatus ? username : null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+    } catch (err) {
+      console.error(err);
+    }
+  },
+  updateDetailSerah: async (id, updates) => {
+    set((state) => ({
+      records: state.records.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              is_menerima: updates.is_menerima,
+              tanggal_serah: updates.tanggal_serah,
+              penerima_nama: updates.penerima_nama ?? r.penerima_nama,
+              diserahkan_oleh: updates.diserahkan_oleh ?? r.diserahkan_oleh,
+              catatan: updates.catatan ?? r.catatan,
+            }
+          : r
+      ),
+    }));
+    try {
+      await supabase
+        .from('ebtadin_serah_ijazah')
+        .update({
+          is_menerima: updates.is_menerima,
+          tanggal_serah: updates.tanggal_serah,
+          penerima_nama: updates.penerima_nama,
+          diserahkan_oleh: updates.diserahkan_oleh,
+          catatan: updates.catatan,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id);
@@ -79,7 +126,30 @@ export const useSerahIjazahStore = create<SerahIjazahState>((set, get) => ({
       set((state) => ({
         records: state.records.map((r) =>
           r.ebtadin_formasi_id === formasiId
-            ? { ...r, is_menerima: isMenerima, tanggal_serah: now }
+            ? { ...r, is_menerima: isMenerima, tanggal_serah: now, diserahkan_oleh: isMenerima ? username : null }
+            : r
+        ),
+      }));
+    } catch (err) {
+      console.error(err);
+    }
+  },
+  batchSetKelasMenerimaWithDate: async (formasiId, isMenerima, tanggal, username = 'Petugas') => {
+    const tgl = isMenerima ? (tanggal || new Date().toISOString()) : null;
+    try {
+      await supabase
+        .from('ebtadin_serah_ijazah')
+        .update({
+          is_menerima: isMenerima,
+          tanggal_serah: tgl,
+          diserahkan_oleh: isMenerima ? username : null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('ebtadin_formasi_id', formasiId);
+      set((state) => ({
+        records: state.records.map((r) =>
+          r.ebtadin_formasi_id === formasiId
+            ? { ...r, is_menerima: isMenerima, tanggal_serah: tgl, diserahkan_oleh: isMenerima ? username : null }
             : r
         ),
       }));

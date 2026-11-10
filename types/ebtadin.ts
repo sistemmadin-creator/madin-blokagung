@@ -87,4 +87,7 @@ export interface EbtadinSerahIjazah {
   tanggal_serah?: string | null;
   diserahkan_oleh?: string | null;
   penerima_nama?: string | null;
+  status_penahanan?: 'NONE' | 'TAHAN_KITAB' | 'TAHAN_ADMINISTRASI' | 'TAHAN_HAFALAN' | string | null;
+  alasan_penahanan?: string | null;
+  catatan?: string | null;
 }
