@@ -10,8 +10,14 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
     group: 'Beranda',
     items: [
       {
+        id: 'item-beranda',
+        title: 'Beranda',
+        href: '/beranda',
+        iconName: 'Home',
+      },
+      {
         id: 'item-dashboard',
-        title: 'Dashboard',
+        title: 'Dashboard Statistik',
         href: '/dashboard',
         iconName: 'LayoutDashboard',
         badge: 'Live',
@@ -307,6 +313,9 @@ function mergeMissingDefaultItems(loadedGroups: ConfigMenuGroup[]): ConfigMenuGr
     // Ensure item-absen-konsorsium is not hidden accidentally and sync missing default children (e.g., Setor Mustahiq submenus)
     const finalItems = updatedItems.map((item) => {
       let nextItem = item;
+      if (nextItem.id === 'item-dashboard' && nextItem.title === 'Dashboard') {
+        nextItem = { ...nextItem, title: 'Dashboard Statistik' };
+      }
       if (nextItem.id === 'item-absen-konsorsium' && nextItem.hidden) {
         nextItem = { ...nextItem, hidden: false };
       }

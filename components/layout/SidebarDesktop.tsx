@@ -31,6 +31,7 @@ import {
   Package,
   Wrench,
   CheckSquare,
+  Home,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { useSidebarConfigStore, DEFAULT_SIDEBAR_GROUPS } from '@/stores/useSidebarConfigStore';
@@ -40,6 +41,7 @@ import { canViewPage, resolvePageIdFromPathname } from '@/lib/utils/rbacHelper';
 
 // Registry of Lucide icons for dynamic rendering
 const ICON_REGISTRY: Record<string, React.ReactNode> = {
+  Home: <Home className="w-5 h-5 flex-shrink-0" />,
   LayoutDashboard: <LayoutDashboard className="w-5 h-5 flex-shrink-0" />,
   Users: <Users className="w-5 h-5 flex-shrink-0" />,
   UserCheck: <UserCheck className="w-5 h-5 flex-shrink-0" />,

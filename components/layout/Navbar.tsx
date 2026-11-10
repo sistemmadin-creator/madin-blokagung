@@ -128,19 +128,21 @@ export default function Navbar() {
           </button>
 
           <div className="flex items-center gap-2.5">
-            <div className="w-[38px] h-[38px] rounded-full bg-white shadow-xs border border-slate-200 flex items-center justify-center p-1">
-              <img
-                src="/logo-madin.png"
-                alt="Logo Madin Blokagung"
-                className="w-7 h-7 object-contain"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://drive.google.com/thumbnail?id=1Fkm2_aiu-me47Fm1weDrpHMCHZBThzrD&sz=w200';
-                }}
-              />
-            </div>
-            <span className="font-bold text-slate-800 text-base md:text-lg tracking-tight select-none">
-              Madin Blokagung
-            </span>
+            <Link href="/beranda" className="flex items-center gap-2.5 hover:opacity-90 transition group">
+              <div className="w-[38px] h-[38px] rounded-full bg-white shadow-xs border border-slate-200 flex items-center justify-center p-1 group-hover:border-[#0f766e] transition">
+                <img
+                  src="/logo-madin.png"
+                  alt="Logo Madin Blokagung"
+                  className="w-7 h-7 object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://drive.google.com/thumbnail?id=1Fkm2_aiu-me47Fm1weDrpHMCHZBThzrD&sz=w200';
+                  }}
+                />
+              </div>
+              <span className="font-bold text-slate-800 text-base md:text-lg tracking-tight select-none group-hover:text-[#0b5751] transition">
+                Madin Blokagung
+              </span>
+            </Link>
             {!isAppSecurityEnabled && (
               <Link
                 href="/pengaturan?tab=akun"

@@ -144,6 +144,7 @@ export function normalizeUserAccountRecord(
 
 export function resolvePageIdFromPathname(pathname: string): AppPageId | null {
   const clean = (pathname || '').split('?')[0].replace(/\/+$/, '') || '/';
+  if (clean === '/beranda') return 'beranda';
   if (clean === '/dashboard') return 'dashboard';
   if (clean.startsWith('/santri')) return 'santri';
   if (clean.startsWith('/asatidz')) return 'asatidz';

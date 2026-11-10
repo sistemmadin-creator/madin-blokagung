@@ -1,6 +1,7 @@
 export type PageAccessMode = 'edit' | 'baca' | 'sembunyikan';
 
 export type AppPageId =
+  | 'beranda'
   | 'dashboard'
   | 'santri'
   | 'asatidz'
@@ -83,6 +84,14 @@ export interface PageCatalogItem {
 }
 
 export const APP_PAGE_CATALOG: PageCatalogItem[] = [
+  {
+    id: 'beranda',
+    label: 'Beranda Navigasi',
+    group: 'Beranda',
+    routes: ['/beranda'],
+    supportsEditOverride: false,
+    supportsDeleteOverride: false,
+  },
   {
     id: 'dashboard',
     label: 'Dashboard Utama',
