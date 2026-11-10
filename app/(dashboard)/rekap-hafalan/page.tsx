@@ -607,19 +607,33 @@ export default function RekapHafalanPage() {
                         {idx + 1}
                       </td>
 
-                      {/* KELAS */}
+                      {/* KELAS (DAPAT DIKLIK UNTUK MEMUNCULKAN POPUP RINCIAN REKAP HAFALAN KELAS) */}
                       <td className="text-center font-bold text-slate-900 font-mono py-3">
-                        <span className="px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-800">
-                          {r.kelasLabel}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedClassModal(r)}
+                          className="px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-800 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 transition-all font-mono font-bold cursor-pointer inline-flex items-center gap-1 shadow-2xs group/btn-kls"
+                          title={`Klik untuk melihat Rincian Rekap Hafalan Kelas ${r.kelasLabel} (${r.pa_pi})`}
+                        >
+                          <span>{r.kelasLabel}</span>
+                        </button>
                       </td>
 
-                      {/* NAMA MUSTAHIQ/QOH */}
+                      {/* NAMA MUSTAHIQ/QOH (DAPAT DIKLIK UNTUK MEMUNCULKAN POPUP RINCIAN REKAP HAFALAN KELAS) */}
                       <td className="py-3">
-                        <span className="font-bold text-slate-800">{r.waliKelas}</span>
-                        <span className="block text-[11px] text-slate-400 font-normal">
-                          {r.totalSantri} Santri
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedClassModal(r)}
+                          className="text-left group/mustahiq cursor-pointer block hover:opacity-95 transition-all"
+                          title={`Klik untuk melihat Rincian Rekap Hafalan Kelas ${r.kelasLabel} (${r.pa_pi})`}
+                        >
+                          <span className="font-bold text-slate-800 group-hover/mustahiq:text-emerald-800 transition-colors block">
+                            {r.waliKelas}
+                          </span>
+                          <span className="block text-[11px] text-slate-400 font-normal group-hover/mustahiq:text-emerald-600 transition-colors">
+                            {r.totalSantri} Santri
+                          </span>
+                        </button>
                       </td>
 
                       {/* PA/PI */}
@@ -721,10 +735,12 @@ export default function RekapHafalanPage() {
                   <Layers className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold">Rincian Persentase Gabungan Hafalan</h3>
+                  <h3 className="text-base font-bold">
+                    Rincian Rekap Hafalan Kelas {selectedClassModal.kelasLabel} ({selectedClassModal.pa_pi})
+                  </h3>
                   <p className="text-xs text-slate-300">
-                    Kelas: <strong>{selectedClassModal.kelasLabel}</strong> ({selectedClassModal.pa_pi}) • Mustahiq:{' '}
-                    <strong>{selectedClassModal.waliKelas}</strong>
+                    Mustahiq: <strong>{selectedClassModal.waliKelas}</strong> • Total:{' '}
+                    <strong>{selectedClassModal.totalSantri} Santri</strong>
                   </p>
                 </div>
               </div>

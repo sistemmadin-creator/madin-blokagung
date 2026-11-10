@@ -26,7 +26,8 @@ test.describe('E2E: Pengujian Komprehensif Halaman BERANDA & Alur Navigasi Terpa
       page.getByRole('heading', { name: /Ahlan Wa Sahlan/i })
     ).toBeVisible({ timeout: 20000 });
 
-    await expect(page.getByText(/Portal Terpadu Pengurus MADINA/i)).toBeVisible();
+    // Lencana bintang "Portal Terpadu Pengurus MADINA" telah dihapus sesuai instruksi
+    await expect(page.getByText(/Portal Terpadu Pengurus MADINA/i)).not.toBeVisible();
     await expect(page.getByText(/Tahun Ajaran:/i)).toBeVisible();
   });
 
@@ -36,11 +37,11 @@ test.describe('E2E: Pengujian Komprehensif Halaman BERANDA & Alur Navigasi Terpa
     await performLogin(page);
     await page.waitForURL('**/beranda**', { timeout: 30000 });
 
-    // 1. Verifikasi 6 Baris Pintasan Akses Cepat
+    // 1. Verifikasi 6 Baris Pintasan Akses Cepat (Diperbarui: Hari KBM, Rekap Hafalan, Rekap Status Absensi)
     await expect(page.getByText('Akses Cepat Harian', { exact: true })).toBeVisible();
-    await expect(page.getByText('Absen Cepat', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Setoran Santri', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Pusat Kendali EBTADIN', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Hari KBM', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Rekapitulasi Hafalan Pertingkatan', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Rekap Status Absensi Asatidz', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('Jadwal KBM', { exact: true }).first()).toBeVisible();
 
     // 2. Verifikasi Keberadaan Seluruh Grup Menu Utama (Level 1)
@@ -156,5 +157,39 @@ test.describe('E2E: Pengujian Komprehensif Halaman BERANDA & Alur Navigasi Terpa
     // Menu Dashboard Statistik juga tetap ada di bawahnya
     const linkSidebarDashboard = sidebar.getByRole('link', { name: /Dashboard/i });
     await expect(linkSidebarDashboard).toBeVisible();
+  });
+
+  test('6. Fitur Omni-Search Cerdas: Pencarian Universal Santri, Asatidz, Kelas & Modal Detail Pop-up', async ({
+    page,
+  }) => {
+    await performLogin(page);
+    await page.waitForURL('**/beranda**', { timeout: 30000 });
+
+    const searchInput = page.getByPlaceholder(/Cari modul, grup, atau sub-menu/i);
+    await expect(searchInput).toBeVisible();
+
+    // 1. Ketik nama kelas atau santri, contoh: "ULA"
+    await searchInput.fill('ULA');
+
+    // Verifikasi container Omni-Search muncul
+    await expect(page.getByText('Hasil Pencarian Cerdas Universal', { exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Entitas Ditemukan/i)).toBeVisible();
+
+    // Verifikasi 3 kategori (Santri, Asatidz, Kelas / Rombel)
+    await expect(page.getByText(/Kelas \/ Rombel/i)).toBeVisible();
+
+    // 2. Klik salah satu tombol "Detail" pada hasil kelas atau santri
+    const btnDetail = page.locator('button', { hasText: 'Detail' }).first();
+    await expect(btnDetail).toBeVisible();
+    await btnDetail.click();
+
+    // Verifikasi modal detail pop-up terbuka
+    const modalDetail = page.locator('div.fixed.inset-0.z-50');
+    await expect(modalDetail).toBeVisible();
+
+    // Verifikasi tombol tutup modal berfungsi
+    const btnCloseModal = modalDetail.locator('button').first();
+    await btnCloseModal.click();
+    await expect(modalDetail).not.toBeVisible();
   });
 });

@@ -38,12 +38,23 @@ import {
   ArrowRight,
   X,
   Clock,
+  User,
+  Phone,
+  MessageCircle,
+  Hash,
+  School,
+  FileCheck,
 } from 'lucide-react';
 import { useSidebarConfigStore, DEFAULT_SIDEBAR_GROUPS } from '@/stores/useSidebarConfigStore';
 import { ConfigMenuGroup, ConfigMenuItem, ConfigSubMenuItem } from '@/types/sidebar-config';
 import { useRbacStore } from '@/stores/useRbacStore';
 import { canViewPage, resolvePageIdFromPathname } from '@/lib/utils/rbacHelper';
 import { useKalenderStore } from '@/stores/useKalenderStore';
+import { useSantriStore } from '@/stores/useSantriStore';
+import { useAsatidzStore } from '@/stores/useAsatidzStore';
+import { useFormasiStore } from '@/stores/useFormasiStore';
+import { Santri } from '@/types/santri';
+import { Asatidz } from '@/types/asatidz';
 
 // Registry of Lucide icons for rich visual rendering
 const GROUP_ICON_REGISTRY: Record<string, React.ReactNode> = {
@@ -104,6 +115,31 @@ export default function BerandaPage() {
   const currentAccount = useRbacStore((s) => s.currentAccount);
   const isAppSecurityEnabled = useRbacStore((s) => s.isAppSecurityEnabled);
   const activeTahunAjaran = useKalenderStore((s) => s.activeTahunAjaran);
+
+  // Data stores untuk Fitur Pencarian Cerdas Universal (Omni-Search)
+  const { santriList, fetchSantri } = useSantriStore();
+  const { asatidzList, fetchAsatidz } = useAsatidzStore();
+  const { formasiList, fetchFormasi } = useFormasiStore();
+
+  useEffect(() => {
+    fetchSantri();
+    fetchAsatidz();
+    fetchFormasi();
+  }, [fetchSantri, fetchAsatidz, fetchFormasi]);
+
+  // Modal State untuk Pop-up Detail Omni-Search
+  const [selectedSantriModal, setSelectedSantriModal] = useState<Santri | null>(null);
+  const [selectedAsatidzModal, setSelectedAsatidzModal] = useState<Asatidz | null>(null);
+  const [selectedKelasModal, setSelectedKelasModal] = useState<{
+    label: string;
+    tingkat: string;
+    din_kls: string;
+    din_bag: string;
+    pa_pi: string;
+    mustahiq: string;
+    totalSantri: number;
+    santriDiKelas: Santri[];
+  } | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('ALL');
@@ -287,27 +323,158 @@ export default function BerandaPage() {
     }
   }, [searchQuery, filteredGroups]);
 
-  // Pintasan Cepat Populer (Quick Access)
+  // Data Kelas Universal untuk Navigasi Cepat & Omni-Search
+  const daftarKelasUniversal = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        label: string;
+        tingkat: string;
+        din_kls: string;
+        din_bag: string;
+        pa_pi: string;
+        mustahiq: string;
+        totalSantri: number;
+        santriDiKelas: Santri[];
+      }
+    >();
+
+    // 1. Dari formasiList
+    (formasiList || []).forEach((f) => {
+      const kls = String(f.din_kls || '1').trim();
+      const bag = String(f.din_bag || 'A').trim().toUpperCase();
+      const tk = String(f.tingkat || 'ULA').trim().toUpperCase();
+      const papi = String(f.pa_pi || 'PA').trim().toUpperCase();
+      const key = `${kls}_${bag}_${tk}_${papi}`;
+      const label = `${kls} ${bag} ${tk}`;
+
+      const santriDiKelas = (santriList || []).filter((s) => {
+        const sKls = String(s.din_kls || '').trim();
+        const sBag = String(s.din_bag || '').trim().toUpperCase();
+        const sTk = String(s.tingkat || '').trim().toUpperCase();
+        const sPapi = String(s.pa_pi || 'PA').trim().toUpperCase();
+        return sKls === kls && sBag === bag && (sTk === tk || sTk.includes(tk)) && sPapi === papi;
+      });
+
+      const matchedMustahiq = (asatidzList || []).find(
+        (a) => a.nia === f.id_mustahiq || String(a.id) === String(f.id_mustahiq)
+      );
+      const mustahiqName =
+        matchedMustahiq?.nama_asatidz ||
+        (f as { wali_kelas_text?: string }).wali_kelas_text ||
+        'Belum Ditentukan';
+
+      map.set(key, {
+        label,
+        tingkat: tk,
+        din_kls: kls,
+        din_bag: bag,
+        pa_pi: papi,
+        mustahiq: mustahiqName,
+        totalSantri: santriDiKelas.length || (f as { jumlah_santri?: number }).jumlah_santri || 0,
+        santriDiKelas,
+      });
+    });
+
+    // 2. Fallback jika formasiList kosong, ekstrak dari santriList
+    if (map.size === 0 && santriList && santriList.length > 0) {
+      santriList.forEach((s) => {
+        const kls = String(s.din_kls || '1').trim();
+        const bag = String(s.din_bag || 'A').trim().toUpperCase();
+        const tk = String(s.tingkat || 'ULA').trim().toUpperCase();
+        const papi = String(s.pa_pi || 'PA').trim().toUpperCase();
+        const key = `${kls}_${bag}_${tk}_${papi}`;
+        const label = `${kls} ${bag} ${tk}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            label,
+            tingkat: tk,
+            din_kls: kls,
+            din_bag: bag,
+            pa_pi: papi,
+            mustahiq: 'Mustahiq Terdata',
+            totalSantri: 0,
+            santriDiKelas: [],
+          });
+        }
+        const item = map.get(key)!;
+        item.totalSantri += 1;
+        item.santriDiKelas.push(s);
+      });
+    }
+
+    return Array.from(map.values());
+  }, [formasiList, santriList, asatidzList]);
+
+  // Hasil Pencarian Cerdas Universal (Omni-Search: Santri, Asatidz, Kelas)
+  const omniSearchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (q.length < 2) {
+      return { santri: [], asatidz: [], kelas: [] };
+    }
+
+    const matchedSantri = (santriList || [])
+      .filter((s) => {
+        const nama = (s.nama || '').toLowerCase();
+        const noInduk = (s.no_induk || '').toLowerCase();
+        const kamar = (s.kamar || '').toLowerCase();
+        const kelas = `${s.din_kls || ''} ${s.din_bag || ''} ${s.tingkat || ''}`.toLowerCase();
+        return nama.includes(q) || noInduk.includes(q) || kamar.includes(q) || kelas.includes(q);
+      })
+      .slice(0, 6);
+
+    const matchedAsatidz = (asatidzList || [])
+      .filter((a) => {
+        const nama = (a.nama_asatidz || '').toLowerCase();
+        const nia = (a.nia || '').toLowerCase();
+        const jabatan = (a.jah_asatidz || '').toLowerCase();
+        return nama.includes(q) || nia.includes(q) || jabatan.includes(q);
+      })
+      .slice(0, 6);
+
+    const matchedKelas = daftarKelasUniversal
+      .filter((c) => {
+        const labelWithPapi = `${c.label} ${c.pa_pi}`.toLowerCase();
+        const label = c.label.toLowerCase();
+        const mustahiq = c.mustahiq.toLowerCase();
+        const tingkat = c.tingkat.toLowerCase();
+        return labelWithPapi.includes(q) || label.includes(q) || mustahiq.includes(q) || tingkat.includes(q);
+      })
+      .slice(0, 6);
+
+    return {
+      santri: matchedSantri,
+      asatidz: matchedAsatidz,
+      kelas: matchedKelas,
+    };
+  }, [searchQuery, santriList, asatidzList, daftarKelasUniversal]);
+
+  const hasOmniResults =
+    omniSearchResults.santri.length > 0 ||
+    omniSearchResults.asatidz.length > 0 ||
+    omniSearchResults.kelas.length > 0;
+
+  // Pintasan Cepat Populer (Quick Access: Hari KBM, Rekap Hafalan, Rekap Status Absensi, Jadwal, Inventaris, Dashboard)
   const quickAccessShortcuts = [
     {
-      title: 'Absen Cepat',
-      desc: 'Presensi asatidz harian',
-      href: '/absen-cepat',
-      icon: <Zap className="w-5 h-5 text-amber-600" />,
+      title: 'Hari KBM',
+      desc: 'Monitoring tugas mengajar & lokasi',
+      href: '/hari-kbm',
+      icon: <Calendar className="w-5 h-5 text-amber-600" />,
       color: 'bg-amber-50 border-amber-200 text-amber-900',
     },
     {
-      title: 'Setoran Santri',
-      desc: 'Input muhafadzoh santri',
-      href: '/setoran',
-      icon: <BookOpen className="w-5 h-5 text-emerald-700" />,
+      title: 'Rekapitulasi Hafalan Pertingkatan',
+      desc: 'Capaian wajib, sunnah & kitab',
+      href: '/rekap-hafalan',
+      icon: <BarChart2 className="w-5 h-5 text-emerald-700" />,
       color: 'bg-emerald-50 border-emerald-200 text-emerald-900',
     },
     {
-      title: 'Pusat Kendali EBTADIN',
-      desc: 'Ujian, yudisium & ijazah',
-      href: '/ebtadin',
-      icon: <GraduationCap className="w-5 h-5 text-[#0f766e]" />,
+      title: 'Rekap Status Absensi Asatidz',
+      desc: 'Persentase hadir per jenjang',
+      href: '/rekap-absensi/status',
+      icon: <ClipboardCheck className="w-5 h-5 text-[#0f766e]" />,
       color: 'bg-teal-50 border-teal-200 text-teal-900',
     },
     {
@@ -339,10 +506,6 @@ export default function BerandaPage() {
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0b5751] via-[#0f766e] to-[#0a4d48] text-white p-6 sm:p-7 shadow-sm border border-emerald-900/30">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="space-y-1.5 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-xs text-xs font-semibold text-emerald-100 border border-white/20">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Portal Terpadu Pengurus MADINA</span>
-            </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-serif text-white">
               Ahlan Wa Sahlan,{' '}
               <span className="text-amber-300">
@@ -507,6 +670,150 @@ export default function BerandaPage() {
             <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold text-[11px] border border-emerald-200">
               {totalItemsCount} Modul &amp; Sub-Menu Ditemukan
             </span>
+          </div>
+        )}
+
+        {/* Fitur Pencarian Cerdas Universal (Omni-Search): Santri, Asatidz, Kelas */}
+        {searchQuery.trim().length >= 2 && hasOmniResults && (
+          <div className="pt-3 border-t border-slate-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  Hasil Pencarian Cerdas Universal
+                </span>
+                <span className="text-[10px] text-slate-400 hidden sm:inline">
+                  (Klik kartu untuk melihat rincian detail)
+                </span>
+              </div>
+              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                {omniSearchResults.santri.length + omniSearchResults.asatidz.length + omniSearchResults.kelas.length} Entitas Ditemukan
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Kolom 1: Santri */}
+              <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/30 p-3 space-y-2">
+                <div className="flex items-center justify-between border-b border-emerald-100 pb-1.5">
+                  <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-emerald-700" />
+                    Santri ({omniSearchResults.santri.length})
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-medium">Pangkalan Santri</span>
+                </div>
+                {omniSearchResults.santri.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 py-3 text-center italic">Tidak ada santri yang cocok</p>
+                ) : (
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-0.5">
+                    {omniSearchResults.santri.map((s) => (
+                      <button
+                        key={s.no_induk}
+                        type="button"
+                        onClick={() => setSelectedSantriModal(s)}
+                        className="w-full text-left p-2 rounded-lg bg-white border border-emerald-100 hover:border-emerald-300 hover:bg-emerald-50/70 transition shadow-2xs group cursor-pointer flex items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-800 group-hover:text-emerald-800 truncate">
+                            {s.nama}
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-mono truncate">
+                            NIS: {s.no_induk} • {s.din_kls} {s.din_bag} {s.tingkat} • Kamar: {s.kamar || '-'}
+                          </p>
+                        </div>
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-100 text-emerald-800 flex-shrink-0">
+                          Detail
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Kolom 2: Asatidz */}
+              <div className="rounded-xl border border-teal-200/80 bg-teal-50/30 p-3 space-y-2">
+                <div className="flex items-center justify-between border-b border-teal-100 pb-1.5">
+                  <span className="text-xs font-bold text-teal-900 flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5 text-teal-700" />
+                    Asatidz ({omniSearchResults.asatidz.length})
+                  </span>
+                  <span className="text-[10px] text-teal-700 font-medium">Dewan Pengajar</span>
+                </div>
+                {omniSearchResults.asatidz.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 py-3 text-center italic">Tidak ada asatidz yang cocok</p>
+                ) : (
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-0.5">
+                    {omniSearchResults.asatidz.map((a) => (
+                      <button
+                        key={a.nia || String(a.id)}
+                        type="button"
+                        onClick={() => setSelectedAsatidzModal(a)}
+                        className="w-full text-left p-2 rounded-lg bg-white border border-teal-100 hover:border-teal-300 hover:bg-teal-50/70 transition shadow-2xs group cursor-pointer flex items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-800 group-hover:text-teal-800 truncate">
+                            {a.nama_asatidz}
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-mono truncate">
+                            NIA: {a.nia || '-'} • {a.jah_asatidz || 'Dewan Pengajar'}
+                          </p>
+                        </div>
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-teal-100 text-teal-800 flex-shrink-0">
+                          Detail
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Kolom 3: Kelas & Rombel */}
+              <div className="rounded-xl border border-blue-200/80 bg-blue-50/30 p-3 space-y-2">
+                <div className="flex items-center justify-between border-b border-blue-100 pb-1.5">
+                  <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                    <School className="w-3.5 h-3.5 text-blue-700" />
+                    Kelas / Rombel ({omniSearchResults.kelas.length})
+                  </span>
+                  <span className="text-[10px] text-blue-700 font-medium">Formasi KBM</span>
+                </div>
+                {omniSearchResults.kelas.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 py-3 text-center italic">Tidak ada kelas yang cocok</p>
+                ) : (
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-0.5">
+                    {omniSearchResults.kelas.map((k) => (
+                      <button
+                        key={`${k.label}_${k.pa_pi}`}
+                        type="button"
+                        onClick={() => setSelectedKelasModal(k)}
+                        className="w-full text-left p-2 rounded-lg bg-white border border-blue-100 hover:border-blue-300 hover:bg-blue-50/70 transition shadow-2xs group cursor-pointer flex items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-slate-800 group-hover:text-blue-800">
+                              {k.label}
+                            </span>
+                            <span
+                              className={`px-1 py-0.2 text-[9px] font-bold rounded ${
+                                k.pa_pi === 'PA'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-rose-100 text-rose-800'
+                              }`}
+                            >
+                              {k.pa_pi}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 truncate">
+                            Mustahiq: {k.mustahiq} • {k.totalSantri} Santri
+                          </p>
+                        </div>
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-blue-100 text-blue-800 flex-shrink-0">
+                          Detail
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -688,6 +995,268 @@ export default function BerandaPage() {
           })
         )}
       </div>
+
+      {/* ================= MODAL DETAIL SANTRI ================= */}
+      {selectedSantriModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-[#0b5751] text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-amber-300">
+                  <GraduationCap className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">Rincian Data Santri</h3>
+                  <p className="text-[11px] text-emerald-200">
+                    No. Induk: {selectedSantriModal.no_induk}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedSantriModal(null)}
+                className="p-1 text-emerald-200 hover:text-white rounded-lg hover:bg-white/10 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto">
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Nama Lengkap Santri</span>
+                <p className="text-base font-bold text-slate-800">{selectedSantriModal.nama}</p>
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                    Kelas: {selectedSantriModal.din_kls} {selectedSantriModal.din_bag} {selectedSantriModal.tingkat}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 text-[11px] font-medium">
+                    Kamar: {selectedSantriModal.kamar || '-'}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 text-[11px] font-medium">
+                    Gender: {selectedSantriModal.pa_pi === 'PA' ? 'Putra (PA)' : 'Putri (PI)'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-lg border border-slate-200 space-y-1">
+                  <span className="text-[10px] text-slate-400 block font-semibold">Nama Ayah / Wali</span>
+                  <p className="font-bold text-slate-700">{selectedSantriModal.nama_ayah || '-'}</p>
+                </div>
+                <div className="p-3 rounded-lg border border-slate-200 space-y-1">
+                  <span className="text-[10px] text-slate-400 block font-semibold">Nama Ibu</span>
+                  <p className="font-bold text-slate-700">{selectedSantriModal.nama_ibu || '-'}</p>
+                </div>
+                <div className="p-3 rounded-lg border border-slate-200 space-y-1 col-span-2">
+                  <span className="text-[10px] text-slate-400 block font-semibold">Kontak Wali / Telepon</span>
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-slate-700 font-mono">{selectedSantriModal.telepon || '-'}</p>
+                    {selectedSantriModal.telepon && (
+                      <a
+                        href={`https://wa.me/${selectedSantriModal.telepon.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 hover:bg-emerald-100"
+                      >
+                        <MessageCircle className="w-3 h-3 text-emerald-600" />
+                        <span>Chat WA</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                <Link
+                  href="/santri"
+                  onClick={() => setSelectedSantriModal(null)}
+                  className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                >
+                  Buka Data Santri
+                </Link>
+                <Link
+                  href="/setoran"
+                  onClick={() => setSelectedSantriModal(null)}
+                  className="px-3.5 py-2 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#0b5751] text-white shadow-2xs transition"
+                >
+                  Lihat Buku Setoran
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL DETAIL ASATIDZ ================= */}
+      {selectedAsatidzModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-[#0f766e] text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-amber-300">
+                  <UserCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">Rincian Data Asatidz</h3>
+                  <p className="text-[11px] text-teal-200">
+                    NIA: {selectedAsatidzModal.nia || '-'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAsatidzModal(null)}
+                className="p-1 text-teal-200 hover:text-white rounded-lg hover:bg-white/10 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto">
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Nama Lengkap Asatidz</span>
+                <p className="text-base font-bold text-slate-800">{selectedAsatidzModal.nama_asatidz}</p>
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 text-[11px] font-bold">
+                    Jabatan: {selectedAsatidzModal.jah_asatidz || 'Dewan Pengajar'}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 text-[11px] font-medium font-mono">
+                    Kode: {selectedAsatidzModal.kode || '-'}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[11px] font-medium">
+                    Gender: {selectedAsatidzModal.pa_pi}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-xs">
+                <div className="p-3 rounded-lg border border-slate-200 space-y-1">
+                  <span className="text-[10px] text-slate-400 block font-semibold">Tugas Lokasi &amp; Kamar</span>
+                  <p className="font-bold text-slate-700">
+                    {selectedAsatidzModal.lokasi_diniyyah || selectedAsatidzModal.lokasi_takror || 'Lokasi Terdaftar'}
+                    {selectedAsatidzModal.kamar ? ` • Kamar ${selectedAsatidzModal.kamar}` : ''}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-lg border border-slate-200 space-y-1">
+                  <span className="text-[10px] text-slate-400 block font-semibold">Alamat Asal</span>
+                  <p className="text-slate-700 font-medium">
+                    {[selectedAsatidzModal.desa, selectedAsatidzModal.kecamatan, selectedAsatidzModal.kabupaten]
+                      .filter(Boolean)
+                      .join(', ') || 'Darussalam Blokagung'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                <Link
+                  href="/asatidz"
+                  onClick={() => setSelectedAsatidzModal(null)}
+                  className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                >
+                  Buka Direktori Asatidz
+                </Link>
+                <Link
+                  href="/hari-kbm"
+                  onClick={() => setSelectedAsatidzModal(null)}
+                  className="px-3.5 py-2 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#0b5751] text-white shadow-2xs transition"
+                >
+                  Lihat Jadwal di Hari KBM
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL DETAIL KELAS / ROMBEL ================= */}
+      {selectedKelasModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-blue-900 text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-blue-200">
+                  <School className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">Rincian Data Kelas &amp; Rombel</h3>
+                  <p className="text-[11px] text-blue-200">
+                    Jenjang: {selectedKelasModal.tingkat} • Gender: {selectedKelasModal.pa_pi}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedKelasModal(null)}
+                className="p-1 text-blue-200 hover:text-white rounded-lg hover:bg-white/10 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto">
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Nama Kelas Rombel</span>
+                  <span
+                    className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                      selectedKelasModal.pa_pi === 'PA'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-rose-100 text-rose-800'
+                    }`}
+                  >
+                    {selectedKelasModal.pa_pi === 'PA' ? 'Putra (PA)' : 'Putri (PI)'}
+                  </span>
+                </div>
+                <p className="text-lg font-black text-slate-800 font-mono">{selectedKelasModal.label}</p>
+                <p className="text-xs text-slate-600">
+                  Mustahiq / Wali Kelas: <strong className="text-slate-800">{selectedKelasModal.mustahiq}</strong>
+                </p>
+                <p className="text-xs text-slate-500">
+                  Total Santri Terdaftar: <strong className="text-emerald-700">{selectedKelasModal.totalSantri} Santri</strong>
+                </p>
+              </div>
+
+              {/* Cuplikan Santri di Kelas Ini */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                  <span>Daftar Santri Kelas ({selectedKelasModal.santriDiKelas.length})</span>
+                  <span className="text-[11px] font-normal text-slate-400">Maks. 5 nama teratas</span>
+                </div>
+                <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-36 overflow-y-auto">
+                  {selectedKelasModal.santriDiKelas.length === 0 ? (
+                    <p className="p-3 text-center text-xs text-slate-400 italic">Belum ada santri terdata di kelas ini</p>
+                  ) : (
+                    selectedKelasModal.santriDiKelas.slice(0, 5).map((s, idx) => (
+                      <div key={s.no_induk} className="p-2 flex items-center justify-between text-xs">
+                        <span className="font-semibold text-slate-800 truncate">{idx + 1}. {s.nama}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">{s.kamar || s.no_induk}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                <Link
+                  href="/jadwal-kbm"
+                  onClick={() => setSelectedKelasModal(null)}
+                  className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                >
+                  Buka Jadwal KBM
+                </Link>
+                <Link
+                  href="/rekap-hafalan"
+                  onClick={() => setSelectedKelasModal(null)}
+                  className="px-3.5 py-2 text-xs font-bold rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white shadow-2xs transition"
+                >
+                  Buka Rekapitulasi Hafalan
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
