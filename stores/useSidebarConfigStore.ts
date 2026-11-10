@@ -67,6 +67,24 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
     ],
   },
   {
+    id: 'grp-ebtadin',
+    group: 'EBTADIN',
+    items: [
+      {
+        id: 'item-ebtadin-hub',
+        title: 'Pusat Kendali EBTADIN',
+        href: '/ebtadin',
+        iconName: 'GraduationCap',
+      },
+      {
+        id: 'item-ebtadin-serah-ijazah',
+        title: 'Serah Ijazah',
+        href: '/ebtadin/serah-ijazah',
+        iconName: 'Award',
+      },
+    ],
+  },
+  {
     id: 'grp-muhafadzoh',
     group: 'PKM. Muhafadzoh',
     items: [
@@ -246,7 +264,7 @@ function mergeMissingDefaultItems(loadedGroups: ConfigMenuGroup[]): ConfigMenuGr
 
     return {
       ...g,
-      hidden: g.id === 'grp-kesiswaan' || g.id === 'grp-sapras' ? false : g.hidden,
+      hidden: g.id === 'grp-kesiswaan' || g.id === 'grp-sapras' || g.id === 'grp-ebtadin' ? false : g.hidden,
       items: finalItems,
     };
   });

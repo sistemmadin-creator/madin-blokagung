@@ -172,6 +172,8 @@ export function resolvePageIdFromPathname(pathname: string): AppPageId | null {
   if (clean.startsWith('/sapras/rekap')) return 'sapras-rekap';
   if (clean.startsWith('/sapras')) return 'sapras-inventaris';
   if (clean.startsWith('/kelola-berita')) return 'kelola-berita';
+  if (clean.startsWith('/ebtadin/serah-ijazah')) return 'ebtadin-serah-ijazah';
+  if (clean.startsWith('/ebtadin')) return 'ebtadin';
   if (clean.startsWith('/pengaturan')) return 'pengaturan';
   return null;
 }

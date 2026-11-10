@@ -29,6 +29,8 @@ export type AppPageId =
   | 'sapras-logistik'
   | 'sapras-rekap'
   | 'kelola-berita'
+  | 'ebtadin'
+  | 'ebtadin-serah-ijazah'
   | 'pengaturan';
 
 export type GenderScope = 'semua' | 'putra' | 'putri';
@@ -299,6 +301,22 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     routes: ['/kelola-berita'],
     supportsEditOverride: true,
     supportsDeleteOverride: true,
+  },
+  {
+    id: 'ebtadin',
+    label: 'Pusat Kendali EBTADIN',
+    group: 'EBTADIN',
+    routes: ['/ebtadin'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: false,
+  },
+  {
+    id: 'ebtadin-serah-ijazah',
+    label: 'Serah Ijazah',
+    group: 'EBTADIN',
+    routes: ['/ebtadin/serah-ijazah'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: false,
   },
   {
     id: 'pengaturan',
