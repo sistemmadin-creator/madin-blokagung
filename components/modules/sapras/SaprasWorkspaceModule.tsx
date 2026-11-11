@@ -492,10 +492,11 @@ export function SaprasWorkspaceModule({
         </div>
       )}
 
-      {/* 1. Header Utama PKM. Sapras */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5 min-w-0 flex-1">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-center shrink-0">
+      {/* 1. Header Utama PKM. Sapras (Tiered Navigation: Full-width Identity + Segmented Tab Subnav) */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col gap-4">
+        {/* Tier 1: Identitas Halaman & Judul Lebar Penuh */}
+        <div className="flex items-start gap-3.5 min-w-0 w-full">
+          <div className="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-center shrink-0 shadow-xs">
             <Package className="w-6 h-6" />
           </div>
           <div className="min-w-0 flex-1">
@@ -509,7 +510,7 @@ export function SaprasWorkspaceModule({
             </div>
             <h1
               data-testid="heading-pkm-sapras"
-              className="mt-1 text-xl sm:text-2xl font-extrabold text-slate-900"
+              className="mt-1 text-xl sm:text-2xl font-extrabold text-slate-900 leading-tight"
             >
               {activeSection === 'inventaris-madin' &&
                 'Inventaris Madin (Universal Asset & Lokasi Kantor)'}
@@ -522,7 +523,7 @@ export function SaprasWorkspaceModule({
               {activeSection === 'rekap' &&
                 'Rekapitulasi & Audit Kesiapan Sapras'}
             </h1>
-            <p className="mt-0.5 text-xs sm:text-sm text-slate-500 max-w-2xl">
+            <p className="mt-1 text-xs sm:text-sm text-slate-500 max-w-3xl leading-relaxed">
               {activeSection === 'inventaris-madin'
                 ? 'Pendataan seluruh aset & inventaris madin universal, pemantauan lokasi tempat (Kantor Pusat, GP, Putri, Blok 4, Blok 11, dst.), dan mutasi aset berbasis barcode.'
                 : 'Pemantauan terpadu kelengkapan Papan Tulis, Meja Guru, perlengkapan ruang KBM, serta tindak lanjut perbaikan di seluruh kelas Ula, Wustho, dan Ulya.'}
@@ -530,48 +531,50 @@ export function SaprasWorkspaceModule({
           </div>
         </div>
 
-        {/* Sub-Navigasi Menu PKM. Sapras + Quick Scanner Button */}
-        <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80">
-          <button
-            type="button"
-            onClick={() => setIsGlobalScannerOpen(true)}
-            data-testid="btn-global-sapras-scan"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition-all cursor-pointer"
-            title="Pindai QR Pintu Kelas atau Barcode Aset"
-          >
-            <Scan className="w-4 h-4 text-emerald-400" />
-            <span>Scan Barcode</span>
-          </button>
-          {navSections.map((sec) => {
-            const isActive = activeSection === sec.id;
-            return (
-              <Link
-                key={sec.id}
-                href={sec.href}
-                data-testid={`nav-sapras-${sec.id}`}
-                onClick={() => setActiveSection(sec.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-                  isActive
-                    ? 'bg-[#134e3a] text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
-                }`}
-              >
-                {sec.icon}
-                <span>{sec.label}</span>
-                {sec.badge !== undefined && sec.badge > 0 && (
-                  <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                      isActive
-                        ? 'bg-rose-500 text-white'
-                        : 'bg-rose-100 text-rose-800'
-                    }`}
-                  >
-                    {sec.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+        {/* Tier 2: Bilah Sub-Navigasi Menu PKM. Sapras + Quick Scanner Button */}
+        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 max-w-full">
+            <button
+              type="button"
+              onClick={() => setIsGlobalScannerOpen(true)}
+              data-testid="btn-global-sapras-scan"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition-all cursor-pointer shrink-0"
+              title="Pindai QR Pintu Kelas atau Barcode Aset"
+            >
+              <Scan className="w-4 h-4 text-emerald-400" />
+              <span>Scan Barcode</span>
+            </button>
+            {navSections.map((sec) => {
+              const isActive = activeSection === sec.id;
+              return (
+                <Link
+                  key={sec.id}
+                  href={sec.href}
+                  data-testid={`nav-sapras-${sec.id}`}
+                  onClick={() => setActiveSection(sec.id)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    isActive
+                      ? 'bg-[#134e3a] text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                  }`}
+                >
+                  {sec.icon}
+                  <span>{sec.label}</span>
+                  {sec.badge !== undefined && sec.badge > 0 && (
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                        isActive
+                          ? 'bg-rose-500 text-white'
+                          : 'bg-rose-100 text-rose-800'
+                      }`}
+                    >
+                      {sec.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
 
