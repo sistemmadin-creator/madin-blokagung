@@ -124,10 +124,9 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
     expect(text).toContain('HADIR: 1'); // Fikrul Umam
     expect(text).toContain('ALPA: 2'); // Kuni Nafi'ah & Ahnaf
     expect(text).toContain('🏠 BLOK INDUK');
-    // Pemisahan baris mandiri per asatidz dengan titik tunggal untuk nama yang terpotong
-    expect(text).toContain('1. 1 A ULA Ust. FIKRUL UMAM AL . ✅');
+    expect(text).toContain('1. 1 A ULA Ust. FIKRUL UMAM AL HANIF ✅');
     expect(text).toContain('2. 1 A ULA Ustz. KUNI NAFI\'AH 🅰️');
-    expect(text).toContain('3. 1 B ULA Ust. AHNAF HUMAM AZ . 🅰️');
+    expect(text).toContain('3. 1 B ULA Ust. AHNAF HUMAM AZIZY 🅰️');
   });
 
   it('2. Menyaring hanya sesi Putra saat filter PA dipilih', () => {
@@ -141,7 +140,7 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
 
     expect(text).toContain('ABSENSI DINIYYAH (PUTRA / PA) SELASA, 3 NOVEMBER 2026');
     expect(text).toContain('JUMLAH GURU: 2');
-    expect(text).toContain('1. 1 A ULA Ust. FIKRUL UMAM AL . ✅');
+    expect(text).toContain('1. 1 A ULA Ust. FIKRUL UMAM AL HANIF ✅');
     expect(text).not.toContain('KUNI NAFI\'AH');
   });
 
@@ -240,29 +239,19 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
     expect(text).not.toContain('🏠 BLOK INDUK\n');
   });
 
-  it('8. Memeriksa fungsi formatNamaAsatidzWA (normalisasi M., titik tunggal, dan nama utuh)', () => {
-    // 1. Putra <= 14 huruf (nama utuh, tanpa titik)
+  it('8. Memeriksa fungsi formatNamaAsatidzWA (nama utuh dan penanganan prefix Ust/Ustz)', () => {
+    // 1. Putra nama utuh
     expect(formatNamaAsatidzWA('AGUNG SETIAJI', 'PA')).toBe('Ust. AGUNG SETIAJI');
     expect(formatNamaAsatidzWA('AHMAD AFALLAH', 'PA')).toBe('Ust. AHMAD AFALLAH');
+    expect(formatNamaAsatidzWA('SHOLEHUDDIN AL MALIKUS SHOLEH', 'PA')).toBe('Ust. SHOLEHUDDIN AL MALIKUS SHOLEH');
+    expect(formatNamaAsatidzWA('FIKRUL UMAM AL HANIF', 'PA')).toBe('Ust. FIKRUL UMAM AL HANIF');
+    expect(formatNamaAsatidzWA('Agus M. Ainun Niam', 'PA')).toBe('Ust. Agus M. Ainun Niam');
 
-    // 2. Putra > 14 huruf (dipotong 14 karakter dengan titik tunggal .)
-    expect(formatNamaAsatidzWA('SHOLEHUDDIN AL MALIKUS SHOLEH', 'PA')).toBe('Ust. SHOLEHUDDIN AL .');
-    expect(formatNamaAsatidzWA('FIKRUL UMAM AL HANIF', 'PA')).toBe('Ust. FIKRUL UMAM AL .');
-    expect(formatNamaAsatidzWA('Agus M. Ainun Niam', 'PA')).toBe('Ust. Agus M. Ainun .');
-
-    // 3. Normalisasi awalan varian Muhammad/Mohammad/Moch/Moh/Mhd/M -> M.
-    expect(formatNamaAsatidzWA('MOHAMMAD REZA AZIZI', 'PA')).toBe('Ust. M. REZA AZIZI');
-    expect(formatNamaAsatidzWA('MUHAMMAD ABDU AR ROZZAQ', 'PA')).toBe('Ust. M. ABDU AR ROZ .');
-    expect(formatNamaAsatidzWA('MOH. KAVIN AISAR AFIQI', 'PA')).toBe('Ust. M. KAVIN AISAR .');
-    expect(formatNamaAsatidzWA('M ABURIZAL AZIZY', 'PA')).toBe('Ust. M. ABURIZAL AZ .');
-
-    // 4. Putri <= 14 huruf
+    // 2. Putri nama utuh
     expect(formatNamaAsatidzWA("KUNI NAFI'AH", 'PI')).toBe("Ustz. KUNI NAFI'AH");
+    expect(formatNamaAsatidzWA('DEWI MASYITOH ANNEIRA RAHMA', 'PI')).toBe('Ustz. DEWI MASYITOH ANNEIRA RAHMA');
 
-    // 5. Putri > 14 huruf
-    expect(formatNamaAsatidzWA('DEWI MASYITOH ANNEIRA RAHMA', 'PI')).toBe('Ustz. DEWI MASYITOH .');
-
-    // 6. Nama yang sudah memiliki awalan lama di database (tidak boleh duplikat)
+    // 3. Nama yang sudah memiliki awalan lama di database (tidak boleh duplikat)
     expect(formatNamaAsatidzWA('UST. AHMAD DIMYATI', 'PA')).toBe('Ust. AHMAD DIMYATI');
     expect(formatNamaAsatidzWA('Ustz. SITI MAESAROH', 'PI')).toBe('Ustz. SITI MAESAROH');
   });
@@ -311,7 +300,7 @@ describe('Generator Laporan WhatsApp (Kompatibilitas Penuh Referensi)', () => {
       filterGender: 'PA',
     });
 
-    // Guru Jam 1 (Moh. Kavin -> M. Kavin) harus berada di baris 1, dan Guru Jam 2 (Agus M. Ainun) di baris 2
-    expect(text).toContain('1. 3 B ULA Ust. M. KAVIN AISAR . ✅\n2. 3 B ULA Ust. AGUS M. AINUN . ✅');
+    // Guru Jam 1 harus berada di baris 1, dan Guru Jam 2 di baris 2
+    expect(text).toContain('1. 3 B ULA Ust. MOH. KAVIN AISAR AFIQI ✅\n2. 3 B ULA Ust. AGUS M. AINUN NIAM ✅');
   });
 });

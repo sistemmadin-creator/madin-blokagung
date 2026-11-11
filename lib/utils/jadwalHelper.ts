@@ -447,7 +447,11 @@ export function dapatkanBlokDariSesiMengajar(
           if (!fGenderMatch) return false;
           const fNormGen = normalisasiNamaKelas(`${f.din_kls} ${f.din_bag} ${f.tingkat} (${f.pa_pi})`);
           const fNorm = normalisasiNamaKelas(`${f.din_kls} ${f.din_bag} ${f.tingkat}`);
-          return fNormGen === normKelas || fNorm === normKelas;
+          return (
+            fNormGen === normKelas ||
+            fNorm === normKelas ||
+            (normKelas && fNormGen && (normKelas.startsWith(fNormGen) || normKelas.startsWith(fNorm)))
+          );
         });
       }
 
@@ -458,9 +462,17 @@ export function dapatkanBlokDariSesiMengajar(
           const fNormGen = normalisasiNamaKelas(`${f.din_kls} ${f.din_bag} ${f.tingkat} (${f.pa_pi})`);
           const lokNorm = normalisasiNamaKelas(f.lokasi_diniyyah);
           return (
-            (normKelas && (fNorm === normKelas || fNormGen === normKelas)) ||
+            (normKelas && (fNorm === normKelas || fNormGen === normKelas || normKelas.startsWith(fNormGen) || normKelas.startsWith(fNorm))) ||
             (normLokasi && normLokasi !== '-' && lokNorm === normLokasi)
           );
+        });
+      }
+
+      // Pencarian prioritas 3: Fallback ke Mustahiq formasi jika asatidzObj adalah Mustahiq
+      if (!matchFormasi && asatidzObj?.nama_asatidz) {
+        const namaGuruClean = asatidzObj.nama_asatidz.trim().toUpperCase();
+        matchFormasi = formasiList.find((f) => {
+          return f.id_mustahiq && f.id_mustahiq.trim().toUpperCase() === namaGuruClean;
         });
       }
 
@@ -481,6 +493,18 @@ export function dapatkanBlokDariSesiMengajar(
     // 2. Jika tidak ada kecocokan formasi langsung, petakan lokasi sesi mengajar via hierarki Diniyyah
     if (firstSlot.lokasi) {
       const blokH = findBlokFromLokasi('diniyyah', firstSlot.lokasi, hierarkiConfig);
+      if (blokH) return blokH;
+    }
+
+    // 3. Fallback: petakan teks kelas bila mengandung nama ruang / gedung
+    if (firstSlot.kelas) {
+      const blokH = findBlokFromLokasi('diniyyah', firstSlot.kelas, hierarkiConfig);
+      if (blokH) return blokH;
+    }
+
+    // 4. Fallback: petakan lokasi_diniyyah dari profil asatidzObj
+    if (asatidzObj?.lokasi_diniyyah) {
+      const blokH = findBlokFromLokasi('diniyyah', asatidzObj.lokasi_diniyyah, hierarkiConfig);
       if (blokH) return blokH;
     }
   }

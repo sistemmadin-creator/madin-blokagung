@@ -80,8 +80,8 @@ export const RelationalMigrationService = {
     lokasiMurni: string;
   } {
     const raw = String(lokasiRaw || '').trim();
-    // Pola umum: (\d+)\s+([A-Za-z]+)\s+(ULA|WUSTHO|WUSTHA|ULYA)\s*(?:\((PA|PI)\))?(.*)
-    const match = raw.match(/^(\d+)\s+([A-Za-z]+)\s+(ULA|WUSTHO|WUSTHA|ULYA)(?:\s*\((PA|PI)\))?(.*)$/i);
+    // Pola umum: (\d+)\s+([A-Za-z]+)\s+(ULA|WUSTHO|WUSTHA|ULYA|ISTI'DAD|IST)\s*(?:\((PA|PI)\))?(.*)
+    const match = raw.match(/^(\d+)\s+([A-Za-z]+)\s+(ULA|WUSTHO|WUSTHA|ULYA|ISTI'DAD|IST)(?:\s*\((PA|PI)\))?(.*)$/i);
 
     if (match) {
       const din_kls = match[1];
