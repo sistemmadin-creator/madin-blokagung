@@ -11,10 +11,10 @@ async function gotoWithAuth(page: Page, targetPath: string) {
   }
 }
 
-test.describe('E2E: Pengujian Kolom Klik Kelas & Mustahiq di Rekapitulasi Hafalan Pertingkatan', () => {
+test.describe('E2E: Pengujian Pemisahan Pop-up Kolom Kelas/Mustahiq (Gambar 3) & Status Rincian (Gambar 4)', () => {
   test.setTimeout(90000);
 
-  test('1. Klik Kolom KELAS memunculkan Modal Pop-up Rincian Rekap Hafalan Kelas', async ({
+  test('1. Klik Kolom KELAS memunculkan Modal Pop-up Gambar 3 (Santri Selesai & Sedang Proses)', async ({
     page,
   }) => {
     await gotoWithAuth(page, '/rekap-hafalan');
@@ -35,24 +35,24 @@ test.describe('E2E: Pengujian Kolom Klik Kelas & Mustahiq di Rekapitulasi Hafala
     // Klik tombol kelas
     await btnFirstKelas.click();
 
-    // Verifikasi Modal Pop-up muncul dengan judul 'Rincian Rekap Hafalan Kelas'
+    // Verifikasi Modal Pop-up Gambar 3 muncul dengan judul 'Rincian Rekap Hafalan Kelas'
     const modalRincian = page.locator('div.fixed.inset-0.z-50');
     await expect(modalRincian).toBeVisible({ timeout: 10000 });
     await expect(
       modalRincian.getByRole('heading', { name: new RegExp(`Rincian Rekap Hafalan Kelas.*${kelasText}`, 'i') })
     ).toBeVisible();
 
-    // Verifikasi rincian partisipasi hafalan di modal
-    await expect(modalRincian.getByText('Wajib + Sunnah', { exact: true })).toBeVisible();
-    await expect(modalRincian.getByText('Wajib + Sunnah + Kitab', { exact: true })).toBeVisible();
+    // Verifikasi fitur Gambar 3: Santri Selesai & Santri Sedang Proses
+    await expect(modalRincian.getByText('Santri Selesai', { exact: false })).toBeVisible();
+    await expect(modalRincian.getByText('Santri Sedang Proses', { exact: false })).toBeVisible();
 
     // Tutup modal
-    const btnClose = modalRincian.locator('button').first();
+    const btnClose = modalRincian.locator('button[title="Tutup Modal"]');
     await btnClose.click();
     await expect(modalRincian).not.toBeVisible();
   });
 
-  test('2. Klik Kolom NAMA MUSTAHIQ/QOH memunculkan Modal Pop-up Rincian Rekap Hafalan Kelas', async ({
+  test('2. Klik Kolom NAMA MUSTAHIQ/QOH memunculkan Modal Pop-up Gambar 3 (Santri Selesai & Sedang Proses)', async ({
     page,
   }) => {
     await gotoWithAuth(page, '/rekap-hafalan');
@@ -71,14 +71,48 @@ test.describe('E2E: Pengujian Kolom Klik Kelas & Mustahiq di Rekapitulasi Hafala
     // Klik tombol mustahiq
     await btnFirstMustahiq.click();
 
-    // Verifikasi Modal Pop-up muncul
+    // Verifikasi Modal Pop-up Gambar 3 muncul
     const modalRincian = page.locator('div.fixed.inset-0.z-50');
     await expect(modalRincian).toBeVisible({ timeout: 10000 });
     await expect(modalRincian.getByRole('heading', { name: /Rincian Rekap Hafalan Kelas/i })).toBeVisible();
+    await expect(modalRincian.getByText('Santri Selesai', { exact: false })).toBeVisible();
+    await expect(modalRincian.getByText('Santri Sedang Proses', { exact: false })).toBeVisible();
 
     // Tutup modal
-    const btnClose = modalRincian.locator('button').first();
+    const btnClose = modalRincian.locator('button[title="Tutup Modal"]');
     await btnClose.click();
     await expect(modalRincian).not.toBeVisible();
+  });
+
+  test('3. Klik Tombol STATUS [Rincian] memunculkan Modal Pop-up Gambar 4 (Capaian Gabungan Wajib/Sunnah/Kitab)', async ({
+    page,
+  }) => {
+    await gotoWithAuth(page, '/rekap-hafalan');
+
+    await expect(page.getByRole('heading', { name: 'Rekapitulasi Hafalan Pertingkatan' })).toBeVisible({
+      timeout: 30000,
+    });
+
+    const tabelKbm = page.locator('table.table-rekap');
+    await expect(tabelKbm).toBeVisible({ timeout: 20000 });
+
+    // Ambil tombol Rincian di kolom status pada baris pertama
+    const btnFirstStatus = tabelKbm.locator('tbody tr').first().locator('td:last-child button');
+    await expect(btnFirstStatus).toBeVisible();
+
+    // Klik tombol status rincian
+    await btnFirstStatus.click();
+
+    // Verifikasi Modal Pop-up Gambar 4 muncul
+    const modalGambar4 = page.locator('div.fixed.inset-0.z-50');
+    await expect(modalGambar4).toBeVisible({ timeout: 10000 });
+    await expect(modalGambar4.getByText('WAJIB + SUNNAH', { exact: false })).toBeVisible();
+    await expect(modalGambar4.getByText('WAJIB + SUNNAH + KITAB', { exact: false })).toBeVisible();
+    await expect(modalGambar4.getByText('DAFTAR CAPAIAN SANTRI', { exact: false })).toBeVisible();
+
+    // Tutup modal via tombol 'Tutup Rincian'
+    const btnTutup = modalGambar4.getByRole('button', { name: 'Tutup Rincian' });
+    await btnTutup.click();
+    await expect(modalGambar4).not.toBeVisible();
   });
 });

@@ -44,20 +44,60 @@ export default function BottomNavMobile() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
+  const [isHoldingBeranda, setIsHoldingBeranda] = useState(false);
 
   const tapCountRef = useRef(0);
   const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressRef = useRef(false);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     return () => {
-      if (tapTimerRef.current) {
-        clearTimeout(tapTimerRef.current);
-      }
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     };
   }, []);
 
-  const handleBerandaTap = (e: React.MouseEvent) => {
+  // Mulai hitung tekan tahan 1.5 detik (Long Press)
+  const startBerandaLongPress = () => {
+    isLongPressRef.current = false;
+    setIsHoldingBeranda(true);
+
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      setIsHoldingBeranda(false);
+      // Haptic feedback saat 1.5 detik tercapai
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([40, 50, 40]);
+      }
+      setActiveMenu(null);
+      toggleFloatingTools();
+    }, 1500);
+  };
+
+  // Batalkan tekan tahan jika jari dilepas sebelum 1.5 detik
+  const cancelBerandaLongPress = () => {
+    setIsHoldingBeranda(false);
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  // Handler klik / ketuk tombol Beranda
+  const handleBerandaClick = (e: React.MouseEvent) => {
     e.preventDefault();
+
+    // Jika aksi tekan tahan 1.5 detik baru saja terpicu, jangan proses ketukan!
+    if (isLongPressRef.current) {
+      isLongPressRef.current = false;
+      return;
+    }
+
     tapCountRef.current += 1;
     const currentCount = tapCountRef.current;
 
@@ -66,26 +106,15 @@ export default function BottomNavMobile() {
       tapTimerRef.current = null;
     }
 
-    // Ketuk 3x terdeteksi: Buka Tool Mengambang (Pencarian & Zoom)
-    if (currentCount >= 3) {
-      tapCountRef.current = 0;
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate([30, 40, 30]);
-      }
-      setActiveMenu(null);
-      toggleFloatingTools();
-      return;
-    }
-
-    // Timer debounce untuk membedakan ketukan 1x (Beranda) dan 2x (Opsi)
+    // Jeda debounce 220ms untuk membedakan ketuk 1x (Beranda) dan ketuk 2x (Opsi)
     tapTimerRef.current = setTimeout(() => {
       const finalCount = tapCountRef.current;
       tapCountRef.current = 0;
 
       if (finalCount === 1) {
-        // Ketuk 1x: Langsung navigasi ke Beranda
+        // Ketuk 1x: Langsung navigasi ke Halaman Beranda Direktori Modul (Gambar 1)
         setActiveMenu(null);
-        router.push('/dashboard');
+        router.push('/beranda');
       } else if (finalCount === 2) {
         // Ketuk 2x: Langsung buka menu Opsi / Pengaturan
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -93,7 +122,7 @@ export default function BottomNavMobile() {
         }
         setActiveMenu((prev) => (prev === 'pengaturan' ? null : 'pengaturan'));
       }
-    }, 280);
+    }, 220);
   };
 
   const allowSettings = canAccessSettingsAuthority(currentAccount);
@@ -512,18 +541,38 @@ export default function BottomNavMobile() {
           )}
         </button>
 
-        {/* 3. TENGAH: TOMBOL BERANDA HERO BULAT BESAR (Pintasan 1x: Beranda, 2x: Opsi, 3x: Tool Zoom & Cari) */}
+        {/* 3. TENGAH: TOMBOL BERANDA HERO BULAT BESAR (Pintasan 1x: Beranda /beranda, 2x: Opsi, Tahan 1.5s: Tool Zoom & Cari) */}
         <div className="flex-1 flex flex-col items-center justify-center relative -top-3">
           <button
             type="button"
-            onClick={handleBerandaTap}
-            title="Ketuk 1x: Beranda | 2x: Opsi & Pengaturan | 3x: Tool Zoom & Cari"
-            aria-label="Tombol Beranda: Ketuk 1 kali ke Beranda, 2 kali ke Opsi, 3 kali buka Tool Mengambang"
-            className="w-13 h-13 rounded-full bg-gradient-to-tr from-emerald-600 via-emerald-700 to-teal-600 text-white flex items-center justify-center shadow-[0_8px_20px_rgba(5,150,105,0.45)] border-3 border-white ring-2 ring-emerald-500/20 active:scale-90 transition-all duration-200 cursor-pointer"
+            onClick={handleBerandaClick}
+            onTouchStart={startBerandaLongPress}
+            onTouchEnd={cancelBerandaLongPress}
+            onTouchCancel={cancelBerandaLongPress}
+            onMouseDown={startBerandaLongPress}
+            onMouseUp={cancelBerandaLongPress}
+            onMouseLeave={cancelBerandaLongPress}
+            title="Ketuk 1x: Beranda | 2x: Opsi & Pengaturan | Tekan 1.5 detik: Tool Zoom & Cari"
+            aria-label="Tombol Beranda: Ketuk 1 kali ke Beranda, 2 kali ke Opsi, tekan tahan 1.5 detik buka Tool Mengambang"
+            className={`w-13.5 h-13.5 rounded-full bg-gradient-to-tr from-emerald-600 via-emerald-700 to-teal-600 text-white flex items-center justify-center shadow-[0_8px_20px_rgba(5,150,105,0.45)] border-3 border-white ring-2 ${
+              isHoldingBeranda
+                ? 'ring-emerald-400 scale-95 ring-4 animate-pulse'
+                : 'ring-emerald-500/20 active:scale-90'
+            } transition-all duration-200 cursor-pointer`}
           >
-            <Home className="w-6 h-6 drop-shadow-xs" />
+            {/* Bentuk ikon rumah diperbesar 15% dari w-6 (24px) menjadi w-7 (28px / +16.7%) */}
+            <Home className="w-7 h-7 drop-shadow-xs" />
           </button>
-          <span className="text-[9px] font-bold text-slate-600 mt-0.5 tracking-tight">Beranda</span>
+          <span
+            className={`text-[9px] font-bold mt-0.5 tracking-tight ${
+              pathname === '/beranda' ? 'text-emerald-700 font-extrabold' : 'text-slate-600'
+            }`}
+          >
+            Beranda
+          </span>
+          {pathname === '/beranda' && (
+            <span className="w-4 h-0.5 bg-emerald-700 rounded-full mt-0.5" />
+          )}
         </div>
 
         {/* 4. Kanan 1: HAFALAN */}

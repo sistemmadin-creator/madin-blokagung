@@ -12,13 +12,20 @@ import {
   Inbox,
   GraduationCap,
   CheckCircle2,
+  Clock,
   Layers,
   Search,
   Eye,
   X,
   Sparkles,
 } from 'lucide-react';
-import { cariMustahiqSantri, norm } from '@/lib/utils/setoranHelper';
+import { cariMustahiqSantri, norm, formatTargetPreview } from '@/lib/utils/setoranHelper';
+import {
+  computeMateriProgressForSantri,
+  getMateriOptionsWithStatusForSantri,
+} from '@/stores/useSetorMustahiqStore';
+import { ItemHafalanDetail } from '@/types/setoran';
+import { dapatkanTahunAjaranKBM } from '@/lib/utils/jadwalHelper';
 import * as XLSX from 'xlsx';
 
 type FilterTingkat = 'ALL' | 'ULA' | 'WUSTHO' | 'ULYA';
@@ -78,8 +85,197 @@ export default function RekapHafalanPage() {
   const [filterGender, setFilterGender] = useState<FilterGender>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Modal Status Gabungan
+  // Modal Status Gabungan (Gambar 4 - dipicu dari kolom STATUS)
   const [selectedClassModal, setSelectedClassModal] = useState<ClassRekapRow | null>(null);
+
+  // Modal Rincian Materi Hafalan (Gambar 3 - dipicu dari kolom KELAS & MUSTAHIQ)
+  interface DetailMateriModalData {
+    cardTitle: string;
+    mustahiq: string;
+    activeHafalan: {
+      item: ItemHafalanDetail;
+      kategori: 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz';
+      targetPreview: string;
+      selesaiList: Array<{
+        no_induk: string;
+        nama: string;
+        kamar: string;
+        status_label: string;
+      }>;
+      prosesList: Array<{
+        no_induk: string;
+        nama: string;
+        kamar: string;
+        status_label: string;
+        proses_ratio: string;
+        progress_pct: number;
+      }>;
+    };
+    allHafalanRows: Array<{
+      item: ItemHafalanDetail;
+      kategori: 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz';
+      targetPreview: string;
+      selesaiList: Array<{
+        no_induk: string;
+        nama: string;
+        kamar: string;
+        status_label: string;
+      }>;
+      prosesList: Array<{
+        no_induk: string;
+        nama: string;
+        kamar: string;
+        status_label: string;
+        proses_ratio: string;
+        progress_pct: number;
+      }>;
+    }>;
+  }
+  const [selectedMateriModal, setSelectedMateriModal] = useState<DetailMateriModalData | null>(null);
+
+  // Fungsi untuk membuka Modal Rincian Materi Hafalan (Gambar 3)
+  const openMateriModalForClass = (r: ClassRekapRow) => {
+    const tahunAjaran = dapatkanTahunAjaranKBM();
+    const configKey = `${r.din_kls}_${r.tingkat}`;
+
+    // Ambil santri di kelas ini
+    const santriInClass = santriList.filter((s) => {
+      const klsMatch = norm(s.din_kls) === norm(r.din_kls);
+      const bagMatch = norm(s.din_bag) === norm(r.din_bag);
+      const tktMatch = norm(s.tingkat) === norm(r.tingkat);
+      const papiMatch = norm(s.pa_pi) === norm(r.pa_pi);
+      return klsMatch && bagMatch && tktMatch && papiMatch;
+    });
+
+    const materiMap = new Map<
+      string,
+      {
+        item: ItemHafalanDetail;
+        kategori: 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz';
+        orderIndex: number;
+        selesaiList: Array<{
+          no_induk: string;
+          nama: string;
+          kamar: string;
+          status_label: string;
+        }>;
+        prosesList: Array<{
+          no_induk: string;
+          nama: string;
+          kamar: string;
+          status_label: string;
+          proses_ratio: string;
+          progress_pct: number;
+        }>;
+      }
+    >();
+
+    const currentYear = new Date().getFullYear();
+
+    santriInClass.forEach((santri) => {
+      const noInduk = String(santri.no_induk || '').trim();
+      const namaSantri = String(santri.nama || '').trim();
+      const kamarStr = santri.kamar || santri.asrama || '-';
+
+      const options = getMateriOptionsWithStatusForSantri(
+        noInduk,
+        configKey,
+        config,
+        mustahiqLogs,
+        activeStates[noInduk],
+        currentYear
+      );
+
+      options.forEach((opt) => {
+        const prog = computeMateriProgressForSantri(
+          noInduk,
+          opt.item,
+          mustahiqLogs,
+          currentYear
+        );
+
+        const mKey = norm(opt.item.nama);
+        if (!materiMap.has(mKey)) {
+          materiMap.set(mKey, {
+            item: opt.item,
+            kategori: opt.kategori,
+            orderIndex: opt.orderIndex,
+            selesaiList: [],
+            prosesList: [],
+          });
+        }
+
+        const isFinished = opt.isCompleted;
+        const entry = {
+          no_induk: noInduk,
+          nama: namaSantri,
+          kamar: kamarStr,
+          status_label: prog.statusBadgeText,
+          proses_ratio: prog.prosesRatioText,
+          progress_pct: isFinished ? 100 : prog.progressPct,
+        };
+
+        const targetGroup = materiMap.get(mKey)!;
+        if (isFinished) {
+          targetGroup.selesaiList.push({
+            no_induk: noInduk,
+            nama: namaSantri,
+            kamar: kamarStr,
+            status_label: prog.statusBadgeText,
+          });
+        } else {
+          targetGroup.prosesList.push(entry);
+        }
+      });
+    });
+
+    const allRows = Array.from(materiMap.values())
+      .sort((a, b) => a.orderIndex - b.orderIndex)
+      .map((m) => ({
+        item: m.item,
+        kategori: m.kategori,
+        targetPreview: formatTargetPreview(m.item),
+        selesaiList: m.selesaiList.sort((a, b) => a.nama.localeCompare(b.nama, 'id')),
+        prosesList: m.prosesList.sort(
+          (a, b) => b.progress_pct - a.progress_pct || a.nama.localeCompare(b.nama, 'id')
+        ),
+      }));
+
+    if (allRows.length > 0) {
+      setSelectedMateriModal({
+        cardTitle: `${r.kelasLabel} (${r.pa_pi})`,
+        mustahiq: r.waliKelas,
+        activeHafalan: allRows[0],
+        allHafalanRows: allRows,
+      });
+    } else {
+      const dummyItem: ItemHafalanDetail = {
+        id: `materi-${r.tingkat}`,
+        nama: `Materi Wajib ${r.tingkat}`,
+        targetType: 'sentence',
+      };
+      const dummyRow = {
+        item: dummyItem,
+        kategori: 'Wajib' as const,
+        targetPreview: 'Target Kurikulum',
+        selesaiList: [],
+        prosesList: santriInClass.map((s) => ({
+          no_induk: String(s.no_induk || ''),
+          nama: String(s.nama || ''),
+          kamar: s.kamar || '-',
+          status_label: '0 Kalimat',
+          proses_ratio: '0/0',
+          progress_pct: 0,
+        })),
+      };
+      setSelectedMateriModal({
+        cardTitle: `${r.kelasLabel} (${r.pa_pi})`,
+        mustahiq: r.waliKelas,
+        activeHafalan: dummyRow,
+        allHafalanRows: [dummyRow],
+      });
+    }
+  };
 
   useEffect(() => {
     fetchSantri();
@@ -607,25 +803,25 @@ export default function RekapHafalanPage() {
                         {idx + 1}
                       </td>
 
-                      {/* KELAS (DAPAT DIKLIK UNTUK MEMUNCULKAN POPUP RINCIAN REKAP HAFALAN KELAS) */}
+                      {/* KELAS (DAPAT DIKLIK UNTUK MEMUNCULKAN POPUP GAMBAR 3: RINCIAN MATERI SELESAI & PROSES) */}
                       <td className="text-center font-bold text-slate-900 font-mono py-3">
                         <button
                           type="button"
-                          onClick={() => setSelectedClassModal(r)}
+                          onClick={() => openMateriModalForClass(r)}
                           className="px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-800 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 transition-all font-mono font-bold cursor-pointer inline-flex items-center gap-1 shadow-2xs group/btn-kls"
-                          title={`Klik untuk melihat Rincian Rekap Hafalan Kelas ${r.kelasLabel} (${r.pa_pi})`}
+                          title={`Klik untuk melihat Rincian Materi Hafalan Kelas ${r.kelasLabel} (${r.pa_pi})`}
                         >
                           <span>{r.kelasLabel}</span>
                         </button>
                       </td>
 
-                      {/* NAMA MUSTAHIQ/QOH (DAPAT DIKLIK UNTUK MEMUNCULKAN POPUP RINCIAN REKAP HAFALAN KELAS) */}
+                      {/* NAMA MUSTAHIQ/QOH (DAPAT DIKLIK UNTUK MEMUNCULKAN POPUP GAMBAR 3: RINCIAN MATERI SELESAI & PROSES) */}
                       <td className="py-3">
                         <button
                           type="button"
-                          onClick={() => setSelectedClassModal(r)}
+                          onClick={() => openMateriModalForClass(r)}
                           className="text-left group/mustahiq cursor-pointer block hover:opacity-95 transition-all"
-                          title={`Klik untuk melihat Rincian Rekap Hafalan Kelas ${r.kelasLabel} (${r.pa_pi})`}
+                          title={`Klik untuk melihat Rincian Materi Hafalan Kelas ${r.kelasLabel} (${r.pa_pi})`}
                         >
                           <span className="font-bold text-slate-800 group-hover/mustahiq:text-emerald-800 transition-colors block">
                             {r.waliKelas}
@@ -927,6 +1123,154 @@ export default function RekapHafalanPage() {
               >
                 Tutup Rincian
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL POPUP GAMBAR 3: RINCIAN MATERI SANTRI SELESAI & PROSES ==================== */}
+      {selectedMateriModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[88vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Rincian Rekap Hafalan Kelas {selectedMateriModal.cardTitle}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Materi: <strong>{selectedMateriModal.activeHafalan.item.nama}</strong> (
+                    {selectedMateriModal.activeHafalan.targetPreview}) • Mustahiq:{' '}
+                    {selectedMateriModal.mustahiq}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedMateriModal(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer"
+                title="Tutup Modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Tab Ganti Materi (Jika kelas memiliki lebih dari 1 materi hafalan aktif) */}
+            {selectedMateriModal.allHafalanRows.length > 1 && (
+              <div className="px-6 pt-3 flex items-center gap-2 border-b border-slate-100 overflow-x-auto pb-2">
+                {selectedMateriModal.allHafalanRows.map((hr) => (
+                  <button
+                    key={hr.item.nama}
+                    type="button"
+                    onClick={() =>
+                      setSelectedMateriModal((prev) =>
+                        prev ? { ...prev, activeHafalan: hr } : null
+                      )
+                    }
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      selectedMateriModal.activeHafalan.item.nama === hr.item.nama
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {hr.item.nama} ({hr.selesaiList.length} Selesai)
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Modal Body: Dua Kolom (Santri Selesai vs Santri Sedang Proses) */}
+            <div className="p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+              {/* Kolom Kiri: Daftar Santri Selesai (Hijau) */}
+              <div className="border border-emerald-200 rounded-xl overflow-hidden flex flex-col">
+                <div className="px-4 py-2.5 bg-emerald-50 border-b border-emerald-200 flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    Santri Selesai
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-white text-emerald-800 text-[11px] font-bold">
+                    {selectedMateriModal.activeHafalan.selesaiList.length} Santri
+                  </span>
+                </div>
+                <div className="divide-y divide-slate-100 overflow-y-auto max-h-80 p-2">
+                  {selectedMateriModal.activeHafalan.selesaiList.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-6">
+                      Belum ada santri yang menuntaskan materi ini.
+                    </p>
+                  ) : (
+                    selectedMateriModal.activeHafalan.selesaiList.map((s, idx) => (
+                      <div
+                        key={s.no_induk}
+                        className="p-2.5 flex items-center justify-between gap-2 text-xs"
+                      >
+                        <div>
+                          <p className="font-bold text-slate-800">
+                            {idx + 1}. {s.nama}
+                          </p>
+                          <p className="text-[11px] text-slate-500 font-mono">
+                            Kamar: {s.kamar}
+                          </p>
+                        </div>
+                        <span className="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 font-mono text-[11px] font-bold">
+                          {s.status_label}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Kolom Kanan: Daftar Santri Sedang Proses (Oranye/Amber) */}
+              <div className="border border-amber-200 rounded-xl overflow-hidden flex flex-col">
+                <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-200 flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-amber-600" />
+                    Santri Sedang Proses
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-white text-amber-800 text-[11px] font-bold">
+                    {selectedMateriModal.activeHafalan.prosesList.length} Santri
+                  </span>
+                </div>
+                <div className="divide-y divide-slate-100 overflow-y-auto max-h-80 p-2">
+                  {selectedMateriModal.activeHafalan.prosesList.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-6">
+                      Tidak ada santri yang sedang dalam proses pada materi ini.
+                    </p>
+                  ) : (
+                    selectedMateriModal.activeHafalan.prosesList.map((s, idx) => (
+                      <div
+                        key={s.no_induk}
+                        className="p-2.5 flex items-center justify-between gap-2 text-xs"
+                      >
+                        <div>
+                          <p className="font-bold text-slate-800">
+                            {idx + 1}. {s.nama}
+                          </p>
+                          <p className="text-[11px] text-slate-500 font-mono">
+                            Kamar: {s.kamar}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-800 font-mono text-[11px] font-bold">
+                            {s.proses_ratio}
+                          </span>
+                          <p className="text-[10px] text-amber-600 font-semibold mt-0.5">
+                            Progres: {s.progress_pct}%
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
