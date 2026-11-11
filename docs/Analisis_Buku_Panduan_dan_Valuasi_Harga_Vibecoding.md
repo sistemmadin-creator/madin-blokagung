@@ -150,7 +150,55 @@ Ketika sistem beroperasi penuh pada skala riil pesantren besar dengan parameter:
 
 ---
 
-### 5.4 Rangkuman Anggaran Maintenance Infrastruktur Tahunan (Skenario 7.000 Santri)
+### 5.4 Analisis Kelebihan & Kekurangan Penggunaan Supabase Pro Tier
+
+| Kelebihan Menggunakan Supabase Pro Tier | Tantangan & Kekurangan yang Perlu Diantisipasi |
+| :--- | :--- |
+| **1. Sistem Tidak Pernah Tertidur (No Inactivity Pausing):**<br/>Pada paket gratis, jika tidak ada aktivitas selama 7 hari (misal saat libur Ramadhan), database otomatis tertidur. Pada Pro Tier, sistem aktif 24/7/365 dengan SLA ketersediaan 99.9%. | **1. Biaya Berlangganan Tetap (Fixed Operational Cost):**<br/>Madrasah perlu mengalokasikan anggaran rutin sebesar **$25 USD / bulan (sekitar Rp 400.000 / bulan atau Rp 4.800.000 / tahun)** dari kas operasional. |
+| **2. Kapasitas Database Longgar (8 GB Included):**<br/>Meningkat 16 kali lipat dari paket gratis (500 MB), memberikan ruang gerak sangat leluasa untuk puluhan tahun data santri. | **2. Metode Pembayaran Valuta Asing (USD):**<br/>Tagihan diproses dalam kurs Dollar AS melalui kartu debit/kredit internasional (Visa/Mastercard, seperti BCA Mastercard, Mandiri Visa, Jenius BTPN, atau Bank Jago). Bendahara perlu menyiapkan kartu debit berizin transaksi online luar negeri. |
+| **3. Cloud File Storage Melimpah (100 GB Included):**<br/>Menampung hingga 1.000.000 pasfoto santri dan arsip digital piagam syahadah tanpa khawatir kehabisan ruang. | **3. Sensitivitas Terhadap Fluktuasi Kurs:**<br/>Nominal konversi rupiah dapat sedikit berfluktuasi mengikuti nilai tukar USD terhadap IDR di pasar valuta asing. |
+| **4. Skalabilitas Realtime (500 Koneksi Serentak):**<br/>Mencegah kegagalan koneksi ketika seluruh Mustahiq dan petugas piket menginput absensi dan lalaran secara bersamaan di malam Ahad. | |
+| **5. Cadangan Otomatis Harian (Daily Backup Retensi 7 Hari):**<br/>Perlindungan data mutlak berstandar cloud enterprise. Jika terjadi kesalahan fatal manusia, database dapat dipulihkan ke hari sebelumnya dengan 1 klik. | |
+| **6. Fitur Disk Auto-Scaling:**<br/>Jika kapasitas 8 GB terlampaui di masa depan, Supabase otomatis memperluas disk tanpa memutus layanan, dengan tarif sangat murah (~Rp 2.000/GB/bulan). | |
+
+---
+
+### 5.5 Kalkulasi Matematis Proyeksi Masa Simpan Data (Daya Tampung per Tahun Angkatan)
+
+Berdasarkan arsitektur data pangkalan data MADINA Blokagung, berikut adalah rincian kalkulasi matematis daya tampung pangkalan data dan penyimpanan berkas saat menggunakan Supabase Pro Tier:
+
+| Tabel Data Pangkalan Data | Volume Transaksi / Tahun | Ukuran Rata-rata per Baris | Akumulasi Data Tahunan |
+| :--- | :--- | :--- | :--- |
+| **Data Santri Baru & Mutasi** | ~2.500 santri baru masuk / tahun | ~2 KB / santri (37 kolom atribut) | **~5 MB / tahun** |
+| **Log Absensi Asatidz (1 Tahun)** | ~100.000 baris log KBM | ~350 byte / baris sesi | **~35 MB / tahun** |
+| **Transaksi Setoran Hafalan** | ~180.000 transaksi setoran | ~300 byte / transaksi | **~54 MB / tahun** |
+| **Sapras, Konsorsium, & Catatan** | ~20.000 entri berkala | ~500 byte / entri | **~10 MB / tahun** |
+| **Jejak Audit Log Pengurus** | ~50.000 aktivitas | ~400 byte / entri log | **~20 MB / tahun** |
+| **Indeks Cepat Database (B-Tree)** | Indeks pencarian multi-kolom | Struktur indeks otomatis | **~100 MB / tahun** |
+| **PostgreSQL WAL & Overhead** | System catalogs & buffer | Cadangan sistem internal | **~76 MB / tahun** |
+| **TOTAL PERTUMBUHAN DATA** | **~350.000 Transaksi / Tahun** | — | **~300 MB / Tahun Ajaran** |
+
+#### 1. Kalkulasi Daya Tampung Pangkalan Data (8 GB Database Limit):
+* Kapasitas Database Termasuk: **8 GB = 8.192 MB**
+* Beban Master Data Awal (Tahun ke-1): 7.000 Santri + 200 Asatidz + Formasi Awal = **~600 MB**
+* Sisa Kuota Bersih untuk Arsip Transaksi: **8.192 MB − 600 MB = 7.592 MB**
+* Laju Pertumbuhan Data Transaksi Tahunan: **~300 MB / tahun ajaran**
+* **Proyeksi Daya Tampung Pangkalan Data:**
+  $$\frac{7.592\text{ MB}}{300\text{ MB/tahun}} \approx \mathbf{25{,}3\ \text{TAHUN AJARAN SANTRI!}}$$
+  *(Artinya, kuota 8 GB pada Supabase Pro Tier mampu menampung seluruh catatan absensi, nilai, dan setoran hafalan madrasah hingga **20 sampai 25 tahun angkatan** tanpa perlu menambah biaya storage pangkalan data).*
+
+#### 2. Kalkulasi Daya Tampung Media Pasfoto Santri (100 GB Cloud Storage):
+* Kapasitas Media Storage Termasuk: **100 GB = 102.400 MB**
+* Rata-rata Ukuran Pasfoto Terkompresi: **~100 KB** per santri
+* Beban Pasfoto Awal (7.000 Santri): 7.000 × 100 KB = **700 MB (0,7 GB)**
+* Pertambahan Pasfoto Santri Baru per Tahun: ~2.500 santri × 100 KB = **250 MB / tahun (0,25 GB / tahun)**
+* **Proyeksi Daya Tampung Pasfoto Profil:**
+  $$\frac{100\text{ GB} - 0{,}7\text{ GB}}{0{,}25\text{ GB/tahun}} \approx \mathbf{397\ \text{TAHUN ANGKATAN!}}$$
+  *(Kuota 100 GB penyimpanan berkas praktis mencukupi untuk menyimpan pasfoto ratusan generasi santri Pondok Pesantren Darussalam Blokagung).*
+
+---
+
+### 5.6 Rangkuman Anggaran Maintenance Infrastruktur Tahunan (Skenario 7.000 Santri)
 
 Berikut adalah kalkulasi transparan pemeliharaan infrastruktur cloud & server yang dibayarkan langsung oleh yayasan/madrasah kepada penyedia layanan:
 

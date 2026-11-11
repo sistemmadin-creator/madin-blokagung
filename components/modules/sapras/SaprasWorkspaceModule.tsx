@@ -22,7 +22,11 @@ import {
   Trash2,
   ArrowRight,
   Sparkles,
+  Scan,
 } from 'lucide-react';
+import { InventarisMadinModule } from './InventarisMadinModule';
+import { ModalBarcodeScanner } from './ModalBarcodeScanner';
+import { ModalCetakLabelSapras } from './ModalCetakLabelSapras';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { usePagePermission } from '@/stores/useRbacStore';
@@ -145,6 +149,7 @@ export function SaprasWorkspaceModule({
   const [distJumlah, setDistJumlah] = useState(2);
   const [distPenerima, setDistPenerima] = useState('');
   const [distCatatan, setDistCatatan] = useState('');
+  const [isGlobalScannerOpen, setIsGlobalScannerOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -441,6 +446,12 @@ export function SaprasWorkspaceModule({
     badge?: number;
   }> = [
     {
+      id: 'inventaris-madin',
+      label: 'Inventaris Madin',
+      href: '/sapras/inventaris-madin',
+      icon: <Building2 className="w-4 h-4" />,
+    },
+    {
       id: 'inventaris-kelas',
       label: 'Inventaris Kelas',
       href: '/sapras/inventaris-kelas',
@@ -500,6 +511,8 @@ export function SaprasWorkspaceModule({
               data-testid="heading-pkm-sapras"
               className="mt-1 text-xl sm:text-2xl font-extrabold text-slate-900"
             >
+              {activeSection === 'inventaris-madin' &&
+                'Inventaris Madin (Universal Asset & Lokasi Kantor)'}
               {activeSection === 'inventaris-kelas' &&
                 'Inventaris Sarana Kelas (Papan Tulis & Meja Guru)'}
               {activeSection === 'perbaikan' &&
@@ -510,13 +523,25 @@ export function SaprasWorkspaceModule({
                 'Rekapitulasi & Audit Kesiapan Sapras'}
             </h1>
             <p className="mt-0.5 text-xs sm:text-sm text-slate-500 max-w-2xl">
-              Pemantauan terpadu kelengkapan Papan Tulis, Meja Guru, perlengkapan ruang KBM, serta tindak lanjut perbaikan di seluruh kelas Ula, Wustho, dan Ulya.
+              {activeSection === 'inventaris-madin'
+                ? 'Pendataan seluruh aset & inventaris madin universal, pemantauan lokasi tempat (Kantor Pusat, GP, Putri, Blok 4, Blok 11, dst.), dan mutasi aset berbasis barcode.'
+                : 'Pemantauan terpadu kelengkapan Papan Tulis, Meja Guru, perlengkapan ruang KBM, serta tindak lanjut perbaikan di seluruh kelas Ula, Wustho, dan Ulya.'}
             </p>
           </div>
         </div>
 
-        {/* Sub-Navigasi 4 Menu PKM. Sapras */}
+        {/* Sub-Navigasi Menu PKM. Sapras + Quick Scanner Button */}
         <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80">
+          <button
+            type="button"
+            onClick={() => setIsGlobalScannerOpen(true)}
+            data-testid="btn-global-sapras-scan"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition-all cursor-pointer"
+            title="Pindai QR Pintu Kelas atau Barcode Aset"
+          >
+            <Scan className="w-4 h-4 text-emerald-400" />
+            <span>Scan Barcode</span>
+          </button>
           {navSections.map((sec) => {
             const isActive = activeSection === sec.id;
             return (
@@ -550,94 +575,101 @@ export function SaprasWorkspaceModule({
         </div>
       </div>
 
-      {/* 2. Ringkasan KPI Kesiapan Papan Tulis & Meja Guru */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-            Total Kelas Terdata
-          </span>
-          <div className="mt-1.5 flex items-baseline justify-between">
-            <span
-              data-testid="kpi-total-kelas-sapras"
-              className="text-2xl font-extrabold font-mono text-slate-900"
-            >
-              {kpiStats.totalKelas}
+      {/* 2. Ringkasan KPI Kesiapan Papan Tulis & Meja Guru (Hanya tampil di tab kelas/perbaikan/logistik/rekap) */}
+      {activeSection !== 'inventaris-madin' && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Total Kelas Terdata
             </span>
-            <span className="text-xs font-bold text-emerald-700">
-              {kpiStats.pctSiap}% Siap KBM
-            </span>
+            <div className="mt-1.5 flex items-baseline justify-between">
+              <span
+                data-testid="kpi-total-kelas-sapras"
+                className="text-2xl font-extrabold font-mono text-slate-900"
+              >
+                {kpiStats.totalKelas}
+              </span>
+              <span className="text-xs font-bold text-emerald-700">
+                {kpiStats.pctSiap}% Siap KBM
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-slate-400">
+              Otomatis sinkron dari Formasi Kelas
+            </p>
           </div>
-          <p className="mt-1 text-[11px] text-slate-400">
-            Otomatis sinkron dari Formasi Kelas
-          </p>
-        </div>
 
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-            Papan Tulis Kelas
-          </span>
-          <div className="mt-1.5 flex items-baseline justify-between">
-            <span
-              data-testid="kpi-papan-tulis-baik"
-              className="text-2xl font-extrabold font-mono text-emerald-800"
-            >
-              {kpiStats.papanBaik}/{kpiStats.totalKelas}
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Papan Tulis Kelas
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
-              Kondisi Baik
-            </span>
+            <div className="mt-1.5 flex items-baseline justify-between">
+              <span
+                data-testid="kpi-papan-tulis-baik"
+                className="text-2xl font-extrabold font-mono text-emerald-800"
+              >
+                {kpiStats.papanBaik}/{kpiStats.totalKelas}
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                Kondisi Baik
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-slate-400">
+              {kpiStats.papanRusak > 0
+                ? `${kpiStats.papanRusak} kelas perlu perbaikan papan tulis`
+                : 'Seluruh papan tulis kelas dalam kondisi baik'}
+            </p>
           </div>
-          <p className="mt-1 text-[11px] text-slate-400">
-            {kpiStats.papanRusak > 0
-              ? `${kpiStats.papanRusak} kelas perlu perbaikan papan tulis`
-              : 'Seluruh papan tulis kelas dalam kondisi baik'}
-          </p>
-        </div>
 
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-            Meja Guru / Dampar
-          </span>
-          <div className="mt-1.5 flex items-baseline justify-between">
-            <span
-              data-testid="kpi-meja-guru-baik"
-              className="text-2xl font-extrabold font-mono text-emerald-800"
-            >
-              {kpiStats.mejaBaik}/{kpiStats.totalKelas}
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Meja Guru / Dampar
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
-              Kondisi Baik
-            </span>
+            <div className="mt-1.5 flex items-baseline justify-between">
+              <span
+                data-testid="kpi-meja-guru-baik"
+                className="text-2xl font-extrabold font-mono text-emerald-800"
+              >
+                {kpiStats.mejaBaik}/{kpiStats.totalKelas}
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                Kondisi Baik
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-slate-400">
+              {kpiStats.mejaRusak > 0
+                ? `${kpiStats.mejaRusak} kelas perlu perbaikan meja guru`
+                : 'Seluruh meja guru kelas dalam kondisi baik'}
+            </p>
           </div>
-          <p className="mt-1 text-[11px] text-slate-400">
-            {kpiStats.mejaRusak > 0
-              ? `${kpiStats.mejaRusak} kelas perlu perbaikan meja guru`
-              : 'Seluruh meja guru kelas dalam kondisi baik'}
-          </p>
-        </div>
 
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-            Antrean Perbaikan
-          </span>
-          <div className="mt-1.5 flex items-baseline justify-between">
-            <span
-              data-testid="kpi-antrean-perbaikan"
-              className={`text-2xl font-extrabold font-mono ${
-                kpiStats.tiketAktif > 0 ? 'text-amber-700' : 'text-slate-900'
-              }`}
-            >
-              {kpiStats.tiketAktif}
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Antrean Perbaikan
             </span>
-            <span className="text-xs font-semibold text-slate-500">
-              {kpiStats.tiketSelesai} Selesai
-            </span>
+            <div className="mt-1.5 flex items-baseline justify-between">
+              <span
+                data-testid="kpi-antrean-perbaikan"
+                className={`text-2xl font-extrabold font-mono ${
+                  kpiStats.tiketAktif > 0 ? 'text-amber-700' : 'text-slate-900'
+                }`}
+              >
+                {kpiStats.tiketAktif}
+              </span>
+              <span className="text-xs font-semibold text-slate-500">
+                {kpiStats.tiketSelesai} Selesai
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-slate-400">
+              Tiket pemeliharaan sarana kelas
+            </p>
           </div>
-          <p className="mt-1 text-[11px] text-slate-400">
-            Tiket pemeliharaan sarana kelas
-          </p>
         </div>
-      </div>
+      )}
+
+      {/* ==================== SECTION 0: INVENTARIS MADIN UNIVERSAL ==================== */}
+      {activeSection === 'inventaris-madin' && (
+        <InventarisMadinModule />
+      )}
 
       {/* ==================== SECTION 1: INVENTARIS KELAS ==================== */}
       {activeSection === 'inventaris-kelas' && (
@@ -1907,6 +1939,24 @@ export function SaprasWorkspaceModule({
           </div>
         </div>
       )}
+
+      {/* ==================== GLOBAL BARCODE SCANNER MODAL ==================== */}
+      <ModalBarcodeScanner
+        isOpen={isGlobalScannerOpen}
+        onClose={() => setIsGlobalScannerOpen(false)}
+        onAuditKelas={(code) => {
+          setActiveSection('inventaris-kelas');
+          const clean = code.replace(/^MBD[-:]KLS[-:]/, '');
+          setSearchQuery(clean);
+          showToast(`Menampilkan kelas dari QR: ${code}`);
+        }}
+        onSelectAsset={() => {
+          setActiveSection('inventaris-madin');
+        }}
+        onSelectTempat={() => {
+          setActiveSection('inventaris-madin');
+        }}
+      />
     </div>
   );
 }

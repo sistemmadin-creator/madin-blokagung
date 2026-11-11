@@ -5,12 +5,15 @@ import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import { FormasiKelas } from '@/types/formasi';
 import { Santri } from '@/types/santri';
 import {
+  InventarisMadinItem,
+  InventarisMutasiLog,
   ItemSaprasTambahan,
   KelasSaprasOverride,
   KelasSaprasRow,
   KondisiSapras,
   SaprasDistribusiLog,
   SaprasLogistikStok,
+  SaprasTempatLokasi,
   SaprasTiketPerbaikan,
   StatusTiketPerbaikan,
   UrgensiPerbaikan,
@@ -18,6 +21,249 @@ import {
 
 export const KEY_DB_SAPRAS_DATA = 'MADIN_PKM_SAPRAS_DATA_V1';
 export const LS_SAPRAS_DATA = 'MADIN_PKM_SAPRAS_LOCAL_V1';
+
+export const DEFAULT_TEMPAT_LOKASI: SaprasTempatLokasi[] = [
+  {
+    id: 'loc-pusat',
+    nama: 'Kantor Madin Pusat',
+    kode: 'KMP',
+    penanggungJawab: 'Ust. Fathur Rahman',
+    kontakPIC: '081234567891',
+    keterangan: 'Gedung Utama Lantai 1 - Sekretariat Pusat & Arsip Induk',
+    isDefault: true,
+    createdAt: '2026-11-11T00:00:00.000Z',
+  },
+  {
+    id: 'loc-gp',
+    nama: 'Kantor Madin GP',
+    kode: 'KM-GP',
+    penanggungJawab: 'Ust. Ahmad Zaini',
+    kontakPIC: '081234567892',
+    keterangan: 'Kompleks Gedung Putih Putra Lantai Dasar',
+    isDefault: true,
+    createdAt: '2026-11-11T00:00:00.000Z',
+  },
+  {
+    id: 'loc-putri',
+    nama: 'Kantor Madin Putri',
+    kode: 'KM-PI',
+    penanggungJawab: 'Ustzh. Siti Aminah',
+    kontakPIC: '081234567893',
+    keterangan: 'Kantor Sekretariat Madin Daerah Putri',
+    isDefault: true,
+    createdAt: '2026-11-11T00:00:00.000Z',
+  },
+  {
+    id: 'loc-blok-4',
+    nama: 'Kantor Madin Blok 4',
+    kode: 'KMB-04',
+    penanggungJawab: 'Ust. Hasan Basri',
+    kontakPIC: '081234567894',
+    keterangan: 'Posko Operasional Asrama Blok 4 Putra',
+    isDefault: true,
+    createdAt: '2026-11-11T00:00:00.000Z',
+  },
+  {
+    id: 'loc-blok-11',
+    nama: 'Kantor Madin Blok 11',
+    kode: 'KMB-11',
+    penanggungJawab: 'Ust. Zainal Abidin',
+    kontakPIC: '081234567895',
+    keterangan: 'Posko Operasional Asrama Blok 11 Putra',
+    isDefault: true,
+    createdAt: '2026-11-11T00:00:00.000Z',
+  },
+];
+
+export const DEFAULT_INVENTARIS_MADIN: InventarisMadinItem[] = [
+  {
+    id: 'inv-ast-001',
+    kodeBarcode: 'MBD-AST-ELK-001',
+    namaBarang: 'Printer Epson EcoTank L3210 (Cetak Ijazah & Rapor)',
+    kategori: 'ELEKTRONIK_IT',
+    tempatId: 'loc-pusat',
+    spesifikasi: 'All-in-One Ink Tank, USB 2.0, Warna Hitam',
+    kondisi: 'BAIK',
+    jumlah: 1,
+    satuan: 'Unit',
+    tahunPerolehan: 2024,
+    sumberDana: 'Kas Madin',
+    nilaiPerolehan: 2450000,
+    catatan: 'Ditempatkan di meja administrasi ujian & ijazah pusat',
+    updatedAt: '2026-11-11T00:00:00.000Z',
+    updatedBy: 'Admin Pusat',
+  },
+  {
+    id: 'inv-ast-002',
+    kodeBarcode: 'MBD-AST-ELK-002',
+    namaBarang: 'Laptop Lenovo ThinkPad L14 Gen 3 (Operasional Data)',
+    kategori: 'ELEKTRONIK_IT',
+    tempatId: 'loc-pusat',
+    spesifikasi: 'Intel Core i5-1235U, RAM 16GB, SSD 512GB',
+    kondisi: 'BAIK',
+    jumlah: 1,
+    satuan: 'Unit',
+    tahunPerolehan: 2023,
+    sumberDana: 'Kas Madin',
+    nilaiPerolehan: 8500000,
+    catatan: 'Digunakan oleh operator database & jadwal KBM',
+    updatedAt: '2026-11-11T00:00:00.000Z',
+    updatedBy: 'Admin Pusat',
+  },
+  {
+    id: 'inv-ast-003',
+    kodeBarcode: 'MBD-AST-MBL-003',
+    namaBarang: 'Lemari Arsip Besi 4 Pintu Brother',
+    kategori: 'MEBELER_KANTOR',
+    tempatId: 'loc-pusat',
+    spesifikasi: 'Besi plat 0.8mm tebal, kunci ganda, warna abu-abu',
+    kondisi: 'BAIK',
+    jumlah: 2,
+    satuan: 'Unit',
+    tahunPerolehan: 2022,
+    sumberDana: 'Kas Madin',
+    nilaiPerolehan: 3200000,
+    catatan: 'Penyimpanan berkas induk kelulusan dan ijazah santri',
+    updatedAt: '2026-11-11T00:00:00.000Z',
+    updatedBy: 'Admin Pusat',
+  },
+  {
+    id: 'inv-ast-004',
+    kodeBarcode: 'MBD-AST-ELK-004',
+    namaBarang: 'Printer Canon Pixma G2010 (Operasional Harian GP)',
+    kategori: 'ELEKTRONIK_IT',
+    tempatId: 'loc-gp',
+    spesifikasi: 'Multifunction Print/Scan/Copy',
+    kondisi: 'BAIK',
+    jumlah: 1,
+    satuan: 'Unit',
+    tahunPerolehan: 2024,
+    sumberDana: 'Kas Madin',
+    nilaiPerolehan: 1950000,
+    catatan: 'Untuk cetak rekap absen dan surat izin asatidz GP',
+    updatedAt: '2026-11-11T00:00:00.000Z',
+    updatedBy: 'Ust. Ahmad Zaini',
+  },
+  {
+    id: 'inv-ast-005',
+    kodeBarcode: 'MBD-AST-RNG-005',
+    namaBarang: 'Dispenser Miyako Galon Bawah WDP-300',
+    kategori: 'PERLENGKAPAN_RUANG',
+    tempatId: 'loc-gp',
+    spesifikasi: 'Hot & Normal & Cold, Daya 420W',
+    kondisi: 'BAIK',
+    jumlah: 1,
+    satuan: 'Unit',
+    tahunPerolehan: 2023,
+    sumberDana: 'Kas Madin',
+    nilaiPerolehan: 850000,
+    catatan: 'Fasilitas air minum posko asatidz Gedung Putih',
+    updatedAt: '2026-11-11T00:00:00.000Z',
+    updatedBy: 'Ust. Ahmad Zaini',
+  },
+  {
+    id: 'inv-ast-006',
+    kodeBarcode: 'MBD-AST-ELK-006',
+    namaBarang: 'PC Desktop All-in-One HP 24-cb1015d',
+    kategori: 'ELEKTRONIK_IT',
+    tempatId: 'loc-putri',
+    spesifikasi: 'Layar 23.8" FHD, Core i3-1215U, RAM 8GB',
+    kondisi: 'BAIK',
+    jumlah: 1,
+    satuan: 'Unit',
+    tahunPerolehan: 2024,
+    sumberDana: 'Kas Madin',
+    nilaiPerolehan: 6800000,
+    catatan: 'Komputer operasional presensi & mutabaah santri putri',
+    updatedAt: '2026-11-11T00:00:00.000Z',
+    updatedBy: 'Ustzh. Siti Aminah',
+  },
+  {
+    id: 'inv-ast-007',
+    kodeBarcode: 'MBD-AST-MBL-007',
+    namaBarang: 'Meja Rapat Kayu Jati Asatidzah',
+    kategori: 'MEBELER_KANTOR',
+    tempatId: 'loc-putri',
+    spesifikasi: 'Ukuran 300x120cm + 10 Kursi Kayu',
+    kondisi: 'BAIK',
+    jumlah: 1,
+    satuan: 'Set',
+    tahunPerolehan: 2022,
+    sumberDana: 'Wakaf Alumni Putri 2022',
+    nilaiPerolehan: 4500000,
+    catatan: 'Untuk rapat rutin koordinasi mustahiqoh',
+    updatedAt: '2026-11-11T00:00:00.000Z',
+    updatedBy: 'Ustzh. Siti Aminah',
+  },
+  {
+    id: 'inv-ast-008',
+    kodeBarcode: 'MBD-AST-ELK-008',
+    namaBarang: 'Sound System Portable Baretone Max 10 HE',
+    kategori: 'ELEKTRONIK_IT',
+    tempatId: 'loc-blok-4',
+    spesifikasi: 'Active Speaker 10 Inch + 2 Mic Wireless VHF',
+    kondisi: 'BAIK',
+    jumlah: 1,
+    satuan: 'Unit',
+    tahunPerolehan: 2025,
+    sumberDana: 'Kas Madin',
+    nilaiPerolehan: 2750000,
+    catatan: 'Dipakai untuk takror akbar & apel malam KBM Blok 4',
+    updatedAt: '2026-11-11T00:00:00.000Z',
+    updatedBy: 'Ust. Hasan Basri',
+  },
+  {
+    id: 'inv-ast-009',
+    kodeBarcode: 'MBD-AST-RNG-009',
+    namaBarang: 'Whiteboard Kaki Roda Sakana 120x80cm (Posko)',
+    kategori: 'PERLENGKAPAN_RUANG',
+    tempatId: 'loc-blok-4',
+    spesifikasi: 'Double sided magnetic + roda pengunci',
+    kondisi: 'BAIK',
+    jumlah: 1,
+    satuan: 'Unit',
+    tahunPerolehan: 2023,
+    sumberDana: 'Kas Madin',
+    nilaiPerolehan: 450000,
+    catatan: 'Papan briefing jadwal & piket asatidz Blok 4',
+    updatedAt: '2026-11-11T00:00:00.000Z',
+    updatedBy: 'Ust. Hasan Basri',
+  },
+  {
+    id: 'inv-ast-010',
+    kodeBarcode: 'MBD-AST-RNG-010',
+    namaBarang: 'Kipas Angin Dinding Tornado Regency 18 Inch',
+    kategori: 'PERLENGKAPAN_RUANG',
+    tempatId: 'loc-blok-11',
+    spesifikasi: 'Baling-baling besi 3 speed, wall fan heavy duty',
+    kondisi: 'BAIK',
+    jumlah: 2,
+    satuan: 'Unit',
+    tahunPerolehan: 2024,
+    sumberDana: 'Kas Madin',
+    nilaiPerolehan: 700000,
+    catatan: 'Terpasang di posko sekretariat Blok 11',
+    updatedAt: '2026-11-11T00:00:00.000Z',
+    updatedBy: 'Ust. Zainal Abidin',
+  },
+  {
+    id: 'inv-ast-011',
+    kodeBarcode: 'MBD-AST-DOC-011',
+    namaBarang: 'Kitab Induk Fathul Qorib & Tafsir Jalalain Master',
+    kategori: 'KITAB_DOKUMEN_MASTER',
+    tempatId: 'loc-pusat',
+    spesifikasi: 'Hardcover Lux Darul Kutub Ilmiyah (Edisi Khusus)',
+    kondisi: 'BAIK',
+    jumlah: 1,
+    satuan: 'Set',
+    tahunPerolehan: 2020,
+    sumberDana: 'Wakaf Pengasuh',
+    nilaiPerolehan: 1200000,
+    catatan: 'Rujukan silabus kurikulum dan penyusunan naskah ujian',
+    updatedAt: '2026-11-11T00:00:00.000Z',
+    updatedBy: 'Admin Pusat',
+  },
+];
 
 export const DEFAULT_LOGISTIK_STOK: SaprasLogistikStok[] = [
   {
@@ -316,6 +562,8 @@ interface PersistedSaprasBundle {
   tiketPerbaikan: SaprasTiketPerbaikan[];
   logistikStok: SaprasLogistikStok[];
   distribusiLogs: SaprasDistribusiLog[];
+  tempatList: SaprasTempatLokasi[];
+  inventarisMadinList: InventarisMadinItem[];
 }
 
 function readLocalSapras(): PersistedSaprasBundle {
@@ -324,6 +572,8 @@ function readLocalSapras(): PersistedSaprasBundle {
     tiketPerbaikan: [],
     logistikStok: DEFAULT_LOGISTIK_STOK,
     distribusiLogs: DEFAULT_DISTRIBUSI_LOGS,
+    tempatList: DEFAULT_TEMPAT_LOKASI,
+    inventarisMadinList: DEFAULT_INVENTARIS_MADIN,
   };
   if (typeof window === 'undefined') return fallback;
   try {
@@ -345,6 +595,14 @@ function readLocalSapras(): PersistedSaprasBundle {
       distribusiLogs: Array.isArray(parsed.distribusiLogs)
         ? parsed.distribusiLogs
         : DEFAULT_DISTRIBUSI_LOGS,
+      tempatList:
+        Array.isArray(parsed.tempatList) && parsed.tempatList.length > 0
+          ? parsed.tempatList
+          : DEFAULT_TEMPAT_LOKASI,
+      inventarisMadinList:
+        Array.isArray(parsed.inventarisMadinList) && parsed.inventarisMadinList.length > 0
+          ? parsed.inventarisMadinList
+          : DEFAULT_INVENTARIS_MADIN,
     };
   } catch {
     return fallback;
@@ -381,6 +639,8 @@ interface SaprasState {
   tiketPerbaikan: SaprasTiketPerbaikan[];
   logistikStok: SaprasLogistikStok[];
   distribusiLogs: SaprasDistribusiLog[];
+  tempatList: SaprasTempatLokasi[];
+  inventarisMadinList: InventarisMadinItem[];
   isLoading: boolean;
 
   fetchSaprasData: () => Promise<void>;
@@ -435,6 +695,36 @@ interface SaprasState {
     tanggal: string;
     catatan?: string;
   }) => Promise<void>;
+
+  // Aksi Master Tempat / Lokasi Dinamis
+  addTempatLokasi: (data: {
+    nama: string;
+    kode: string;
+    penanggungJawab?: string;
+    kontakPIC?: string;
+    keterangan?: string;
+  }) => Promise<SaprasTempatLokasi>;
+  updateTempatLokasi: (
+    id: string,
+    updates: Partial<Omit<SaprasTempatLokasi, 'id' | 'createdAt'>>
+  ) => Promise<void>;
+  deleteTempatLokasi: (id: string) => Promise<{ success: boolean; message?: string }>;
+
+  // Aksi Inventaris Madin Universal
+  addInventarisMadin: (
+    data: Omit<InventarisMadinItem, 'id' | 'updatedAt'>
+  ) => Promise<InventarisMadinItem>;
+  updateInventarisMadin: (
+    id: string,
+    updates: Partial<Omit<InventarisMadinItem, 'id' | 'kodeBarcode'>>
+  ) => Promise<void>;
+  deleteInventarisMadin: (id: string) => Promise<void>;
+  mutasiInventarisMadin: (input: {
+    itemId: string;
+    keTempatId: string;
+    petugasPemindah: string;
+    alasan: string;
+  }) => Promise<void>;
 }
 
 export const useSaprasStore = create<SaprasState>((set, get) => ({
@@ -442,6 +732,8 @@ export const useSaprasStore = create<SaprasState>((set, get) => ({
   tiketPerbaikan: [],
   logistikStok: DEFAULT_LOGISTIK_STOK,
   distribusiLogs: DEFAULT_DISTRIBUSI_LOGS,
+  tempatList: DEFAULT_TEMPAT_LOKASI,
+  inventarisMadinList: DEFAULT_INVENTARIS_MADIN,
   isLoading: false,
 
   fetchSaprasData: async () => {
@@ -452,6 +744,8 @@ export const useSaprasStore = create<SaprasState>((set, get) => ({
       tiketPerbaikan: local.tiketPerbaikan,
       logistikStok: local.logistikStok,
       distribusiLogs: local.distribusiLogs,
+      tempatList: local.tempatList,
+      inventarisMadinList: local.inventarisMadinList,
     });
 
     try {
@@ -475,6 +769,14 @@ export const useSaprasStore = create<SaprasState>((set, get) => ({
           distribusiLogs: Array.isArray(val.distribusiLogs)
             ? val.distribusiLogs
             : local.distribusiLogs,
+          tempatList:
+            Array.isArray(val.tempatList) && val.tempatList.length > 0
+              ? val.tempatList
+              : local.tempatList,
+          inventarisMadinList:
+            Array.isArray(val.inventarisMadinList) && val.inventarisMadinList.length > 0
+              ? val.inventarisMadinList
+              : local.inventarisMadinList,
         };
         writeLocalSapras(merged);
         set({ ...merged, isLoading: false });
@@ -494,6 +796,8 @@ export const useSaprasStore = create<SaprasState>((set, get) => ({
       tiketPerbaikan: state.tiketPerbaikan,
       logistikStok: state.logistikStok,
       distribusiLogs: state.distribusiLogs,
+      tempatList: state.tempatList,
+      inventarisMadinList: state.inventarisMadinList,
     };
 
     const now = new Date().toISOString();
@@ -595,6 +899,8 @@ export const useSaprasStore = create<SaprasState>((set, get) => ({
       tiketPerbaikan: nextTiket,
       logistikStok: state.logistikStok,
       distribusiLogs: state.distribusiLogs,
+      tempatList: state.tempatList,
+      inventarisMadinList: state.inventarisMadinList,
     };
 
     set(nextBundle);
@@ -639,6 +945,8 @@ export const useSaprasStore = create<SaprasState>((set, get) => ({
       tiketPerbaikan: state.tiketPerbaikan,
       logistikStok: state.logistikStok,
       distribusiLogs: state.distribusiLogs,
+      tempatList: state.tempatList,
+      inventarisMadinList: state.inventarisMadinList,
     };
 
     set(nextBundle);
@@ -704,6 +1012,8 @@ export const useSaprasStore = create<SaprasState>((set, get) => ({
       tiketPerbaikan: [newTicket, ...state.tiketPerbaikan],
       logistikStok: state.logistikStok,
       distribusiLogs: state.distribusiLogs,
+      tempatList: state.tempatList,
+      inventarisMadinList: state.inventarisMadinList,
     };
 
     set(nextBundle);
@@ -758,6 +1068,8 @@ export const useSaprasStore = create<SaprasState>((set, get) => ({
       tiketPerbaikan: nextTiket,
       logistikStok: state.logistikStok,
       distribusiLogs: state.distribusiLogs,
+      tempatList: state.tempatList,
+      inventarisMadinList: state.inventarisMadinList,
     };
 
     set(nextBundle);
@@ -771,6 +1083,8 @@ export const useSaprasStore = create<SaprasState>((set, get) => ({
       tiketPerbaikan: state.tiketPerbaikan.filter((t) => t.id !== tiketId),
       logistikStok: state.logistikStok,
       distribusiLogs: state.distribusiLogs,
+      tempatList: state.tempatList,
+      inventarisMadinList: state.inventarisMadinList,
     };
     set(nextBundle);
     await persistSaprasToCloud(nextBundle);
@@ -794,6 +1108,8 @@ export const useSaprasStore = create<SaprasState>((set, get) => ({
       tiketPerbaikan: state.tiketPerbaikan,
       logistikStok: nextStok,
       distribusiLogs: state.distribusiLogs,
+      tempatList: state.tempatList,
+      inventarisMadinList: state.inventarisMadinList,
     };
 
     set(nextBundle);
@@ -834,9 +1150,212 @@ export const useSaprasStore = create<SaprasState>((set, get) => ({
       tiketPerbaikan: state.tiketPerbaikan,
       logistikStok: nextStok,
       distribusiLogs: [newDist, ...state.distribusiLogs],
+      tempatList: state.tempatList,
+      inventarisMadinList: state.inventarisMadinList,
     };
 
     set(nextBundle);
     await persistSaprasToCloud(nextBundle);
+  },
+
+  // ==================== AKSI MASTER TEMPAT DINAMIS ====================
+  addTempatLokasi: async (data) => {
+    const state = get();
+    const now = new Date().toISOString();
+    const cleanKode = data.kode.trim().toUpperCase() || `LOC-${state.tempatList.length + 1}`;
+    const newTempat: SaprasTempatLokasi = {
+      id: `loc-${Date.now().toString(36)}`,
+      nama: data.nama.trim(),
+      kode: cleanKode,
+      penanggungJawab: data.penanggungJawab?.trim() || undefined,
+      kontakPIC: data.kontakPIC?.trim() || undefined,
+      keterangan: data.keterangan?.trim() || undefined,
+      isDefault: false,
+      createdAt: now,
+    };
+
+    const nextList = [...state.tempatList, newTempat];
+    const nextBundle: PersistedSaprasBundle = {
+      overrides: state.overrides,
+      tiketPerbaikan: state.tiketPerbaikan,
+      logistikStok: state.logistikStok,
+      distribusiLogs: state.distribusiLogs,
+      tempatList: nextList,
+      inventarisMadinList: state.inventarisMadinList,
+    };
+
+    set(nextBundle);
+    await persistSaprasToCloud(nextBundle);
+    void logActivity('TAMBAH_TEMPAT_SAPRAS', `Menambahkan tempat baru: ${newTempat.nama} (${newTempat.kode})`);
+    return newTempat;
+  },
+
+  updateTempatLokasi: async (id, updates) => {
+    const state = get();
+    const nextList = state.tempatList.map((t) =>
+      t.id === id
+        ? {
+            ...t,
+            ...updates,
+            kode: updates.kode ? updates.kode.trim().toUpperCase() : t.kode,
+          }
+        : t
+    );
+
+    const nextBundle: PersistedSaprasBundle = {
+      overrides: state.overrides,
+      tiketPerbaikan: state.tiketPerbaikan,
+      logistikStok: state.logistikStok,
+      distribusiLogs: state.distribusiLogs,
+      tempatList: nextList,
+      inventarisMadinList: state.inventarisMadinList,
+    };
+
+    set(nextBundle);
+    await persistSaprasToCloud(nextBundle);
+  },
+
+  deleteTempatLokasi: async (id) => {
+    const state = get();
+    const hasItems = state.inventarisMadinList.some((item) => item.tempatId === id);
+    if (hasItems) {
+      return {
+        success: false,
+        message: 'Tidak dapat menghapus lokasi karena masih ada barang inventaris yang terdaftar di lokasi ini. Silakan pindahkan atau mutasikan barang tersebut terlebih dahulu.',
+      };
+    }
+
+    const nextList = state.tempatList.filter((t) => t.id !== id);
+    const nextBundle: PersistedSaprasBundle = {
+      overrides: state.overrides,
+      tiketPerbaikan: state.tiketPerbaikan,
+      logistikStok: state.logistikStok,
+      distribusiLogs: state.distribusiLogs,
+      tempatList: nextList,
+      inventarisMadinList: state.inventarisMadinList,
+    };
+
+    set(nextBundle);
+    await persistSaprasToCloud(nextBundle);
+    return { success: true };
+  },
+
+  // ==================== AKSI INVENTARIS MADIN UNIVERSAL ====================
+  addInventarisMadin: async (data) => {
+    const state = get();
+    const now = new Date().toISOString();
+    const newItem: InventarisMadinItem = {
+      ...data,
+      id: `inv-${Date.now().toString(36)}`,
+      updatedAt: now,
+    };
+
+    const nextList = [newItem, ...state.inventarisMadinList];
+    const nextBundle: PersistedSaprasBundle = {
+      overrides: state.overrides,
+      tiketPerbaikan: state.tiketPerbaikan,
+      logistikStok: state.logistikStok,
+      distribusiLogs: state.distribusiLogs,
+      tempatList: state.tempatList,
+      inventarisMadinList: nextList,
+    };
+
+    set(nextBundle);
+    await persistSaprasToCloud(nextBundle);
+    void logActivity('TAMBAH_INVENTARIS_MADIN', `Menambahkan aset: ${newItem.namaBarang} (${newItem.kodeBarcode})`);
+    return newItem;
+  },
+
+  updateInventarisMadin: async (id, updates) => {
+    const state = get();
+    const now = new Date().toISOString();
+    const nextList = state.inventarisMadinList.map((item) =>
+      item.id === id
+        ? {
+            ...item,
+            ...updates,
+            updatedAt: now,
+          }
+        : item
+    );
+
+    const nextBundle: PersistedSaprasBundle = {
+      overrides: state.overrides,
+      tiketPerbaikan: state.tiketPerbaikan,
+      logistikStok: state.logistikStok,
+      distribusiLogs: state.distribusiLogs,
+      tempatList: state.tempatList,
+      inventarisMadinList: nextList,
+    };
+
+    set(nextBundle);
+    await persistSaprasToCloud(nextBundle);
+  },
+
+  deleteInventarisMadin: async (id) => {
+    const state = get();
+    const target = state.inventarisMadinList.find((i) => i.id === id);
+    const nextList = state.inventarisMadinList.filter((item) => item.id !== id);
+    const nextBundle: PersistedSaprasBundle = {
+      overrides: state.overrides,
+      tiketPerbaikan: state.tiketPerbaikan,
+      logistikStok: state.logistikStok,
+      distribusiLogs: state.distribusiLogs,
+      tempatList: state.tempatList,
+      inventarisMadinList: nextList,
+    };
+
+    set(nextBundle);
+    await persistSaprasToCloud(nextBundle);
+    if (target) {
+      void logActivity('HAPUS_INVENTARIS_MADIN', `Menghapus aset: ${target.namaBarang} (${target.kodeBarcode})`);
+    }
+  },
+
+  mutasiInventarisMadin: async ({ itemId, keTempatId, petugasPemindah, alasan }) => {
+    const state = get();
+    const targetItem = state.inventarisMadinList.find((i) => i.id === itemId);
+    if (!targetItem) return;
+
+    const dariTempat = state.tempatList.find((t) => t.id === targetItem.tempatId)?.nama || targetItem.tempatId;
+    const keTempat = state.tempatList.find((t) => t.id === keTempatId)?.nama || keTempatId;
+    const now = new Date().toISOString();
+
+    const mutasiLog: InventarisMutasiLog = {
+      id: `mut-${Date.now().toString(36)}`,
+      tanggal: now,
+      dariTempatId: targetItem.tempatId,
+      keTempatId,
+      petugasPemindah: petugasPemindah.trim() || 'Petugas Sapras',
+      alasan: alasan.trim() || 'Pemindahan operasional kantor',
+    };
+
+    const nextList = state.inventarisMadinList.map((item) =>
+      item.id === itemId
+        ? {
+            ...item,
+            tempatId: keTempatId,
+            riwayatMutasi: [mutasiLog, ...(item.riwayatMutasi || [])],
+            updatedAt: now,
+            updatedBy: petugasPemindah.trim(),
+          }
+        : item
+    );
+
+    const nextBundle: PersistedSaprasBundle = {
+      overrides: state.overrides,
+      tiketPerbaikan: state.tiketPerbaikan,
+      logistikStok: state.logistikStok,
+      distribusiLogs: state.distribusiLogs,
+      tempatList: state.tempatList,
+      inventarisMadinList: nextList,
+    };
+
+    set(nextBundle);
+    await persistSaprasToCloud(nextBundle);
+    void logActivity(
+      'MUTASI_INVENTARIS_MADIN',
+      `Mutasi ${targetItem.namaBarang} (${targetItem.kodeBarcode}) dari ${dariTempat} ke ${keTempat}. Alasan: ${alasan}`
+    );
   },
 }));

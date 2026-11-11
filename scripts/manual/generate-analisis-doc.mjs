@@ -507,10 +507,10 @@ const docHtml = `
     <h3 style="color: #064e3b; margin-top: 0;">1. Pangkalan Data PostgreSQL (Supabase Cloud)</h3>
     <p>
       • <strong>Kalkulasi Volume Data:</strong> Master Santri (7.000 baris &times; 37 kolom: ~20 MB) + Pasfoto Profil (7.000 &times; ~100 KB: ~700 MB storage file) + Log Absensi 1 Tahun (~100.000 baris: ~45 MB) + Transaksi Setoran 1 Tahun (~180.000 baris: ~85 MB) + Relasi Jadwal, Sapras, Konsorsium, &amp; Audit Logs (~60 MB) + Indeks B-Tree (~120 MB).<br/>
-      • <strong>Total Ukuran Database Tahun Pertama:</strong> <strong>~650 MB s.d. 950 MB</strong> (bertambah ~350 MB per tahun ajaran berikutnya).<br/>
+      • <strong>Total Ukuran Database Tahun Pertama:</strong> <strong>~650 MB s.d. 950 MB</strong> (bertambah ~300 MB s.d. 350 MB per tahun ajaran berikutnya).<br/>
       • <strong>Batas Free Tier Supabase:</strong> Paket gratis Supabase dibatasi maksimal <strong>500 MB database</strong>. Pada skenario 7.000 santri ini, kuota 500 MB <strong>PASTI terlampaui</strong> pada pertengahan tahun ajaran (semester genap).<br/>
       • <strong>Rekomendasi Wajib Upgrade:</strong> Madrasah <strong>wajib mengalokasikan anggaran untuk Supabase Pro Tier ($25/bulan atau ~Rp 400.000/bulan)</strong>.<br/>
-      • <strong>Keuntungan Supabase Pro bagi Madrasah:</strong> Kapasitas database melonjak menjadi <strong>8 GB</strong> (sangat aman untuk 7–10 tahun data), media storage <strong>100 GB</strong>, bandwidth egress <strong>250 GB/bulan</strong>, <strong>500 Concurrent Realtime Connections</strong> (bebas macet saat ratusan pengurus/mustahiq input serentak), dan <strong>Daily Automated Backup (Retensi 7 Hari)</strong> standar AWS.
+      • <strong>Keuntungan Supabase Pro bagi Madrasah:</strong> Kapasitas database melonjak menjadi <strong>8 GB</strong>, media storage <strong>100 GB</strong>, bandwidth egress <strong>250 GB/bulan</strong>, <strong>500 Concurrent Realtime Connections</strong> (bebas macet saat ratusan pengurus/mustahiq input serentak), dan <strong>Daily Automated Backup (Retensi 7 Hari)</strong> standar AWS.
     </p>
   </div>
 
@@ -530,7 +530,145 @@ const docHtml = `
     </p>
   </div>
 
-  <h2>5.4 Rangkuman Anggaran Maintenance Infrastruktur Tahunan (Skenario 7.000 Santri)</h2>
+  <h2>5.4 Analisis Kelebihan &amp; Kekurangan Penggunaan Supabase Pro Tier</h2>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 50%;">Kelebihan Menggunakan Supabase Pro Tier</th>
+        <th style="width: 50%;">Tantangan &amp; Kekurangan yang Perlu Diantisipasi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <strong>1. Sistem Tidak Pernah Tertidur (No Inactivity Pausing):</strong><br/>
+          Pada paket gratis, jika tidak ada aktivitas selama 7 hari (misal saat libur Ramadhan), database otomatis tertidur. Pada Pro Tier, sistem aktif 24/7/365 dengan SLA ketersediaan 99.9%.<br/><br/>
+          <strong>2. Kapasitas Database Longgar (8 GB Included):</strong><br/>
+          Meningkat 16 kali lipat dari paket gratis (500 MB), memberikan ruang gerak sangat leluasa untuk puluhan tahun data santri.<br/><br/>
+          <strong>3. Cloud File Storage Melimpah (100 GB Included):</strong><br/>
+          Menampung hingga 1.000.000 pasfoto santri dan arsip digital piagam syahadah tanpa khawatir kehabisan ruang.<br/><br/>
+          <strong>4. Skalabilitas Realtime (500 Koneksi Serentak):</strong><br/>
+          Mencegah kegagalan koneksi ketika seluruh Mustahiq dan petugas piket menginput absensi dan lalaran secara bersamaan di malam Ahad.<br/><br/>
+          <strong>5. Cadangan Otomatis Harian (Daily Backup Retensi 7 Hari):</strong><br/>
+          Perlindungan data mutlak berstandar cloud enterprise. Jika terjadi kesalahan fatal manusia, database dapat dipulihkan ke hari sebelumnya dengan 1 klik.<br/><br/>
+          <strong>6. Fitur Disk Auto-Scaling:</strong><br/>
+          Jika kapasitas 8 GB terlampaui di masa depan, Supabase otomatis memperluas disk tanpa memutus layanan, dengan tarif sangat murah (~Rp 2.000/GB/bulan).
+        </td>
+        <td>
+          <strong>1. Biaya Berlangganan Tetap (Fixed Operational Cost):</strong><br/>
+          Madrasah perlu mengalokasikan anggaran rutin sebesar <strong>$25 USD / bulan (sekitar Rp 400.000 / bulan atau Rp 4.800.000 / tahun)</strong> dari kas operasional.<br/><br/>
+          <strong>2. Metode Pembayaran Valuta Asing (USD):</strong><br/>
+          Tagihan diproses dalam kurs Dollar AS melalui kartu debit/kredit internasional (Visa/Mastercard, seperti BCA Mastercard, Mandiri Visa, Jenius BTPN, atau Bank Jago). Bendahara perlu menyiapkan kartu debit berizin transaksi online luar negeri.<br/><br/>
+          <strong>3. Sensitivitas Terhadap Fluktuasi Kurs:</strong><br/>
+          Nominal konversi rupiah dapat sedikit berfluktuasi mengikuti nilai tukar USD terhadap IDR di pasar valuta asing.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>5.5 Kalkulasi Matematis Proyeksi Masa Simpan Data (Daya Tampung per Tahun Angkatan)</h2>
+  
+  <p>
+    Berdasarkan arsitektur data pangkalan data MADINA Blokagung, berikut adalah rincian kalkulasi matematis daya tampung pangkalan data dan penyimpanan berkas saat menggunakan Supabase Pro Tier:
+  </p>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Tabel Data Pangkalan Data</th>
+        <th style="width: 25%;">Volume Transaksi / Tahun</th>
+        <th style="width: 25%;">Ukuran Rata-rata per Baris</th>
+        <th style="width: 25%;">Akumulasi Data Tahunan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Data Santri Baru &amp; Mutasi</strong></td>
+        <td>~2.500 santri baru masuk / tahun</td>
+        <td>~2 KB / santri (37 kolom atribut)</td>
+        <td><strong>~5 MB / tahun</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Log Absensi Asatidz (1 Tahun)</strong></td>
+        <td>~100.000 baris log KBM</td>
+        <td>~350 byte / baris sesi</td>
+        <td><strong>~35 MB / tahun</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Transaksi Setoran Hafalan</strong></td>
+        <td>~180.000 transaksi setoran</td>
+        <td>~300 byte / transaksi</td>
+        <td><strong>~54 MB / tahun</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Sapras, Konsorsium, &amp; Catatan</strong></td>
+        <td>~20.000 entri berkala</td>
+        <td>~500 byte / entri</td>
+        <td><strong>~10 MB / tahun</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Jejak Audit Log Pengurus</strong></td>
+        <td>~50.000 aktivitas</td>
+        <td>~400 byte / entri log</td>
+        <td><strong>~20 MB / tahun</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Indeks Cepat Database (B-Tree)</strong></td>
+        <td>Indeks pencarian multi-kolom</td>
+        <td>Struktur indeks otomatis</td>
+        <td><strong>~100 MB / tahun</strong></td>
+      </tr>
+      <tr>
+        <td><strong>PostgreSQL WAL &amp; Overhead</strong></td>
+        <td>System catalogs &amp; buffer</td>
+        <td>Cadangan sistem internal</td>
+        <td><strong>~76 MB / tahun</strong></td>
+      </tr>
+      <tr style="background-color: #f0fdf4; font-weight: bold;">
+        <td>TOTAL PERTUMBUHAN DATAAN</td>
+        <td>~350.000 Transaksi / Tahun</td>
+        <td>—</td>
+        <td style="color: #047857;">~300 MB / Tahun Ajaran</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="pricing-card" style="background-color: #f8fafc; border: 1.5pt solid #0f766e; padding: 12pt 16pt;">
+    <h3 style="color: #0f766e; margin-top: 0; font-size: 12pt;">1. Kalkulasi Daya Tampung Pangkalan Data (8 GB Database Limit):</h3>
+    <ul style="margin-bottom: 6pt;">
+      <li>Kapasitas Database Termasuk: <strong>8 GB = 8.192 MB</strong></li>
+      <li>Beban Master Data Awal (Tahun ke-1): 7.000 Santri + 200 Asatidz + Formasi Awal = <strong>~600 MB</strong></li>
+      <li>Sisa Kuota Bersih untuk Arsip Transaksi: <strong>8.192 MB &minus; 600 MB = 7.592 MB</strong></li>
+      <li>Laju Pertumbuhan Data Transaksi Tahunan: <strong>~300 MB / tahun ajaran</strong></li>
+    </ul>
+    <div style="background-color: #f0fdf4; border: 1pt solid #059669; padding: 8pt 12pt; border-radius: 4pt; font-size: 11pt; color: #064e3b;">
+      <strong>Proyeksi Daya Tampung Pangkalan Data:</strong><br/>
+      <span style="font-size: 14pt; font-weight: bold; color: #047857;">
+        7.592 MB &divide; 300 MB/tahun &approx; 25,3 TAHUN AJARAN SANTRI!
+      </span><br/>
+      <em>Artinya, kuota 8 GB pada Supabase Pro Tier mampu menampung seluruh catatan absensi, nilai, dan setoran hafalan madrasah hingga <strong>20 sampai 25 tahun angkatan</strong> tanpa perlu menambah biaya storage pangkalan data.</em>
+    </div>
+  </div>
+
+  <div class="pricing-card" style="background-color: #f8fafc; border: 1.5pt solid #2563eb; padding: 12pt 16pt; margin-top: 10pt;">
+    <h3 style="color: #1e40af; margin-top: 0; font-size: 12pt;">2. Kalkulasi Daya Tampung Media Pasfoto Santri (100 GB Cloud Storage):</h3>
+    <ul style="margin-bottom: 6pt;">
+      <li>Kapasitas Media Storage Termasuk: <strong>100 GB = 102.400 MB</strong></li>
+      <li>Rata-rata Ukuran Pasfoto Terkompresi: <strong>~100 KB</strong> per santri</li>
+      <li>Beban Pasfoto Awal (7.000 Santri): 7.000 &times; 100 KB = <strong>700 MB (0,7 GB)</strong></li>
+      <li>Pertambahan Pasfoto Santri Baru per Tahun: ~2.500 santri &times; 100 KB = <strong>250 MB / tahun (0,25 GB / tahun)</strong></li>
+    </ul>
+    <div style="background-color: #eff6ff; border: 1pt solid #3b82f6; padding: 8pt 12pt; border-radius: 4pt; font-size: 11pt; color: #1e3a8a;">
+      <strong>Proyeksi Daya Tampung Pasfoto Profil:</strong><br/>
+      <span style="font-size: 14pt; font-weight: bold; color: #1d4ed8;">
+        (100 GB &minus; 0,7 GB) &divide; 0,25 GB/tahun &approx; 397 TAHUN ANGKATAN!
+      </span><br/>
+      <em>Kuota 100 GB penyimpanan berkas praktis mencukupi untuk menyimpan pasfoto ratusan generasi santri Pondok Pesantren Darussalam Blokagung.</em>
+    </div>
+  </div>
+
+  <h2>5.6 Rangkuman Anggaran Maintenance Infrastruktur Tahunan (Skenario 7.000 Santri)</h2>
 
   <table class="data-table">
     <thead>

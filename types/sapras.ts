@@ -134,7 +134,94 @@ export interface SaprasDistribusiLog {
 }
 
 export type SaprasSectionId =
+  | 'inventaris-madin'
   | 'inventaris-kelas'
   | 'perbaikan'
   | 'logistik'
   | 'rekap';
+
+// ==================== MASTER TEMPAT / LOKASI KANTOR ====================
+export interface SaprasTempatLokasi {
+  id: string; // e.g. "loc-pusat", "loc-gp", "loc-putri", "loc-blok-4", "loc-blok-11"
+  nama: string; // e.g. "Kantor Madin Pusat"
+  kode: string; // e.g. "KMP"
+  penanggungJawab?: string;
+  kontakPIC?: string;
+  keterangan?: string;
+  isDefault?: boolean;
+  createdAt: string;
+}
+
+// ==================== INVENTARIS MADIN UNIVERSAL ====================
+export type KategoriInventarisMadin =
+  | 'ELEKTRONIK_IT'
+  | 'MEBELER_KANTOR'
+  | 'PERLENGKAPAN_RUANG'
+  | 'KITAB_DOKUMEN_MASTER'
+  | 'KENDARAAN'
+  | 'LAINNYA';
+
+export const KATEGORI_INVENTARIS_MADIN_META: Record<
+  KategoriInventarisMadin,
+  { label: string; badgeClass: string; prefixBarcode: string }
+> = {
+  ELEKTRONIK_IT: {
+    label: 'Elektronik & IT',
+    badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
+    prefixBarcode: 'ELK',
+  },
+  MEBELER_KANTOR: {
+    label: 'Mebeler & Kantor',
+    badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
+    prefixBarcode: 'MBL',
+  },
+  PERLENGKAPAN_RUANG: {
+    label: 'Perlengkapan Ruangan',
+    badgeClass: 'bg-teal-50 text-teal-800 border-teal-200',
+    prefixBarcode: 'RNG',
+  },
+  KITAB_DOKUMEN_MASTER: {
+    label: 'Kitab & Dokumen Master',
+    badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    prefixBarcode: 'DOC',
+  },
+  KENDARAAN: {
+    label: 'Kendaraan & Logistik',
+    badgeClass: 'bg-purple-50 text-purple-700 border-purple-200',
+    prefixBarcode: 'KND',
+  },
+  LAINNYA: {
+    label: 'Lainnya',
+    badgeClass: 'bg-slate-100 text-slate-700 border-slate-300',
+    prefixBarcode: 'LNY',
+  },
+};
+
+export interface InventarisMutasiLog {
+  id: string;
+  tanggal: string; // ISO format
+  dariTempatId: string;
+  keTempatId: string;
+  petugasPemindah: string;
+  alasan: string;
+}
+
+export interface InventarisMadinItem {
+  id: string;
+  kodeBarcode: string; // e.g. "MBD-AST-ELK-001"
+  namaBarang: string; // e.g. "Printer Epson L3210 (Cetak Ijazah)"
+  kategori: KategoriInventarisMadin;
+  tempatId: string; // Relasi ke SaprasTempatLokasi.id
+  spesifikasi?: string;
+  kondisi: KondisiSapras;
+  jumlah: number;
+  satuan: string; // 'Unit', 'Set', 'Pcs'
+  tahunPerolehan?: number;
+  sumberDana?: string; // 'Kas Madin', 'Wakaf Alumni', 'BOS'
+  nilaiPerolehan?: number;
+  fotoUrl?: string;
+  catatan?: string;
+  riwayatMutasi?: InventarisMutasiLog[];
+  updatedAt: string;
+  updatedBy?: string;
+}

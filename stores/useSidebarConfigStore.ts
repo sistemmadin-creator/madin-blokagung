@@ -216,6 +216,12 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
     group: 'PKM. Sapras',
     items: [
       {
+        id: 'item-sapras-inventaris-madin',
+        title: 'Inventaris Madin',
+        href: '/sapras/inventaris-madin',
+        iconName: 'Building2',
+      },
+      {
         id: 'item-sapras-inventaris',
         title: 'Inventaris Kelas',
         href: '/sapras/inventaris-kelas',
