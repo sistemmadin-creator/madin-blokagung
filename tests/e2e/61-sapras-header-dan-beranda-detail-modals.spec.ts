@@ -110,6 +110,13 @@ test.describe('E2E: Verifikasi Perbaikan Header Sapras & Integrasi Detail Modal 
     const fanSection = asatidzModal.getByText(/Pengampu Bidang Studi/i);
     await expect(waliSection.or(fanSection)).toBeVisible();
 
+    // 7. Verifikasi Komponen Baru: Jadwal Mengajar (Sabtu s/d Kamis) Jam 1 & 2
+    await expect(asatidzModal.getByText(/Jadwal Mengajar \(Sabtu s\/d Kamis\)/i)).toBeVisible();
+    await expect(asatidzModal.getByText(/Sesi Inti Jam 1 & 2/i)).toBeVisible();
+    // Pastikan Jam 3 & Jam 4 tidak ditampilkan pada panel jadwal mengajar KBM
+    await expect(asatidzModal.getByText(/Jam 3:/i)).not.toBeVisible();
+    await expect(asatidzModal.getByText(/Jam 4:/i)).not.toBeVisible();
+
     // Jika sebagai wali kelas, verifikasi bahwa terdapat list santri binaan yang dapat diklik
     if (await waliSection.isVisible()) {
       const studentButtonInAsatidz = asatidzModal.locator('button', { hasText: /NIS:/i }).first();

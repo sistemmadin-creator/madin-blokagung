@@ -44,6 +44,7 @@ import {
   Hash,
   School,
   FileCheck,
+  MapPin,
 } from 'lucide-react';
 import { useSidebarConfigStore, DEFAULT_SIDEBAR_GROUPS } from '@/stores/useSidebarConfigStore';
 import { ConfigMenuGroup, ConfigMenuItem, ConfigSubMenuItem } from '@/types/sidebar-config';
@@ -60,6 +61,12 @@ import {
   computeMateriProgressForSantri,
 } from '@/stores/useSetorMustahiqStore';
 import { useAbsensiStore } from '@/stores/useAbsensiStore';
+import { useJadwalStore, LIST_HARI } from '@/stores/useJadwalStore';
+import {
+  getJadwalGuruFromMap,
+  parseJadwalCell_Client,
+  formatTampilanKelas,
+} from '@/lib/utils/jadwalHelper';
 import {
   VALID_JAH_WALIKELAS,
   findWaliKelasAsatidz,
@@ -143,6 +150,8 @@ export default function BerandaPage() {
     fetchMustahiqData,
   } = useSetorMustahiqStore();
   const { absensiMapByDate, fetchAbsensi } = useAbsensiStore();
+  const { jadwalMap, fetchJadwal, activeHari } = useJadwalStore();
+  const [activeAsatidzMobileTab, setActiveAsatidzMobileTab] = useState<'profil' | 'jadwal'>('profil');
 
   useEffect(() => {
     fetchSantri();
@@ -151,7 +160,8 @@ export default function BerandaPage() {
     fetchSetoranData();
     fetchMustahiqData();
     fetchAbsensi();
-  }, [fetchSantri, fetchAsatidz, fetchFormasi, fetchSetoranData, fetchMustahiqData, fetchAbsensi]);
+    fetchJadwal();
+  }, [fetchSantri, fetchAsatidz, fetchFormasi, fetchSetoranData, fetchMustahiqData, fetchAbsensi, fetchJadwal]);
 
   // Modal State untuk Pop-up Detail Omni-Search
   const [selectedSantriModal, setSelectedSantriModal] = useState<Santri | null>(null);
@@ -336,6 +346,63 @@ export default function BerandaPage() {
       santriBinaan,
     };
   }, [selectedAsatidzModal, formasiList, santriList]);
+
+  // ================= PERHITUNGAN JADWAL MENGAJAR JAM 1 & JAM 2 (SABTU S/D KAMIS) =================
+  const asatidzJadwalJam12 = useMemo(() => {
+    if (!selectedAsatidzModal) return null;
+    const a = selectedAsatidzModal;
+    const jdwObj = getJadwalGuruFromMap(a.nama_asatidz, jadwalMap);
+
+    let totalJam12 = 0;
+    const days = LIST_HARI.map((h) => {
+      const hKey = h.toLowerCase() as keyof typeof jdwObj;
+      const rawVal = jdwObj[hKey] || '';
+      const formatted = formatTampilanKelas(rawVal);
+      const allSlots = parseJadwalCell_Client(formatted);
+      // HANYA JAM 1 DAN 2 UNTUK SELURUH JAH ASATIDZ
+      const filtered = allSlots.filter((slot) => slot.jam === 1 || slot.jam === 2);
+      totalJam12 += filtered.length;
+
+      const parsedSlots = filtered.map((s) => {
+        const rawLokasi = (s.lokasi || '').trim();
+        let kelas = '-';
+        let ruang = '';
+
+        const matchRuang = rawLokasi.match(/^(.*?)\s*\(([^()]+)\)$/);
+        if (matchRuang && matchRuang[1] && matchRuang[2]) {
+          kelas = matchRuang[1].trim();
+          ruang = matchRuang[2].trim();
+        } else {
+          kelas = rawLokasi || '-';
+        }
+
+        return {
+          jam: s.jam,
+          fan: s.fan || 'Pelajaran Terjadwal',
+          kelas,
+          ruang,
+        };
+      });
+
+      const jam1 = parsedSlots.find((s) => s.jam === 1) || null;
+      const jam2 = parsedSlots.find((s) => s.jam === 2) || null;
+      const isHariAktif = activeHari ? h.toLowerCase() === activeHari.toLowerCase() : false;
+
+      return {
+        hari: h,
+        isHariAktif,
+        hasSchedule: filtered.length > 0,
+        jam1,
+        jam2,
+        count: filtered.length,
+      };
+    });
+
+    return {
+      totalJam12,
+      days,
+    };
+  }, [selectedAsatidzModal, jadwalMap, activeHari]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('ALL');
@@ -1367,9 +1434,9 @@ export default function BerandaPage() {
 
       {/* ================= MODAL DETAIL ASATIDZ ================= */}
       {selectedAsatidzModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-[#0f766e] text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-[#0f766e] text-white shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-amber-300">
                   <UserCheck className="w-4 h-4" />
@@ -1390,176 +1457,349 @@ export default function BerandaPage() {
               </button>
             </div>
 
-            <div className="p-5 space-y-4 overflow-y-auto">
-              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Nama Lengkap Asatidz</span>
-                <p className="text-base font-bold text-slate-800">{selectedAsatidzModal.nama_asatidz}</p>
-                <div className="flex items-center gap-2 pt-1 flex-wrap">
-                  <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 text-[11px] font-bold">
-                    Jabatan: {selectedAsatidzModal.jah_asatidz || 'Dewan Pengajar'}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 text-[11px] font-medium font-mono">
-                    Kode: {selectedAsatidzModal.kode || '-'}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[11px] font-medium">
-                    Gender: {selectedAsatidzModal.pa_pi}
-                  </span>
-                </div>
-              </div>
+            {/* Mobile Tab Switcher (< lg) */}
+            <div className="lg:hidden px-4 py-2 bg-slate-100/90 border-b border-slate-200/80 flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveAsatidzMobileTab('profil')}
+                className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeAsatidzMobileTab === 'profil'
+                    ? 'bg-[#0f766e] text-white shadow-2xs'
+                    : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-slate-50'
+                }`}
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Profil &amp; Keaktifan</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveAsatidzMobileTab('jadwal')}
+                className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeAsatidzMobileTab === 'jadwal'
+                    ? 'bg-[#0f766e] text-white shadow-2xs'
+                    : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-slate-50'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Jadwal Jam 1 &amp; 2</span>
+              </button>
+            </div>
 
-              <div className="space-y-2 text-xs">
-                <div className="p-3 rounded-lg border border-slate-200 space-y-1">
-                  <span className="text-[10px] text-slate-400 block font-semibold">Tugas Lokasi &amp; Kamar</span>
-                  <p className="font-bold text-slate-700">
-                    {selectedAsatidzModal.lokasi_diniyyah || selectedAsatidzModal.lokasi_takror || 'Lokasi Terdaftar'}
-                    {selectedAsatidzModal.kamar ? ` • Kamar ${selectedAsatidzModal.kamar}` : ''}
-                  </p>
-                </div>
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[82vh]">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                {/* KOLOM KIRI (lg:col-span-5): Profil, Absensi, & Wali Kelas */}
+                <div
+                  className={`lg:col-span-5 space-y-3.5 ${
+                    activeAsatidzMobileTab === 'profil' ? 'block' : 'hidden lg:block'
+                  }`}
+                >
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-400">Nama Lengkap Asatidz</span>
+                    <p className="text-base font-bold text-slate-800">{selectedAsatidzModal.nama_asatidz}</p>
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 text-[11px] font-bold">
+                        Jabatan: {selectedAsatidzModal.jah_asatidz || 'Dewan Pengajar'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 text-[11px] font-medium font-mono">
+                        Kode: {selectedAsatidzModal.kode || '-'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[11px] font-medium">
+                        Gender: {selectedAsatidzModal.pa_pi}
+                      </span>
+                    </div>
+                  </div>
 
-                <div className="p-3 rounded-lg border border-slate-200 space-y-1">
-                  <span className="text-[10px] text-slate-400 block font-semibold">Alamat Asal</span>
-                  <p className="text-slate-700 font-medium">
-                    {[selectedAsatidzModal.desa, selectedAsatidzModal.kecamatan, selectedAsatidzModal.kabupaten]
-                      .filter(Boolean)
-                      .join(', ') || 'Darussalam Blokagung'}
-                  </p>
-                </div>
-              </div>
+                  <div className="space-y-2 text-xs">
+                    <div className="p-3 rounded-lg border border-slate-200 space-y-1">
+                      <span className="text-[10px] text-slate-400 block font-semibold">Tugas Lokasi &amp; Kamar</span>
+                      <p className="font-bold text-slate-700">
+                        {selectedAsatidzModal.lokasi_diniyyah || selectedAsatidzModal.lokasi_takror || 'Lokasi Terdaftar'}
+                        {selectedAsatidzModal.kamar ? ` • Kamar ${selectedAsatidzModal.kamar}` : ''}
+                      </p>
+                    </div>
 
-              {/* ================= KEAKTIFAN ABSENSI ASATIDZ (GAMBAR 4) ================= */}
-              {asatidzAbsensiStat && (
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2.5 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0">
-                        <ClipboardCheck className="w-3.5 h-3.5" />
-                      </div>
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                          Keaktifan Absensi Mengajar
+                    <div className="p-3 rounded-lg border border-slate-200 space-y-1">
+                      <span className="text-[10px] text-slate-400 block font-semibold">Alamat Asal</span>
+                      <p className="text-slate-700 font-medium">
+                        {[selectedAsatidzModal.desa, selectedAsatidzModal.kecamatan, selectedAsatidzModal.kabupaten]
+                          .filter(Boolean)
+                          .join(', ') || 'Darussalam Blokagung'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* ================= KEAKTIFAN ABSENSI ASATIDZ (GAMBAR 4) ================= */}
+                  {asatidzAbsensiStat && (
+                    <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2.5 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0">
+                            <ClipboardCheck className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                              Keaktifan Absensi Mengajar
+                            </span>
+                            <span className="text-xs font-bold text-slate-800">
+                              Tingkat Kehadiran: {asatidzAbsensiStat.pct}%
+                            </span>
+                          </div>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-md border text-[11px] font-bold ${asatidzAbsensiStat.badgeColor}`}>
+                          {asatidzAbsensiStat.predikat}
                         </span>
-                        <span className="text-xs font-bold text-slate-800">
-                          Tingkat Kehadiran: {asatidzAbsensiStat.pct}%
+                      </div>
+
+                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${asatidzAbsensiStat.barColor} transition-all duration-300`}
+                          style={{ width: `${asatidzAbsensiStat.pct}%` }}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-1.5 pt-1 text-center">
+                        <div className="p-1.5 rounded-lg bg-emerald-50 border border-emerald-100">
+                          <span className="text-[10px] text-emerald-700 block font-medium">Hadir</span>
+                          <span className="text-xs font-bold text-emerald-900 font-mono">{asatidzAbsensiStat.hadir}</span>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-blue-50 border border-blue-100">
+                          <span className="text-[10px] text-blue-700 block font-medium">Izin</span>
+                          <span className="text-xs font-bold text-blue-900 font-mono">{asatidzAbsensiStat.izin}</span>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-amber-50 border border-amber-100">
+                          <span className="text-[10px] text-amber-700 block font-medium">Sakit</span>
+                          <span className="text-xs font-bold text-amber-900 font-mono">{asatidzAbsensiStat.sakit}</span>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-rose-50 border border-rose-100">
+                          <span className="text-[10px] text-rose-700 block font-medium">Alfa</span>
+                          <span className="text-xs font-bold text-rose-900 font-mono">{asatidzAbsensiStat.alfa}</span>
+                        </div>
+                      </div>
+                      {asatidzAbsensiStat.terlambatCount > 0 && (
+                        <p className="text-[10px] text-slate-500 text-center italic">
+                          *Tercatat terlambat hadir sebanyak {asatidzAbsensiStat.terlambatCount} sesi.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ================= KELAS BINAAN & DAFTAR SANTRI BILA WALIKELAS (GAMBAR 4) ================= */}
+                  {asatidzWaliKelasInfo ? (
+                    <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2.5 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
+                            <Users className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-emerald-700 block">
+                              Wali Kelas / Mustahiq
+                            </span>
+                            <span className="text-xs font-bold text-slate-800">
+                              {asatidzWaliKelasInfo.kelasLabel}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                          {asatidzWaliKelasInfo.santriBinaan.length} Santri
                         </span>
                       </div>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded-md border text-[11px] font-bold ${asatidzAbsensiStat.badgeColor}`}>
-                      {asatidzAbsensiStat.predikat}
-                    </span>
-                  </div>
 
-                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${asatidzAbsensiStat.barColor} transition-all duration-300`}
-                      style={{ width: `${asatidzAbsensiStat.pct}%` }}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-1.5 pt-1 text-center">
-                    <div className="p-1.5 rounded-lg bg-emerald-50 border border-emerald-100">
-                      <span className="text-[10px] text-emerald-700 block font-medium">Hadir</span>
-                      <span className="text-xs font-bold text-emerald-900 font-mono">{asatidzAbsensiStat.hadir}</span>
+                      <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 rounded-lg border border-slate-200/80 bg-slate-50/50">
+                        {asatidzWaliKelasInfo.santriBinaan.length === 0 ? (
+                          <p className="p-3 text-center text-xs text-slate-400">
+                            Belum ada santri terdaftar di formasi kelas ini.
+                          </p>
+                        ) : (
+                          asatidzWaliKelasInfo.santriBinaan.map((santri, idx) => (
+                            <button
+                              key={santri.no_induk || idx}
+                              type="button"
+                              onClick={() => {
+                                setSelectedAsatidzModal(null);
+                                setSelectedSantriModal(santri);
+                              }}
+                              className="w-full px-3 py-2 text-left flex items-center justify-between hover:bg-emerald-50/80 transition-colors group cursor-pointer"
+                              title="Klik untuk melihat detail & progres setoran santri ini"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-[10px] font-mono font-bold text-slate-400 w-5 shrink-0">
+                                  {idx + 1}.
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-bold text-slate-800 group-hover:text-emerald-800 truncate">
+                                    {santri.nama}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500 font-mono">
+                                    NIS: {santri.no_induk} {santri.kamar ? `• Kamar ${santri.kamar}` : ''}
+                                  </p>
+                                </div>
+                              </div>
+                              <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-emerald-700 transition-colors shrink-0 ml-2" />
+                            </button>
+                          ))
+                        )}
+                      </div>
                     </div>
-                    <div className="p-1.5 rounded-lg bg-blue-50 border border-blue-100">
-                      <span className="text-[10px] text-blue-700 block font-medium">Izin</span>
-                      <span className="text-xs font-bold text-blue-900 font-mono">{asatidzAbsensiStat.izin}</span>
+                  ) : (
+                    <div className="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50 flex items-center gap-2 text-xs text-slate-500">
+                      <School className="w-4 h-4 text-slate-400 shrink-0" />
+                      <span>Pengampu Bidang Studi / Fan (Bukan Wali Kelas Rombel)</span>
                     </div>
-                    <div className="p-1.5 rounded-lg bg-amber-50 border border-amber-100">
-                      <span className="text-[10px] text-amber-700 block font-medium">Sakit</span>
-                      <span className="text-xs font-bold text-amber-900 font-mono">{asatidzAbsensiStat.sakit}</span>
-                    </div>
-                    <div className="p-1.5 rounded-lg bg-rose-50 border border-rose-100">
-                      <span className="text-[10px] text-rose-700 block font-medium">Alfa</span>
-                      <span className="text-xs font-bold text-rose-900 font-mono">{asatidzAbsensiStat.alfa}</span>
-                    </div>
-                  </div>
-                  {asatidzAbsensiStat.terlambatCount > 0 && (
-                    <p className="text-[10px] text-slate-500 text-center italic">
-                      *Tercatat terlambat hadir sebanyak {asatidzAbsensiStat.terlambatCount} sesi.
-                    </p>
                   )}
                 </div>
-              )}
 
-              {/* ================= KELAS BINAAN & DAFTAR SANTRI BILA WALIKELAS (GAMBAR 4) ================= */}
-              {asatidzWaliKelasInfo ? (
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2.5 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
-                        <Users className="w-3.5 h-3.5" />
+                {/* KOLOM KANAN (lg:col-span-7): Jadwal Mengajar (Sabtu s/d Kamis) Khusus Jam 1 & 2 */}
+                <div
+                  className={`lg:col-span-7 space-y-3.5 ${
+                    activeAsatidzMobileTab === 'jadwal' ? 'block' : 'hidden lg:block'
+                  }`}
+                >
+                  <div className="p-4 rounded-2xl border border-slate-200 bg-white space-y-3 shadow-2xs">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shadow-2xs">
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <span>Jadwal Mengajar (Sabtu s/d Kamis)</span>
+                          </h4>
+                          <p className="text-[11px] text-slate-500">
+                            Khusus Sesi Inti: <span className="font-semibold text-emerald-700">Jam 1 &amp; Jam 2</span>
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-emerald-700 block">
-                          Wali Kelas / Mustahiq
-                        </span>
-                        <span className="text-xs font-bold text-slate-800">
-                          {asatidzWaliKelasInfo.kelasLabel}
-                        </span>
-                      </div>
+                      <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-600 text-white shadow-2xs">
+                        {asatidzJadwalJam12?.totalJam12 || 0} Jam Terjadwal
+                      </span>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                      {asatidzWaliKelasInfo.santriBinaan.length} Santri
-                    </span>
-                  </div>
 
-                  <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 rounded-lg border border-slate-200/80 bg-slate-50/50">
-                    {asatidzWaliKelasInfo.santriBinaan.length === 0 ? (
-                      <p className="p-3 text-center text-xs text-slate-400">
-                        Belum ada santri terdaftar di formasi kelas ini.
-                      </p>
-                    ) : (
-                      asatidzWaliKelasInfo.santriBinaan.map((santri, idx) => (
-                        <button
-                          key={santri.no_induk || idx}
-                          type="button"
-                          onClick={() => {
-                            setSelectedAsatidzModal(null);
-                            setSelectedSantriModal(santri);
-                          }}
-                          className="w-full px-3 py-2 text-left flex items-center justify-between hover:bg-emerald-50/80 transition-colors group cursor-pointer"
-                          title="Klik untuk melihat detail & progres setoran santri ini"
+                    {/* List 6 Hari: Sabtu s/d Kamis */}
+                    <div className="space-y-2.5">
+                      {asatidzJadwalJam12?.days.map((d) => (
+                        <div
+                          key={d.hari}
+                          className={`p-3 rounded-xl border transition-all ${
+                            d.isHariAktif
+                              ? 'bg-emerald-50/60 border-emerald-300 shadow-2xs ring-1 ring-emerald-400/40'
+                              : 'bg-slate-50/70 border-slate-200/90'
+                          }`}
                         >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-[10px] font-mono font-bold text-slate-400 w-5 shrink-0">
-                              {idx + 1}.
-                            </span>
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-slate-800 group-hover:text-emerald-800 truncate">
-                                {santri.nama}
-                              </p>
-                              <p className="text-[10px] text-slate-500 font-mono">
-                                NIS: {santri.no_induk} {santri.kamar ? `• Kamar ${santri.kamar}` : ''}
-                              </p>
+                          {/* Header Hari */}
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`px-2.5 py-0.5 rounded-lg text-xs font-bold ${
+                                  d.isHariAktif
+                                    ? 'bg-emerald-700 text-white shadow-2xs'
+                                    : 'bg-white text-slate-800 border border-slate-200/80'
+                                }`}
+                              >
+                                {d.hari}
+                              </span>
+                              {d.isHariAktif && (
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-extrabold uppercase tracking-wide">
+                                  Hari Ini
+                                </span>
+                              )}
                             </div>
+
+                            <span className="text-[11px] font-semibold text-slate-500">
+                              {d.hasSchedule ? `${d.count} Sesi Kelas` : 'Tidak Ada Jadwal'}
+                            </span>
                           </div>
-                          <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-emerald-700 transition-colors shrink-0 ml-2" />
-                        </button>
-                      ))
-                    )}
+
+                          {/* Sesi Jam 1 & 2 */}
+                          {d.hasSchedule ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {/* Jam 1 */}
+                              {d.jam1 ? (
+                                <div className="p-2.5 rounded-xl bg-white border border-emerald-200/80 shadow-2xs space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                                      Jam 1 (07.30 - 08.40)
+                                    </span>
+                                  </div>
+                                  <p className="text-xs font-extrabold text-slate-800 leading-snug">
+                                    {d.jam1.fan}
+                                  </p>
+                                  <div className="flex items-center gap-1.5 text-[11px] text-slate-600 flex-wrap pt-0.5">
+                                    <span className="font-bold text-emerald-900 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100">
+                                      {d.jam1.kelas}
+                                    </span>
+                                    {d.jam1.ruang && (
+                                      <span className="inline-flex items-center gap-0.5 text-slate-500 text-[10px]">
+                                        <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                                        <span className="truncate max-w-[130px]">{d.jam1.ruang}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="p-2.5 rounded-xl bg-white/60 border border-dashed border-slate-200 flex items-center justify-center text-center">
+                                  <span className="text-[11px] text-slate-400 italic">Jam 1: Kosong</span>
+                                </div>
+                              )}
+
+                              {/* Jam 2 */}
+                              {d.jam2 ? (
+                                <div className="p-2.5 rounded-xl bg-white border border-blue-200/80 shadow-2xs space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-bold">
+                                      Jam 2 (08.40 - 09.50)
+                                    </span>
+                                  </div>
+                                  <p className="text-xs font-extrabold text-slate-800 leading-snug">
+                                    {d.jam2.fan}
+                                  </p>
+                                  <div className="flex items-center gap-1.5 text-[11px] text-slate-600 flex-wrap pt-0.5">
+                                    <span className="font-bold text-blue-900 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-100">
+                                      {d.jam2.kelas}
+                                    </span>
+                                    {d.jam2.ruang && (
+                                      <span className="inline-flex items-center gap-0.5 text-slate-500 text-[10px]">
+                                        <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                                        <span className="truncate max-w-[130px]">{d.jam2.ruang}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="p-2.5 rounded-xl bg-white/60 border border-dashed border-slate-200 flex items-center justify-center text-center">
+                                  <span className="text-[11px] text-slate-400 italic">Jam 2: Kosong</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="py-2 px-3 rounded-lg bg-white/60 border border-slate-200/60 text-center">
+                              <span className="text-[11px] text-slate-400 italic">
+                                Tidak ada jadwal mengajar pada Jam 1 &amp; Jam 2
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              ) : (
-                <div className="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50 flex items-center gap-2 text-xs text-slate-500">
-                  <School className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>Pengampu Bidang Studi / Fan (Bukan Wali Kelas Rombel)</span>
-                </div>
-              )}
+              </div>
 
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+              <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
                 <Link
                   href="/asatidz"
                   onClick={() => setSelectedAsatidzModal(null)}
-                  className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                  className="px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
                 >
                   Buka Direktori Asatidz
                 </Link>
                 <Link
                   href="/hari-kbm"
                   onClick={() => setSelectedAsatidzModal(null)}
-                  className="px-3.5 py-2 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#0b5751] text-white shadow-2xs transition"
+                  className="px-4 py-2 text-xs font-bold rounded-xl bg-[#0f766e] hover:bg-[#0b5751] text-white shadow-2xs transition inline-flex items-center gap-1.5"
                 >
-                  Lihat Jadwal di Hari KBM
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Lihat Jadwal di Hari KBM</span>
                 </Link>
               </div>
             </div>
