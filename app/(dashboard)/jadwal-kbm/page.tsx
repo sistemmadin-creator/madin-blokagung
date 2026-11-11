@@ -33,6 +33,7 @@ import ModalAksiKlikKananKG from '@/components/modules/jadwal-kbm/ModalAksiKlikK
 import ContextMenuKG from '@/components/modules/jadwal-kbm/ContextMenuKG';
 import FloatingBarClipboardKG from '@/components/modules/jadwal-kbm/FloatingBarClipboardKG';
 import ModalDetailAsatidz from '@/components/modules/asatidz/ModalDetailAsatidz';
+import { useTableViewerStore } from '@/stores/useTableViewerStore';
 
 export default function JadwalKbmPage() {
   const {
@@ -168,11 +169,27 @@ export default function JadwalKbmPage() {
   const [isTableFullscreen, setIsTableFullscreen] = useState<boolean>(false);
   const [mobileFitScale, setMobileFitScale] = useState<number>(1);
   const [mobileScaledHeight, setMobileScaledHeight] = useState<number | null>(null);
+  const [tableNaturalHeight, setTableNaturalHeight] = useState<number>(0);
   const tableWrapperRef = useRef<HTMLDivElement | null>(null);
   const tableRef = useRef<HTMLTableElement | null>(null);
 
+  // Hooking ke Store Global Table Viewer (Zoom & Pencarian Cepat)
+  const {
+    zoomScale,
+    zoomMode,
+    searchQuery,
+    setMatchesInfo,
+    activeMatchIndex,
+    matchNavigationTrigger,
+  } = useTableViewerStore();
+
   const recalculateMobileTableScale = useCallback(() => {
     if (typeof window === 'undefined') return;
+    const tableEl = tableRef.current;
+    if (tableEl) {
+      setTableNaturalHeight(tableEl.offsetHeight || 0);
+    }
+
     if (window.innerWidth >= 768) {
       setMobileFitScale(1);
       setMobileScaledHeight(null);
@@ -180,7 +197,6 @@ export default function JadwalKbmPage() {
     }
 
     const wrapperEl = tableWrapperRef.current;
-    const tableEl = tableRef.current;
     if (!wrapperEl || !tableEl) return;
 
     const availableWidth = wrapperEl.clientWidth;
@@ -196,6 +212,77 @@ export default function JadwalKbmPage() {
       setMobileScaledHeight(null);
     }
   }, []);
+
+  // Hitung skala aktual yang aktif untuk tabel
+  const effectiveScale = useMemo(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      if (zoomMode === 'fit') return mobileFitScale;
+      if (zoomMode === '100') return 1.0;
+      return zoomScale;
+    }
+    if (zoomMode === 'fit' || zoomMode === '100') return 1.0;
+    return zoomScale;
+  }, [mobileFitScale, zoomMode, zoomScale]);
+
+  // Pencarian sel / baris jadwal KBM
+  const searchMatches = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+
+    const matches: { kelasKey: string; reason?: string }[] = [];
+
+    listTampil.forEach((k) => {
+      const klsStr = `${k.kls} ${k.bag}`.toLowerCase();
+      const tingkatStr = (k.tingkat || '').toLowerCase();
+      const mustahiqStr = `${k.mustahiqNama || ''} ${k.mustahiqKG || ''}`.toLowerCase();
+      const lokalStr = (k.lokal || '').toLowerCase();
+
+      let hasMatchingSlot = false;
+
+      for (const hari of LIST_HARI) {
+        for (const jam of [1, 2]) {
+          const sesi = k.jadwal[hari]?.[jam as 1 | 2]?.[0];
+          if (sesi) {
+            const sesiStr = `${sesi.guru || ''} ${sesi.kg || ''} ${sesi.fan || ''}`.toLowerCase();
+            if (sesiStr.includes(q)) {
+              hasMatchingSlot = true;
+              break;
+            }
+          }
+        }
+        if (hasMatchingSlot) break;
+      }
+
+      if (
+        klsStr.includes(q) ||
+        tingkatStr.includes(q) ||
+        mustahiqStr.includes(q) ||
+        lokalStr.includes(q) ||
+        hasMatchingSlot
+      ) {
+        matches.push({ kelasKey: k.key });
+      }
+    });
+
+    return matches;
+  }, [listTampil, searchQuery]);
+
+  // Sinkronkan jumlah hasil pencarian ke floating toolbar
+  useEffect(() => {
+    setMatchesInfo(searchMatches.length, activeMatchIndex);
+  }, [searchMatches.length, activeMatchIndex, setMatchesInfo]);
+
+  // Scroll otomatis ke hasil pencarian aktif saat navigasi
+  useEffect(() => {
+    if (searchMatches.length === 0) return;
+    const targetMatch = searchMatches[activeMatchIndex] || searchMatches[0];
+    if (!targetMatch) return;
+
+    const el = document.getElementById(`row-kbm-${targetMatch.kelasKey}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [activeMatchIndex, matchNavigationTrigger, searchMatches]);
 
   useEffect(() => {
     recalculateMobileTableScale();
@@ -665,28 +752,46 @@ export default function JadwalKbmPage() {
         <div
           ref={tableWrapperRef}
           id="tableJadwalKBMWrapper"
-          className="table-responsive overflow-x-auto rounded-xl border border-slate-200 shadow-xs bg-white"
-          style={
-            mobileFitScale < 1 && mobileScaledHeight
-              ? { height: mobileScaledHeight, overflowX: 'hidden', overflowY: 'hidden' }
-              : undefined
-          }
+          className="table-responsive rounded-xl border border-slate-200 shadow-xs bg-white transition-all duration-200"
+          style={{
+            overflowX: effectiveScale <= mobileFitScale + 0.02 ? 'hidden' : 'auto',
+            overflowY: effectiveScale <= mobileFitScale + 0.02 ? 'hidden' : 'auto',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: effectiveScale <= mobileFitScale + 0.02 ? 'auto' : 'pan-x pan-y',
+            height:
+              tableNaturalHeight > 0 && effectiveScale < 1
+                ? Math.ceil(tableNaturalHeight * effectiveScale)
+                : undefined,
+          }}
         >
-          <table
-            ref={tableRef}
-            className="tabel-kbm-resmi w-full min-w-[1320px]"
-            id="tableJadwalKBM"
+          <div
             style={
-              mobileFitScale < 1
+              effectiveScale !== 1
                 ? {
-                    width: 1320,
-                    minWidth: 1320,
-                    transform: `scale(${mobileFitScale})`,
-                    transformOrigin: 'top left',
+                    width: Math.ceil(1320 * effectiveScale),
+                    height:
+                      tableNaturalHeight > 0
+                        ? Math.ceil(tableNaturalHeight * effectiveScale)
+                        : undefined,
                   }
                 : undefined
             }
           >
+            <table
+              ref={tableRef}
+              className="tabel-kbm-resmi w-full min-w-[1320px]"
+              id="tableJadwalKBM"
+              style={
+                effectiveScale !== 1
+                  ? {
+                      width: 1320,
+                      minWidth: 1320,
+                      transform: `scale(${effectiveScale})`,
+                      transformOrigin: 'top left',
+                    }
+                  : undefined
+              }
+            >
             <thead>
               {/* Baris Header 1 */}
               <tr>
@@ -740,10 +845,20 @@ export default function JadwalKbmPage() {
                   else if (k.tingkat === 'ULYA') badgeClass = 'badge-tingkat-ulya';
                   else if (k.tingkat === "ISTI'DAD" || k.tingkat === 'IST') badgeClass = 'badge-tingkat-istidad';
 
+                  const matchIndex = searchMatches.findIndex((m) => m.kelasKey === k.key);
+                  const isMatched = matchIndex !== -1;
+                  const isCurrentActiveMatch = isMatched && matchIndex === activeMatchIndex;
+
+                  const matchHighlightClass = isCurrentActiveMatch
+                    ? 'ring-2 ring-amber-500 bg-amber-100/90 shadow-sm'
+                    : isMatched
+                    ? 'ring-1 ring-amber-300 bg-amber-50/70'
+                    : '';
+
                   return (
                     <React.Fragment key={k.key}>
                       {/* Baris Jam 1 */}
-                      <tr className={rowGenderClass}>
+                      <tr id={`row-kbm-${k.key}`} className={`${rowGenderClass} transition-colors ${matchHighlightClass}`}>
                         <td
                           rowSpan={2}
                           className={`text-center font-bold cell-klik-kelas cursor-pointer md:sticky md:left-0 z-10 ${stickyCellBg} hover:bg-emerald-50/50`}
@@ -852,7 +967,7 @@ export default function JadwalKbmPage() {
                       </tr>
 
                       {/* Baris Jam 2 */}
-                      <tr className={rowGenderClass}>
+                      <tr className={`${rowGenderClass} transition-colors ${matchHighlightClass}`}>
                         <td className={`text-center font-bold cell-jam ${isPutri ? 'bg-[#fde9d2] text-amber-950' : 'bg-slate-100 text-slate-800'}`}>2</td>
 
                         {/* 6 Hari Sesi Jam 2 */}
@@ -905,6 +1020,7 @@ export default function JadwalKbmPage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 

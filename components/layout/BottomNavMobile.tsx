@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Users,
   BookOpen,
   Award,
   ClipboardCheck,
   Settings,
+  Home,
   Calendar,
   CalendarDays,
   Building2,
@@ -31,13 +32,69 @@ import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyB
 import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
 import { useRbacStore } from '@/stores/useRbacStore';
 import { canAccessSettingsAuthority } from '@/lib/utils/rbacHelper';
+import { useTableViewerStore } from '@/stores/useTableViewerStore';
+import FloatingTableTools from '@/components/common/FloatingTableTools';
 
 export default function BottomNavMobile() {
   const pathname = usePathname();
+  const router = useRouter();
   const currentAccount = useRbacStore((s) => s.currentAccount);
+  const toggleFloatingTools = useTableViewerStore((s) => s.toggleFloatingTools);
+
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
+
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (tapTimerRef.current) {
+        clearTimeout(tapTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleBerandaTap = (e: React.MouseEvent) => {
+    e.preventDefault();
+    tapCountRef.current += 1;
+    const currentCount = tapCountRef.current;
+
+    if (tapTimerRef.current) {
+      clearTimeout(tapTimerRef.current);
+      tapTimerRef.current = null;
+    }
+
+    // Ketuk 3x terdeteksi: Buka Tool Mengambang (Pencarian & Zoom)
+    if (currentCount >= 3) {
+      tapCountRef.current = 0;
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([30, 40, 30]);
+      }
+      setActiveMenu(null);
+      toggleFloatingTools();
+      return;
+    }
+
+    // Timer debounce untuk membedakan ketukan 1x (Beranda) dan 2x (Opsi)
+    tapTimerRef.current = setTimeout(() => {
+      const finalCount = tapCountRef.current;
+      tapCountRef.current = 0;
+
+      if (finalCount === 1) {
+        // Ketuk 1x: Langsung navigasi ke Beranda
+        setActiveMenu(null);
+        router.push('/dashboard');
+      } else if (finalCount === 2) {
+        // Ketuk 2x: Langsung buka menu Opsi / Pengaturan
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate(40);
+        }
+        setActiveMenu((prev) => (prev === 'pengaturan' ? null : 'pengaturan'));
+      }
+    }, 280);
+  };
 
   const allowSettings = canAccessSettingsAuthority(currentAccount);
 
@@ -342,11 +399,16 @@ export default function BottomNavMobile() {
         </div>
       )}
 
-      {/* 5. Dropup Menu Grup: PENGATURAN */}
+      {/* 5. Dropup Menu Grup: PENGATURAN (Diakses melalui Ketuk 2x Tombol Beranda) */}
       {activeMenu === 'pengaturan' && (
         <div className="fixed bottom-24 left-4 right-4 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[45] md:hidden space-y-1 animate-in slide-in-from-bottom-4 duration-200">
-          <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            Pengaturan Sistem
+          <div className="flex items-center justify-between px-3 py-1">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Opsi &amp; Pengaturan
+            </span>
+            <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
+              Ketuk 2x Beranda
+            </span>
           </div>
           <button
             onClick={() => {
@@ -403,8 +465,12 @@ export default function BottomNavMobile() {
         </div>
       )}
 
+      {/* Floating Toolbar Khusus Pencarian & Zoom Tabel (Muncul saat Ketuk 3x Beranda) */}
+      <FloatingTableTools />
+
       {/* Floating Pill Bottom Bar Khusus Mobile */}
-      <nav className="fixed bottom-5 left-4 right-4 h-15 bg-white/95 backdrop-blur-md rounded-full shadow-[0_10px_35px_rgba(0,0,0,0.12)] border border-slate-200/80 z-40 flex items-center justify-around md:hidden px-2 py-1 select-none">
+      <nav className="fixed bottom-5 left-4 right-4 h-15 bg-white/95 backdrop-blur-md rounded-full shadow-[0_10px_35px_rgba(0,0,0,0.12)] border border-slate-200/80 z-40 flex items-center justify-between md:hidden px-2 py-1 select-none">
+        {/* 1. Kiri 1: UTAMA */}
         <button
           type="button"
           onClick={() => toggleDropup('utama')}
@@ -421,6 +487,7 @@ export default function BottomNavMobile() {
           )}
         </button>
 
+        {/* 2. Kiri 2: KURIKULUM */}
         <button
           type="button"
           onClick={() => toggleDropup('kurikulum')}
@@ -445,6 +512,21 @@ export default function BottomNavMobile() {
           )}
         </button>
 
+        {/* 3. TENGAH: TOMBOL BERANDA HERO BULAT BESAR (Pintasan 1x: Beranda, 2x: Opsi, 3x: Tool Zoom & Cari) */}
+        <div className="flex-1 flex flex-col items-center justify-center relative -top-3">
+          <button
+            type="button"
+            onClick={handleBerandaTap}
+            title="Ketuk 1x: Beranda | 2x: Opsi & Pengaturan | 3x: Tool Zoom & Cari"
+            aria-label="Tombol Beranda: Ketuk 1 kali ke Beranda, 2 kali ke Opsi, 3 kali buka Tool Mengambang"
+            className="w-13 h-13 rounded-full bg-gradient-to-tr from-emerald-600 via-emerald-700 to-teal-600 text-white flex items-center justify-center shadow-[0_8px_20px_rgba(5,150,105,0.45)] border-3 border-white ring-2 ring-emerald-500/20 active:scale-90 transition-all duration-200 cursor-pointer"
+          >
+            <Home className="w-6 h-6 drop-shadow-xs" />
+          </button>
+          <span className="text-[9px] font-bold text-slate-600 mt-0.5 tracking-tight">Beranda</span>
+        </div>
+
+        {/* 4. Kanan 1: HAFALAN */}
         <button
           type="button"
           onClick={() => toggleDropup('muhafadzoh')}
@@ -469,6 +551,7 @@ export default function BottomNavMobile() {
           )}
         </button>
 
+        {/* 5. Kanan 2: PRESENSI */}
         <button
           type="button"
           onClick={() => toggleDropup('kesiswaan')}
@@ -482,22 +565,6 @@ export default function BottomNavMobile() {
           <ClipboardCheck className="w-5 h-5" />
           <span className="text-[10px] mt-0.5">Presensi</span>
           {(activeMenu === 'kesiswaan' || pathname.includes('absen')) && (
-            <span className="absolute bottom-0 w-8 h-0.5 bg-madin-700 rounded-full" />
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => toggleDropup('pengaturan')}
-          className={`flex flex-col items-center justify-center py-1 flex-1 relative transition-colors ${
-            activeMenu === 'pengaturan'
-              ? 'text-madin-700 font-bold'
-              : 'text-slate-400 hover:text-slate-600'
-          }`}
-        >
-          <Settings className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5">Opsi</span>
-          {activeMenu === 'pengaturan' && (
             <span className="absolute bottom-0 w-8 h-0.5 bg-madin-700 rounded-full" />
           )}
         </button>
