@@ -1,8 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { WebPushServerService } from '@/lib/services/webPushServer';
+import {
+  pushSubscribeSchema,
+  pushDeleteSchema,
+} from '@/lib/validations/pushNotificationSchema';
+import {
+  checkRateLimit,
+  getClientIdentifier,
+  createRateLimitResponse,
+  RATE_LIMIT_PROFILES,
+} from '@/lib/security/rateLimiter';
 
 export async function POST(req: NextRequest) {
+  // 1. Proteksi Rate Limiting (Maksimal 20 pendaftaran per menit per IP)
+  const rl = checkRateLimit(getClientIdentifier(req, 'push_sub'), RATE_LIMIT_PROFILES.PUSH_SUBSCRIBE);
+  if (!rl.success) {
+    return createRateLimitResponse(rl);
+  }
+
   try {
     const supabase = createClient();
     const {
@@ -16,15 +32,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
-    const { subscription, role, target_identifier } = body;
-
-    if (!subscription || !subscription.endpoint || !subscription.keys) {
+    let bodyRaw: unknown;
+    try {
+      bodyRaw = await req.json();
+    } catch {
       return NextResponse.json(
-        { error: 'Format data subscription tidak valid' },
+        { error: 'Format JSON payload tidak valid atau corrupt' },
         { status: 400 }
       );
     }
+
+    // 2. Validasi Skema Zod
+    const parseResult = pushSubscribeSchema.safeParse(bodyRaw);
+    if (!parseResult.success) {
+      const errors = parseResult.error.flatten().fieldErrors;
+      const firstError = Object.values(errors)[0]?.[0] || 'Format data subscription tidak valid';
+      return NextResponse.json(
+        { error: `Validasi gagal: ${firstError}`, details: errors },
+        { status: 400 }
+      );
+    }
+
+    const { subscription, role, target_identifier } = parseResult.data;
 
     const userAgent = req.headers.get('user-agent') || '';
     const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
@@ -34,7 +63,7 @@ export async function POST(req: NextRequest) {
       p256dh: subscription.keys.p256dh,
       auth: subscription.keys.auth,
       role: role || 'wali',
-      target_identifier: target_identifier || null,
+      target_identifier: target_identifier || undefined,
       user_agent: userAgent,
       device_type: isMobile ? 'mobile' : 'desktop',
       dbClient: supabase,
@@ -52,6 +81,12 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  // 1. Proteksi Rate Limiting
+  const rl = checkRateLimit(getClientIdentifier(req, 'push_sub_del'), RATE_LIMIT_PROFILES.PUSH_SUBSCRIBE);
+  if (!rl.success) {
+    return createRateLimitResponse(rl);
+  }
+
   try {
     const supabase = createClient();
     const {
@@ -65,14 +100,30 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
-    const { endpoint } = body;
-
-    if (!endpoint) {
-      return NextResponse.json({ error: 'Endpoint diperlukan' }, { status: 400 });
+    let bodyRaw: unknown;
+    try {
+      bodyRaw = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'Format JSON payload tidak valid atau corrupt' },
+        { status: 400 }
+      );
     }
 
-    // Proteksi BOLA / IDOR: Cegah pengguna menghapus langganan akun lain
+    // 2. Validasi Skema Zod
+    const parseResult = pushDeleteSchema.safeParse(bodyRaw);
+    if (!parseResult.success) {
+      const errors = parseResult.error.flatten().fieldErrors;
+      const firstError = Object.values(errors)[0]?.[0] || 'Endpoint diperlukan';
+      return NextResponse.json(
+        { error: `Validasi gagal: ${firstError}`, details: errors },
+        { status: 400 }
+      );
+    }
+
+    const { endpoint } = parseResult.data;
+
+    // 3. Proteksi BOLA / IDOR: Cegah pengguna menghapus langganan akun lain
     const appMeta = (user.app_metadata || {}) as Record<string, unknown>;
     const userRole = String(appMeta.role || '').toLowerCase();
     const isMaster =

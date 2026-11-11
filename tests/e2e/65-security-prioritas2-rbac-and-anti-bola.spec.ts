@@ -111,7 +111,7 @@ test.describe('Prioritas 2: Otorisasi Backend RBAC & Proteksi Data Anti-BOLA/IDO
 
       expect(res.status()).toBe(400);
       const json = await res.json();
-      expect(json.error).toContain('harus diisi');
+      expect(json.error).toMatch(/harus diisi|Validasi gagal/i);
     });
   });
 

@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import {
+  checkRateLimit,
+  getClientIdentifier,
+  createRateLimitResponse,
+  RATE_LIMIT_PROFILES,
+} from '@/lib/security/rateLimiter';
 
 export const dynamic = 'force-dynamic';
 
@@ -166,7 +172,14 @@ async function handleProxy(
   pathSegments: string[],
   method: 'GET' | 'POST'
 ) {
-  // 1. Verifikasi Autentikasi Pengguna di Sisi Server
+  // 1. Proteksi Beban & Rate Limiting (Maksimal 30 request per menit per IP)
+  const identifier = getClientIdentifier(req, 'waha_proxy');
+  const rl = checkRateLimit(identifier, RATE_LIMIT_PROFILES.WAHA_PROXY);
+  if (!rl.success) {
+    return createRateLimitResponse(rl);
+  }
+
+  // 2. Verifikasi Autentikasi Pengguna di Sisi Server
   try {
     const supabase = createClient();
     const {

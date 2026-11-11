@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { WebPushServerService } from '@/lib/services/webPushServer';
+import { pushSendSchema } from '@/lib/validations/pushNotificationSchema';
+import {
+  checkRateLimit,
+  getClientIdentifier,
+  createRateLimitResponse,
+  RATE_LIMIT_PROFILES,
+} from '@/lib/security/rateLimiter';
 
 export async function POST(req: NextRequest) {
+  // 1. Proteksi Beban & Rate Limiting (Maksimal 10 broadcast per menit per IP/akun)
+  const identifier = getClientIdentifier(req, 'push_send');
+  const rateLimitResult = checkRateLimit(identifier, RATE_LIMIT_PROFILES.PUSH_SEND);
+  if (!rateLimitResult.success) {
+    return createRateLimitResponse(rateLimitResult);
+  }
+
   try {
     const supabase = createClient();
     const {
@@ -16,7 +30,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verifikasi Otoritas Peran Pengguna (Role-Based Authorization & Anti-BOLA)
+    // 2. Verifikasi Otoritas Peran Pengguna (Role-Based Authorization & Anti-BOLA)
     const appMeta = (user.app_metadata || {}) as Record<string, unknown>;
     let userRole = String(appMeta.role || '').toLowerCase();
     const username = String(appMeta.username || '').toLowerCase();
@@ -61,15 +75,41 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
-    const { title, body: content, url, icon, badge, role, target_identifier, endpoint } = body;
-
-    if (!title || !content) {
+    // 3. Validasi Skema Input Ketat menggunakan Zod
+    let bodyRaw: unknown;
+    try {
+      bodyRaw = await req.json();
+    } catch {
       return NextResponse.json(
-        { error: 'Judul (title) dan isi (body) notifikasi harus diisi' },
+        { error: 'Format JSON payload tidak valid atau corrupt' },
         { status: 400 }
       );
     }
+
+    const parseResult = pushSendSchema.safeParse(bodyRaw);
+    if (!parseResult.success) {
+      const errors = parseResult.error.flatten().fieldErrors;
+      const firstError =
+        Object.values(errors)[0]?.[0] || 'Validasi skema input tidak terpenuhi.';
+      return NextResponse.json(
+        {
+          error: `Validasi gagal: ${firstError}`,
+          details: errors,
+        },
+        { status: 400 }
+      );
+    }
+
+    const {
+      title,
+      body: content,
+      url,
+      icon,
+      badge,
+      role,
+      target_identifier,
+      endpoint,
+    } = parseResult.data;
 
     const payload = {
       title,
@@ -84,7 +124,7 @@ export async function POST(req: NextRequest) {
       payload,
       endpoint,
       role,
-      targetIdentifier: target_identifier,
+      targetIdentifier: target_identifier || undefined,
       dbClient: supabase,
     });
 
