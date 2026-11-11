@@ -34,8 +34,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
+# local env files (jangan pernah commit credentials ke git!)
+.env
 .env*.local
+.env.development
+.env.test
+.env.production
+!.env.example
 
 # vercel
 .vercel

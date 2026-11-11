@@ -1,20 +1,34 @@
 import webpush from 'web-push';
-import { supabase } from '@/lib/supabase/client';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 
-const DEFAULT_PUBLIC_KEY =
-  'BHHyuMT9yL1ESkHwxDiLez3X56Iwq2kq27fVhDu40m9zqHvfqLY6LjwMq_T3OyYQeu7OirmiXodP8j_uQnZJLIU';
-const DEFAULT_PRIVATE_KEY =
-  '2OAMhpiZP5_zqusA5Lw2W0mnnK_sP9S-MDNGgTCXLvQ';
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@madinblokagung.com';
 
-const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || DEFAULT_PUBLIC_KEY;
-const privateKey = process.env.VAPID_PRIVATE_KEY || DEFAULT_PRIVATE_KEY;
-const subject = process.env.VAPID_SUBJECT || 'mailto:admin@madinblokagung.com';
+let isVapidConfigured = false;
 
-if (publicKey && privateKey) {
+/**
+ * Memastikan konfigurasi VAPID diinisialisasi hanya jika environment variable tersedia.
+ * Tidak ada fallback kunci rahasia (private key) yang ter-hardcode di dalam source code.
+ */
+export function ensureVapidConfigured(): boolean {
+  if (isVapidConfigured) return true;
+
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+
+  if (!publicKey || !privateKey) {
+    console.warn(
+      '[WebPushServer] VAPID credentials belum lengkap di environment server (NEXT_PUBLIC_VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY).'
+    );
+    return false;
+  }
+
   try {
-    webpush.setVapidDetails(subject, publicKey, privateKey);
+    webpush.setVapidDetails(VAPID_SUBJECT, publicKey, privateKey);
+    isVapidConfigured = true;
+    return true;
   } catch (err) {
-    console.error('Gagal menginisialisasi VAPID details webpush:', err);
+    console.error('[WebPushServer] Gagal menginisialisasi VAPID details webpush:', err);
+    return false;
   }
 }
 
@@ -38,13 +52,20 @@ export interface PushSubscriptionRecord {
   device_type?: string;
 }
 
+type SupabaseServerClient = ReturnType<typeof createServerClient>;
+
+function resolveClient(passedClient?: SupabaseServerClient): SupabaseServerClient {
+  if (passedClient) return passedClient;
+  return createServerClient();
+}
+
 export const WebPushServerService = {
   /**
    * Menyimpan atau memperbarui data langganan push (upsert)
    */
-  async saveSubscription(data: PushSubscriptionRecord & { dbClient?: typeof supabase }) {
+  async saveSubscription(data: PushSubscriptionRecord & { dbClient?: SupabaseServerClient }) {
     const { endpoint, p256dh, auth, role, target_identifier, user_agent, device_type, dbClient } = data;
-    const client = dbClient || supabase;
+    const client = resolveClient(dbClient);
 
     const { data: existing, error: findError } = await client
       .from('push_subscriptions')
@@ -97,8 +118,8 @@ export const WebPushServerService = {
   /**
    * Menghapus langganan push dari database jika dinonaktifkan
    */
-  async removeSubscription(endpoint: string, dbClient?: typeof supabase) {
-    const client = dbClient || supabase;
+  async removeSubscription(endpoint: string, dbClient?: SupabaseServerClient) {
+    const client = resolveClient(dbClient);
     const { error } = await client
       .from('push_subscriptions')
       .delete()
@@ -116,8 +137,16 @@ export const WebPushServerService = {
    */
   async sendToSubscription(
     sub: { endpoint: string; p256dh: string; auth: string },
-    payload: PushNotificationPayload
+    payload: PushNotificationPayload,
+    dbClient?: SupabaseServerClient
   ): Promise<{ success: boolean; statusCode?: number; error?: string }> {
+    if (!ensureVapidConfigured()) {
+      return {
+        success: false,
+        error: 'VAPID credentials belum dikonfigurasi di environment server.',
+      };
+    }
+
     const pushSubscription = {
       endpoint: sub.endpoint,
       keys: {
@@ -150,10 +179,15 @@ export const WebPushServerService = {
 
       // Jika endpoint sudah tidak valid / expired (404 / 410 Gone)
       if (errorObj.statusCode === 404 || errorObj.statusCode === 410) {
-        await supabase
-          .from('push_subscriptions')
-          .update({ is_active: false })
-          .eq('endpoint', sub.endpoint);
+        try {
+          const client = resolveClient(dbClient);
+          await client
+            .from('push_subscriptions')
+            .update({ is_active: false })
+            .eq('endpoint', sub.endpoint);
+        } catch {
+          // ignore
+        }
       }
 
       return {
@@ -172,9 +206,18 @@ export const WebPushServerService = {
     endpoint?: string;
     role?: string;
     targetIdentifier?: string;
-    dbClient?: typeof supabase;
+    dbClient?: SupabaseServerClient;
   }) {
-    const client = params.dbClient || supabase;
+    if (!ensureVapidConfigured()) {
+      return {
+        totalTarget: 0,
+        sentCount: 0,
+        failedCount: 0,
+        message: 'VAPID credentials belum dikonfigurasi di environment server.',
+      };
+    }
+
+    const client = resolveClient(params.dbClient);
     let query = client
       .from('push_subscriptions')
       .select('endpoint, p256dh, auth')
