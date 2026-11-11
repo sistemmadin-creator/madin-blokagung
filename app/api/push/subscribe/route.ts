@@ -72,6 +72,34 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Endpoint diperlukan' }, { status: 400 });
     }
 
+    // Proteksi BOLA / IDOR: Cegah pengguna menghapus langganan akun lain
+    const appMeta = (user.app_metadata || {}) as Record<string, unknown>;
+    const userRole = String(appMeta.role || '').toLowerCase();
+    const isMaster =
+      userRole === 'master_admin' ||
+      String(appMeta.username || '').toLowerCase() === 'admin' ||
+      Boolean(user.email && user.email.startsWith('admin@'));
+
+    if (!isMaster) {
+      const { data: sub } = await supabase
+        .from('push_subscriptions')
+        .select('target_identifier')
+        .eq('endpoint', endpoint)
+        .maybeSingle();
+
+      if (
+        sub &&
+        sub.target_identifier &&
+        sub.target_identifier !== user.id &&
+        sub.target_identifier !== user.email
+      ) {
+        return NextResponse.json(
+          { error: 'Akses ditolak: Anda tidak memiliki wewenang untuk menghapus langganan akun lain.' },
+          { status: 403 }
+        );
+      }
+    }
+
     await WebPushServerService.removeSubscription(endpoint, supabase);
     return NextResponse.json({ success: true, message: 'Langganan notifikasi berhasil dihapus' });
   } catch (error: unknown) {
