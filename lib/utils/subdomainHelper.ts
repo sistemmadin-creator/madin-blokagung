@@ -9,7 +9,12 @@ const PUBLIC_EXACT_PATHS = new Set([
   '/logo-madin.png',
 ]);
 
-const PUBLIC_PREFIX_PATHS = ['/berita', '/api/og/rapor-hafalan'];
+const PUBLIC_PREFIX_PATHS = [
+  '/berita',
+  '/api/og/rapor-hafalan',
+  '/api/monitoring',
+  '/test-crash',
+];
 
 /**
  * Memeriksa apakah request ditujukan ke subdomain sistem admin.

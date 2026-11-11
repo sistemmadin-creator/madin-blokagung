@@ -49,13 +49,15 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(targetUrl, 308);
   }
 
-  // File publik / manifest / worker yang diizinkan di subdomain sistem
+  // File publik / manifest / worker / error monitoring yang diizinkan di subdomain sistem
   if (
     pathname === '/manifest.webmanifest' ||
     pathname === '/sw.js' ||
     pathname === '/favicon.ico' ||
     pathname === '/icon.png' ||
-    pathname === '/logo-madin.png'
+    pathname === '/logo-madin.png' ||
+    pathname.startsWith('/api/monitoring') ||
+    pathname.startsWith('/test-crash')
   ) {
     return NextResponse.next({ request });
   }
