@@ -3,13 +3,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Menu, ChevronDown, LogOut, LogIn, ShieldCheck, ShieldOff, User, Undo2, Redo2, BookOpen, Sliders, LayoutList, UserCog } from 'lucide-react';
+import { Menu, ChevronDown, LogOut, LogIn, ShieldCheck, ShieldOff, User, Undo2, Redo2, BookOpen, Sliders, LayoutList, UserCog, Search, Maximize2, X } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import { useRbacStore } from '@/stores/useRbacStore';
+import { useTableViewerStore } from '@/stores/useTableViewerStore';
 import { canAccessSettingsAuthority } from '@/lib/utils/rbacHelper';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
+import ModalUniversalSearch from '@/components/common/ModalUniversalSearch';
 import NotificationBellPrompt from '@/components/common/NotificationBellPrompt';
 import { supabase } from '@/lib/supabase/client';
 import { extractUserProfile, type ActiveUserProfile } from '@/lib/utils/authHelper';
@@ -23,9 +25,12 @@ export default function Navbar() {
   const currentAccount = useRbacStore((s) => s.currentAccount);
   const isAppSecurityEnabled = useRbacStore((s) => s.isAppSecurityEnabled);
   const clearCurrentAccount = useRbacStore((s) => s.clearCurrentAccount);
+  const toggleFloatingTools = useTableViewerStore((s) => s.toggleFloatingTools);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
+  const [showUniversalSearch, setShowUniversalSearch] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [activeProfile, setActiveProfile] = useState<ActiveUserProfile | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -119,13 +124,104 @@ export default function Navbar() {
         }`}
       >
         <div className="flex items-center gap-3">
-          <button
-            onClick={toggleSidebar}
-            className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 md:hidden"
-            title="Toggle Menu Mobile"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+          {/* Tombol Hamburger Mobile dengan Menu Pop-Up Interaktif (Gambar 5) */}
+          <div className="relative md:hidden">
+            <button
+              type="button"
+              data-testid="btn-hamburger-mobile"
+              onClick={() => setShowHamburgerMenu((prev) => !prev)}
+              className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 cursor-pointer"
+              title="Menu Aksi Cepat Mobile"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            {/* Dropdown Menu Aksi Cepat Hamburger */}
+            {showHamburgerMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-xs"
+                  onClick={() => setShowHamburgerMenu(false)}
+                />
+                <div
+                  data-testid="menu-hamburger-dropdown"
+                  className="absolute left-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1"
+                >
+                  <div className="px-3.5 pb-2 border-b border-slate-100 flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Aksi Cepat Mobile
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowHamburgerMenu(false)}
+                      className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Opsi 1: Pencarian Universal */}
+                  <button
+                    type="button"
+                    data-testid="btn-hamburger-omnisearch"
+                    onClick={() => {
+                      setShowHamburgerMenu(false);
+                      setShowUniversalSearch(true);
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-emerald-50 text-slate-700 hover:text-emerald-900 flex items-center gap-3 transition cursor-pointer group"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 shadow-2xs group-hover:bg-emerald-600 group-hover:text-white transition">
+                      <Search className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold truncate">Pencarian Universal</p>
+                      <p className="text-[10px] text-slate-400 truncate">Cari santri, asatidz, kelas &amp; modul</p>
+                    </div>
+                  </button>
+
+                  {/* Opsi 2: Zoom untuk Zoom Tabel */}
+                  <button
+                    type="button"
+                    data-testid="btn-hamburger-zoom-tabel"
+                    onClick={() => {
+                      setShowHamburgerMenu(false);
+                      toggleFloatingTools();
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-teal-50 text-slate-700 hover:text-teal-900 flex items-center gap-3 transition cursor-pointer group"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center shrink-0 shadow-2xs group-hover:bg-[#0f766e] group-hover:text-white transition">
+                      <Maximize2 className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold truncate">Zoom untuk Zoom Tabel</p>
+                      <p className="text-[10px] text-slate-400 truncate">Pas layar HP, zoom skala &amp; cari teks</p>
+                    </div>
+                  </button>
+
+                  {/* Opsi 3: Buka Menu Navigasi Lengkap (Sidebar) */}
+                  <div className="pt-1 border-t border-slate-100">
+                    <button
+                      type="button"
+                      data-testid="btn-hamburger-sidebar"
+                      onClick={() => {
+                        setShowHamburgerMenu(false);
+                        toggleSidebar();
+                      }}
+                      className="w-full text-left px-3.5 py-2 hover:bg-slate-100 text-slate-700 flex items-center gap-3 transition cursor-pointer group"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 group-hover:bg-slate-700 group-hover:text-white transition">
+                        <LayoutList className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold truncate">Menu Navigasi Lengkap</p>
+                        <p className="text-[10px] text-slate-400 truncate">Buka menu sidebar direktori madin</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
           <div className="flex items-center gap-2.5">
             <Link href="/beranda" className="flex items-center gap-2.5 hover:opacity-90 transition group">
@@ -360,6 +456,10 @@ export default function Navbar() {
       <ModalAuditLogs
         isOpen={showAuditModal}
         onClose={() => setShowAuditModal(false)}
+      />
+      <ModalUniversalSearch
+        isOpen={showUniversalSearch}
+        onClose={() => setShowUniversalSearch(false)}
       />
     </>
   );

@@ -59,6 +59,7 @@ import {
   useSetorMustahiqStore,
   buildSantriSetorRow,
   computeMateriProgressForSantri,
+  getMateriOptionsWithStatusForSantri,
 } from '@/stores/useSetorMustahiqStore';
 import { useAbsensiStore } from '@/stores/useAbsensiStore';
 import { useJadwalStore, LIST_HARI } from '@/stores/useJadwalStore';
@@ -177,7 +178,11 @@ export default function BerandaPage() {
     santriDiKelas: Santri[];
   } | null>(null);
 
-  // ================= PERHITUNGAN KARTU PROGRES SETORAN SANTRI (GAMBAR 2 & 3) =================
+  // State Tab Responsif Modal Santri (< lg)
+  const [activeSantriMobileTab, setActiveSantriMobileTab] = useState<'profil' | 'capaian'>('profil');
+  const [filterCapaianKategori, setFilterCapaianKategori] = useState<'ALL' | 'Wajib' | 'Sunnah' | 'Kitab' | 'Tahfidz'>('ALL');
+
+  // ================= PERHITUNGAN KARTU PROGRES SETORAN & DAFTAR CAPAIAN SANTRI (GAMBAR 1, 2, 3) =================
   const santriSetoranDetail = useMemo(() => {
     if (!selectedSantriModal) return null;
     try {
@@ -198,6 +203,28 @@ export default function BerandaPage() {
         setoranLogs,
         tahun
       );
+
+      const configKey = `${row.tingkat}_${row.din_kls}`;
+      const activeState = setoranActiveStates[s.no_induk];
+      const allMateriOptions = getMateriOptionsWithStatusForSantri(
+        s.no_induk,
+        configKey,
+        hafalanConfig,
+        setoranLogs,
+        activeState,
+        tahun
+      );
+
+      const listWajib = allMateriOptions.filter((o) => o.kategori === 'Wajib');
+      const listSunnah = allMateriOptions.filter((o) => o.kategori === 'Sunnah');
+      const listKitab = allMateriOptions.filter((o) => o.kategori === 'Kitab');
+      const listTahfidz = allMateriOptions.filter((o) => o.kategori === 'Tahfidz');
+
+      const countWajibSelesai = listWajib.filter((o) => o.isCompleted).length;
+      const countSunnahSelesai = listSunnah.filter((o) => o.isCompleted).length;
+      const countKitabSelesai = listKitab.filter((o) => o.isCompleted).length;
+      const countTahfidzSelesai = listTahfidz.filter((o) => o.isCompleted).length;
+
       return {
         row,
         prog,
@@ -212,6 +239,15 @@ export default function BerandaPage() {
             asatidzList,
             formasiList
           ),
+        allMateriOptions,
+        listWajib,
+        listSunnah,
+        listKitab,
+        listTahfidz,
+        countWajibSelesai,
+        countSunnahSelesai,
+        countKitabSelesai,
+        countTahfidzSelesai,
       };
     } catch {
       return null;
@@ -1259,11 +1295,11 @@ export default function BerandaPage() {
         )}
       </div>
 
-      {/* ================= MODAL DETAIL SANTRI ================= */}
+      {/* ================= MODAL DETAIL SANTRI (DIPERLEBAR & DAFTAR CAPAIAN SANTRI) ================= */}
       {selectedSantriModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-[#0b5751] text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-[#0b5751] text-white shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-amber-300">
                   <GraduationCap className="w-4 h-4" />
@@ -1284,149 +1320,418 @@ export default function BerandaPage() {
               </button>
             </div>
 
-            <div className="p-5 space-y-4 overflow-y-auto">
-              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Nama Lengkap Santri</span>
-                <p className="text-base font-bold text-slate-800">{selectedSantriModal.nama}</p>
-                <div className="flex items-center gap-2 pt-1 flex-wrap">
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                    Kelas: {selectedSantriModal.din_kls} {selectedSantriModal.din_bag} {selectedSantriModal.tingkat}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 text-[11px] font-medium">
-                    Kamar: {selectedSantriModal.kamar || '-'}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 text-[11px] font-medium">
-                    Gender: {selectedSantriModal.pa_pi === 'PA' ? 'Putra (PA)' : 'Putri (PI)'}
-                  </span>
-                </div>
-              </div>
+            {/* Mobile Tab Switcher (< lg) */}
+            <div className="lg:hidden px-4 py-2 bg-slate-100/90 border-b border-slate-200/80 flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveSantriMobileTab('profil')}
+                className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeSantriMobileTab === 'profil'
+                    ? 'bg-[#0b5751] text-white shadow-2xs'
+                    : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-slate-50'
+                }`}
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>Profil &amp; Target</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveSantriMobileTab('capaian')}
+                className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeSantriMobileTab === 'capaian'
+                    ? 'bg-[#0b5751] text-white shadow-2xs'
+                    : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-slate-50'
+                }`}
+              >
+                <Award className="w-3.5 h-3.5" />
+                <span>Daftar Capaian Santri</span>
+              </button>
+            </div>
 
-              {/* ================= KARTU PROGRES SETORAN HAFALAN (GAMBAR 3) ================= */}
-              {santriSetoranDetail && (
-                <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3 shadow-2xs">
-                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0 shadow-2xs">
-                        <BookOpen className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900">
-                          Progres Setoran Hafalan
-                        </h4>
-                        <p className="text-[11px] text-slate-500">
-                          Mustahiq: <span className="font-semibold text-slate-700">{santriSetoranDetail.mustahiq}</span>
-                        </p>
-                      </div>
+            {/* Body: Split View 2 Kolom di Desktop (>= lg) */}
+            <div className="p-4 sm:p-5 overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                
+                {/* ================= KOLOM KIRI: PROFIL & TARGET AKTIF (lg:col-span-5) ================= */}
+                <div
+                  className={`space-y-3.5 lg:col-span-5 ${
+                    activeSantriMobileTab === 'capaian' ? 'hidden lg:block' : 'block'
+                  }`}
+                >
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-400">Nama Lengkap Santri</span>
+                    <p className="text-base font-bold text-slate-800">{selectedSantriModal.nama}</p>
+                    <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                        Kelas: {selectedSantriModal.din_kls} {selectedSantriModal.din_bag} {selectedSantriModal.tingkat}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 text-[11px] font-medium">
+                        Kamar: {selectedSantriModal.kamar || '-'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 text-[11px] font-medium">
+                        Gender: {selectedSantriModal.pa_pi === 'PA' ? 'Putra (PA)' : 'Putri (PI)'}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                      {santriSetoranDetail.row.is_tahfidz && (
-                        <span className="px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-800 border border-cyan-200 text-[10px] font-bold flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-cyan-600" />
-                          <span>Tahfidz</span>
+                  </div>
+
+                  {/* KARTU PROGRES SETORAN HAFALAN AKTIF (GAMBAR 3) */}
+                  {santriSetoranDetail && (
+                    <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-3 shadow-2xs">
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0 shadow-2xs">
+                            <BookOpen className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-900">
+                              Progres Setoran Hafalan
+                            </h4>
+                            <p className="text-[10px] text-slate-500">
+                              Mustahiq: <span className="font-semibold text-slate-700">{santriSetoranDetail.mustahiq}</span>
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-wrap justify-end">
+                          {santriSetoranDetail.row.is_tahfidz && (
+                            <span className="px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-800 border border-cyan-200 text-[10px] font-bold flex items-center gap-1">
+                              <Sparkles className="w-3 h-3 text-cyan-600" />
+                              <span>Tahfidz</span>
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                            Hafalan {santriSetoranDetail.row.active_kategori}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Target Hafalan Saat Ini */}
+                      <div className="flex items-start justify-between text-xs gap-2 pt-0.5">
+                        <span className="text-slate-500 shrink-0">Target Saat Ini:</span>
+                        <span className="font-bold text-slate-800 text-right">
+                          {santriSetoranDetail.row.active_item?.nama || '-'} (
+                          {formatTargetPreview(santriSetoranDetail.row.active_item)})
                         </span>
+                      </div>
+
+                      {/* Capaian Progress Bar */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-600 font-medium text-[11px]">
+                            Capaian Setoran Hafalan:
+                          </span>
+                          <span className="font-bold text-emerald-800 font-mono text-[11px]">
+                            {santriSetoranDetail.row.status_badge_text} ({santriSetoranDetail.row.progress_pct}%)
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                            style={{ width: `${santriSetoranDetail.row.progress_pct}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Status Banner */}
+                      {santriSetoranDetail.isCompleted ? (
+                        <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <div className="min-w-0">
+                            <span className="font-bold block">Target Telah Tuntas (100%)!</span>
+                            <span className="text-[11px] text-emerald-700">
+                              Santri telah menyelesaikan materi hafalan aktif ini dengan lengkap.
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                          <div className="min-w-0">
+                            <span className="font-bold block">Sedang Dalam Proses Setoran</span>
+                            <span className="text-[11px] text-amber-700">
+                              Progress berjalan: {santriSetoranDetail.row.status_badge_text}
+                            </span>
+                          </div>
+                        </div>
                       )}
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
-                        Hafalan {santriSetoranDetail.row.active_kategori}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Target Hafalan Saat Ini */}
-                  <div className="flex items-start justify-between text-xs gap-2 pt-0.5">
-                    <span className="text-slate-500 shrink-0">Target Saat Ini:</span>
-                    <span className="font-bold text-slate-800 text-right">
-                      {santriSetoranDetail.row.active_item?.nama || '-'} (
-                      {formatTargetPreview(santriSetoranDetail.row.active_item)})
-                    </span>
-                  </div>
-
-                  {/* Capaian Progress Bar */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-600 font-medium">
-                        Capaian Setoran Hafalan:
-                      </span>
-                      <span className="font-bold text-emerald-800 font-mono">
-                        {santriSetoranDetail.row.status_badge_text} ({santriSetoranDetail.row.progress_pct}%)
-                      </span>
-                    </div>
-                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                        style={{ width: `${santriSetoranDetail.row.progress_pct}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Status Banner */}
-                  {santriSetoranDetail.isCompleted ? (
-                    <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <div className="min-w-0">
-                        <span className="font-bold block">Target Telah Tuntas (100%)!</span>
-                        <span className="text-[11px] text-emerald-700">
-                          Santri telah menyelesaikan materi hafalan aktif ini dengan lengkap.
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-amber-600 shrink-0" />
-                      <div className="min-w-0">
-                        <span className="font-bold block">Sedang Dalam Proses Setoran</span>
-                        <span className="text-[11px] text-amber-700">
-                          Progress berjalan: {santriSetoranDetail.row.status_badge_text}
-                        </span>
-                      </div>
                     </div>
                   )}
-                </div>
-              )}
 
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-lg border border-slate-200 space-y-1">
-                  <span className="text-[10px] text-slate-400 block font-semibold">Nama Ayah / Wali</span>
-                  <p className="font-bold text-slate-700">{selectedSantriModal.nama_ayah || '-'}</p>
-                </div>
-                <div className="p-3 rounded-lg border border-slate-200 space-y-1">
-                  <span className="text-[10px] text-slate-400 block font-semibold">Nama Ibu</span>
-                  <p className="font-bold text-slate-700">{selectedSantriModal.nama_ibu || '-'}</p>
-                </div>
-                <div className="p-3 rounded-lg border border-slate-200 space-y-1 col-span-2">
-                  <span className="text-[10px] text-slate-400 block font-semibold">Kontak Wali / Telepon</span>
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-slate-700 font-mono">{selectedSantriModal.telepon || '-'}</p>
-                    {selectedSantriModal.telepon && (
-                      <a
-                        href={`https://wa.me/${selectedSantriModal.telepon.replace(/[^0-9]/g, '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 hover:bg-emerald-100"
-                      >
-                        <MessageCircle className="w-3 h-3 text-emerald-600" />
-                        <span>Chat WA</span>
-                      </a>
-                    )}
+                  {/* DATA ORANG TUA & KONTAK */}
+                  <div className="grid grid-cols-2 gap-2.5 text-xs">
+                    <div className="p-2.5 rounded-lg border border-slate-200 space-y-0.5">
+                      <span className="text-[10px] text-slate-400 block font-semibold">Nama Ayah / Wali</span>
+                      <p className="font-bold text-slate-700">{selectedSantriModal.nama_ayah || '-'}</p>
+                    </div>
+                    <div className="p-2.5 rounded-lg border border-slate-200 space-y-0.5">
+                      <span className="text-[10px] text-slate-400 block font-semibold">Nama Ibu</span>
+                      <p className="font-bold text-slate-700">{selectedSantriModal.nama_ibu || '-'}</p>
+                    </div>
+                    <div className="p-2.5 rounded-lg border border-slate-200 space-y-0.5 col-span-2">
+                      <span className="text-[10px] text-slate-400 block font-semibold">Kontak Wali / Telepon</span>
+                      <div className="flex items-center justify-between">
+                        <p className="font-bold text-slate-700 font-mono">{selectedSantriModal.telepon || '-'}</p>
+                        {selectedSantriModal.telepon && (
+                          <a
+                            href={`https://wa.me/${selectedSantriModal.telepon.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 hover:bg-emerald-100"
+                          >
+                            <MessageCircle className="w-3 h-3 text-emerald-600" />
+                            <span>Chat WA</span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                <Link
-                  href="/santri"
-                  onClick={() => setSelectedSantriModal(null)}
-                  className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                {/* ================= KOLOM KANAN: DAFTAR CAPAIAN SANTRI (GAMBAR 1) (lg:col-span-7) ================= */}
+                <div
+                  className={`space-y-3.5 lg:col-span-7 ${
+                    activeSantriMobileTab === 'profil' ? 'hidden lg:block' : 'block'
+                  }`}
                 >
-                  Buka Data Santri
-                </Link>
-                <Link
-                  href="/setoran"
-                  onClick={() => setSelectedSantriModal(null)}
-                  className="px-3.5 py-2 text-xs font-bold rounded-lg bg-[#0f766e] hover:bg-[#0b5751] text-white shadow-2xs transition"
-                >
-                  Lihat Buku Setoran
-                </Link>
+                  <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-3 shadow-2xs">
+                    {/* Header Capaian */}
+                    <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0 shadow-2xs">
+                          <Award className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-900">
+                            Daftar Capaian Santri
+                          </h4>
+                          <p className="text-[10px] text-slate-500">
+                            Rincian status setoran per kategori (Wajib, Sunnah, Kitab, Tahfidz)
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Ringkasan Status Gabungan */}
+                      {santriSetoranDetail && (
+                        <div className="flex items-center gap-1 flex-wrap justify-end">
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                              santriSetoranDetail.countWajibSelesai > 0 && santriSetoranDetail.countSunnahSelesai > 0
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : santriSetoranDetail.countWajibSelesai > 0
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}
+                          >
+                            {santriSetoranDetail.countWajibSelesai > 0 && santriSetoranDetail.countSunnahSelesai > 0
+                              ? 'Wajib & Sunnah'
+                              : santriSetoranDetail.countWajibSelesai > 0
+                              ? 'Hanya Wajib'
+                              : 'Belum Tuntas'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Ringkasan Pills 4 Kategori (Wajib, Sunnah, Kitab, Tahfidz) */}
+                    {santriSetoranDetail && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                        <div className="p-2 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
+                          <span className="text-[10px] text-emerald-700 block font-semibold">Wajib</span>
+                          <span className="text-xs font-bold text-emerald-900 font-mono">
+                            {santriSetoranDetail.countWajibSelesai} / {santriSetoranDetail.listWajib.length}
+                          </span>
+                          <span className="text-[9px] text-emerald-600 block">Tuntas</span>
+                        </div>
+                        <div className="p-2 rounded-xl bg-blue-50/70 border border-blue-200/80">
+                          <span className="text-[10px] text-blue-700 block font-semibold">Sunnah</span>
+                          <span className="text-xs font-bold text-blue-900 font-mono">
+                            {santriSetoranDetail.countSunnahSelesai} / {santriSetoranDetail.listSunnah.length}
+                          </span>
+                          <span className="text-[9px] text-blue-600 block">Tuntas</span>
+                        </div>
+                        <div className="p-2 rounded-xl bg-indigo-50/70 border border-indigo-200/80">
+                          <span className="text-[10px] text-indigo-700 block font-semibold">Kitab</span>
+                          <span className="text-xs font-bold text-indigo-900 font-mono">
+                            {santriSetoranDetail.countKitabSelesai} / {santriSetoranDetail.listKitab.length}
+                          </span>
+                          <span className="text-[9px] text-indigo-600 block">Tuntas</span>
+                        </div>
+                        <div className="p-2 rounded-xl bg-cyan-50/70 border border-cyan-200/80">
+                          <span className="text-[10px] text-cyan-700 block font-semibold">Tahfidz</span>
+                          <span className="text-xs font-bold text-cyan-900 font-mono">
+                            {santriSetoranDetail.row.is_tahfidz
+                              ? `${santriSetoranDetail.row.tahfidz_progress_juz} / ${santriSetoranDetail.row.tahfidz_target_juz} Juz`
+                              : '-'}
+                          </span>
+                          <span className="text-[9px] text-cyan-600 block">
+                            {santriSetoranDetail.row.is_tahfidz ? 'Juz Tuntas' : 'Non-Tahfidz'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Filter Tab Kategori */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100 text-xs">
+                      {(['ALL', 'Wajib', 'Sunnah', 'Kitab', 'Tahfidz'] as const).map((kategori) => {
+                        const isActive = filterCapaianKategori === kategori;
+                        return (
+                          <button
+                            key={kategori}
+                            type="button"
+                            onClick={() => setFilterCapaianKategori(kategori)}
+                            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] whitespace-nowrap transition cursor-pointer ${
+                              isActive
+                                ? 'bg-[#0b5751] text-white shadow-2xs'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            {kategori === 'ALL' ? 'Semua Kategori' : kategori}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Daftar Item Materi Capaian */}
+                    <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+                      {santriSetoranDetail ? (
+                        santriSetoranDetail.allMateriOptions
+                          .filter((opt) => {
+                            if (filterCapaianKategori === 'ALL') return true;
+                            if (filterCapaianKategori === 'Tahfidz') return opt.kategori === 'Tahfidz';
+                            return opt.kategori === filterCapaianKategori;
+                          })
+                          .map((opt, idx) => {
+                            const isSelesai = opt.isCompleted;
+                            const isSedangProses = !isSelesai && opt.currentProgressPct > 0;
+                            const badgeColor =
+                              opt.kategori === 'Wajib'
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                : opt.kategori === 'Sunnah'
+                                ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                : opt.kategori === 'Kitab'
+                                ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
+                                : 'bg-cyan-100 text-cyan-800 border-cyan-200';
+
+                            return (
+                              <div
+                                key={opt.item.nama || idx}
+                                className={`p-2.5 rounded-xl border transition-all text-xs ${
+                                  isSelesai
+                                    ? 'bg-emerald-50/40 border-emerald-200'
+                                    : isSedangProses
+                                    ? 'bg-amber-50/40 border-amber-200'
+                                    : 'bg-white border-slate-200 hover:border-slate-300'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${badgeColor}`}>
+                                        {opt.kategori}
+                                      </span>
+                                      <h5 className="font-bold text-slate-800 truncate text-xs">
+                                        {opt.item.nama}
+                                      </h5>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 mt-0.5 truncate">
+                                      Target: {formatTargetPreview(opt.item)}
+                                    </p>
+                                  </div>
+
+                                  <div className="shrink-0 text-right">
+                                    {isSelesai ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[10px] border border-emerald-300">
+                                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                        <span>Sudah Tuntas</span>
+                                      </span>
+                                    ) : isSedangProses ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-bold text-[10px] border border-amber-300">
+                                        <Clock className="w-3 h-3 text-amber-600" />
+                                        <span>Proses ({opt.currentProgressPct}%)</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 font-medium text-[10px] border border-slate-200">
+                                        Belum Setor
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Progress Bar & Rincian */}
+                                <div className="mt-2 space-y-1">
+                                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                                    <span>Capaian:</span>
+                                    <span className="font-mono font-semibold text-slate-700">
+                                      {opt.currentStatusLabel || `${opt.currentProgressPct}%`}
+                                    </span>
+                                  </div>
+                                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-300 ${
+                                        isSelesai
+                                          ? 'bg-emerald-500'
+                                          : isSedangProses
+                                          ? 'bg-amber-500'
+                                          : 'bg-slate-300'
+                                      }`}
+                                      style={{ width: `${Math.max(opt.currentProgressPct, 0)}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                      ) : (
+                        <p className="text-center py-6 text-slate-400 text-xs">
+                          Belum ada data materi hafalan terkonfigurasi.
+                        </p>
+                      )}
+
+                      {/* Info Khusus Santri Tahfidz jika ada */}
+                      {santriSetoranDetail?.row.is_tahfidz && (
+                        <div className="p-2.5 rounded-xl border border-cyan-200 bg-cyan-50/50 space-y-1.5 mt-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-cyan-900 flex items-center gap-1">
+                              <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
+                              <span>Program Khusus Tahfidz Al-Qur&apos;an</span>
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-100 text-cyan-800">
+                              Mode: {santriSetoranDetail.row.tahfidz_mode || 'Simultan'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-cyan-700">
+                            Capaian: {santriSetoranDetail.row.tahfidz_progress_juz} dari {santriSetoranDetail.row.tahfidz_target_juz} Juz tuntas.
+                            {(santriSetoranDetail.row.tahfidz_completed_juz?.length ?? 0) > 0 && (
+                              <span className="block mt-0.5 font-mono">
+                                Juz yang disetorkan: [Juz {santriSetoranDetail.row.tahfidz_completed_juz?.join(', Juz ')}]
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
               </div>
+            </div>
+
+            {/* Footer Aksi */}
+            <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/90 flex items-center justify-between gap-2 shrink-0">
+              <Link
+                href="/santri"
+                onClick={() => setSelectedSantriModal(null)}
+                className="px-3.5 py-2 text-xs font-semibold rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition shadow-2xs"
+              >
+                Buka Data Santri
+              </Link>
+              <Link
+                href="/setoran"
+                onClick={() => setSelectedSantriModal(null)}
+                className="px-4 py-2 text-xs font-bold rounded-xl bg-[#0b5751] hover:bg-[#08423d] text-white shadow-2xs transition inline-flex items-center gap-1.5"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Lihat Buku Setoran</span>
+              </Link>
             </div>
           </div>
         </div>

@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { useSetorMustahiqStore } from '@/stores/useSetorMustahiqStore';
+import { useTableViewerStore } from '@/stores/useTableViewerStore';
+import FloatingTableTools from '@/components/common/FloatingTableTools';
 import {
   Printer,
   Download,
@@ -84,6 +86,66 @@ export default function RekapHafalanPage() {
   const [filterTingkat, setFilterTingkat] = useState<FilterTingkat>('ALL');
   const [filterGender, setFilterGender] = useState<FilterGender>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Adaptive Table Fit Scaling & Table Viewer Hooks (Anti-Terpotong di Layar HP - Gambar 5)
+  const [mobileFitScale, setMobileFitScale] = useState<number>(1);
+  const [mobileScaledHeight, setMobileScaledHeight] = useState<number | null>(null);
+  const [tableNaturalHeight, setTableNaturalHeight] = useState<number>(0);
+  const tableWrapperRef = useRef<HTMLDivElement | null>(null);
+  const tableRef = useRef<HTMLTableElement | null>(null);
+
+  const {
+    zoomScale,
+    zoomMode,
+    searchQuery: tableSearchQuery,
+    setMatchesInfo,
+  } = useTableViewerStore();
+
+  const recalculateMobileTableScale = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const tableEl = tableRef.current;
+    if (tableEl) {
+      setTableNaturalHeight(tableEl.offsetHeight || 0);
+    }
+
+    if (window.innerWidth >= 768) {
+      setMobileFitScale(1);
+      setMobileScaledHeight(null);
+      return;
+    }
+
+    const wrapperEl = tableWrapperRef.current;
+    if (!wrapperEl || !tableEl) return;
+
+    const availableWidth = wrapperEl.clientWidth;
+    const naturalWidth = Math.max(920, tableEl.offsetWidth || 920);
+    const naturalHeight = tableEl.offsetHeight || 0;
+
+    if (availableWidth > 0 && availableWidth < naturalWidth) {
+      const nextScale = availableWidth / naturalWidth;
+      setMobileFitScale(nextScale);
+      setMobileScaledHeight(naturalHeight > 0 ? Math.ceil(naturalHeight * nextScale) : null);
+    } else {
+      setMobileFitScale(1);
+      setMobileScaledHeight(null);
+    }
+  }, []);
+
+  const effectiveScale = useMemo(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      if (zoomMode === 'fit') return mobileFitScale;
+      if (zoomMode === '100') return 1.0;
+      return zoomScale;
+    }
+    if (zoomMode === 'fit' || zoomMode === '100') return 1.0;
+    return zoomScale;
+  }, [mobileFitScale, zoomMode, zoomScale]);
+
+  useEffect(() => {
+    recalculateMobileTableScale();
+    window.addEventListener('resize', recalculateMobileTableScale);
+    return () => window.removeEventListener('resize', recalculateMobileTableScale);
+  }, [recalculateMobileTableScale]);
 
   // Modal Status Gabungan (Gambar 4 - dipicu dari kolom STATUS)
   const [selectedClassModal, setSelectedClassModal] = useState<ClassRekapRow | null>(null);
@@ -759,10 +821,50 @@ export default function RekapHafalanPage() {
           </button>
         </div>
       ) : (
-        /* 3. TABEL UTAMA REKAPITULASI HAFALAN PERTINGKATAN */
-        <div className="border border-slate-200 bg-white rounded-xl shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="table-rekap tabel-kbm-resmi w-full text-xs">
+        /* 3. TABEL UTAMA REKAPITULASI HAFALAN PERTINGKATAN (ADAPTIVE FIT TABLE HP - GAMBAR 5) */
+        <div
+          ref={tableWrapperRef}
+          data-testid="table-rekap-hafalan-wrapper"
+          className="table-responsive rounded-xl border border-slate-200 shadow-xs bg-white transition-all duration-200 overflow-hidden"
+          style={{
+            overflowX: effectiveScale <= mobileFitScale + 0.02 ? 'hidden' : 'auto',
+            overflowY: effectiveScale <= mobileFitScale + 0.02 ? 'hidden' : 'auto',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: effectiveScale <= mobileFitScale + 0.02 ? 'auto' : 'pan-x pan-y',
+            height:
+              tableNaturalHeight > 0 && effectiveScale < 1
+                ? Math.ceil(tableNaturalHeight * effectiveScale)
+                : undefined,
+          }}
+        >
+          <div
+            style={
+              effectiveScale !== 1
+                ? {
+                    width: Math.ceil(920 * effectiveScale),
+                    height:
+                      tableNaturalHeight > 0
+                        ? Math.ceil(tableNaturalHeight * effectiveScale)
+                        : undefined,
+                  }
+                : undefined
+            }
+          >
+            <table
+              ref={tableRef}
+              data-testid="table-rekap-hafalan"
+              className="table-rekap tabel-kbm-resmi w-full min-w-[920px] text-xs"
+              style={
+                effectiveScale !== 1
+                  ? {
+                      width: 920,
+                      minWidth: 920,
+                      transform: `scale(${effectiveScale})`,
+                      transformOrigin: 'top left',
+                    }
+                  : undefined
+              }
+            >
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-700">
                   <th style={{ width: '45px' }} className="text-center py-3">
@@ -1275,6 +1377,9 @@ export default function RekapHafalanPage() {
           </div>
         </div>
       )}
+
+      {/* Floating Table Tools (Zoom In/Out, Fit Layar HP, Cari Teks) */}
+      <FloatingTableTools currentDisplayScale={effectiveScale} />
     </div>
   );
 }
