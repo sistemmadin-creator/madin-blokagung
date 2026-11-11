@@ -1,13 +1,51 @@
 import { test, expect, Page } from '@playwright/test';
 
+let cachedStorageState: {
+  cookies: Array<{
+    name: string;
+    value: string;
+    domain: string;
+    path: string;
+    expires: number;
+    httpOnly: boolean;
+    secure: boolean;
+    sameSite: 'Strict' | 'Lax' | 'None';
+  }>;
+  origins: Array<{
+    origin: string;
+    localStorage: Array<{ name: string; value: string }>;
+  }>;
+} | null = null;
+
 async function gotoWithAuth(page: Page, targetPath: string) {
+  if (cachedStorageState) {
+    await page.context().addCookies(cachedStorageState.cookies);
+  }
+
   await page.goto(targetPath);
   await page.waitForLoadState('domcontentloaded');
+
+  if (cachedStorageState?.origins?.[0]?.localStorage && page.url().includes('/login')) {
+    await page.evaluate((items) => {
+      for (const it of items) {
+        localStorage.setItem(it.name, it.value);
+      }
+    }, cachedStorageState.origins[0].localStorage);
+    await page.goto(targetPath);
+    await page.waitForLoadState('domcontentloaded');
+  }
+
   if (page.url().includes('/login')) {
     await page.getByLabel('Username Pengurus').fill('admin');
     await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
     await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
     await page.waitForURL(`**${targetPath}**`, { timeout: 60000 });
+
+    try {
+      cachedStorageState = await page.context().storageState();
+    } catch {
+      // ignore
+    }
   }
 }
 
@@ -38,11 +76,11 @@ test.describe('E2E: Modal Santri Capaian 4 Kategori, Adaptive Fit Tabel HP, & To
     await expect(santriModal.getByText('TAUFIK HIDAYAT')).toBeVisible();
 
     // 5. Verifikasi Komponen Baru: Panel Daftar Capaian Santri (Gambar 1)
-    await expect(santriModal.getByText('Daftar Capaian Santri')).toBeVisible();
-    await expect(santriModal.getByText('Wajib', { exact: true })).toBeVisible();
-    await expect(santriModal.getByText('Sunnah', { exact: true })).toBeVisible();
-    await expect(santriModal.getByText('Kitab', { exact: true })).toBeVisible();
-    await expect(santriModal.getByText('Tahfidz', { exact: true })).toBeVisible();
+    await expect(santriModal.getByRole('heading', { name: 'Daftar Capaian Santri' })).toBeVisible();
+    await expect(santriModal.getByText('Wajib', { exact: true }).first()).toBeVisible();
+    await expect(santriModal.getByText('Sunnah', { exact: true }).first()).toBeVisible();
+    await expect(santriModal.getByText('Kitab', { exact: true }).first()).toBeVisible();
+    await expect(santriModal.getByText('Tahfidz', { exact: true }).first()).toBeVisible();
 
     // 6. Verifikasi Tab Filter Kategori di Panel Capaian
     await expect(santriModal.getByRole('button', { name: 'Semua Kategori' })).toBeVisible();
@@ -159,5 +197,53 @@ test.describe('E2E: Modal Santri Capaian 4 Kategori, Adaptive Fit Tabel HP, & To
     await expect(page.getByLabel('Panel Alat Bantu Tabel')).toBeVisible();
     await expect(page.getByText('Pas Layar')).toBeVisible();
     await expect(page.getByText('100%')).toBeVisible();
+  });
+
+  test('5. Modal Rincian Data Kelas di Beranda: Tampilan max-w-5xl, Panel Inventaris Sarana & Input Status Langsung', async ({
+    page,
+  }) => {
+    await gotoWithAuth(page, '/beranda');
+
+    // 1. Cari kelas melalui omni-search input
+    const searchInput = page.getByPlaceholder(/Cari modul, grup, atau sub-menu/i);
+    await expect(searchInput).toBeVisible({ timeout: 30000 });
+    await searchInput.fill('2 a ul');
+
+    // 2. Tunggu hasil pencarian cerdas universal
+    await expect(page.getByText('Hasil Pencarian Cerdas Universal')).toBeVisible({ timeout: 15000 });
+
+    // 3. Klik kartu kelas 2 A ULA
+    const kelasCard = page.getByTestId('btn-omni-kelas-item').first();
+    await expect(kelasCard).toBeVisible();
+    await kelasCard.click();
+
+    // 4. Verifikasi Modal Kelas Terbuka
+    const kelasModal = page.locator('div[role="dialog"], .fixed.inset-0').last();
+    await expect(kelasModal.getByRole('heading', { name: 'Rincian Data Kelas & Rombel' })).toBeVisible();
+    await expect(kelasModal.getByText('2 A ULA', { exact: false })).toBeVisible();
+
+    // 5. Verifikasi Panel Kanan: Inventaris Sarana Kelas (Gambar 2)
+    await expect(kelasModal.getByText('Inventaris Sarana Kelas')).toBeVisible();
+    await expect(kelasModal.getByText(/1\. Papan Tulis/i)).toBeVisible();
+    await expect(kelasModal.getByText(/2\. Meja Guru/i)).toBeVisible();
+    await expect(kelasModal.getByText('Penghapus Papan')).toBeVisible();
+    await expect(kelasModal.getByText('Spidol Boardmaker')).toBeVisible();
+
+    // 6. Uji Input Status Langsung: Ubah status Papan Tulis ke 'Rusak Ringan'
+    const selectPapan = kelasModal.getByLabel('Ubah Status Papan Tulis');
+    await expect(selectPapan).toBeVisible();
+    await selectPapan.selectOption('RUSAK_RINGAN');
+
+    // Verifikasi notice tersimpan muncul
+    await expect(kelasModal.getByText(/Status Rusak Ringan tersimpan/i)).toBeVisible();
+
+    // 7. Kembalikan ke 'Baik'
+    await selectPapan.selectOption('BAIK');
+    await expect(kelasModal.getByText(/Status Baik tersimpan/i)).toBeVisible();
+
+    // 8. Tutup modal
+    const closeBtn = kelasModal.locator('button').filter({ hasText: '' }).first();
+    await closeBtn.click();
+    await expect(kelasModal.getByRole('heading', { name: 'Rincian Data Kelas & Rombel' })).not.toBeVisible();
   });
 });

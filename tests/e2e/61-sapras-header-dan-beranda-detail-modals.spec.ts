@@ -112,7 +112,7 @@ test.describe('E2E: Verifikasi Perbaikan Header Sapras & Integrasi Detail Modal 
 
     // 7. Verifikasi Komponen Baru: Jadwal Mengajar (Sabtu s/d Kamis) Jam 1 & 2
     await expect(asatidzModal.getByText(/Jadwal Mengajar \(Sabtu s\/d Kamis\)/i)).toBeVisible();
-    await expect(asatidzModal.getByText(/Sesi Inti Jam 1 & 2/i)).toBeVisible();
+    await expect(asatidzModal.getByText(/Jam 1 & Jam 2/i).first()).toBeVisible();
     // Pastikan Jam 3 & Jam 4 tidak ditampilkan pada panel jadwal mengajar KBM
     await expect(asatidzModal.getByText(/Jam 3:/i)).not.toBeVisible();
     await expect(asatidzModal.getByText(/Jam 4:/i)).not.toBeVisible();

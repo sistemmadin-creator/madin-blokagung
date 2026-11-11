@@ -75,6 +75,8 @@ import {
   norm,
 } from '@/lib/utils/formasiSync';
 import { formatTargetPreview, cariMustahiqSantri } from '@/lib/utils/setoranHelper';
+import { useSaprasStore, buildKelasSaprasRows } from '@/stores/useSaprasStore';
+import { KondisiSapras, KONDISI_SAPRAS_META, KelasSaprasRow } from '@/types/sapras';
 import { Santri } from '@/types/santri';
 import { Asatidz } from '@/types/asatidz';
 
@@ -152,7 +154,16 @@ export default function BerandaPage() {
   } = useSetorMustahiqStore();
   const { absensiMapByDate, fetchAbsensi } = useAbsensiStore();
   const { jadwalMap, fetchJadwal, activeHari } = useJadwalStore();
+  const {
+    overrides: saprasOverrides,
+    fetchSaprasData,
+    updateKondisiCepatKelas,
+  } = useSaprasStore();
+
   const [activeAsatidzMobileTab, setActiveAsatidzMobileTab] = useState<'profil' | 'jadwal'>('profil');
+  const [activeKelasMobileTab, setActiveKelasMobileTab] = useState<'info' | 'inventaris'>('info');
+  const [isUpdatingSapras, setIsUpdatingSapras] = useState(false);
+  const [saprasSuccessNotice, setSaprasSuccessNotice] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSantri();
@@ -162,7 +173,17 @@ export default function BerandaPage() {
     fetchMustahiqData();
     fetchAbsensi();
     fetchJadwal();
-  }, [fetchSantri, fetchAsatidz, fetchFormasi, fetchSetoranData, fetchMustahiqData, fetchAbsensi, fetchJadwal]);
+    fetchSaprasData();
+  }, [
+    fetchSantri,
+    fetchAsatidz,
+    fetchFormasi,
+    fetchSetoranData,
+    fetchMustahiqData,
+    fetchAbsensi,
+    fetchJadwal,
+    fetchSaprasData,
+  ]);
 
   // Modal State untuk Pop-up Detail Omni-Search
   const [selectedSantriModal, setSelectedSantriModal] = useState<Santri | null>(null);
@@ -439,6 +460,83 @@ export default function BerandaPage() {
       days,
     };
   }, [selectedAsatidzModal, jadwalMap, activeHari]);
+
+  // ================= PERHITUNGAN INVENTARIS SARANA KELAS (GAMBAR 1 & 2) =================
+  const selectedKelasSaprasRow = useMemo<KelasSaprasRow | null>(() => {
+    if (!selectedKelasModal) return null;
+    const kls = String(selectedKelasModal.din_kls || '1').trim();
+    const tk = String(selectedKelasModal.tingkat || 'ULA').trim().toUpperCase();
+    const bag = String(selectedKelasModal.din_bag || 'A').trim().toUpperCase();
+    const papi = (selectedKelasModal.pa_pi || 'PA').trim().toUpperCase() === 'PI' ? 'PI' : 'PA';
+    const targetKey = `${kls}_${tk}_${bag}`;
+
+    const allRows = buildKelasSaprasRows(formasiList, santriList, saprasOverrides);
+    const found = allRows.find(
+      (r) =>
+        r.kelasKey === targetKey ||
+        (r.din_kls === kls && r.tingkat === tk && r.din_bag === bag && r.pa_pi === papi)
+    );
+
+    if (found) return found;
+
+    // Fallback default jika belum tersimpan di formasiList
+    const ov = saprasOverrides[targetKey];
+    const papanKondisi: KondisiSapras = ov?.papanTulisKondisi || 'BAIK';
+    const mejaKondisi: KondisiSapras = ov?.mejaGuruKondisi || 'BAIK';
+    const penghapusKondisi: KondisiSapras = ov?.penghapusKondisi || 'BAIK';
+    const spidolKondisi: KondisiSapras = ov?.spidolKondisi || 'BAIK';
+
+    return {
+      kelasKey: targetKey,
+      shortBadge: `${kls}${bag}`,
+      kelasLabel: selectedKelasModal.label,
+      tingkat: tk,
+      din_kls: kls,
+      din_bag: bag,
+      pa_pi: papi,
+      mustahiq: selectedKelasModal.mustahiq,
+      blokDiniyyah: 'Gedung Madrasah',
+      lokasiDiniyyah: `Ruang ${selectedKelasModal.label}`,
+      blokTakror: '-',
+      lokasiTakror: '-',
+      papanTulisKondisi: papanKondisi,
+      papanTulisJumlah: ov?.papanTulisJumlah ?? 1,
+      papanTulisSpesifikasi: ov?.papanTulisSpesifikasi || 'Whiteboard Kelas Standar (120 x 240 cm)',
+      mejaGuruKondisi: mejaKondisi,
+      mejaGuruJumlah: ov?.mejaGuruJumlah ?? 1,
+      mejaGuruSpesifikasi: ov?.mejaGuruSpesifikasi || 'Meja Guru / Dampar Kayu Asatidz',
+      penghapusKondisi,
+      spidolKondisi,
+      itemTambahan: ov?.itemTambahan || [],
+      catatanKelas: ov?.catatanKelas,
+      updatedAt: ov?.updatedAt || new Date().toISOString(),
+      isFullyHealthy:
+        papanKondisi === 'BAIK' &&
+        mejaKondisi === 'BAIK' &&
+        penghapusKondisi === 'BAIK' &&
+        spidolKondisi === 'BAIK',
+    };
+  }, [selectedKelasModal, formasiList, santriList, saprasOverrides]);
+
+  const handleUpdateKondisiSaprasCepat = async (
+    field: 'papanTulisKondisi' | 'mejaGuruKondisi' | 'penghapusKondisi' | 'spidolKondisi',
+    nextKondisi: KondisiSapras
+  ) => {
+    if (!selectedKelasSaprasRow) return;
+    setIsUpdatingSapras(true);
+    try {
+      await updateKondisiCepatKelas(
+        selectedKelasSaprasRow,
+        field,
+        nextKondisi,
+        currentAccount?.full_name || currentAccount?.username || 'Pengurus Beranda'
+      );
+      setSaprasSuccessNotice(`Status ${KONDISI_SAPRAS_META[nextKondisi].shortLabel} tersimpan.`);
+      setTimeout(() => setSaprasSuccessNotice(null), 3000);
+    } finally {
+      setIsUpdatingSapras(false);
+    }
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('ALL');
@@ -1082,6 +1180,7 @@ export default function BerandaPage() {
                       <button
                         key={`${k.label}_${k.pa_pi}`}
                         type="button"
+                        data-testid="btn-omni-kelas-item"
                         onClick={() => setSelectedKelasModal(k)}
                         className="w-full text-left p-2 rounded-lg bg-white border border-blue-100 hover:border-blue-300 hover:bg-blue-50/70 transition shadow-2xs group cursor-pointer flex items-center justify-between gap-2"
                       >
@@ -2112,11 +2211,11 @@ export default function BerandaPage() {
         </div>
       )}
 
-      {/* ================= MODAL DETAIL KELAS / ROMBEL ================= */}
+      {/* ================= MODAL DETAIL KELAS / ROMBEL (DIPERLEBAR & INVENTARIS KELAS) ================= */}
       {selectedKelasModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-blue-900 text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-blue-900 text-white shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-blue-200">
                   <School className="w-4 h-4" />
@@ -2124,7 +2223,7 @@ export default function BerandaPage() {
                 <div>
                   <h3 className="text-sm font-bold">Rincian Data Kelas &amp; Rombel</h3>
                   <p className="text-[11px] text-blue-200">
-                    Jenjang: {selectedKelasModal.tingkat} • Gender: {selectedKelasModal.pa_pi}
+                    Jenjang: {selectedKelasModal.tingkat} • Gender: {selectedKelasModal.pa_pi === 'PA' ? 'Putra (PA)' : 'Putri (PI)'}
                   </p>
                 </div>
               </div>
@@ -2137,65 +2236,349 @@ export default function BerandaPage() {
               </button>
             </div>
 
-            <div className="p-5 space-y-4 overflow-y-auto">
-              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Nama Kelas Rombel</span>
-                  <span
-                    className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${
-                      selectedKelasModal.pa_pi === 'PA'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-rose-100 text-rose-800'
-                    }`}
-                  >
-                    {selectedKelasModal.pa_pi === 'PA' ? 'Putra (PA)' : 'Putri (PI)'}
-                  </span>
-                </div>
-                <p className="text-lg font-black text-slate-800 font-mono">{selectedKelasModal.label}</p>
-                <p className="text-xs text-slate-600">
-                  Mustahiq / Wali Kelas: <strong className="text-slate-800">{selectedKelasModal.mustahiq}</strong>
-                </p>
-                <p className="text-xs text-slate-500">
-                  Total Santri Terdaftar: <strong className="text-emerald-700">{selectedKelasModal.totalSantri} Santri</strong>
-                </p>
-              </div>
+            {/* Mobile Tab Switcher (< lg) */}
+            <div className="lg:hidden px-4 py-2 bg-slate-100/90 border-b border-slate-200/80 flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveKelasMobileTab('info')}
+                className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeKelasMobileTab === 'info'
+                    ? 'bg-blue-900 text-white shadow-2xs'
+                    : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-slate-50'
+                }`}
+              >
+                <School className="w-3.5 h-3.5" />
+                <span>Info Kelas &amp; Santri</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveKelasMobileTab('inventaris')}
+                className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeKelasMobileTab === 'inventaris'
+                    ? 'bg-blue-900 text-white shadow-2xs'
+                    : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-slate-50'
+                }`}
+              >
+                <Package className="w-3.5 h-3.5" />
+                <span>Inventaris Kelas</span>
+              </button>
+            </div>
 
-              {/* Cuplikan Santri di Kelas Ini */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                  <span>Daftar Santri Kelas ({selectedKelasModal.santriDiKelas.length})</span>
-                  <span className="text-[11px] font-normal text-slate-400">Maks. 5 nama teratas</span>
+            {/* Body: Split View 2 Kolom di Desktop (>= lg) */}
+            <div className="p-4 sm:p-5 overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                
+                {/* ================= KOLOM KIRI: INFO KELAS & DAFTAR SANTRI (lg:col-span-5) ================= */}
+                <div
+                  className={`space-y-3.5 lg:col-span-5 ${
+                    activeKelasMobileTab === 'inventaris' ? 'hidden lg:block' : 'block'
+                  }`}
+                >
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Nama Kelas Rombel</span>
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                          selectedKelasModal.pa_pi === 'PA'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-rose-100 text-rose-800'
+                        }`}
+                      >
+                        {selectedKelasModal.pa_pi === 'PA' ? 'Putra (PA)' : 'Putri (PI)'}
+                      </span>
+                    </div>
+                    <p className="text-xl font-black text-slate-800 font-mono">{selectedKelasModal.label}</p>
+                    <p className="text-xs text-slate-600">
+                      Mustahiq / Wali Kelas: <strong className="text-slate-800">{selectedKelasModal.mustahiq}</strong>
+                    </p>
+                    <div className="flex items-center gap-2 pt-0.5 flex-wrap text-xs">
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-[11px]">
+                        {selectedKelasModal.totalSantri} Santri Terdaftar
+                      </span>
+                      {selectedKelasSaprasRow?.lokasiDiniyyah && (
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-[11px] flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
+                          <span className="truncate">{selectedKelasSaprasRow.lokasiDiniyyah}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Daftar Santri di Kelas Ini */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                      <span>Daftar Santri Kelas ({selectedKelasModal.santriDiKelas.length})</span>
+                      <span className="text-[11px] font-normal text-slate-400">Klik untuk lihat santri</span>
+                    </div>
+                    <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-56 overflow-y-auto bg-slate-50/40">
+                      {selectedKelasModal.santriDiKelas.length === 0 ? (
+                        <p className="p-3 text-center text-xs text-slate-400 italic">Belum ada santri terdata di kelas ini</p>
+                      ) : (
+                        selectedKelasModal.santriDiKelas.map((s, idx) => (
+                          <button
+                            key={s.no_induk}
+                            type="button"
+                            onClick={() => {
+                              setSelectedKelasModal(null);
+                              setSelectedSantriModal(s);
+                            }}
+                            className="w-full text-left p-2 hover:bg-blue-50/60 transition flex items-center justify-between text-xs cursor-pointer group"
+                          >
+                            <span className="font-semibold text-slate-800 group-hover:text-blue-900 truncate">
+                              {idx + 1}. {s.nama}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono shrink-0 ml-2">
+                              {s.kamar || s.no_induk}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-36 overflow-y-auto">
-                  {selectedKelasModal.santriDiKelas.length === 0 ? (
-                    <p className="p-3 text-center text-xs text-slate-400 italic">Belum ada santri terdata di kelas ini</p>
-                  ) : (
-                    selectedKelasModal.santriDiKelas.slice(0, 5).map((s, idx) => (
-                      <div key={s.no_induk} className="p-2 flex items-center justify-between text-xs">
-                        <span className="font-semibold text-slate-800 truncate">{idx + 1}. {s.nama}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">{s.kamar || s.no_induk}</span>
+
+                {/* ================= KOLOM KANAN: INVENTARIS SARANA KELAS (GAMBAR 2) (lg:col-span-7) ================= */}
+                <div
+                  className={`space-y-3.5 lg:col-span-7 ${
+                    activeKelasMobileTab === 'info' ? 'hidden lg:block' : 'block'
+                  }`}
+                >
+                  <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-3 shadow-2xs">
+                    {/* Header Inventaris Sarana Kelas */}
+                    <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0 shadow-2xs">
+                          <Package className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-900">
+                            Inventaris Sarana Kelas
+                          </h4>
+                          <p className="text-[10px] text-slate-500">
+                            Pemantauan &amp; input status kelayakan langsung (Papan Tulis &amp; Meja Guru)
+                          </p>
+                        </div>
                       </div>
-                    ))
-                  )}
-                </div>
-              </div>
 
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                <Link
-                  href="/jadwal-kbm"
-                  onClick={() => setSelectedKelasModal(null)}
-                  className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
-                >
-                  Buka Jadwal KBM
-                </Link>
-                <Link
-                  href="/rekap-hafalan"
-                  onClick={() => setSelectedKelasModal(null)}
-                  className="px-3.5 py-2 text-xs font-bold rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white shadow-2xs transition"
-                >
-                  Buka Rekapitulasi Hafalan
-                </Link>
+                      {/* Badge Kelayakan Keseluruhan */}
+                      {selectedKelasSaprasRow && (
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                            selectedKelasSaprasRow.isFullyHealthy
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              : 'bg-amber-50 text-amber-800 border-amber-200'
+                          }`}
+                        >
+                          {selectedKelasSaprasRow.isFullyHealthy ? 'Lengkap & Baik' : 'Perlu Perbaikan'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Notice Tersimpan */}
+                    {saprasSuccessNotice && (
+                      <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>{saprasSuccessNotice}</span>
+                      </div>
+                    )}
+
+                    {selectedKelasSaprasRow ? (
+                      <div className="space-y-2.5">
+                        {/* 1. PAPAN TULIS KELAS */}
+                        <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <h5 className="font-bold text-slate-800 text-xs">
+                                  1. Papan Tulis ({selectedKelasSaprasRow.papanTulisJumlah} Unit)
+                                </h5>
+                                <span
+                                  className={`px-1.5 py-0.2 rounded text-[10px] font-bold border ${
+                                    KONDISI_SAPRAS_META[selectedKelasSaprasRow.papanTulisKondisi].badgeClass
+                                  }`}
+                                >
+                                  {KONDISI_SAPRAS_META[selectedKelasSaprasRow.papanTulisKondisi].shortLabel}
+                                </span>
+                              </div>
+                              <p className="text-[10.5px] text-slate-500 mt-0.5">
+                                {selectedKelasSaprasRow.papanTulisSpesifikasi}
+                              </p>
+                            </div>
+
+                            {/* Dropdown Input Langsung */}
+                            <div className="shrink-0">
+                              <select
+                                value={selectedKelasSaprasRow.papanTulisKondisi}
+                                disabled={isUpdatingSapras}
+                                onChange={(e) =>
+                                  handleUpdateKondisiSaprasCepat(
+                                    'papanTulisKondisi',
+                                    e.target.value as KondisiSapras
+                                  )
+                                }
+                                aria-label="Ubah Status Papan Tulis"
+                                className="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 bg-white text-slate-800 shadow-2xs focus:border-teal-600 focus:outline-none cursor-pointer"
+                              >
+                                <option value="BAIK">Baik</option>
+                                <option value="RUSAK_RINGAN">Rusak Ringan</option>
+                                <option value="RUSAK_BERAT">Rusak Berat</option>
+                                <option value="BELUM_ADA">Belum Ada</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2. MEJA GURU / DAMPAR */}
+                        <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <h5 className="font-bold text-slate-800 text-xs">
+                                  2. Meja Guru ({selectedKelasSaprasRow.mejaGuruJumlah} Unit)
+                                </h5>
+                                <span
+                                  className={`px-1.5 py-0.2 rounded text-[10px] font-bold border ${
+                                    KONDISI_SAPRAS_META[selectedKelasSaprasRow.mejaGuruKondisi].badgeClass
+                                  }`}
+                                >
+                                  {KONDISI_SAPRAS_META[selectedKelasSaprasRow.mejaGuruKondisi].shortLabel}
+                                </span>
+                              </div>
+                              <p className="text-[10.5px] text-slate-500 mt-0.5">
+                                {selectedKelasSaprasRow.mejaGuruSpesifikasi}
+                              </p>
+                            </div>
+
+                            {/* Dropdown Input Langsung */}
+                            <div className="shrink-0">
+                              <select
+                                value={selectedKelasSaprasRow.mejaGuruKondisi}
+                                disabled={isUpdatingSapras}
+                                onChange={(e) =>
+                                  handleUpdateKondisiSaprasCepat(
+                                    'mejaGuruKondisi',
+                                    e.target.value as KondisiSapras
+                                  )
+                                }
+                                aria-label="Ubah Status Meja Guru"
+                                className="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 bg-white text-slate-800 shadow-2xs focus:border-teal-600 focus:outline-none cursor-pointer"
+                              >
+                                <option value="BAIK">Baik</option>
+                                <option value="RUSAK_RINGAN">Rusak Ringan</option>
+                                <option value="RUSAK_BERAT">Rusak Berat</option>
+                                <option value="BELUM_ADA">Belum Ada</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 3. PERLENGKAPAN PENDUKUNG (PENGHAPUS & SPIDOL) */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                          <div className="p-2.5 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <span className="text-[11px] font-bold text-slate-800 block truncate">
+                                Penghapus Papan
+                              </span>
+                              <span
+                                className={`inline-block px-1.5 py-0.2 rounded text-[9.5px] font-bold border ${
+                                  KONDISI_SAPRAS_META[selectedKelasSaprasRow.penghapusKondisi].badgeClass
+                                }`}
+                              >
+                                {KONDISI_SAPRAS_META[selectedKelasSaprasRow.penghapusKondisi].shortLabel}
+                              </span>
+                            </div>
+                            <select
+                              value={selectedKelasSaprasRow.penghapusKondisi}
+                              disabled={isUpdatingSapras}
+                              onChange={(e) =>
+                                handleUpdateKondisiSaprasCepat(
+                                  'penghapusKondisi',
+                                  e.target.value as KondisiSapras
+                                )
+                              }
+                              aria-label="Ubah Status Penghapus Papan"
+                              className="px-2 py-0.5 text-[11px] font-semibold rounded-md border border-slate-300 bg-white text-slate-800 focus:outline-none cursor-pointer shrink-0"
+                            >
+                              <option value="BAIK">Baik</option>
+                              <option value="RUSAK_RINGAN">Rusak Ringan</option>
+                              <option value="RUSAK_BERAT">Rusak Berat</option>
+                              <option value="BELUM_ADA">Belum Ada</option>
+                            </select>
+                          </div>
+
+                          <div className="p-2.5 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <span className="text-[11px] font-bold text-slate-800 block truncate">
+                                Spidol Boardmaker
+                              </span>
+                              <span
+                                className={`inline-block px-1.5 py-0.2 rounded text-[9.5px] font-bold border ${
+                                  KONDISI_SAPRAS_META[selectedKelasSaprasRow.spidolKondisi].badgeClass
+                                }`}
+                              >
+                                {KONDISI_SAPRAS_META[selectedKelasSaprasRow.spidolKondisi].shortLabel}
+                              </span>
+                            </div>
+                            <select
+                              value={selectedKelasSaprasRow.spidolKondisi}
+                              disabled={isUpdatingSapras}
+                              onChange={(e) =>
+                                handleUpdateKondisiSaprasCepat(
+                                  'spidolKondisi',
+                                  e.target.value as KondisiSapras
+                                )
+                              }
+                              aria-label="Ubah Status Spidol Boardmaker"
+                              className="px-2 py-0.5 text-[11px] font-semibold rounded-md border border-slate-300 bg-white text-slate-800 focus:outline-none cursor-pointer shrink-0"
+                            >
+                              <option value="BAIK">Baik</option>
+                              <option value="RUSAK_RINGAN">Rusak Ringan</option>
+                              <option value="RUSAK_BERAT">Rusak Berat</option>
+                              <option value="BELUM_ADA">Belum Ada</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Catatan / Keterangan Sinkronisasi */}
+                        <div className="pt-1 flex items-center justify-between text-[10.5px] text-slate-400">
+                          <span>*Perubahan status otomatis tersimpan ke modul PKM. Sapras</span>
+                          <Link
+                            href="/sapras/inventaris-kelas"
+                            onClick={() => setSelectedKelasModal(null)}
+                            className="text-teal-700 hover:text-teal-900 font-bold hover:underline"
+                          >
+                            Buka Modul Sapras &rarr;
+                          </Link>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-center py-6 text-xs text-slate-400">
+                        Memuat data inventaris kelas...
+                      </p>
+                    )}
+                  </div>
+                </div>
+
               </div>
+            </div>
+
+            {/* Footer Modal */}
+            <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/90 flex items-center justify-between gap-2 shrink-0">
+              <Link
+                href="/jadwal-kbm"
+                onClick={() => setSelectedKelasModal(null)}
+                className="px-3.5 py-2 text-xs font-semibold rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition shadow-2xs"
+              >
+                Buka Jadwal KBM
+              </Link>
+              <Link
+                href="/rekap-hafalan"
+                onClick={() => setSelectedKelasModal(null)}
+                className="px-4 py-2 text-xs font-bold rounded-xl bg-blue-900 hover:bg-blue-950 text-white shadow-2xs transition inline-flex items-center gap-1.5"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Buka Rekapitulasi Hafalan</span>
+              </Link>
             </div>
           </div>
         </div>
