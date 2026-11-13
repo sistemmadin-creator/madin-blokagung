@@ -90,7 +90,75 @@ export function getBab6Html() {
 
   <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
 
-  <h2>6.2 CMS Manajemen Warta Berita MADINA (<code>/kelola-berita</code>)</h2>
+  <h2>6.2 Inventaris Madin &amp; Sistem Barcode Aset (<code>/sapras/inventaris-madin</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Gambaran Umum Modul</h3>
+  <p>
+    Modul <strong>Inventaris Madin</strong> (<code>InventarisMadinModule.tsx</code>) adalah sistem manajemen aset fisik dan perlengkapan sarana prasarana berbasis kode batang (<em>barcode / QR code</em>). Sistem ini mendata seluruh aset bernilai milik madrasah (seperti pengeras suara, proyektor, meja guru jati, almari arsip, genset, hingga perlengkapan KBM) lengkap dengan nomor identifikasi unik, riwayat mutasi antar-gedung, serta penilaian kondisi aset secara berkala.
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    ${renderBadge('PKM Sapras & Master Admin', 'emerald')} Memiliki izin untuk mendaftarkan aset baru, memutakhirkan kondisi barang, melakukan mutasi lokasi, memindai barcode via kamera, serta mencetak lembar label stiker aset.
+  </p>
+
+  <h3>(c) Struktur Data Aset &amp; Master Tempat Lokasi</h3>
+  <ul>
+    <li>
+      <strong>Master Tempat &amp; Gedung (<code>SaprasTempatLokasi</code>):</strong> Mengelompokkan aset berdasarkan nama gedung (misal: <em>Gedung Diniyyah Pusat, Asrama Al-Fattah Lt. 2, Laboratorium Bahasa</em>), nomor ruangan/lantai, nama penanggung jawab (PJ), dan kontak telepon. Pengurus dapat memfilter aset per gedung dengan mengklik tab lokasi di bagian atas.
+    </li>
+    <li>
+      <strong>Kode Aset Unik (Barcode ID):</strong> Kode alfanumerik otomatis berstandar madrasah (contoh: <code>BRC-2026-ELK-0012</code>) yang dapat dipindai secara cepat menggunakan pemindai laser genggam maupun kamera ponsel.
+    </li>
+    <li>
+      <strong>Kategori Barang (<code>KategoriInventarisMadin</code>):</strong> <code>Elektronik</code>, <code>Mebel &amp; Perabot</code>, <code>Audio &amp; Visual</code>, <code>Kitab &amp; Buku Perpustakaan</code>, <code>Alat Kebersihan</code>, dan <code>Perlengkapan Umum</code>.
+    </li>
+    <li>
+      <strong>Penilaian Kondisi &amp; Valuasi:</strong> Mencatat kondisi (<em>Baik, Rusak Ringan, Rusak Berat, Hilang</em>), jumlah unit, tanggal perolehan/pembelian, serta estimasi nilai rupiah aset untuk audit kekayaan madrasah.
+    </li>
+  </ul>
+
+  <h3>(d) Pemindai Barcode Kamera Real-time (<code>ModalBarcodeScanner.tsx</code>)</h3>
+  <p>
+    Untuk mempercepat audit stok fisik di lapangan tanpa membawa alat pemindai khusus, sistem dilengkapi pemindai kamera terintegrasi:
+  </p>
+  <ol>
+    <li>Klik tombol berikon pemindai <strong>Pindai Barcode Aset</strong> di bilah atas.</li>
+    <li>Beri izin akses kamera pada peramban ponsel atau laptop pengurus.</li>
+    <li>Jika menggunakan smartphone, pengurus dapat mengklik tombol <strong>Ganti Kamera</strong> untuk menggunakan kamera belakang berlensa tajam.</li>
+    <li>Arahkan jendela bidik kamera ke label stiker barcode yang tertempel pada fisik barang.</li>
+    <li>Sistem secara instan mendeteksi kode barcode, membunyikan nada konfirmasi audio (<em>beep</em>), dan seketika membuka kartu detail barang tersebut untuk pemeriksaan langsung atau pembaruan status kondisi.</li>
+  </ol>
+
+  <h3>(e) Studio Desain &amp; Cetak Label Stiker Barcode (<code>ModalCetakLabelSapras.tsx</code>)</h3>
+  <p>
+    Sistem menyediakan studio percetakan stiker aset siap pakai yang menghasilkan kode batang berbasis grafik vektor SVG presisi tinggi (<code>generateQrSvgPath</code>) tanpa pecah saat dicetak pada kertas stiker:
+  </p>
+  <ol>
+    <li>Pilih satu atau beberapa barang inventaris yang ingin dicetak labelnya (atau klik <em>Pilih Semua Barang di Lokasi Ini</em>).</li>
+    <li>Klik tombol <strong>Cetak Label Stiker</strong>.</li>
+    <li>Pilih format tata letak lembar cetak:
+      <ul>
+        <li><strong>Tata Letak 1 Kolom (Besar):</strong> Cocok untuk aset berukuran besar seperti almari, sound system, atau podium. Menampilkan nama madrasah, logo resmi, nama aset, barcode lebar, dan lokasi ruangan.</li>
+        <li><strong>Tata Letak 2 Kolom (Sedang):</strong> Format standar label meja guru, kipas angin dinding, atau papan tulis.</li>
+        <li><strong>Tata Letak 3 Kolom (Kecil - Standar Kertas Stiker Tom &amp; Jerry):</strong> Format ekonomis untuk barang berukuran kecil seperti mikrofon, kabel adaptor, dan jam dinding.</li>
+      </ul>
+    </li>
+    <li>Periksa pratinjau lembar cetak di layar, lalu klik tombol biru <strong>Cetak Lembar Stiker (Print Document)</strong> untuk mengirim perintah langsung ke printer stiker label.</li>
+  </ol>
+
+  <h3>(f) Prosedur Mutasi Aset Antar-Ruangan</h3>
+  <ol>
+    <li>Cari barang yang akan dipindahkan pada tabel inventaris atau pindai barcodenya.</li>
+    <li>Klik ikon panah bolak-balik <strong>Mutasi Lokasi</strong> pada baris barang.</li>
+    <li>Pilih <strong>Lokasi Ruangan / Gedung Tujuan Baru</strong>.</li>
+    <li>Ketikkan <strong>Nama Petugas Pemindah</strong> dan alasan mutasi (misal: <em>"Dipindahkan ke Ruang Kelas 3 Ulya B untuk persiapan imtihan"</em>).</li>
+    <li>Klik <strong>Simpan Mutasi</strong>. Sistem mencatat riwayat pemindahan pada log audit aset sehingga tidak ada barang yang hilang tanpa jejak.</li>
+  </ol>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>6.3 CMS Manajemen Warta Berita MADINA (<code>/kelola-berita</code>)</h2>
 
   <h3>(a) Tujuan &amp; Filosofi Modul</h3>
   <p>

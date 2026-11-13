@@ -18,6 +18,7 @@ import {
   loadHierarchyRules,
   parseHierarchyTree,
 } from '@/lib/services/hierarchy-service';
+import { compressImageFile } from '@/lib/utils/image';
 import {
   getProvinces,
   getRegencies,
@@ -278,16 +279,22 @@ export default function ModalInputAsatidz() {
     setFormData((prev) => ({ ...prev, nia: nextNIA }));
   };
 
-  const handleFotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      const base64 = uploadEvent.target?.result as string;
-      setFormData((prev) => ({ ...prev, foto_asatidz: base64 }));
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImageFile(file, 600, 0.75);
+      setFormData((prev) => ({ ...prev, foto_asatidz: compressed }));
+    } catch {
+      // Fallback jika kompresi gagal
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const base64 = uploadEvent.target?.result as string;
+        setFormData((prev) => ({ ...prev, foto_asatidz: base64 }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleHapusFoto = () => {

@@ -249,7 +249,7 @@
       <tr>
         <td style="font-weight: bold; color: #475569;">Versi Aplikasi</td>
         <td>:</td>
-        <td>Rilis 2.4 (Next.js 14 App Router &amp; Supabase Engine)</td>
+        <td>Rilis 2.5 (Enterprise Security Hardened &amp; Barcode Asset Edition)</td>
       </tr>
       <tr>
         <td style="font-weight: bold; color: #475569;">Tahun Ajaran Aktif</td>
@@ -264,7 +264,7 @@
       <tr>
         <td style="font-weight: bold; color: #475569;">Tanggal Rilis</td>
         <td>:</td>
-        <td>November 2026</td>
+        <td>November 2026 (Pembaruan Mayor Pasca-Audit Keamanan)</td>
       </tr>
       <tr>
         <td style="font-weight: bold; color: #475569;">Klasifikasi Dokumen</td>
@@ -330,10 +330,10 @@
     <div class="toc-item toc-sub">1.2 Portal Publik &amp; Warta Berita (Landing Page, Feed Berita, dan Sticky TikTok Widget)</div>
     <div class="toc-item toc-sub">1.3 Autentikasi &amp; Keamanan Sesi Pengurus (Login, Persistent Session, Proteksi Route)</div>
     <div class="toc-item toc-sub">1.4 Anatomi Antarmuka Ruang Kerja (Desktop Sidebar, Navbar, Mobile BottomNav)</div>
-    <div class="toc-item toc-sub">1.5 Fitur Utilitas Global (Realtime Sync, Engine Undo/Redo, Offline Sync, SundayDatePicker, Filter TA)</div>
+    <div class="toc-item toc-sub">1.5 Fitur Utilitas Global (Realtime Sync, Undo/Redo, Offline Sync, SundayDatePicker, Filter TA, Universal Search Ctrl+K, Sentry Monitoring &amp; Rate Limiter)</div>
 
     <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 2: BERANDA ANALITIK, DATA MASTER &amp; RUANG KERJA UMUM</span></div>
-    <div class="toc-item toc-sub">2.1 Beranda Analitik &amp; KPI Utama (/dashboard)</div>
+    <div class="toc-item toc-sub">2.1 Beranda Analitik Eksekutif (/beranda &amp; /dashboard) - Universal Search, Detail Capaian &amp; Live Matrix</div>
     <div class="toc-item toc-sub">2.2 Manajemen Data Santri (/santri) - Biodata, Ambil Foto Kamera, Import/Export Excel</div>
     <div class="toc-item toc-sub">2.3 Manajemen Data Dewan Asatidz (/asatidz) - Direktori &amp; Import Excel</div>
     <div class="toc-item toc-sub">2.4 Workspace Catatan &amp; To-Do List Pengurus (/catatan)</div>
@@ -353,7 +353,7 @@
     <div class="toc-item toc-sub">4.4 Linimasa Setor Bulanan (/linimasa-setor)</div>
     <div class="toc-item toc-sub">4.5 Rekapitulasi Ketuntasan Hafalan Santri (/rekap-hafalan)</div>
     <div class="toc-item toc-sub">4.6 Desain &amp; Cetak Piagam / Syahadah (/piagam)</div>
-    <div class="toc-item toc-sub">4.7 Checklist Serah Terima Piagam (/serah-piagam) [Fitur Terbaru]</div>
+    <div class="toc-item toc-sub">4.7 Checklist Serah Terima Piagam (/serah-piagam) [Fitur Baru]</div>
     <div class="toc-item toc-sub">4.8 Broadcast WhatsApp Rapor Digital Hafalan (/kirim-wa)</div>
 
     <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 5: PANDUAN OPERASIONAL PKM. KESISWAAN</span></div>
@@ -363,14 +363,16 @@
     <div class="toc-item toc-sub">5.4 Rekapitulasi Kehadiran &amp; Generator Laporan WhatsApp (/rekap-absensi)</div>
 
     <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 6: PANDUAN OPERASIONAL PKM. SARANA PRASARANA &amp; PUBLIKASI</span></div>
-    <div class="toc-item toc-sub">6.1 Manajemen Sarana &amp; Prasarana (Inventaris, Perbaikan, Logistik, Rekap Audit)</div>
-    <div class="toc-item toc-sub">6.2 CMS Manajemen Warta Berita MADINA (/kelola-berita) - Editor Sisip Foto &amp; Video TikTok</div>
+    <div class="toc-item toc-sub">6.1 Manajemen Sarana &amp; Prasarana (Inventaris Kelas, Perbaikan, Logistik, Rekap Audit)</div>
+    <div class="toc-item toc-sub">6.2 Modul Inventaris Madin &amp; Sistem Barcode Aset (/sapras/inventaris-madin) [FITUR BARU]</div>
+    <div class="toc-item toc-sub">6.3 CMS Manajemen Warta Berita MADINA (/kelola-berita) - Editor Sisip Foto &amp; Video TikTok</div>
 
-    <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 7: PENGATURAN SISTEM, HAK AKSES (RBAC) &amp; PANDUAN PEMECAHAN MASALAH</span></div>
+    <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 7: PENGATURAN SISTEM, KEAMANAN ENTERPRISE &amp; PANDUAN PEMECAHAN MASALAH</span></div>
     <div class="toc-item toc-sub">7.1 Manajemen Hak Akses Pengguna Berbasis Peran (RBAC Matrix &amp; Otoritas Khusus)</div>
     <div class="toc-item toc-sub">7.2 Kustomisasi Navigasi Sidebar, Hierarki Kamar, dan Saklar Keamanan</div>
-    <div class="toc-item toc-sub">7.3 Prosedur Operasional Standar (SOP) Transisi Pergantian Tahun Ajaran Baru</div>
-    <div class="toc-item toc-sub">7.4 Tanya Jawab (FAQ) &amp; Panduan Pemecahan Masalah (Troubleshooting)</div>
+    <div class="toc-item toc-sub">7.3 Arsitektur Keamanan Siber Enterprise 4 Pilar (Anti-SSRF, RLS Anti-BOLA, Zod Rate Limiter, Sentry &amp; Spend Cap) [SOP RESMI]</div>
+    <div class="toc-item toc-sub">7.4 Prosedur Operasional Standar (SOP) Transisi Pergantian Tahun Ajaran Baru</div>
+    <div class="toc-item toc-sub">7.5 Tanya Jawab (FAQ) &amp; Panduan Pemecahan Masalah (Troubleshooting)</div>
   </div>
   
 
@@ -589,6 +591,45 @@
   <p>
     Sistem bekerja secara multi-tahun ajaran (contoh: <code>2026/2027</code>) dan multi-semester (<em>Semester Ganjil / Daur Awwal</em> dan <em>Semester Genap / Daur Tsani</em>). Seluruh tabel dan rekapitulasi data akan secara otomatis difilter sesuai dengan Tahun Ajaran yang sedang diaktifkan oleh pengurus pada bilah atas aplikasi.
   </p>
+
+  <h3>5. Pencarian Cepat Universal Lintas Modul (Universal Search <code>Ctrl + K</code> / <code>Cmd + K</code>)</h3>
+  <p>
+    Untuk mempercepat akses data di tengah puluhan menu, aplikasi menyematkan modal pencarian instan global <strong><code>ModalUniversalSearch.tsx</code></strong> yang dapat dibuka kapan saja dengan menekan kombinasi tombol <kbd>Ctrl + K</kbd> (Windows) atau <kbd>Cmd + K</kbd> (Mac):
+  </p>
+  <ul>
+    <li><strong>Pencarian Multi-Entitas Sekaligus:</strong> Pengurus cukup mengetikkan sepenggal nama atau angka untuk menemukan data <em>Santri (No. Induk/Kamar), Asatidz (NIA/Nama), Ruang Kelas/Rombel, Jadwal KBM, Riwayat Setoran, hingga Kode Barcode Inventaris Sapras</em>.</li>
+    <li><strong>Navigasi Instan Bebas Klik Menu:</strong> Memilih salah satu hasil pencarian akan langsung membawa pengurus ke halaman detail data tersebut tanpa harus menelusuri menu sidebar secara manual.</li>
+  </ul>
+
+  <h3>6. Pemantauan Kesalahan Waktu Nyata (Sentry SDK Error Monitoring) &amp; Filter Anti-PII</h3>
+  <p>
+    Sistem mengintegrasikan platform pemantauan kestabilan kelas industri <strong>Sentry SDK v11+</strong> pada tiga lapisan runtime (Client, Serverless Node.js, dan Edge Network). Dilengkapi modul khusus <strong><code>errorMonitoring.ts</code></strong> yang menerapkan penyaringan otomatis data pribadi (*Anti-PII Sanitizer*):
+  </p>
+  <ul>
+    <li>Kunci rahasia, token autentikasi, kata sandi, NIK, dan NIS santri secara otomatis disamarkan (*redacted*) menjadi <code>[REDACTED]</code> sebelum log dikirim ke server pemantauan.</li>
+    <li>Nomor ponsel Indonesia (format <code>08xxx</code> / <code>+628xxx</code>) disensor otomatis menjadi <code>[PHONE_REDACTED]</code> demi menjamin perlindungan privasi santri dan wali santri sesuai Undang-Undang Perlindungan Data Pribadi (UU PDP).</li>
+  </ul>
+
+  <h3>7. Layar Pemulihan Kesalahan Terarah (Graceful Error Boundaries)</h3>
+  <p>
+    Aplikasi membuang jauh-jauh masalah klasik layar putih kosong (*White Screen of Death*) ketika terjadi galat pada peramban. Melalui komponen <code>app/error.tsx</code> dan <code>app/global-error.tsx</code>:
+  </p>
+  <ul>
+    <li>Sistem menampilkan antarmuka ramah bernuansa hijau madrasah dengan pesan yang jelas.</li>
+    <li>Menyertakan tombol <strong>"Coba Lagi (Reset)"</strong> untuk memuat ulang komponen tanpa kehilangan sesi login.</li>
+    <li>Menghasilkan <strong>Error Reference ID</strong> unik yang dapat difoto oleh pengurus untuk dilaporkan ke tim IT tanpa membocorkan struktur teknis database.</li>
+  </ul>
+
+  <h3>8. Perlindungan Laju Permintaan (Sliding-Window Rate Limiter)</h3>
+  <p>
+    Untuk mencegah kelebihan beban server (*server throttling*) akibat looping query peramban atau upaya serangan spam/brute-force, aplikasi memasang pembatas laju cerdas <strong><code>rateLimiter.ts</code></strong>:
+  </p>
+  <ul>
+    <li>Broadcast Notifikasi (<code>/api/push/send</code>): Dibatasi maksimal 10 request per menit.</li>
+    <li>Pendaftaran Subscription (<code>/api/push/subscribe</code>): Dibatasi maksimal 20 request per menit.</li>
+    <li>Proxy Gateway WhatsApp (<code>/api/waha/*</code>): Dibatasi maksimal 30 request per menit.</li>
+    <li>Request berlebih otomatis dihentikan dengan status HTTP <code>429 Too Many Requests</code> tanpa membebani komputasi database.</li>
+  </ul>
   
 
   <!-- BAB 2: BERANDA ANALITIK, DATA MASTER & RUANG KERJA UMUM -->
@@ -596,19 +637,51 @@
   <div class="page-break"></div>
   <h1>BAB 2: BERANDA ANALITIK, DATA MASTER &amp; RUANG KERJA UMUM</h1>
 
-  <h2>2.1 Beranda Analitik &amp; KPI Utama (<code>/dashboard</code>)</h2>
+  <h2>2.1 Beranda Navigasi Eksekutif &amp; Dashboard Analitik (<code>/beranda</code> &amp; <code>/dashboard</code>)</h2>
 
-  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <h3>(a) Tujuan &amp; Arsitektur Dual-View Beranda</h3>
   <p>
-    Halaman Beranda Analitik (<code>/dashboard</code>) adalah pusat komando dan kendali visual terpadu bagi pimpinan madrasah, kepala PKM, dan pengurus harian. Halaman ini mengonsolidasikan data dari seluruh departemen secara waktu nyata ke dalam widget KPI, grafik tren kehadiran, visualisasi matriks jam belajar harian, serta papan peringkat (<em>leaderboard</em>) capaian hafalan.
+    Sistem MADINA Blokagung menghadirkan arsitektur ruang kendali ganda (<em>Dual-View Command Center</em>) yang disesuaikan dengan kebutuhan pengguna eksekutif maupun operator operasional harian:
   </p>
+  <ul>
+    <li>
+      <strong>Ruang Navigasi Eksekutif (<code>/beranda</code>):</strong> Antarmuka modern yang memadukan pencarian universal cerdas, kartu metrik instan tingkat Ula/Wustho/Ulya, kalender agenda terdekat, serta peluncur rute kerja cepat antar-divisi tanpa perlu membuka struktur menu yang kompleks.
+    </li>
+    <li>
+      <strong>Dashboard Analitik &amp; KPI Klasik (<code>/dashboard</code>):</strong> Pusat kendali visual berbasis grafik tren waktu nyata, visualisasi matriks ruang belajar KBM harian, dan papan peringkat (<em>leaderboard</em>) capaian setoran hafalan mingguan.
+    </li>
+  </ul>
 
   <h3>(b) Hak Akses (RBAC)</h3>
   <p>
-    <span class="badge badge-emerald">Semua Pengurus Terdaftar</span> Dapat diakses oleh seluruh pengguna yang memiliki akun resmi aktif (Master Admin, Pengurus PKM, Mustahiq, maupun Petugas Piket). Tampilan data dan agregasi angka disesuaikan secara dinamis dengan cakupan wilayah gender (PA/PI) atau blok asrama yang diberikan kepada akun tersebut.
+    <span class="badge badge-emerald">Semua Pengurus Terdaftar</span> Dapat diakses oleh seluruh pengguna resmi aktif (Master Admin, Pengurus PKM, Mustahiq, maupun Petugas Piket). Tampilan data dan agregasi angka disaring secara dinamis sesuai cakupan wewenang gender (PA/PI) atau blok asrama akun pengguna yang sedang aktif.
   </p>
 
-  <h3>(c) Anatomi Widget &amp; Cara Membaca Data</h3>
+  <h3>(c) Fitur Unggulan Beranda Eksekutif (<code>/beranda</code>)</h3>
+  <ol>
+    <li>
+      <strong>Pencarian Universal Pintar (<kbd>Ctrl + K</kbd> / <kbd>Cmd + K</kbd>):</strong>
+      <br/>
+      Terintegrasi dengan <code>ModalUniversalSearch.tsx</code>, pengurus dapat mengetikkan nama santri, NIS, nama ustadz, nama kitab, ruangan kelas, atau topik berita dari mana saja. Hasil pencarian terbagi rapi berdasarkan kategori entitas lengkap dengan pintasan lompat ke modul terkait.
+    </li>
+    <li>
+      <strong>Kartu KPI Hero &amp; Modal Detail Jenjang (Ula, Wustho, Ulya):</strong>
+      <br/>
+      Menampilkan statistik agregat santri aktif, rasio kelas terisi, dan ketuntasan materi. Mengklik salah satu kartu jenjang akan memunculkan <em>Modal Detail Level KBM</em> yang membedah sebaran santri per rombel secara mendalam.
+    </li>
+    <li>
+      <strong>Pop-up Profil Cepat Santri &amp; Asatidz:</strong>
+      <br/>
+      Pengurus dapat menginspeksi ringkasan biodata, riwayat hafalan, nomor wali, dan tugas mengajar asatidz langsung melalui modal pop-up tanpa perlu berpindah ke modul utama.
+    </li>
+    <li>
+      <strong>Peluncur Navigasi Cepat (Quick Launcher):</strong>
+      <br/>
+      Tombol akses kilat menuju modul yang sering digunakan, disesuaikan dengan hak akses dan tugas harian pengurus bersangkutan.
+    </li>
+  </ol>
+
+  <h3>(d) Anatomi Widget Dashboard Analitik (<code>/dashboard</code>)</h3>
   <table class="data-table">
     <thead>
       <tr>
@@ -651,7 +724,7 @@
     </tbody>
   </table>
 
-  <h3>(d) Fitur Khusus: Live Status Banner &amp; Activity Ticker</h3>
+  <h3>(e) Fitur Khusus: Live Status Banner &amp; Activity Ticker</h3>
   <ul>
     <li><strong>Live Status Banner:</strong> Menampilkan status sinkronisasi Supabase Realtime Channel secara langsung. Jika terputus, banner beralih ke warna kuning dengan tombol <em>Hubungkan Ulang</em>.</li>
     <li><strong>Recent Activity Ticker:</strong> Menampilkan deretan aktivitas pengurus secara langsung (misal: "Mustahiq 2B Ula baru saja memverifikasi 32 setoran santri", "Piket Blok A mencatat 1 asatidz badal").</li>
@@ -1475,7 +1548,75 @@
 
   <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
 
-  <h2>6.2 CMS Manajemen Warta Berita MADINA (<code>/kelola-berita</code>)</h2>
+  <h2>6.2 Inventaris Madin &amp; Sistem Barcode Aset (<code>/sapras/inventaris-madin</code>)</h2>
+
+  <h3>(a) Tujuan &amp; Gambaran Umum Modul</h3>
+  <p>
+    Modul <strong>Inventaris Madin</strong> (<code>InventarisMadinModule.tsx</code>) adalah sistem manajemen aset fisik dan perlengkapan sarana prasarana berbasis kode batang (<em>barcode / QR code</em>). Sistem ini mendata seluruh aset bernilai milik madrasah (seperti pengeras suara, proyektor, meja guru jati, almari arsip, genset, hingga perlengkapan KBM) lengkap dengan nomor identifikasi unik, riwayat mutasi antar-gedung, serta penilaian kondisi aset secara berkala.
+  </p>
+
+  <h3>(b) Hak Akses (RBAC)</h3>
+  <p>
+    <span class="badge badge-emerald">PKM Sapras & Master Admin</span> Memiliki izin untuk mendaftarkan aset baru, memutakhirkan kondisi barang, melakukan mutasi lokasi, memindai barcode via kamera, serta mencetak lembar label stiker aset.
+  </p>
+
+  <h3>(c) Struktur Data Aset &amp; Master Tempat Lokasi</h3>
+  <ul>
+    <li>
+      <strong>Master Tempat &amp; Gedung (<code>SaprasTempatLokasi</code>):</strong> Mengelompokkan aset berdasarkan nama gedung (misal: <em>Gedung Diniyyah Pusat, Asrama Al-Fattah Lt. 2, Laboratorium Bahasa</em>), nomor ruangan/lantai, nama penanggung jawab (PJ), dan kontak telepon. Pengurus dapat memfilter aset per gedung dengan mengklik tab lokasi di bagian atas.
+    </li>
+    <li>
+      <strong>Kode Aset Unik (Barcode ID):</strong> Kode alfanumerik otomatis berstandar madrasah (contoh: <code>BRC-2026-ELK-0012</code>) yang dapat dipindai secara cepat menggunakan pemindai laser genggam maupun kamera ponsel.
+    </li>
+    <li>
+      <strong>Kategori Barang (<code>KategoriInventarisMadin</code>):</strong> <code>Elektronik</code>, <code>Mebel &amp; Perabot</code>, <code>Audio &amp; Visual</code>, <code>Kitab &amp; Buku Perpustakaan</code>, <code>Alat Kebersihan</code>, dan <code>Perlengkapan Umum</code>.
+    </li>
+    <li>
+      <strong>Penilaian Kondisi &amp; Valuasi:</strong> Mencatat kondisi (<em>Baik, Rusak Ringan, Rusak Berat, Hilang</em>), jumlah unit, tanggal perolehan/pembelian, serta estimasi nilai rupiah aset untuk audit kekayaan madrasah.
+    </li>
+  </ul>
+
+  <h3>(d) Pemindai Barcode Kamera Real-time (<code>ModalBarcodeScanner.tsx</code>)</h3>
+  <p>
+    Untuk mempercepat audit stok fisik di lapangan tanpa membawa alat pemindai khusus, sistem dilengkapi pemindai kamera terintegrasi:
+  </p>
+  <ol>
+    <li>Klik tombol berikon pemindai <strong>Pindai Barcode Aset</strong> di bilah atas.</li>
+    <li>Beri izin akses kamera pada peramban ponsel atau laptop pengurus.</li>
+    <li>Jika menggunakan smartphone, pengurus dapat mengklik tombol <strong>Ganti Kamera</strong> untuk menggunakan kamera belakang berlensa tajam.</li>
+    <li>Arahkan jendela bidik kamera ke label stiker barcode yang tertempel pada fisik barang.</li>
+    <li>Sistem secara instan mendeteksi kode barcode, membunyikan nada konfirmasi audio (<em>beep</em>), dan seketika membuka kartu detail barang tersebut untuk pemeriksaan langsung atau pembaruan status kondisi.</li>
+  </ol>
+
+  <h3>(e) Studio Desain &amp; Cetak Label Stiker Barcode (<code>ModalCetakLabelSapras.tsx</code>)</h3>
+  <p>
+    Sistem menyediakan studio percetakan stiker aset siap pakai yang menghasilkan kode batang berbasis grafik vektor SVG presisi tinggi (<code>generateQrSvgPath</code>) tanpa pecah saat dicetak pada kertas stiker:
+  </p>
+  <ol>
+    <li>Pilih satu atau beberapa barang inventaris yang ingin dicetak labelnya (atau klik <em>Pilih Semua Barang di Lokasi Ini</em>).</li>
+    <li>Klik tombol <strong>Cetak Label Stiker</strong>.</li>
+    <li>Pilih format tata letak lembar cetak:
+      <ul>
+        <li><strong>Tata Letak 1 Kolom (Besar):</strong> Cocok untuk aset berukuran besar seperti almari, sound system, atau podium. Menampilkan nama madrasah, logo resmi, nama aset, barcode lebar, dan lokasi ruangan.</li>
+        <li><strong>Tata Letak 2 Kolom (Sedang):</strong> Format standar label meja guru, kipas angin dinding, atau papan tulis.</li>
+        <li><strong>Tata Letak 3 Kolom (Kecil - Standar Kertas Stiker Tom &amp; Jerry):</strong> Format ekonomis untuk barang berukuran kecil seperti mikrofon, kabel adaptor, dan jam dinding.</li>
+      </ul>
+    </li>
+    <li>Periksa pratinjau lembar cetak di layar, lalu klik tombol biru <strong>Cetak Lembar Stiker (Print Document)</strong> untuk mengirim perintah langsung ke printer stiker label.</li>
+  </ol>
+
+  <h3>(f) Prosedur Mutasi Aset Antar-Ruangan</h3>
+  <ol>
+    <li>Cari barang yang akan dipindahkan pada tabel inventaris atau pindai barcodenya.</li>
+    <li>Klik ikon panah bolak-balik <strong>Mutasi Lokasi</strong> pada baris barang.</li>
+    <li>Pilih <strong>Lokasi Ruangan / Gedung Tujuan Baru</strong>.</li>
+    <li>Ketikkan <strong>Nama Petugas Pemindah</strong> dan alasan mutasi (misal: <em>"Dipindahkan ke Ruang Kelas 3 Ulya B untuk persiapan imtihan"</em>).</li>
+    <li>Klik <strong>Simpan Mutasi</strong>. Sistem mencatat riwayat pemindahan pada log audit aset sehingga tidak ada barang yang hilang tanpa jejak.</li>
+  </ol>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>6.3 CMS Manajemen Warta Berita MADINA (<code>/kelola-berita</code>)</h2>
 
   <h3>(a) Tujuan &amp; Filosofi Modul</h3>
   <p>
@@ -1586,9 +1727,9 @@
     </tbody>
   </table>
 
-  <h3>(c) Matriks Katalog 28 Modul Halaman Resmi (<code>APP_PAGE_CATALOG</code>)</h3>
+  <h3>(c) Matriks Katalog 35 Modul Halaman Resmi (<code>APP_PAGE_CATALOG</code>)</h3>
   <p>
-    Seluruh halaman yang dapat dikonfigurasi izinnya oleh Master Admin mencakup:
+    Seluruh halaman yang dapat dikonfigurasi izinnya secara mandiri oleh Master Admin mencakup:
   </p>
   <table class="data-table">
     <thead>
@@ -1600,7 +1741,8 @@
       </tr>
     </thead>
     <tbody>
-      <tr><td><code>dashboard</code></td><td>Dashboard Utama (<code>/dashboard</code>)</td><td>Beranda Utama</td><td>Read-Only</td></tr>
+      <tr><td><code>beranda</code></td><td>Beranda Navigasi Eksekutif (<code>/beranda</code>)</td><td>Beranda</td><td>Read-Only</td></tr>
+      <tr><td><code>dashboard</code></td><td>Dashboard Analitik Utama (<code>/dashboard</code>)</td><td>Beranda</td><td>Read-Only</td></tr>
       <tr><td><code>santri</code></td><td>Data Santri (<code>/santri</code>)</td><td>Data Pokok</td><td>Edit &amp; Delete Override</td></tr>
       <tr><td><code>asatidz</code></td><td>Data Asatidz (<code>/asatidz</code>)</td><td>Data Pokok</td><td>Edit &amp; Delete Override</td></tr>
       <tr><td><code>catatan</code></td><td>Catatan &amp; To-Do List (<code>/catatan</code>)</td><td>Ruang Kerja</td><td>Edit &amp; Delete Override</td></tr>
@@ -1623,12 +1765,19 @@
       <tr><td><code>absen-cepat</code></td><td>Absen Cepat (<code>/absen-cepat</code>)</td><td>PKM. Kesiswaan</td><td>Edit Override</td></tr>
       <tr><td><code>absen-konsorsium</code></td><td>Absen Konsorsium (<code>/absen-konsorsium</code>)</td><td>PKM. Kesiswaan</td><td>Edit &amp; Delete Override</td></tr>
       <tr><td><code>rekap-absensi</code></td><td>Rekap Absensi (<code>/rekap-absensi/*</code>)</td><td>PKM. Kesiswaan</td><td>Read-Only</td></tr>
-      <tr><td><code>sapras-inventaris</code></td><td>Inventaris Kelas (<code>/sapras/inventaris-kelas</code>)</td><td>PKM. Sapras</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>sapras-inventaris</code></td><td>Inventaris Kelas &amp; Madin (<code>/sapras/*</code>)</td><td>PKM. Sapras</td><td>Edit &amp; Delete Override</td></tr>
       <tr><td><code>sapras-perbaikan</code></td><td>Perbaikan Sapras (<code>/sapras/perbaikan</code>)</td><td>PKM. Sapras</td><td>Edit &amp; Delete Override</td></tr>
       <tr><td><code>sapras-logistik</code></td><td>Logistik ATK KBM (<code>/sapras/logistik</code>)</td><td>PKM. Sapras</td><td>Edit &amp; Delete Override</td></tr>
       <tr><td><code>sapras-rekap</code></td><td>Rekap &amp; Audit Sapras (<code>/sapras/rekap</code>)</td><td>PKM. Sapras</td><td>Read-Only</td></tr>
       <tr><td><code>kelola-berita</code></td><td>CMS Warta Berita (<code>/kelola-berita</code>)</td><td>PKM. Publikasi</td><td>Edit &amp; Delete Override</td></tr>
-      <tr><td><code>pengaturan</code></td><td>Pengaturan Sistem (<code>/pengaturan</code>)</td><td>Pengaturan</td><td>Master Admin Only</td></tr>
+      <tr><td><code>ebtadin</code></td><td>Pusat Kendali EBTADIN (<code>/ebtadin</code>)</td><td>EBTADIN</td><td>Edit Override</td></tr>
+      <tr><td><code>ebtadin-ujian</code></td><td>Rekap Ujian EBTADIN (<code>/ebtadin/ujian</code>)</td><td>EBTADIN</td><td>Edit Override</td></tr>
+      <tr><td><code>ebtadin-ujian-rekap</code></td><td>Arsip Ujian Angkatan (<code>/ebtadin/ujian/rekap-angkatan</code>)</td><td>EBTADIN</td><td>Edit Override</td></tr>
+      <tr><td><code>ebtadin-kelulusan</code></td><td>Rekap Kelulusan (<code>/ebtadin/kelulusan</code>)</td><td>EBTADIN</td><td>Edit Override</td></tr>
+      <tr><td><code>ebtadin-kelulusan-rekap</code></td><td>Arsip Kelulusan Angkatan (<code>.../rekap-angkatan</code>)</td><td>EBTADIN</td><td>Edit Override</td></tr>
+      <tr><td><code>ebtadin-serah-ijazah</code></td><td>Serah Ijazah &amp; Syahadah (<code>/ebtadin/serah-ijazah</code>)</td><td>EBTADIN</td><td>Edit Override</td></tr>
+      <tr><td><code>ebtadin-rekap</code></td><td>Arsip Ijazah Angkatan (<code>/ebtadin/rekap-angkatan</code>)</td><td>EBTADIN</td><td>Edit Override</td></tr>
+      <tr><td><code>pengaturan</code></td><td>Pengaturan Sistem &amp; RBAC (<code>/pengaturan</code>)</td><td>Pengaturan</td><td>Master Admin Only</td></tr>
     </tbody>
   </table>
 
@@ -1677,7 +1826,61 @@
 
   <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
 
-  <h2>7.3 Prosedur Operasional Standar (SOP) Pergantian Tahun Ajaran Baru</h2>
+  <h2>7.3 Arsitektur Keamanan Siber Enterprise 4 Pilar (Anti-Hacker Hardening)</h2>
+  <p>
+    Untuk melindungi integritas pangkalan data ribuan santri dan mencegah ancaman kebocoran data, serangan eksploitasi peramban, maupun pembobolan akun, Sistem MADINA Blokagung diperkuat dengan arsitektur pertahanan siber berlapis (<em>Defense-in-Depth</em>) yang terbagi ke dalam 4 Pilar Keamanan:
+  </p>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Pilar Keamanan</th>
+        <th style="width: 35%;">Komponen &amp; Berkas Implementasi</th>
+        <th style="width: 40%;">Mekanisme Perlindungan dari Hacker</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Pilar 1: Proteksi Kredensial &amp; Anti-SSRF</strong></td>
+        <td><code>lib/security/ssrfProtection.ts</code>, <code>validateSafeExternalUrl()</code>, dan <code>next.config.mjs</code></td>
+        <td>
+          • Memblokir serangan <em>Server-Side Request Forgery (SSRF)</em> dengan menyaring seluruh permintaan URL eksternal ke domain terverifikasi.<br/>
+          • Menolak tegas IP privat (127.0.0.1, 10.x, 192.168.x) untuk mencegah hacker memindai jaringan lokal sekretariat.<br/>
+          • Membatasi pemuatan gambar eksternal hanya dari sumber terpercaya (Supabase Storage, Cloudinary, TikTok CDN).
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Pilar 2: RBAC Server-Side &amp; RLS Anti-BOLA/IDOR</strong></td>
+        <td><code>supabase/migrations/</code>, PostgreSQL Row Level Security, <code>lib/utils/rbacHelper.ts</code></td>
+        <td>
+          • Menutup celah <em>Broken Object Level Authorization (BOLA)</em> dan <em>Insecure Direct Object References (IDOR)</em>.<br/>
+          • Setiap operasi query SQL di tingkat database divalidasi langsung oleh mesin Postgres RLS berdasarkan <code>auth.uid()</code>.<br/>
+          • Pengguna dengan izin "baca" diblokir total di tingkat basis data jika mencoba mengirim payload manipulasi HTTP INSERT/UPDATE via Postman/cURL.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Pilar 3: Validasi Skema Zod &amp; Sliding-Window Rate Limiter</strong></td>
+        <td><code>lib/security/rateLimiter.ts</code>, modul validasi skema <code>lib/validations/</code></td>
+        <td>
+          • Mencegah serangan injeksi muatan (<em>payload tampering</em>) dan XSS dengan memvalidasi tipe serta batasan karakter setiap input melalui pustaka Zod.<br/>
+          • <em>Sliding-Window Rate Limiter</em> membatasi frekuensi percobaan login dan pemanggilan API (contoh: maksimal 5 percobaan login gagal per menit per alamat IP) untuk melumpuhkan serangan <em>brute-force</em> dan bot otomatis.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Pilar 4: Sentry SDK v11+ Error Monitoring &amp; Anti-PII</strong></td>
+        <td><code>sentry.client.config.ts</code>, <code>sentry.server.config.ts</code>, SOP Spend Cap</td>
+        <td>
+          • Pemantauan telemetri crash waktu nyata 24/7 menggunakan Sentry SDK v11+.<br/>
+          • <em>Anti-PII Sanitizer</em> pada fungsi <code>beforeSend</code> secara otomatis menyamarkan data sensitif (nomor HP wali santri, NIS, password, token otentikasi) menjadi teks bintang/anonim sebelum dikirim ke log pelaporan.<br/>
+          • SOP Spend Cap dan alert kuota Cloud Supabase mencegah lonjakan biaya tak terduga (*billing shock*) akibat serangan denial-of-service.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>7.4 Prosedur Operasional Standar (SOP) Pergantian Tahun Ajaran Baru</h2>
   <p>
     Menjelang tahun ajaran baru (contoh: transisi dari 2025/2026 ke 2026/2027), Bagian Administrasi Pusat wajib mengikuti SOP berikut:
   </p>
@@ -1700,7 +1903,7 @@
 
   <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
 
-  <h2>7.4 Tanya Jawab (FAQ) &amp; Panduan Pemecahan Masalah (Troubleshooting)</h2>
+  <h2>7.5 Tanya Jawab (FAQ) &amp; Panduan Pemecahan Masalah (Troubleshooting)</h2>
 
   <h3>1. Data presensi atau setoran yang saya input tidak muncul di laptop pengurus lain. Mengapa?</h3>
   <p>

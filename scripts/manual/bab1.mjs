@@ -200,5 +200,44 @@ export function getBab1Html() {
   <p>
     Sistem bekerja secara multi-tahun ajaran (contoh: <code>2026/2027</code>) dan multi-semester (<em>Semester Ganjil / Daur Awwal</em> dan <em>Semester Genap / Daur Tsani</em>). Seluruh tabel dan rekapitulasi data akan secara otomatis difilter sesuai dengan Tahun Ajaran yang sedang diaktifkan oleh pengurus pada bilah atas aplikasi.
   </p>
+
+  <h3>5. Pencarian Cepat Universal Lintas Modul (Universal Search <code>Ctrl + K</code> / <code>Cmd + K</code>)</h3>
+  <p>
+    Untuk mempercepat akses data di tengah puluhan menu, aplikasi menyematkan modal pencarian instan global <strong><code>ModalUniversalSearch.tsx</code></strong> yang dapat dibuka kapan saja dengan menekan kombinasi tombol <kbd>Ctrl + K</kbd> (Windows) atau <kbd>Cmd + K</kbd> (Mac):
+  </p>
+  <ul>
+    <li><strong>Pencarian Multi-Entitas Sekaligus:</strong> Pengurus cukup mengetikkan sepenggal nama atau angka untuk menemukan data <em>Santri (No. Induk/Kamar), Asatidz (NIA/Nama), Ruang Kelas/Rombel, Jadwal KBM, Riwayat Setoran, hingga Kode Barcode Inventaris Sapras</em>.</li>
+    <li><strong>Navigasi Instan Bebas Klik Menu:</strong> Memilih salah satu hasil pencarian akan langsung membawa pengurus ke halaman detail data tersebut tanpa harus menelusuri menu sidebar secara manual.</li>
+  </ul>
+
+  <h3>6. Pemantauan Kesalahan Waktu Nyata (Sentry SDK Error Monitoring) &amp; Filter Anti-PII</h3>
+  <p>
+    Sistem mengintegrasikan platform pemantauan kestabilan kelas industri <strong>Sentry SDK v11+</strong> pada tiga lapisan runtime (Client, Serverless Node.js, dan Edge Network). Dilengkapi modul khusus <strong><code>errorMonitoring.ts</code></strong> yang menerapkan penyaringan otomatis data pribadi (*Anti-PII Sanitizer*):
+  </p>
+  <ul>
+    <li>Kunci rahasia, token autentikasi, kata sandi, NIK, dan NIS santri secara otomatis disamarkan (*redacted*) menjadi <code>[REDACTED]</code> sebelum log dikirim ke server pemantauan.</li>
+    <li>Nomor ponsel Indonesia (format <code>08xxx</code> / <code>+628xxx</code>) disensor otomatis menjadi <code>[PHONE_REDACTED]</code> demi menjamin perlindungan privasi santri dan wali santri sesuai Undang-Undang Perlindungan Data Pribadi (UU PDP).</li>
+  </ul>
+
+  <h3>7. Layar Pemulihan Kesalahan Terarah (Graceful Error Boundaries)</h3>
+  <p>
+    Aplikasi membuang jauh-jauh masalah klasik layar putih kosong (*White Screen of Death*) ketika terjadi galat pada peramban. Melalui komponen <code>app/error.tsx</code> dan <code>app/global-error.tsx</code>:
+  </p>
+  <ul>
+    <li>Sistem menampilkan antarmuka ramah bernuansa hijau madrasah dengan pesan yang jelas.</li>
+    <li>Menyertakan tombol <strong>"Coba Lagi (Reset)"</strong> untuk memuat ulang komponen tanpa kehilangan sesi login.</li>
+    <li>Menghasilkan <strong>Error Reference ID</strong> unik yang dapat difoto oleh pengurus untuk dilaporkan ke tim IT tanpa membocorkan struktur teknis database.</li>
+  </ul>
+
+  <h3>8. Perlindungan Laju Permintaan (Sliding-Window Rate Limiter)</h3>
+  <p>
+    Untuk mencegah kelebihan beban server (*server throttling*) akibat looping query peramban atau upaya serangan spam/brute-force, aplikasi memasang pembatas laju cerdas <strong><code>rateLimiter.ts</code></strong>:
+  </p>
+  <ul>
+    <li>Broadcast Notifikasi (<code>/api/push/send</code>): Dibatasi maksimal 10 request per menit.</li>
+    <li>Pendaftaran Subscription (<code>/api/push/subscribe</code>): Dibatasi maksimal 20 request per menit.</li>
+    <li>Proxy Gateway WhatsApp (<code>/api/waha/*</code>): Dibatasi maksimal 30 request per menit.</li>
+    <li>Request berlebih otomatis dihentikan dengan status HTTP <code>429 Too Many Requests</code> tanpa membebani komputasi database.</li>
+  </ul>
   `;
 }

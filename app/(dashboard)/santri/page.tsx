@@ -186,7 +186,15 @@ export default function SantriPage() {
   };
 
   const handleExport = () => {
-    exportToExcel(filteredData, 'Data_Santri_Madin_Blokagung');
+    // Bersihkan field foto (Base64) agar tidak melebihi limit karakter sel Excel (32.767)
+    const exportData = filteredData.map((s) => {
+      const { foto, ...rest } = s;
+      return {
+        ...rest,
+        'Ada Foto': foto ? 'Ya' : 'Tidak',
+      };
+    });
+    exportToExcel(exportData, 'Data_Santri_Madin_Blokagung');
   };
 
   const handleDeleteSelected = async () => {

@@ -5,19 +5,51 @@ export function getBab2Html() {
   <div class="page-break"></div>
   <h1>BAB 2: BERANDA ANALITIK, DATA MASTER &amp; RUANG KERJA UMUM</h1>
 
-  <h2>2.1 Beranda Analitik &amp; KPI Utama (<code>/dashboard</code>)</h2>
+  <h2>2.1 Beranda Navigasi Eksekutif &amp; Dashboard Analitik (<code>/beranda</code> &amp; <code>/dashboard</code>)</h2>
 
-  <h3>(a) Tujuan &amp; Fungsi Halaman</h3>
+  <h3>(a) Tujuan &amp; Arsitektur Dual-View Beranda</h3>
   <p>
-    Halaman Beranda Analitik (<code>/dashboard</code>) adalah pusat komando dan kendali visual terpadu bagi pimpinan madrasah, kepala PKM, dan pengurus harian. Halaman ini mengonsolidasikan data dari seluruh departemen secara waktu nyata ke dalam widget KPI, grafik tren kehadiran, visualisasi matriks jam belajar harian, serta papan peringkat (<em>leaderboard</em>) capaian hafalan.
+    Sistem MADINA Blokagung menghadirkan arsitektur ruang kendali ganda (<em>Dual-View Command Center</em>) yang disesuaikan dengan kebutuhan pengguna eksekutif maupun operator operasional harian:
   </p>
+  <ul>
+    <li>
+      <strong>Ruang Navigasi Eksekutif (<code>/beranda</code>):</strong> Antarmuka modern yang memadukan pencarian universal cerdas, kartu metrik instan tingkat Ula/Wustho/Ulya, kalender agenda terdekat, serta peluncur rute kerja cepat antar-divisi tanpa perlu membuka struktur menu yang kompleks.
+    </li>
+    <li>
+      <strong>Dashboard Analitik &amp; KPI Klasik (<code>/dashboard</code>):</strong> Pusat kendali visual berbasis grafik tren waktu nyata, visualisasi matriks ruang belajar KBM harian, dan papan peringkat (<em>leaderboard</em>) capaian setoran hafalan mingguan.
+    </li>
+  </ul>
 
   <h3>(b) Hak Akses (RBAC)</h3>
   <p>
-    ${renderBadge('Semua Pengurus Terdaftar', 'emerald')} Dapat diakses oleh seluruh pengguna yang memiliki akun resmi aktif (Master Admin, Pengurus PKM, Mustahiq, maupun Petugas Piket). Tampilan data dan agregasi angka disesuaikan secara dinamis dengan cakupan wilayah gender (PA/PI) atau blok asrama yang diberikan kepada akun tersebut.
+    ${renderBadge('Semua Pengurus Terdaftar', 'emerald')} Dapat diakses oleh seluruh pengguna resmi aktif (Master Admin, Pengurus PKM, Mustahiq, maupun Petugas Piket). Tampilan data dan agregasi angka disaring secara dinamis sesuai cakupan wewenang gender (PA/PI) atau blok asrama akun pengguna yang sedang aktif.
   </p>
 
-  <h3>(c) Anatomi Widget &amp; Cara Membaca Data</h3>
+  <h3>(c) Fitur Unggulan Beranda Eksekutif (<code>/beranda</code>)</h3>
+  <ol>
+    <li>
+      <strong>Pencarian Universal Pintar (<kbd>Ctrl + K</kbd> / <kbd>Cmd + K</kbd>):</strong>
+      <br/>
+      Terintegrasi dengan <code>ModalUniversalSearch.tsx</code>, pengurus dapat mengetikkan nama santri, NIS, nama ustadz, nama kitab, ruangan kelas, atau topik berita dari mana saja. Hasil pencarian terbagi rapi berdasarkan kategori entitas lengkap dengan pintasan lompat ke modul terkait.
+    </li>
+    <li>
+      <strong>Kartu KPI Hero &amp; Modal Detail Jenjang (Ula, Wustho, Ulya):</strong>
+      <br/>
+      Menampilkan statistik agregat santri aktif, rasio kelas terisi, dan ketuntasan materi. Mengklik salah satu kartu jenjang akan memunculkan <em>Modal Detail Level KBM</em> yang membedah sebaran santri per rombel secara mendalam.
+    </li>
+    <li>
+      <strong>Pop-up Profil Cepat Santri &amp; Asatidz:</strong>
+      <br/>
+      Pengurus dapat menginspeksi ringkasan biodata, riwayat hafalan, nomor wali, dan tugas mengajar asatidz langsung melalui modal pop-up tanpa perlu berpindah ke modul utama.
+    </li>
+    <li>
+      <strong>Peluncur Navigasi Cepat (Quick Launcher):</strong>
+      <br/>
+      Tombol akses kilat menuju modul yang sering digunakan, disesuaikan dengan hak akses dan tugas harian pengurus bersangkutan.
+    </li>
+  </ol>
+
+  <h3>(d) Anatomi Widget Dashboard Analitik (<code>/dashboard</code>)</h3>
   <table class="data-table">
     <thead>
       <tr>
@@ -60,7 +92,7 @@ export function getBab2Html() {
     </tbody>
   </table>
 
-  <h3>(d) Fitur Khusus: Live Status Banner &amp; Activity Ticker</h3>
+  <h3>(e) Fitur Khusus: Live Status Banner &amp; Activity Ticker</h3>
   <ul>
     <li><strong>Live Status Banner:</strong> Menampilkan status sinkronisasi Supabase Realtime Channel secara langsung. Jika terputus, banner beralih ke warna kuning dengan tombol <em>Hubungkan Ulang</em>.</li>
     <li><strong>Recent Activity Ticker:</strong> Menampilkan deretan aktivitas pengurus secara langsung (misal: "Mustahiq 2B Ula baru saja memverifikasi 32 setoran santri", "Piket Blok A mencatat 1 asatidz badal").</li>

@@ -20,22 +20,24 @@ di Tempat
 
 Bismillahirrohmanirrohim. Alhamdulillahi Robbil 'Alamin, puji syukur kami panjatkan ke hadirat Allah SWT atas limpahan rahmat dan taufiq-Nya. Seiring pertumbuhan ribuan santri pada jenjang Ula, Wustho, Ulya, hingga Kelas Unggulan, tata kelola administrasi manual berbasis kertas menghadapi tantangan besar: potensi jadwal guru bentrok, keterlambatan laporan hafalan ke wali santri, risiko piagam hilang/salah serah di panggung wisuda, serta lambatnya rekap presensi mengajar.  
 
-Bersama dokumen ini, kami menyampaikan **Laporan Spesifikasi Sistem, Analisis Efisiensi Anggaran, dan Penawaran Investasi Pengembangan Sistem Informasi Terpadu MADINA Blokagung**. Seluruh sistem (28 modul) telah selesai dibangun, diuji coba, dan dilengkapi dengan **Buku Panduan Operasional & Administrasi Resmi (SOP) 100+ Halaman** yang siap dijadikan acuan operasional lembaga.  
+Bersama dokumen ini, kami menyampaikan **Laporan Spesifikasi Sistem, Analisis Efisiensi Anggaran, dan Penawaran Investasi Pengembangan Sistem Informasi Terpadu MADINA Blokagung**. Seluruh sistem (**35 modul terpadu enterprise**) telah selesai dibangun, diuji coba dengan 27 uji regresi otomatis Playwright E2E (100% lulus), dan dilengkapi dengan **Buku Panduan Operasional & Administrasi Resmi (SOP) 100+ Halaman** yang siap dijadikan acuan operasional lembaga.  
 
 ---
 
 ## 1. PROFIL DAN CAPAIAN SISTEM YANG TELAH SELESAI DIBANGUN
 
-Aplikasi ini mencakup **28 modul terpadu** yang melayani 6 pilar operasional madrasah:
+Aplikasi ini mencakup **35 modul terpadu enterprise** yang melayani 8 pilar operasional madrasah:
 
 | Divisi / Bidang Kerja | Modul & Fitur Kunci | Manfaat Nyata bagi Madrasah |
 | :--- | :--- | :--- |
-| **1. PKM. Kurikulum** | • Formasi Kelas PA/PI & Blok Gedung<br/>• Generator Rombel Otomatis<br/>• Matriks Jadwal KBM (Klik Kanan: Pindah, Tukar, Tempel)<br/>• Deteksi & Penyelesai Bentrok Guru/Ruang (CSP Backtracking)<br/>• Kalender Akademik Masehi/Hijriyah | Menghilangkan jadwal asatidz bentrok, memastikan kapasitas ruang tidak overload, serta integrasi libur KBM ke absensi secara otomatis. |
-| **2. PKM. Muhafadzoh** | • Setoran Hafalan Kantor & Cetak Kartu Bukti Klasik (6:3)<br/>• Setor Mingguan Mustahiq via `SundayDatePicker`<br/>• Setor Cepat Massal Rombel & Linimasa Capaian Bulanan<br/>• Studio Cetak Piagam/Syahadah Massal<br/>• **Checklist Serah Terima Piagam** (Kartu 3 Kolom & Rasio)<br/>• **Broadcast WhatsApp Rapor Hafalan** ke Wali Santri | Transparansi setoran hafalan nadzom, memastikan piagam haflah tidak salah serah, dan mempererat silaturahmi dengan wali santri melalui WhatsApp. |
-| **3. PKM. Kesiswaan** | • Presensi Mengajar Harian Asatidz (Jam 1 s.d. Jam 4)<br/>• Penugasan & Pencatatan Asatidz Badal (Pengganti)<br/>• **Portal Absen Cepat per Blok** (Optimal untuk HP/Tablet)<br/>• Presensi Musyawarah Konsorsium Mustahiq & Munawib<br/>• **Generator Laporan WhatsApp Otomatis** | Piket di asrama dapat mengabsen cepat, pengurus langsung mengetahui kelas kosong, dan laporan malam ke dewan masyayikh tersusun otomatis. |
-| **4. PKM. Sarana Prasarana** | • Inventaris Fasilitas per Ruang Kelas (Papan Tulis, Meja)<br/>• Sistem Tiket Pelaporan Kerusakan & Teknisi<br/>• Distribusi Logistik KBM (Stok Spidol, Tinta, ATK)<br/>• Rekapitulasi Audit Kelayakan Belajar | Mengendalikan pengeluaran ATK, menjaga kelas selalu siap pakai, dan memprioritaskan perbaikan sarana belajar santri. |
-| **5. PKM. Publikasi & Warta** | • Portal Publik Profil MADINA & Direktori Jenjang<br/>• CMS Warta Berita dengan Fitur Klik Kanan Sisip Foto<br/>• **Penyematan Video TikTok Edukasi Santri** vertikal 9:16 | Membangun citra positif pesantren, menyajikan syiar ngaji turots secara kekinian, dan mempermudah akses informasi publik. |
-| **6. Tata Kelola & Keamanan** | • Hak Akses RBAC 3 Tingkat (Edit, Baca, Sembunyikan)<br/>• Isolasi Wilayah Blok Asrama & Gender (Putra/Putri)<br/>• Mesin Pemulihan Data (*Undo/Redo Engine* 5 riwayat)<br/>• **Mode Luring (*Offline-First*) via IndexedDB** | Menjaga kerahasiaan data santri putri dari pengurus putra, aman dari kesalahan hapus data, dan sistem tetap jalan walau internet mati. |
+| **1. Beranda Eksekutif & Universal Search** | • Beranda Navigasi Eksekutif (`/beranda`)<br/>• Dashboard Analitik & KPI Klasik (`/dashboard`)<br/>• **Universal Global Search** (`Ctrl + K` / `Cmd + K`) multi-entitas<br/>• Modal Detail Jenjang KBM (Ula, Wustho, Ulya)<br/>• Drawer Profil Cepat Santri & Asatidz | Memberikan visibilitas instan bagi pimpinan lembaga, akses navigasi kilat tanpa tersesat di menu, dan membedah sebaran santri per rombel secara mendalam. |
+| **2. PKM. Kurikulum** | • Formasi Kelas PA/PI & Blok Gedung<br/>• Generator Rombel Otomatis<br/>• Matriks Jadwal KBM (Klik Kanan: Pindah, Tukar, Tempel)<br/>• Deteksi & Penyelesai Bentrok Guru/Ruang (CSP Backtracking)<br/>• Kalender Akademik Masehi/Hijriyah | Menghilangkan jadwal asatidz bentrok, memastikan kapasitas ruang tidak overload, serta integrasi libur KBM ke absensi secara otomatis. |
+| **3. PKM. Muhafadzoh** | • Setoran Hafalan Kantor & Cetak Kartu Bukti Klasik (6:3)<br/>• Setor Mingguan Mustahiq via `SundayDatePicker`<br/>• Setor Cepat Massal Rombel & Linimasa Capaian Bulanan<br/>• Studio Cetak Piagam/Syahadah Massal<br/>• **Checklist Serah Terima Piagam** (Kartu 3 Kolom & Rasio)<br/>• **Broadcast WhatsApp Rapor Hafalan** ke Wali Santri | Transparansi setoran hafalan nadzom, memastikan piagam haflah tidak salah serah, dan mempererat silaturahmi dengan wali santri melalui WhatsApp. |
+| **4. PKM. Kesiswaan** | • Presensi Mengajar Harian Asatidz (Jam 1 s.d. Jam 4)<br/>• Penugasan & Pencatatan Asatidz Badal (Pengganti)<br/>• **Portal Absen Cepat per Blok** (Optimal untuk HP/Tablet)<br/>• Presensi Musyawarah Konsorsium Mustahiq & Munawib<br/>• **Generator Laporan WhatsApp Otomatis** | Piket di asrama dapat mengabsen cepat, pengurus langsung mengetahui kelas kosong, dan laporan malam ke dewan masyayikh tersusun otomatis. |
+| **5. PKM. Sarana Prasarana & Inventaris Barcode** | • Inventaris Fasilitas per Ruang Kelas & Tiket Kerusakan<br/>• **Inventaris Madin & Sistem Barcode Aset** (`/sapras/inventaris-madin`)<br/>• **Scanner Barcode Kamera Real-time** (`ModalBarcodeScanner.tsx`)<br/>• **Studio Cetak Label Stiker Vektor SVG** 1/2/3 Kolom (`ModalCetakLabelSapras.tsx`)<br/>• Mutasi Aset Antar-Gedung & Logistik ATK KBM | Mengendalikan pengeluaran ATK, menjaga kelas siap pakai, mengamankan aset berharga dengan label barcode resmi, dan audit fisik via kamera HP. |
+| **6. Divisi EBTADIN (Ujian & Kelulusan Akhir)** | • Pusat Kendali EBTADIN (`/ebtadin`)<br/>• Rekap & Arsip Nilai Ujian Angkatan (`/ebtadin/ujian`)<br/>• Rekap Kelulusan Santri Akhir (`/ebtadin/kelulusan`)<br/>• **Checklist Serah Terima Ijazah & Syahadah** (`/ebtadin/serah-ijazah`) | Mengelola siklus ujian akhir madrasah secara terstruktur, arsip nilai kelulusan lintas angkatan santri, dan distribusi ijazah akuntabel. |
+| **7. PKM. Publikasi & Warta** | • Portal Publik Profil MADINA & Direktori Jenjang<br/>• CMS Warta Berita dengan Fitur Klik Kanan Sisip Foto<br/>• **Penyematan Video TikTok Edukasi Santri** vertikal 9:16 | Membangun citra positif pesantren, menyajikan syiar ngaji turots secara kekinian, dan mempermudah akses informasi publik. |
+| **8. Tata Kelola & Pertahanan Keamanan Siber 4 Pilar** | • **Pilar 1:** Proteksi Kredensial & Anti-SSRF Whitelist<br/>• **Pilar 2:** RBAC Multi-Lapisan & RLS Postgres Anti-BOLA/IDOR<br/>• **Pilar 3:** Validasi Skema Zod & Sliding-Window Rate Limiter<br/>• **Pilar 4:** Sentry SDK v11+ Error Monitoring & Filter Anti-PII<br/>• Mode Luring (*Offline-First*) via IndexedDB & Undo/Redo<br/>• **27 E2E Playwright Automated Tests** (100% Pass) | Menjamin sistem kebal dari eksploitasi hacker, melindungi data privasi santri (UU PDP), mencegah kelebihan beban server, dan garansi zero-downtime. |
 
 ---
 
@@ -44,6 +46,7 @@ Aplikasi ini mencakup **28 modul terpadu** yang melayani 6 pilar operasional mad
 1. **Penghematan Anggaran Kertas & Cetak (Cost Saving):** Menggantikan ribuan buku presensi fisik, kartu setoran, formulir izin, dan blangko cetak. Menghemat anggaran operasional sebesar **Rp 6.000.000 – Rp 10.000.000 setiap tahun ajaran**.
 2. **Peningkatan Produktivitas Pengurus (Productivity Gain):** Rekapitulasi kehadiran guru dan jam mengajar untuk bisyarah kini selesai instan dalam hitungan detik.
 3. **Kepuasan & Kepercayaan Wali Santri (Social Value):** Rapor hafalan berkala via WhatsApp membuat wali santri merasa tenang dan meningkatkan ketertiban administrasi santri di pesantren.
+4. **Perlindungan Aset & Efisiensi Sarana (Asset Security):** Sistem barcode inventaris madin mencegah kehilangan aset berharga pesantren dan menekan biaya penggantian fasilitas yang rusak.
 
 ---
 
@@ -51,9 +54,9 @@ Aplikasi ini mencakup **28 modul terpadu** yang melayani 6 pilar operasional mad
 
 | Vendor Pengembang | Estimasi Waktu Kerja | Struktur Biaya Pasar | Estimasi Nilai Pasar (Market Rate) |
 | :--- | :--- | :--- | :--- |
-| **Software House Komersial** | 4 – 6 Bulan | Dihitung per jam kerja tim (PM, UI/UX, Dev, QA) | **Rp 80.000.000 – Rp 175.000.000**<br/>*(Maintenance: Rp 3 Juta – Rp 5 Juta/bln)* |
-| **Konsultan / Freelancer Senior** | 2 – 3 Bulan | Biaya jasa pengembangan modul | **Rp 35.000.000 – Rp 65.000.000**<br/>*(Maintenance: Rp 1 Juta – Rp 2 Juta/bln)* |
-| **Penawaran Khusus Pengembangan MADINA** | **100% Selesai & Siap Pakai** | **Pengabdian Almamater & Kerjasama Terpadu** | **Lihat Pilihan Paket Investasi di Bawah**<br/>*(Penghematan hingga 85% dari harga pasar)* |
+| **Software House Komersial** | 5 – 7 Bulan | Tim Lengkap (Project Manager, Solution Architect, UI/UX Designer, Frontend, Backend, QA Engineer, Security Specialist) | **Rp 120.000.000 – Rp 220.000.000**<br/>*(Maintenance: Rp 3 Juta – Rp 6 Juta/bln)* |
+| **Konsultan / Freelancer Senior** | 3 – 4 Bulan | Biaya jasa pengembangan modul manual | **Rp 50.000.000 – Rp 85.000.000**<br/>*(Maintenance: Rp 1,5 Juta – Rp 2,5 Juta/bln)* |
+| **Penawaran Khusus Pengembangan MADINA** | **100% Selesai & Siap Pakai** | **Pengabdian Almamater & Kerjasama Terpadu** | **Lihat Pilihan Paket Investasi di Bawah**<br/>*(Penghematan hingga 88% dari harga pasar)* |
 
 ---
 

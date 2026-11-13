@@ -6,6 +6,8 @@ import { logActivity } from '@/lib/utils/audit';
 import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import { calculateFieldDelta } from '@/lib/utils/deltaHelper';
 import { CascadeAsatidzService, CascadeDeleteSnapshot } from '@/lib/services/cascadeAsatidzService';
+import { StorageService } from '@/lib/services/storageService';
+import { OfflineSyncService } from '@/lib/services/offlineSyncService';
 
 interface AsatidzState {
   asatidzList: Asatidz[];
@@ -115,8 +117,15 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
         .order('nama_asatidz', { ascending: true });
       if (error) throw error;
       set({ asatidzList: data || [] });
+      // Simpan ke offline cache IndexedDB
+      if (data) OfflineSyncService.cacheTableData('asatidz', data).catch(() => {});
     } catch (err: any) {
       console.error('Fetch asatidz error:', err.message);
+      // Fallback: Ambil dari cache offline jika koneksi gagal
+      const cached = await OfflineSyncService.getCachedTableData<Asatidz>('asatidz');
+      if (cached && cached.length > 0) {
+        set({ asatidzList: cached });
+      }
     } finally {
       set({ isLoading: false });
     }
@@ -243,8 +252,26 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
         payload.nama_asatidz = String(payload.nama_asatidz).toUpperCase();
       }
 
+      // Optimasi Storage: Jika ada foto base64 baru, upload ke Storage dengan fallback Base64
+      if (payload.foto_asatidz && payload.foto_asatidz.startsWith('data:image')) {
+        const uploadedUrl = await StorageService.uploadPhoto(
+          payload.foto_asatidz,
+          'asatidz',
+          payload.nia || oldNia || 'asatidz'
+        );
+        if (uploadedUrl) {
+          payload.foto_asatidz = uploadedUrl;
+        }
+      }
+
       if (isEdit && oldNia) {
-        // Cascade rename ke Fan Pelajaran, Jadwal KBM & Formasi jika nama asatidz berubah
+        const { error } = await supabase
+          .from('asatidz')
+          .update(payload)
+          .eq('nia', oldNia);
+        if (error) throw error;
+
+        // Cascade rename ke Fan Pelajaran, Jadwal KBM, Formasi, & Konsorsium jika nama asatidz berhasil diupdate
         if (
           prevAsatidz &&
           prevAsatidz.nama_asatidz &&
@@ -257,11 +284,6 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
           );
         }
 
-        const { error } = await supabase
-          .from('asatidz')
-          .update(payload)
-          .eq('nia', oldNia);
-        if (error) throw error;
         await logActivity('EDIT DEWAN ASATIDZ', `Memperbarui asatidz: ${data.nama_asatidz} (NIA: ${data.nia})`);
 
         if (!skipHistory && prevAsatidz) {

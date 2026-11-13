@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useSantriStore } from '@/stores/useSantriStore';
+import { usePagePermission } from '@/stores/useRbacStore';
 import { getSantriInFormasi } from '@/lib/utils/formasiSync';
 import {
   Users,
@@ -27,6 +28,7 @@ export default function ModalDetailFormasi() {
   } = useFormasiStore();
 
   const { santriList } = useSantriStore();
+  const { canEdit, canDelete } = usePagePermission('formasi');
   const [santriSearch, setSantriSearch] = useState('');
 
   // Find real-time list of enrolled students in this formation
@@ -125,31 +127,33 @@ export default function ModalDetailFormasi() {
                 <span className="text-slate-500">Kelas / Bagian:</span>
                 <span className="font-bold text-slate-800 flex items-center gap-1.5">
                   {f.din_kls} - {f.din_bag}
-                  <button
-                    type="button"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (!f.id) return;
-                      await toggleUnggulan(f.id, !!f.is_unggulan);
-                    }}
-                    title={
-                      f.is_unggulan
-                        ? 'Klik untuk menonaktifkan status kelas unggulan'
-                        : 'Klik untuk mengaktifkan status kelas unggulan'
-                    }
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
-                      f.is_unggulan
-                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 shadow-2xs'
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-300'
-                    }`}
-                  >
-                    <Star
-                      className={`w-3 h-3 ${
-                        f.is_unggulan ? 'fill-amber-500 text-amber-600' : 'text-slate-400'
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!f.id) return;
+                        await toggleUnggulan(f.id, !!f.is_unggulan);
+                      }}
+                      title={
+                        f.is_unggulan
+                          ? 'Klik untuk menonaktifkan status kelas unggulan'
+                          : 'Klik untuk mengaktifkan status kelas unggulan'
+                      }
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                        f.is_unggulan
+                          ? 'bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 shadow-2xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-300'
                       }`}
-                    />
-                    {f.is_unggulan ? 'Unggulan' : 'Reguler'}
-                  </button>
+                    >
+                      <Star
+                        className={`w-3 h-3 ${
+                          f.is_unggulan ? 'fill-amber-500 text-amber-600' : 'text-slate-400'
+                        }`}
+                      />
+                      {f.is_unggulan ? 'Unggulan' : 'Reguler'}
+                    </button>
+                  )}
                 </span>
               </div>
 
@@ -318,14 +322,18 @@ export default function ModalDetailFormasi() {
 
         {/* Footer Actions */}
         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Hapus Kelas</span>
-          </button>
+          {canDelete ? (
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Hapus Kelas</span>
+            </button>
+          ) : (
+            <div />
+          )}
 
           <div className="flex items-center gap-2">
             <button
@@ -335,14 +343,16 @@ export default function ModalDetailFormasi() {
             >
               Tutup
             </button>
-            <button
-              type="button"
-              onClick={handleEdit}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-lg bg-madin-700 hover:bg-madin-800 text-white shadow-xs transition"
-            >
-              <Edit className="w-3.5 h-3.5" />
-              <span>Edit Formasi</span>
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={handleEdit}
+                className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-lg bg-madin-700 hover:bg-madin-800 text-white shadow-xs transition"
+              >
+                <Edit className="w-3.5 h-3.5" />
+                <span>Edit Formasi</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

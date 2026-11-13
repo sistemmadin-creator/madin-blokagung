@@ -34,7 +34,7 @@ export function getPendahuluanHtml() {
       <tr>
         <td style="font-weight: bold; color: #475569;">Versi Aplikasi</td>
         <td>:</td>
-        <td>Rilis 2.4 (Next.js 14 App Router &amp; Supabase Engine)</td>
+        <td>Rilis 2.5 (Enterprise Security Hardened &amp; Barcode Asset Edition)</td>
       </tr>
       <tr>
         <td style="font-weight: bold; color: #475569;">Tahun Ajaran Aktif</td>
@@ -49,7 +49,7 @@ export function getPendahuluanHtml() {
       <tr>
         <td style="font-weight: bold; color: #475569;">Tanggal Rilis</td>
         <td>:</td>
-        <td>November 2026</td>
+        <td>November 2026 (Pembaruan Mayor Pasca-Audit Keamanan)</td>
       </tr>
       <tr>
         <td style="font-weight: bold; color: #475569;">Klasifikasi Dokumen</td>
@@ -115,10 +115,10 @@ export function getPendahuluanHtml() {
     <div class="toc-item toc-sub">1.2 Portal Publik &amp; Warta Berita (Landing Page, Feed Berita, dan Sticky TikTok Widget)</div>
     <div class="toc-item toc-sub">1.3 Autentikasi &amp; Keamanan Sesi Pengurus (Login, Persistent Session, Proteksi Route)</div>
     <div class="toc-item toc-sub">1.4 Anatomi Antarmuka Ruang Kerja (Desktop Sidebar, Navbar, Mobile BottomNav)</div>
-    <div class="toc-item toc-sub">1.5 Fitur Utilitas Global (Realtime Sync, Engine Undo/Redo, Offline Sync, SundayDatePicker, Filter TA)</div>
+    <div class="toc-item toc-sub">1.5 Fitur Utilitas Global (Realtime Sync, Undo/Redo, Offline Sync, SundayDatePicker, Filter TA, Universal Search Ctrl+K, Sentry Monitoring &amp; Rate Limiter)</div>
 
     <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 2: BERANDA ANALITIK, DATA MASTER &amp; RUANG KERJA UMUM</span></div>
-    <div class="toc-item toc-sub">2.1 Beranda Analitik &amp; KPI Utama (/dashboard)</div>
+    <div class="toc-item toc-sub">2.1 Beranda Analitik Eksekutif (/beranda &amp; /dashboard) - Universal Search, Detail Capaian &amp; Live Matrix</div>
     <div class="toc-item toc-sub">2.2 Manajemen Data Santri (/santri) - Biodata, Ambil Foto Kamera, Import/Export Excel</div>
     <div class="toc-item toc-sub">2.3 Manajemen Data Dewan Asatidz (/asatidz) - Direktori &amp; Import Excel</div>
     <div class="toc-item toc-sub">2.4 Workspace Catatan &amp; To-Do List Pengurus (/catatan)</div>
@@ -138,7 +138,7 @@ export function getPendahuluanHtml() {
     <div class="toc-item toc-sub">4.4 Linimasa Setor Bulanan (/linimasa-setor)</div>
     <div class="toc-item toc-sub">4.5 Rekapitulasi Ketuntasan Hafalan Santri (/rekap-hafalan)</div>
     <div class="toc-item toc-sub">4.6 Desain &amp; Cetak Piagam / Syahadah (/piagam)</div>
-    <div class="toc-item toc-sub">4.7 Checklist Serah Terima Piagam (/serah-piagam) [Fitur Terbaru]</div>
+    <div class="toc-item toc-sub">4.7 Checklist Serah Terima Piagam (/serah-piagam) [Fitur Baru]</div>
     <div class="toc-item toc-sub">4.8 Broadcast WhatsApp Rapor Digital Hafalan (/kirim-wa)</div>
 
     <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 5: PANDUAN OPERASIONAL PKM. KESISWAAN</span></div>
@@ -148,14 +148,16 @@ export function getPendahuluanHtml() {
     <div class="toc-item toc-sub">5.4 Rekapitulasi Kehadiran &amp; Generator Laporan WhatsApp (/rekap-absensi)</div>
 
     <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 6: PANDUAN OPERASIONAL PKM. SARANA PRASARANA &amp; PUBLIKASI</span></div>
-    <div class="toc-item toc-sub">6.1 Manajemen Sarana &amp; Prasarana (Inventaris, Perbaikan, Logistik, Rekap Audit)</div>
-    <div class="toc-item toc-sub">6.2 CMS Manajemen Warta Berita MADINA (/kelola-berita) - Editor Sisip Foto &amp; Video TikTok</div>
+    <div class="toc-item toc-sub">6.1 Manajemen Sarana &amp; Prasarana (Inventaris Kelas, Perbaikan, Logistik, Rekap Audit)</div>
+    <div class="toc-item toc-sub">6.2 Modul Inventaris Madin &amp; Sistem Barcode Aset (/sapras/inventaris-madin) [FITUR BARU]</div>
+    <div class="toc-item toc-sub">6.3 CMS Manajemen Warta Berita MADINA (/kelola-berita) - Editor Sisip Foto &amp; Video TikTok</div>
 
-    <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 7: PENGATURAN SISTEM, HAK AKSES (RBAC) &amp; PANDUAN PEMECAHAN MASALAH</span></div>
+    <div class="toc-item" style="margin-top: 8pt;"><span class="toc-title">BAB 7: PENGATURAN SISTEM, KEAMANAN ENTERPRISE &amp; PANDUAN PEMECAHAN MASALAH</span></div>
     <div class="toc-item toc-sub">7.1 Manajemen Hak Akses Pengguna Berbasis Peran (RBAC Matrix &amp; Otoritas Khusus)</div>
     <div class="toc-item toc-sub">7.2 Kustomisasi Navigasi Sidebar, Hierarki Kamar, dan Saklar Keamanan</div>
-    <div class="toc-item toc-sub">7.3 Prosedur Operasional Standar (SOP) Transisi Pergantian Tahun Ajaran Baru</div>
-    <div class="toc-item toc-sub">7.4 Tanya Jawab (FAQ) &amp; Panduan Pemecahan Masalah (Troubleshooting)</div>
+    <div class="toc-item toc-sub">7.3 Arsitektur Keamanan Siber Enterprise 4 Pilar (Anti-SSRF, RLS Anti-BOLA, Zod Rate Limiter, Sentry &amp; Spend Cap) [SOP RESMI]</div>
+    <div class="toc-item toc-sub">7.4 Prosedur Operasional Standar (SOP) Transisi Pergantian Tahun Ajaran Baru</div>
+    <div class="toc-item toc-sub">7.5 Tanya Jawab (FAQ) &amp; Panduan Pemecahan Masalah (Troubleshooting)</div>
   </div>
   `;
 }

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from '@/lib/supabase/client';
 import { Asatidz } from '@/types/asatidz';
-import { FanPelajaranDetail } from '@/types/fan';
+import { FanPelajaranDetail, GrupAsalItem } from '@/types/fan';
 import { TeacherJadwalRow } from '@/types/jadwal';
 import { hitungLabelPengajarDariListAsatidz } from '@/lib/utils/jadwalHelper';
 import { useFanStore } from '@/stores/useFanStore';
@@ -15,7 +15,8 @@ export interface CascadeDeleteSnapshot {
   fanDetailBefore: FanPelajaranDetail;
   jadwalMapBefore: Record<string, TeacherJadwalRow>;
   formasiBefore: Array<{ id: string | number; id_mustahiq?: string | null; wali_kelas?: string | null }>;
-  konsorsiumAnggotaDeletedIds?: string[];
+  konsorsiumAnggotaDeletedRows?: any[];
+  grupAsalBefore?: GrupAsalItem[];
 }
 
 /**
@@ -168,24 +169,46 @@ export const CascadeAsatidzService = {
         );
       }
 
-      // 5. Cascade Clean anggota_konsorsium & kelas_konsorsium
-      const konsStore = useKonsorsiumStore.getState();
-      const matchedKonsAnggota = konsStore.anggotaList.filter((ang) => {
+      // 5. Cascade Clean anggota_konsorsium (Fetch dari DB langsung agar akurat)
+      const { data: dbAnggota } = await supabase
+        .from('anggota_konsorsium')
+        .select('*');
+
+      const matchedKonsAnggota = (dbAnggota || []).filter((ang: any) => {
         const angNiaUpper = String(ang.nia || '').trim().toUpperCase();
-        const angNamaUpper = String(ang.nama || '').trim().toUpperCase();
+        const angNamaUpper = String(ang.nama || ang.nama_asatidz || '').trim().toUpperCase();
         return (
           (angNiaUpper && angNiaUpper !== '-' && niasUpperSet.has(angNiaUpper)) ||
           (angNamaUpper && namesUpperSet.has(angNamaUpper))
         );
       });
 
-      const konsorsiumAnggotaDeletedIds = matchedKonsAnggota.map((a) => a.id);
+      const konsorsiumAnggotaDeletedRows = matchedKonsAnggota;
+      const konsorsiumAnggotaDeletedIds = matchedKonsAnggota.map((a: any) => a.id);
       if (konsorsiumAnggotaDeletedIds.length > 0) {
         await supabase
           .from('anggota_konsorsium')
           .delete()
           .in('id', konsorsiumAnggotaDeletedIds);
-        await konsStore.fetchKonsorsiumData();
+        await useKonsorsiumStore.getState().fetchKonsorsiumData();
+      }
+
+      // 6. Snapshot Grup Asal Asatidz
+      const { data: rawGrupAsalData } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'GRUP_ASAL_ASATIDZ')
+        .maybeSingle();
+
+      let grupAsalBefore: GrupAsalItem[] = [];
+      if (rawGrupAsalData?.value) {
+        try {
+          grupAsalBefore = typeof rawGrupAsalData.value === 'string'
+            ? JSON.parse(rawGrupAsalData.value)
+            : rawGrupAsalData.value;
+        } catch {
+          grupAsalBefore = [];
+        }
       }
 
       return {
@@ -193,7 +216,8 @@ export const CascadeAsatidzService = {
         fanDetailBefore,
         jadwalMapBefore,
         formasiBefore,
-        konsorsiumAnggotaDeletedIds,
+        konsorsiumAnggotaDeletedRows,
+        grupAsalBefore,
       };
     } catch (err: any) {
       console.error('[CascadeAsatidzService] Error cascading delete:', err.message);
@@ -232,6 +256,22 @@ export const CascadeAsatidzService = {
         useFormasiStore.getState().formasiList,
         useAsatidzStore.getState().asatidzList
       );
+
+      // 4. Pulihkan anggota_konsorsium yang sempat terhapus
+      if (snapshot.konsorsiumAnggotaDeletedRows && snapshot.konsorsiumAnggotaDeletedRows.length > 0) {
+        await supabase
+          .from('anggota_konsorsium')
+          .insert(snapshot.konsorsiumAnggotaDeletedRows);
+        await useKonsorsiumStore.getState().fetchKonsorsiumData();
+      }
+
+      // 5. Pulihkan GRUP_ASAL_ASATIDZ
+      if (snapshot.grupAsalBefore) {
+        await supabase
+          .from('app_settings')
+          .upsert({ key: 'GRUP_ASAL_ASATIDZ', value: JSON.stringify(snapshot.grupAsalBefore) });
+        useFanStore.setState({ masterGrupAsal: snapshot.grupAsalBefore });
+      }
 
       return true;
     } catch (err: any) {
@@ -346,6 +386,48 @@ export const CascadeAsatidzService = {
         .eq('nama_asatidz', cleanOld);
 
       await useKonsorsiumStore.getState().fetchKonsorsiumData();
+
+      // Perbarui GRUP_ASAL_ASATIDZ di app_settings & useFanStore jika asatidz tergabung di grup
+      const { data: rawGrupAsalData } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'GRUP_ASAL_ASATIDZ')
+        .maybeSingle();
+
+      if (rawGrupAsalData?.value) {
+        try {
+          const grupList: GrupAsalItem[] = typeof rawGrupAsalData.value === 'string'
+            ? JSON.parse(rawGrupAsalData.value)
+            : rawGrupAsalData.value;
+
+          let grupModified = false;
+          const nextGrupList = grupList.map((g) => {
+            if (!Array.isArray(g.anggota)) return g;
+            let itemChanged = false;
+            const nextAnggota = g.anggota.map((m) => {
+              if (String(m).trim().toUpperCase() === cleanOld.toUpperCase()) {
+                itemChanged = true;
+                return cleanNew;
+              }
+              return m;
+            });
+            if (itemChanged) {
+              grupModified = true;
+              return { ...g, anggota: nextAnggota };
+            }
+            return g;
+          });
+
+          if (grupModified) {
+            await supabase
+              .from('app_settings')
+              .upsert({ key: 'GRUP_ASAL_ASATIDZ', value: JSON.stringify(nextGrupList) });
+            useFanStore.setState({ masterGrupAsal: nextGrupList });
+          }
+        } catch (grupErr: any) {
+          console.warn('[CascadeAsatidzService] Gagal update GRUP_ASAL_ASATIDZ:', grupErr.message);
+        }
+      }
 
       return true;
     } catch (err: any) {

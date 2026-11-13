@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import { FormasiKelas, FormasiWithStats } from '@/types/formasi';
 import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
+import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
+import { calculateFieldDelta } from '@/lib/utils/deltaHelper';
+import { StorageService } from '@/lib/services/storageService';
+import { OfflineSyncService } from '@/lib/services/offlineSyncService';
 
 interface FotoModalData {
   id: string;
@@ -120,10 +124,15 @@ interface FormasiState {
   setCustomFilters: (filters: Partial<FormasiState['customFilters']>) => void;
   resetCustomFilters: () => void;
 
-  saveFormasi: (data: Partial<FormasiKelas>, isEdit: boolean, id?: string) => Promise<boolean>;
-  toggleUnggulan: (id: string, currentStatus: boolean) => Promise<boolean>;
-  deleteFormasi: (id: string) => Promise<boolean>;
-  bulkDeleteFormasi: (ids: string[]) => Promise<boolean>;
+  saveFormasi: (
+    data: Partial<FormasiKelas>,
+    isEdit: boolean,
+    id?: string,
+    skipHistory?: boolean
+  ) => Promise<boolean>;
+  toggleUnggulan: (id: string, currentStatus: boolean, skipHistory?: boolean) => Promise<boolean>;
+  deleteFormasi: (id: string, skipHistory?: boolean) => Promise<boolean>;
+  bulkDeleteFormasi: (ids: string[], skipHistory?: boolean) => Promise<boolean>;
   quickUploadFoto: (id: string, jenis: 'takror' | 'diniyyah', base64: string) => Promise<boolean>;
   deleteFoto: (id: string, jenis: 'takror' | 'diniyyah') => Promise<boolean>;
   saveBlokKelasGroup: (
@@ -277,8 +286,15 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
 
       if (error) throw error;
       set({ formasiList: data || [] });
+      // Simpan ke offline cache IndexedDB
+      if (data) OfflineSyncService.cacheTableData('formasi_kelas', data).catch(() => {});
     } catch (err: any) {
       console.error('Fetch formasi error:', err.message);
+      // Fallback: Ambil dari cache offline jika koneksi gagal
+      const cached = await OfflineSyncService.getCachedTableData<FormasiKelas>('formasi_kelas');
+      if (cached && cached.length > 0) {
+        set({ formasiList: cached });
+      }
     } finally {
       set({ isLoading: false });
     }
@@ -380,11 +396,13 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
     set((state) => ({ customFilters: { ...state.customFilters, ...filters } })),
   resetCustomFilters: () => set({ customFilters: {} }),
 
-  saveFormasi: async (data, isEdit, id) => {
+  saveFormasi: async (data, isEdit, id, skipHistory) => {
     try {
       const payload = sanitizeFormasiPayload(data);
 
       if (isEdit && id) {
+        const prevFormasi = get().formasiList.find((f) => f.id === id);
+
         const { error } = await supabase
           .from('formasi_kelas')
           .update(payload)
@@ -398,10 +416,42 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
           'EDIT FORMASI KELAS',
           `Mengubah formasi kelas: ${payload.tingkat} ${payload.din_kls}${payload.din_bag} (${payload.pa_pi})`
         );
+
+        if (!skipHistory && prevFormasi) {
+          const { prevDelta, nextDelta, hasChanges } = calculateFieldDelta(prevFormasi, payload);
+          if (hasChanges) {
+            useUndoRedoStore.getState().recordAction({
+              module: 'formasi',
+              title: `Edit Formasi: ${payload.din_kls} ${payload.din_bag} ${payload.tingkat}`,
+              undo: async () => {
+                const { error: undoErr } = await supabase
+                  .from('formasi_kelas')
+                  .update(prevDelta)
+                  .eq('id', id);
+                if (undoErr) throw undoErr;
+                await logActivity('UNDO EDIT FORMASI', `Membatalkan perubahan formasi ID: ${id}`);
+                await get().fetchFormasi();
+                return true;
+              },
+              redo: async () => {
+                const { error: redoErr } = await supabase
+                  .from('formasi_kelas')
+                  .update(nextDelta)
+                  .eq('id', id);
+                if (redoErr) throw redoErr;
+                await logActivity('REDO EDIT FORMASI', `Menerapkan kembali perubahan formasi ID: ${id}`);
+                await get().fetchFormasi();
+                return true;
+              },
+            });
+          }
+        }
       } else {
-        const { error } = await supabase
+        const { data: insertedData, error } = await supabase
           .from('formasi_kelas')
-          .insert([payload]);
+          .insert([payload])
+          .select('id')
+          .single();
 
         if (error) {
           if (error.code === '23505') throw new Error('Kombinasi Tingkat, Kelas, Bagian, dan Gender duplikat!');
@@ -411,6 +461,33 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
           'TAMBAH FORMASI KELAS',
           `Membuat formasi kelas baru: ${payload.tingkat} ${payload.din_kls}${payload.din_bag} (${payload.pa_pi})`
         );
+
+        const newId = insertedData?.id;
+        if (!skipHistory && newId) {
+          useUndoRedoStore.getState().recordAction({
+            module: 'formasi',
+            title: `Tambah Formasi: ${payload.din_kls} ${payload.din_bag} ${payload.tingkat}`,
+            undo: async () => {
+              const { error: undoErr } = await supabase
+                .from('formasi_kelas')
+                .delete()
+                .eq('id', newId);
+              if (undoErr) throw undoErr;
+              await logActivity('UNDO TAMBAH FORMASI', `Membatalkan penambahan formasi ID: ${newId}`);
+              await get().fetchFormasi();
+              return true;
+            },
+            redo: async () => {
+              const { error: redoErr } = await supabase
+                .from('formasi_kelas')
+                .insert([{ ...payload, id: newId }]);
+              if (redoErr) throw redoErr;
+              await logActivity('REDO TAMBAH FORMASI', `Menerapkan kembali penambahan formasi ID: ${newId}`);
+              await get().fetchFormasi();
+              return true;
+            },
+          });
+        }
       }
       await cascadeSyncLokasiKelas(
         payload.tingkat,
@@ -460,17 +537,47 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
     }
   },
 
-  deleteFormasi: async (id) => {
+  deleteFormasi: async (id, skipHistory) => {
     if (!confirm('Yakin ingin menghapus formasi kelas ini? Menghapus formasi tidak akan menghapus data santri di dalamnya.')) {
       return false;
     }
     try {
+      const targetFormasi = get().formasiList.find((f) => f.id === id);
+
       const { error } = await supabase
         .from('formasi_kelas')
         .delete()
         .eq('id', id);
       if (error) throw error;
       await logActivity('HAPUS FORMASI KELAS', `Menghapus formasi kelas ID: ${id}`);
+
+      if (!skipHistory && targetFormasi) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'formasi',
+          title: `Hapus Formasi: ${targetFormasi.din_kls} ${targetFormasi.din_bag} ${targetFormasi.tingkat}`,
+          undo: async () => {
+            const restoredPayload = { ...targetFormasi };
+            const { error: undoErr } = await supabase
+              .from('formasi_kelas')
+              .insert([restoredPayload]);
+            if (undoErr) throw undoErr;
+            await logActivity('UNDO HAPUS FORMASI', `Memulihkan formasi kelas ID: ${id}`);
+            await get().fetchFormasi();
+            return true;
+          },
+          redo: async () => {
+            const { error: redoErr } = await supabase
+              .from('formasi_kelas')
+              .delete()
+              .eq('id', id);
+            if (redoErr) throw redoErr;
+            await logActivity('REDO HAPUS FORMASI', `Menghapus kembali formasi kelas ID: ${id}`);
+            await get().fetchFormasi();
+            return true;
+          },
+        });
+      }
+
       await get().fetchFormasi();
       return true;
     } catch (err: any) {
@@ -480,18 +587,47 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
     }
   },
 
-  bulkDeleteFormasi: async (ids: string[]) => {
+  bulkDeleteFormasi: async (ids: string[], skipHistory) => {
     if (!ids || ids.length === 0) return false;
     if (!confirm(`Yakin ingin menghapus ${ids.length} formasi kelas terpilih? Data akan dihapus permanen.`)) {
       return false;
     }
     try {
+      const deletedRows = get().formasiList.filter((f) => f.id && ids.includes(f.id));
+
       const { error } = await supabase
         .from('formasi_kelas')
         .delete()
         .in('id', ids);
       if (error) throw error;
       await logActivity('HAPUS BANYAK FORMASI', `Menghapus ${ids.length} formasi kelas`);
+
+      if (!skipHistory && deletedRows.length > 0) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'formasi',
+          title: `Hapus ${deletedRows.length} Formasi Kelas`,
+          undo: async () => {
+            const { error: undoErr } = await supabase
+              .from('formasi_kelas')
+              .insert(deletedRows);
+            if (undoErr) throw undoErr;
+            await logActivity('UNDO HAPUS BANYAK FORMASI', `Memulihkan ${deletedRows.length} formasi kelas`);
+            await get().fetchFormasi();
+            return true;
+          },
+          redo: async () => {
+            const { error: redoErr } = await supabase
+              .from('formasi_kelas')
+              .delete()
+              .in('id', ids);
+            if (redoErr) throw redoErr;
+            await logActivity('REDO HAPUS BANYAK FORMASI', `Menghapus kembali ${ids.length} formasi kelas`);
+            await get().fetchFormasi();
+            return true;
+          },
+        });
+      }
+
       await get().fetchFormasi();
       return true;
     } catch (err: any) {
@@ -504,16 +640,31 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
   quickUploadFoto: async (id: string, jenis: 'takror' | 'diniyyah', base64: string) => {
     const colName = jenis === 'takror' ? 'foto_takror' : 'foto_diniyyah';
     try {
+      let finalFotoValue = base64;
+
+      // Optimasi Storage: upload ke Supabase Storage bucket 'madin-media' dengan fallback Base64
+      if (base64 && base64.startsWith('data:image')) {
+        const uploadedUrl = await StorageService.uploadPhoto(
+          base64,
+          'formasi',
+          id,
+          jenis
+        );
+        if (uploadedUrl) {
+          finalFotoValue = uploadedUrl;
+        }
+      }
+
       const { error } = await supabase
         .from('formasi_kelas')
-        .update({ [colName]: base64 })
+        .update({ [colName]: finalFotoValue })
         .eq('id', id);
       if (error) throw error;
 
       // Update local state directly for responsive feedback
       set((state) => ({
         formasiList: state.formasiList.map((f) =>
-          f.id === id ? { ...f, [colName]: base64 } : f
+          f.id === id ? { ...f, [colName]: finalFotoValue } : f
         ),
       }));
       await logActivity(
@@ -687,7 +838,7 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
 
       const updatedFormasiList = currentList.map((f) => {
         if (f.id && idsToClear.includes(f.id)) {
-          return { ...f, blok: '' };
+          return { ...f, blok_diniyyah: '' };
         }
         return f;
       });
@@ -758,7 +909,7 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
             din_bag: hurufBag,
             pa_pi: g as 'PA' | 'PI',
             is_unggulan: false,
-            kapasitas_maksimal: kapasitas || 80,
+            kapasitas_maksimal: Math.min(80, Math.max(1, kapasitas || 80)),
             id_mustahiq: '',
             domisili: '',
             lokasi_takror: '',

@@ -44,9 +44,9 @@ export function getBab7Html() {
     </tbody>
   </table>
 
-  <h3>(c) Matriks Katalog 28 Modul Halaman Resmi (<code>APP_PAGE_CATALOG</code>)</h3>
+  <h3>(c) Matriks Katalog 35 Modul Halaman Resmi (<code>APP_PAGE_CATALOG</code>)</h3>
   <p>
-    Seluruh halaman yang dapat dikonfigurasi izinnya oleh Master Admin mencakup:
+    Seluruh halaman yang dapat dikonfigurasi izinnya secara mandiri oleh Master Admin mencakup:
   </p>
   <table class="data-table">
     <thead>
@@ -58,7 +58,8 @@ export function getBab7Html() {
       </tr>
     </thead>
     <tbody>
-      <tr><td><code>dashboard</code></td><td>Dashboard Utama (<code>/dashboard</code>)</td><td>Beranda Utama</td><td>Read-Only</td></tr>
+      <tr><td><code>beranda</code></td><td>Beranda Navigasi Eksekutif (<code>/beranda</code>)</td><td>Beranda</td><td>Read-Only</td></tr>
+      <tr><td><code>dashboard</code></td><td>Dashboard Analitik Utama (<code>/dashboard</code>)</td><td>Beranda</td><td>Read-Only</td></tr>
       <tr><td><code>santri</code></td><td>Data Santri (<code>/santri</code>)</td><td>Data Pokok</td><td>Edit &amp; Delete Override</td></tr>
       <tr><td><code>asatidz</code></td><td>Data Asatidz (<code>/asatidz</code>)</td><td>Data Pokok</td><td>Edit &amp; Delete Override</td></tr>
       <tr><td><code>catatan</code></td><td>Catatan &amp; To-Do List (<code>/catatan</code>)</td><td>Ruang Kerja</td><td>Edit &amp; Delete Override</td></tr>
@@ -81,12 +82,19 @@ export function getBab7Html() {
       <tr><td><code>absen-cepat</code></td><td>Absen Cepat (<code>/absen-cepat</code>)</td><td>PKM. Kesiswaan</td><td>Edit Override</td></tr>
       <tr><td><code>absen-konsorsium</code></td><td>Absen Konsorsium (<code>/absen-konsorsium</code>)</td><td>PKM. Kesiswaan</td><td>Edit &amp; Delete Override</td></tr>
       <tr><td><code>rekap-absensi</code></td><td>Rekap Absensi (<code>/rekap-absensi/*</code>)</td><td>PKM. Kesiswaan</td><td>Read-Only</td></tr>
-      <tr><td><code>sapras-inventaris</code></td><td>Inventaris Kelas (<code>/sapras/inventaris-kelas</code>)</td><td>PKM. Sapras</td><td>Edit &amp; Delete Override</td></tr>
+      <tr><td><code>sapras-inventaris</code></td><td>Inventaris Kelas &amp; Madin (<code>/sapras/*</code>)</td><td>PKM. Sapras</td><td>Edit &amp; Delete Override</td></tr>
       <tr><td><code>sapras-perbaikan</code></td><td>Perbaikan Sapras (<code>/sapras/perbaikan</code>)</td><td>PKM. Sapras</td><td>Edit &amp; Delete Override</td></tr>
       <tr><td><code>sapras-logistik</code></td><td>Logistik ATK KBM (<code>/sapras/logistik</code>)</td><td>PKM. Sapras</td><td>Edit &amp; Delete Override</td></tr>
       <tr><td><code>sapras-rekap</code></td><td>Rekap &amp; Audit Sapras (<code>/sapras/rekap</code>)</td><td>PKM. Sapras</td><td>Read-Only</td></tr>
       <tr><td><code>kelola-berita</code></td><td>CMS Warta Berita (<code>/kelola-berita</code>)</td><td>PKM. Publikasi</td><td>Edit &amp; Delete Override</td></tr>
-      <tr><td><code>pengaturan</code></td><td>Pengaturan Sistem (<code>/pengaturan</code>)</td><td>Pengaturan</td><td>Master Admin Only</td></tr>
+      <tr><td><code>ebtadin</code></td><td>Pusat Kendali EBTADIN (<code>/ebtadin</code>)</td><td>EBTADIN</td><td>Edit Override</td></tr>
+      <tr><td><code>ebtadin-ujian</code></td><td>Rekap Ujian EBTADIN (<code>/ebtadin/ujian</code>)</td><td>EBTADIN</td><td>Edit Override</td></tr>
+      <tr><td><code>ebtadin-ujian-rekap</code></td><td>Arsip Ujian Angkatan (<code>/ebtadin/ujian/rekap-angkatan</code>)</td><td>EBTADIN</td><td>Edit Override</td></tr>
+      <tr><td><code>ebtadin-kelulusan</code></td><td>Rekap Kelulusan (<code>/ebtadin/kelulusan</code>)</td><td>EBTADIN</td><td>Edit Override</td></tr>
+      <tr><td><code>ebtadin-kelulusan-rekap</code></td><td>Arsip Kelulusan Angkatan (<code>.../rekap-angkatan</code>)</td><td>EBTADIN</td><td>Edit Override</td></tr>
+      <tr><td><code>ebtadin-serah-ijazah</code></td><td>Serah Ijazah &amp; Syahadah (<code>/ebtadin/serah-ijazah</code>)</td><td>EBTADIN</td><td>Edit Override</td></tr>
+      <tr><td><code>ebtadin-rekap</code></td><td>Arsip Ijazah Angkatan (<code>/ebtadin/rekap-angkatan</code>)</td><td>EBTADIN</td><td>Edit Override</td></tr>
+      <tr><td><code>pengaturan</code></td><td>Pengaturan Sistem &amp; RBAC (<code>/pengaturan</code>)</td><td>Pengaturan</td><td>Master Admin Only</td></tr>
     </tbody>
   </table>
 
@@ -135,7 +143,61 @@ export function getBab7Html() {
 
   <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
 
-  <h2>7.3 Prosedur Operasional Standar (SOP) Pergantian Tahun Ajaran Baru</h2>
+  <h2>7.3 Arsitektur Keamanan Siber Enterprise 4 Pilar (Anti-Hacker Hardening)</h2>
+  <p>
+    Untuk melindungi integritas pangkalan data ribuan santri dan mencegah ancaman kebocoran data, serangan eksploitasi peramban, maupun pembobolan akun, Sistem MADINA Blokagung diperkuat dengan arsitektur pertahanan siber berlapis (<em>Defense-in-Depth</em>) yang terbagi ke dalam 4 Pilar Keamanan:
+  </p>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Pilar Keamanan</th>
+        <th style="width: 35%;">Komponen &amp; Berkas Implementasi</th>
+        <th style="width: 40%;">Mekanisme Perlindungan dari Hacker</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Pilar 1: Proteksi Kredensial &amp; Anti-SSRF</strong></td>
+        <td><code>lib/security/ssrfProtection.ts</code>, <code>validateSafeExternalUrl()</code>, dan <code>next.config.mjs</code></td>
+        <td>
+          • Memblokir serangan <em>Server-Side Request Forgery (SSRF)</em> dengan menyaring seluruh permintaan URL eksternal ke domain terverifikasi.<br/>
+          • Menolak tegas IP privat (127.0.0.1, 10.x, 192.168.x) untuk mencegah hacker memindai jaringan lokal sekretariat.<br/>
+          • Membatasi pemuatan gambar eksternal hanya dari sumber terpercaya (Supabase Storage, Cloudinary, TikTok CDN).
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Pilar 2: RBAC Server-Side &amp; RLS Anti-BOLA/IDOR</strong></td>
+        <td><code>supabase/migrations/</code>, PostgreSQL Row Level Security, <code>lib/utils/rbacHelper.ts</code></td>
+        <td>
+          • Menutup celah <em>Broken Object Level Authorization (BOLA)</em> dan <em>Insecure Direct Object References (IDOR)</em>.<br/>
+          • Setiap operasi query SQL di tingkat database divalidasi langsung oleh mesin Postgres RLS berdasarkan <code>auth.uid()</code>.<br/>
+          • Pengguna dengan izin "baca" diblokir total di tingkat basis data jika mencoba mengirim payload manipulasi HTTP INSERT/UPDATE via Postman/cURL.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Pilar 3: Validasi Skema Zod &amp; Sliding-Window Rate Limiter</strong></td>
+        <td><code>lib/security/rateLimiter.ts</code>, modul validasi skema <code>lib/validations/</code></td>
+        <td>
+          • Mencegah serangan injeksi muatan (<em>payload tampering</em>) dan XSS dengan memvalidasi tipe serta batasan karakter setiap input melalui pustaka Zod.<br/>
+          • <em>Sliding-Window Rate Limiter</em> membatasi frekuensi percobaan login dan pemanggilan API (contoh: maksimal 5 percobaan login gagal per menit per alamat IP) untuk melumpuhkan serangan <em>brute-force</em> dan bot otomatis.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Pilar 4: Sentry SDK v11+ Error Monitoring &amp; Anti-PII</strong></td>
+        <td><code>sentry.client.config.ts</code>, <code>sentry.server.config.ts</code>, SOP Spend Cap</td>
+        <td>
+          • Pemantauan telemetri crash waktu nyata 24/7 menggunakan Sentry SDK v11+.<br/>
+          • <em>Anti-PII Sanitizer</em> pada fungsi <code>beforeSend</code> secara otomatis menyamarkan data sensitif (nomor HP wali santri, NIS, password, token otentikasi) menjadi teks bintang/anonim sebelum dikirim ke log pelaporan.<br/>
+          • SOP Spend Cap dan alert kuota Cloud Supabase mencegah lonjakan biaya tak terduga (*billing shock*) akibat serangan denial-of-service.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
+
+  <h2>7.4 Prosedur Operasional Standar (SOP) Pergantian Tahun Ajaran Baru</h2>
   <p>
     Menjelang tahun ajaran baru (contoh: transisi dari 2025/2026 ke 2026/2027), Bagian Administrasi Pusat wajib mengikuti SOP berikut:
   </p>
@@ -158,7 +220,7 @@ export function getBab7Html() {
 
   <hr style="border: 0; border-top: 1pt solid #e2e8f0; margin: 16pt 0;"/>
 
-  <h2>7.4 Tanya Jawab (FAQ) &amp; Panduan Pemecahan Masalah (Troubleshooting)</h2>
+  <h2>7.5 Tanya Jawab (FAQ) &amp; Panduan Pemecahan Masalah (Troubleshooting)</h2>
 
   <h3>1. Data presensi atau setoran yang saya input tidak muncul di laptop pengurus lain. Mengapa?</h3>
   <p>

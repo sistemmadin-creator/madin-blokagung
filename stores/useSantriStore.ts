@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
 import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import { calculateFieldDelta } from '@/lib/utils/deltaHelper';
+import { StorageService } from '@/lib/services/storageService';
+import { OfflineSyncService } from '@/lib/services/offlineSyncService';
 
 interface SantriState {
   santriList: Santri[];
@@ -92,14 +94,46 @@ export const useSantriStore = create<SantriState>((set, get) => ({
   fetchSantri: async () => {
     set({ isLoading: true });
     try {
-      const { data, error } = await supabase
-        .from('santri')
-        .select('*')
-        .order('no_induk', { ascending: true });
-      if (error) throw error;
-      set({ santriList: data || [] });
+      const pageSize = 1000;
+      let allSantri: Santri[] = [];
+      let from = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        let query = supabase
+          .from('santri')
+          .select('*')
+          .order('no_induk', { ascending: true });
+
+        // Gunakan pagination .range jika method didukung (real Supabase client)
+        const { data, error } = typeof (query as any).range === 'function'
+          ? await (query as any).range(from, from + pageSize - 1)
+          : await query;
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allSantri = allSantri.concat(data as Santri[]);
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            from += pageSize;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      set({ santriList: allSantri });
+      // Simpan ke offline cache IndexedDB
+      OfflineSyncService.cacheTableData('santri', allSantri).catch(() => {});
     } catch (err: any) {
       console.error('Fetch santri error:', err.message);
+      // Fallback: Ambil dari cache offline jika koneksi gagal
+      const cached = await OfflineSyncService.getCachedTableData<Santri>('santri');
+      if (cached && cached.length > 0) {
+        set({ santriList: cached });
+      }
     } finally {
       set({ isLoading: false });
     }
@@ -190,6 +224,18 @@ export const useSantriStore = create<SantriState>((set, get) => ({
       const prevSantri = isEdit
         ? get().santriList.find((s) => s.no_induk === (oldNoInduk || data.no_induk))
         : null;
+
+      // Optimasi Storage: Jika ada foto base64 baru, upload ke Storage dengan fallback Base64
+      if (data.foto && data.foto.startsWith('data:image')) {
+        const uploadedUrl = await StorageService.uploadPhoto(
+          data.foto,
+          'santri',
+          data.no_induk || oldNoInduk || 'santri'
+        );
+        if (uploadedUrl) {
+          data.foto = uploadedUrl;
+        }
+      }
 
       if (isEdit && oldNoInduk) {
         const { error } = await supabase

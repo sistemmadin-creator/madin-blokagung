@@ -17,6 +17,7 @@ export default function CameraCaptureModal({
   onCapture,
 }: CameraCaptureModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const fallbackInputRef = useRef<HTMLInputElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -24,21 +25,24 @@ export default function CameraCaptureModal({
   const [isStarting, setIsStarting] = useState(false);
 
   const stopCamera = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      setStream(null);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     }
+    setStream(null);
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-  }, [stream]);
+  }, []);
 
   const startCamera = useCallback(async (mode: 'user' | 'environment') => {
     setIsStarting(true);
     setErrorMsg(null);
 
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+    // Stop current stream if running
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
       setStream(null);
     }
 
@@ -58,6 +62,7 @@ export default function CameraCaptureModal({
         audio: false,
       });
 
+      streamRef.current = mediaStream;
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
@@ -70,6 +75,7 @@ export default function CameraCaptureModal({
           video: true,
           audio: false,
         });
+        streamRef.current = fallbackStream;
         setStream(fallbackStream);
         if (videoRef.current) {
           videoRef.current.srcObject = fallbackStream;
@@ -82,7 +88,7 @@ export default function CameraCaptureModal({
     } finally {
       setIsStarting(false);
     }
-  }, [stream]);
+  }, []);
 
   // Mulai / Hentikan Kamera saat modal buka / tutup
   useEffect(() => {

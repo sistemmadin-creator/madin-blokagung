@@ -172,7 +172,7 @@ const docHtml = `
     Seiring dengan pesatnya pertumbuhan populasi santri di Pondok Pesantren Darussalam Blokagung yang kini membina ribuan santriawan dan santriwati pada berbagai tingkatan (Ula, Wustho, Ulya, dan Kelas Unggulan), tuntutan terhadap tata kelola administrasi yang cepat, akurat, dan transparan menjadi kebutuhan mendesak bagi lembaga. Pengelolaan manual berbasis kertas saat ini menghadapi tantangan besar: risiko bentrok jadwal guru, keterlambatan pelaporan setoran hafalan kepada wali santri, potensi salah serah piagam wisuda, serta lambatnya rekapitulasi kehadiran dewan asatidz.
   </p>
   <p>
-    Bersama surat ini, kami dengan penuh rasa hormat menyampaikan <strong>Laporan Spesifikasi Sistem, Analisis Efisiensi Anggaran, dan Penawaran Investasi Pengembangan Sistem Informasi Terpadu MADINA Blokagung</strong>. Seluruh modul aplikasi telah selesai dibangun, diuji coba, dan dilengkapi dengan <strong>Buku Panduan Operasional &amp; Administrasi Resmi (SOP) setebal 100+ halaman</strong> yang siap dijadikan pedoman kerja dewan asatidz dan pengurus.
+    Bersama surat ini, kami dengan penuh rasa hormat menyampaikan <strong>Laporan Spesifikasi Sistem, Analisis Efisiensi Anggaran, dan Penawaran Investasi Pengembangan Sistem Informasi Terpadu MADINA Blokagung</strong>. Seluruh modul aplikasi (<strong>35 modul terpadu enterprise</strong>) telah selesai dibangun, diuji coba melalui 27 skenario uji regresi otomatis Playwright E2E (100% lulus), dan dilengkapi dengan <strong>Buku Panduan Operasional &amp; Administrasi Resmi (SOP) setebal 100+ halaman</strong> yang siap dijadikan pedoman kerja dewan asatidz dan pengurus.
   </p>
   <p>
     Besar harapan kami agar dokumen ini dapat memberikan gambaran utuh mengenai nilai strategis dan efisiensi jangka panjang yang dihadirkan oleh sistem ini bagi kemajuan almamater tercinta.
@@ -199,7 +199,7 @@ const docHtml = `
   <h1>1. PROFIL DAN CAPAIAN SISTEM YANG TELAH SELESAI DIBANGUN</h1>
 
   <p>
-    Sistem Informasi MADINA Blokagung dirancang secara khusus untuk menjawab seluruh tradisi dan kebutuhan autentik madrasah diniyyah salafiyah. Sistem ini mencakup <strong>28 modul terpadu</strong> yang terbagi ke dalam 6 divisi kerja utama:
+    Sistem Informasi MADINA Blokagung dirancang secara khusus untuk menjawab seluruh tradisi dan kebutuhan autentik madrasah diniyyah salafiyah. Sistem ini mencakup <strong>35 modul terpadu enterprise</strong> yang terbagi ke dalam 8 pilar operasional utama:
   </p>
 
   <table class="data-table">
@@ -212,7 +212,20 @@ const docHtml = `
     </thead>
     <tbody>
       <tr>
-        <td><strong>1. PKM. Kurikulum</strong></td>
+        <td><strong>1. Ruang Kendali Beranda &amp; Universal Search</strong></td>
+        <td>
+          • Beranda Navigasi Eksekutif (<code>/beranda</code>)<br/>
+          • Dashboard Analitik &amp; KPI Klasik (<code>/dashboard</code>)<br/>
+          • <strong>Universal Global Search (<kbd>Ctrl + K</kbd> / <kbd>Cmd + K</kbd>)</strong><br/>
+          • Modal Detail Jenjang KBM (Ula, Wustho, Ulya)<br/>
+          • Drawer Profil Cepat Santri &amp; Asatidz
+        </td>
+        <td>
+          Memberikan visibilitas instan bagi pimpinan lembaga, akses navigasi kilat tanpa tersesat di menu, dan membedah sebaran santri per rombel secara mendalam.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>2. PKM. Kurikulum</strong></td>
         <td>
           • Formasi Kelas PA &amp; PI (Kapasitas Lokal &amp; Blok Gedung)<br/>
           • Generator Formasi Rombel Otomatis<br/>
@@ -225,7 +238,7 @@ const docHtml = `
         </td>
       </tr>
       <tr>
-        <td><strong>2. PKM. Muhafadzoh</strong></td>
+        <td><strong>3. PKM. Muhafadzoh</strong></td>
         <td>
           • Setoran Hafalan Kantor &amp; Cetak Kartu Bukti Klasik (6:3)<br/>
           • Setor Mingguan Mustahiq via <code>SundayDatePicker</code><br/>
@@ -239,7 +252,7 @@ const docHtml = `
         </td>
       </tr>
       <tr>
-        <td><strong>3. PKM. Kesiswaan</strong></td>
+        <td><strong>4. PKM. Kesiswaan</strong></td>
         <td>
           • Presensi Mengajar Harian Asatidz (Jam 1 s.d. Jam 4)<br/>
           • Penugasan &amp; Pencatatan Asatidz Badal (Pengganti)<br/>
@@ -252,19 +265,32 @@ const docHtml = `
         </td>
       </tr>
       <tr>
-        <td><strong>4. PKM. Sarana Prasarana</strong></td>
+        <td><strong>5. PKM. Sapras &amp; Sistem Barcode</strong></td>
         <td>
-          • Inventaris Fasilitas per Ruang Kelas (Papan Tulis, Meja Guru)<br/>
-          • Sistem Tiket Pelaporan Kerusakan &amp; Penanganan Teknisi<br/>
-          • Distribusi Logistik KBM (Stok Spidol, Tinta, dan ATK)<br/>
-          • Rekapitulasi Audit Kelayakan Sarana Belajar
+          • Inventaris Fasilitas per Ruang Kelas &amp; Tiket Perbaikan<br/>
+          • <strong>Inventaris Madin &amp; Barcode Aset</strong> (<code>/sapras/inventaris-madin</code>)<br/>
+          • <strong>Scanner Barcode Kamera Real-time</strong> (<code>ModalBarcodeScanner.tsx</code>)<br/>
+          • <strong>Studio Cetak Label Stiker Vektor SVG</strong> (<code>ModalCetakLabelSapras.tsx</code>)<br/>
+          • Mutasi Aset Antar-Gedung &amp; Buku Stok Logistik ATK KBM
         </td>
         <td>
-          Mencegah pemborosan ATK KBM, memastikan ruang kelas selalu siap pakai, dan memprioritaskan perbaikan fasilitas yang mendesak bagi kenyamanan belajar santri.
+          Mencegah pemborosan ATK KBM, menjaga kelas selalu siap pakai, mengamankan aset berharga dengan label barcode resmi, dan mempercepat audit fisik langsung via kamera smartphone.
         </td>
       </tr>
       <tr>
-        <td><strong>5. PKM. Publikasi &amp; Warta</strong></td>
+        <td><strong>6. Divisi EBTADIN (Ujian &amp; Kelulusan)</strong></td>
+        <td>
+          • Pusat Kendali EBTADIN (<code>/ebtadin</code>)<br/>
+          • Rekap &amp; Arsip Nilai Ujian Angkatan (<code>/ebtadin/ujian</code>)<br/>
+          • Rekap Kelulusan Santri Akhir (<code>/ebtadin/kelulusan</code>)<br/>
+          • <strong>Checklist Serah Terima Ijazah &amp; Syahadah</strong> (<code>/ebtadin/serah-ijazah</code>)
+        </td>
+        <td>
+          Mengelola siklus ujian akhir madrasah secara terstruktur, mengarsipkan data kelulusan lintas angkatan santri, dan menjamin distribusi ijazah transparan dan terdokumentasi rapi.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>7. PKM. Publikasi &amp; Warta</strong></td>
         <td>
           • Portal Publik Profil MADINA &amp; Direktori Jenjang<br/>
           • CMS Warta Berita dengan Fitur Klik Kanan Sisip Foto<br/>
@@ -275,15 +301,17 @@ const docHtml = `
         </td>
       </tr>
       <tr>
-        <td><strong>6. Tata Kelola &amp; Keamanan</strong></td>
+        <td><strong>8. Keamanan Siber 4 Pilar &amp; Uji Regresi</strong></td>
         <td>
-          • Hak Akses Berbasis Peran (RBAC) 3 Tingkat (Edit, Baca, Sembunyikan)<br/>
-          • Isolasi Wilayah Blok Asrama &amp; Gender (Putra/Putri)<br/>
-          • Mesin Pemulihan Data (*Undo/Redo Engine* lintas modul)<br/>
-          • <strong>Mode Luring (*Offline-First*) via IndexedDB</strong>
+          • <strong>Pilar 1:</strong> Proteksi Kredensial &amp; Anti-SSRF Whitelist<br/>
+          • <strong>Pilar 2:</strong> RBAC Multi-Lapisan &amp; RLS Postgres Anti-BOLA/IDOR<br/>
+          • <strong>Pilar 3:</strong> Validasi Skema Zod &amp; Sliding-Window Rate Limiter<br/>
+          • <strong>Pilar 4:</strong> Sentry SDK v11+ Error Monitoring &amp; Anti-PII Data Filter<br/>
+          • Mode Luring (*Offline-First*) via IndexedDB &amp; Undo/Redo Engine<br/>
+          • <strong>27 Uji Otomatis Playwright E2E</strong> (100% Pass)
         </td>
         <td>
-          Menjamin kerahasiaan data madrasah putri dari pengurus putra, mengamankan data santri dari kesalahan hapus, dan aplikasi tetap bisa digunakan meski internet pesantren mati.
+          Menjamin integritas database santri kebal dari eksploitasi hacker luar, melindungi data pribadi wali santri sesuai UU PDP, dan memastikan keandalan sistem tanpa downtime.
         </td>
       </tr>
     </tbody>
@@ -319,13 +347,20 @@ const docHtml = `
     </p>
   </div>
 
+  <div class="highlight-card">
+    <h3 style="color: #064e3b; margin-top: 0;">4. Pengamanan Aset Pesantren (Asset Security &amp; Audit Trail)</h3>
+    <p>
+      Sistem barcode inventaris sarana prasarana memastikan aset bernilai tinggi milik madrasah (seperti pengeras suara, proyektor, genset, dan mebel) teridentifikasi secara jelas, mencegah kehilangan barang, serta memudahkan audit fisik berkala.
+    </p>
+  </div>
+
   <hr style="border: 0; border-top: 1pt solid #cbd5e1; margin: 18pt 0;"/>
 
   <!-- BAGIAN 3: STUDI PERBANDINGAN NILAI PASAR (MARKET VALUE BENCHMARK) -->
   <h1>3. STUDI PERBANDINGAN NILAI PASAR PERANGKAT LUNAK</h1>
 
   <p>
-    Sebagai wujud transparansi, kami menyajikan perbandingan estimasi biaya riil apabila pengembangan sistem dengan spesifikasi 28 modul terintegrasi ini ditenderkan kepada pihak ketiga:
+    Sebagai wujud transparansi, kami menyajikan perbandingan estimasi biaya riil apabila pengembangan sistem dengan spesifikasi 35 modul terpadu enterprise, pemindai barcode kamera, cetak SVG, dan arsitektur keamanan siber 4 pilar ini ditenderkan kepada pihak ketiga:
   </p>
 
   <table class="data-table">
@@ -340,21 +375,21 @@ const docHtml = `
     <tbody>
       <tr>
         <td><strong>Software House Komersial</strong><br/><span style="font-size: 8.5pt; color: #64748b;">(Perusahaan Pengembang IT)</span></td>
-        <td>4 – 6 Bulan</td>
-        <td>Dihitung per jam kerja tim (Project Manager, Designer, Frontend, Backend, QA)</td>
-        <td><strong>Rp 80.000.000 – Rp 175.000.000</strong><br/><span style="font-size: 8.5pt; color: #64748b;">+ Biaya Pemeliharaan Rp 3 Juta – Rp 5 Juta / bulan</span></td>
+        <td>5 – 7 Bulan</td>
+        <td>Tim Lengkap (Project Manager, Solution Architect, UI/UX Designer, Frontend, Backend, QA Engineer, Security Specialist)</td>
+        <td><strong>Rp 120.000.000 – Rp 220.000.000</strong><br/><span style="font-size: 8.5pt; color: #64748b;">+ Biaya Pemeliharaan Rp 3 Juta – Rp 6 Juta / bulan</span></td>
       </tr>
       <tr>
         <td><strong>Konsultan / Freelancer Senior</strong><br/><span style="font-size: 8.5pt; color: #64748b;">(Tenaga Ahli Lepas)</span></td>
-        <td>2 – 3 Bulan</td>
+        <td>3 – 4 Bulan</td>
         <td>Biaya jasa pengembangan modul manual</td>
-        <td><strong>Rp 35.000.000 – Rp 65.000.000</strong><br/><span style="font-size: 8.5pt; color: #64748b;">+ Biaya Maintenance Rp 1 Juta – Rp 2 Juta / bulan</span></td>
+        <td><strong>Rp 50.000.000 – Rp 85.000.000</strong><br/><span style="font-size: 8.5pt; color: #64748b;">+ Biaya Maintenance Rp 1,5 Juta – Rp 2,5 Juta / bulan</span></td>
       </tr>
       <tr>
         <td><strong>Penawaran Khusus Pengembangan Internal MADINA</strong></td>
         <td>Sistem Telah Siap Pakai (100% Selesai)</td>
         <td>Pengabdian Almamater &amp; Kolaborasi Terpadu</td>
-        <td><strong style="color: #047857; font-size: 11pt;">Lihat Pilihan Paket Investasi di Bawah</strong><br/><span style="font-size: 8.5pt; color: #047857;">(Penghematan hingga 85% dari tarif komersial)</span></td>
+        <td><strong style="color: #047857; font-size: 11pt;">Lihat Pilihan Paket Investasi di Bawah</strong><br/><span style="font-size: 8.5pt; color: #047857;">(Penghematan hingga 88% dari tarif komersial)</span></td>
       </tr>
     </tbody>
   </table>

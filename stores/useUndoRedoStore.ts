@@ -4,7 +4,7 @@ export const MAX_HISTORY_STEPS = 5;
 
 export interface UndoRedoAction {
   id: string;
-  module: 'jadwal' | 'absensi' | 'santri' | 'asatidz' | 'muhafadzoh' | 'umum';
+  module: 'jadwal' | 'absensi' | 'santri' | 'asatidz' | 'formasi' | 'muhafadzoh' | 'umum';
   title: string;
   timestamp: number;
   undo: () => Promise<boolean | void>;

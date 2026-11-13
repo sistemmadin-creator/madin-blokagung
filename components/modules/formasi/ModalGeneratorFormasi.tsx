@@ -123,19 +123,22 @@ export default function ModalGeneratorFormasi({
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Kapasitas Maksimal (Santri)
-            </label>
-            <input
-              type="number"
-              min="10"
-              max="90"
-              value={kapasitas}
-              onChange={(e) => setKapasitas(parseInt(e.target.value, 10) || 80)}
-              className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 font-bold focus:ring-2 focus:ring-madin-600 focus:outline-none text-center"
-            />
-          </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Kapasitas Maksimal (Santri)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="80"
+                value={kapasitas}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10) || 80;
+                  setKapasitas(Math.min(80, Math.max(1, val)));
+                }}
+                className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 font-bold focus:ring-2 focus:ring-madin-600 focus:outline-none text-center"
+              />
+            </div>
         </div>
 
         <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">

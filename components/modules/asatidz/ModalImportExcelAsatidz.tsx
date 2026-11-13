@@ -85,7 +85,6 @@ export default function ModalImportExcelAsatidz() {
 
     const contohBaris1 = [
       '201901',
-      'A1',
       'UST. AHMAD FAUZI',
       'PA',
       'ULA',
@@ -111,7 +110,6 @@ export default function ModalImportExcelAsatidz() {
 
     const contohBaris2 = [
       '202015',
-      'B1',
       'USTZ. SITI AISYAH',
       'PI',
       'WUSTHO',
@@ -139,7 +137,6 @@ export default function ModalImportExcelAsatidz() {
     // Kolom KBM (Tingkat, Din. Kls, Din. Bag, Lokasi Diniyyah, Lokasi Takror) dikosongkan
     const contohBaris3 = [
       '202109',
-      'C1',
       'UST. M. ROFIQ',
       'PA',
       '', // Tingkat: Kosong

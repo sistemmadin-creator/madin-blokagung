@@ -7,6 +7,7 @@ import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useTahunAjaranStore } from '@/stores/useTahunAjaranStore';
 import { FormasiWithStats } from '@/types/formasi';
 import { getWaliKelasSyncInfo, getSantriInFormasi } from '@/lib/utils/formasiSync';
+import { usePagePermission } from '@/stores/useRbacStore';
 import { compressImageFile } from '@/lib/utils/image';
 import {
   Search,
@@ -42,6 +43,7 @@ export default function FormasiPiPage() {
   const { santriList, fetchSantri } = useSantriStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
   const { getFormattedHeaderBanner } = useTahunAjaranStore();
+  const { canEdit, canDelete, canAccessSettings, isClassAllowed } = usePagePermission('formasi');
 
   const [selectedTingkat, setSelectedTingkat] = useState<string>('');
   const [search, setSearch] = useState<string>('');
@@ -74,7 +76,18 @@ export default function FormasiPiPage() {
 
   // Enrich formasi PI with stats & Asatidz sync
   const enrichedList: FormasiWithStats[] = useMemo(() => {
-    const listPI = formasiList.filter((f) => f.pa_pi === 'PI');
+    const listPI = formasiList.filter((f) => {
+      if (f.pa_pi !== 'PI') return false;
+      return isClassAllowed({
+        tingkat: f.tingkat,
+        din_kls: f.din_kls,
+        din_bag: f.din_bag,
+        pa_pi: f.pa_pi,
+        domisili: f.domisili,
+        blok_diniyyah: f.blok_diniyyah,
+        blok_takror: f.blok_takror,
+      });
+    });
 
     return listPI.map((f) => {
       const syncInfo = getWaliKelasSyncInfo(f, asatidzList);
@@ -248,15 +261,17 @@ export default function FormasiPiPage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => openHierarkiModal('diniyyah')}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 transition shadow-2xs flex items-center gap-2"
-              title="Kelola Hierarki Blok KBM (Diniyyah & Takror)"
-            >
-              <FolderTree className="w-4 h-4 text-[#0f766e]" />
-              <span>Hierarki Blok Kelas Putri</span>
-            </button>
+            {canAccessSettings && (
+              <button
+                type="button"
+                onClick={() => openHierarkiModal('diniyyah')}
+                className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 transition shadow-2xs flex items-center gap-2"
+                title="Kelola Hierarki Blok KBM (Diniyyah & Takror)"
+              >
+                <FolderTree className="w-4 h-4 text-[#0f766e]" />
+                <span>Hierarki Blok Kelas Putri</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -408,7 +423,7 @@ export default function FormasiPiPage() {
                       key={f.id || idx}
                       onClick={() => openDetailModal(f)}
                       onContextMenu={(e) => {
-                        if (!f.id) return;
+                        if (!f.id || !canEdit) return;
                         e.preventDefault();
                         setContextMenu({
                           x: e.clientX,
@@ -495,7 +510,7 @@ export default function FormasiPiPage() {
                                 <Camera className="w-2.5 h-2.5 text-madin-700" />
                                 <span>Lihat</span>
                               </button>
-                            ) : (
+                            ) : canEdit ? (
                               <button
                                 type="button"
                                 onClick={(e) => f.id && handleTriggerQuickFoto(e, f.id, 'takror')}
@@ -504,7 +519,7 @@ export default function FormasiPiPage() {
                                 <Camera className="w-2.5 h-2.5 text-slate-400" />
                                 <span>+Foto</span>
                               </button>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       </td>
@@ -549,7 +564,7 @@ export default function FormasiPiPage() {
                                 <Camera className="w-2.5 h-2.5 text-madin-700" />
                                 <span>Lihat</span>
                               </button>
-                            ) : (
+                            ) : canEdit ? (
                               <button
                                 type="button"
                                 onClick={(e) => f.id && handleTriggerQuickFoto(e, f.id, 'diniyyah')}
@@ -558,7 +573,7 @@ export default function FormasiPiPage() {
                                 <Camera className="w-2.5 h-2.5 text-slate-400" />
                                 <span>+Foto</span>
                               </button>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       </td>
