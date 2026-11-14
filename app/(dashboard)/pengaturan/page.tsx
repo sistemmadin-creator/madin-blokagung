@@ -69,7 +69,7 @@ function PengaturanContent() {
     { key: 'tahun-ajaran', label: 'Tahun Ajaran Aktif', icon: <CalendarRange className="w-4 h-4 text-amber-500" />, testId: 'tab-tahun-ajaran' },
     { key: 'akun', label: 'Kelola Akun & Otoritas', icon: <UserCog className="w-4 h-4 text-emerald-600" />, testId: 'tab-akun', masterOnly: true },
     { key: 'sidebar', label: 'Ubah Sidebar & Menu', icon: <LayoutList className="w-4 h-4 text-amber-500" />, testId: 'tab-sidebar' },
-    { key: 'hierarki', label: 'Pusat Kendali Admin', icon: <Sliders className="w-4 h-4 text-emerald-500" />, testId: 'tab-hierarki' },
+    { key: 'hierarki', label: 'Atur Hierarki', icon: <Sliders className="w-4 h-4 text-emerald-500" />, testId: 'tab-hierarki' },
     { key: 'audit', label: 'Log Aktivitas Sistem', icon: <ShieldCheck className="w-4 h-4 text-teal-500" />, testId: 'tab-audit' },
     { key: 'akademik', label: 'Aturan KBM & Libur', icon: <CalendarDays className="w-4 h-4 text-cyan-500" />, testId: 'tab-akademik' },
     { key: 'muhafadzoh', label: 'Aturan Muhafadzoh', icon: <BookOpen className="w-4 h-4 text-rose-500" />, testId: 'tab-muhafadzoh' },
@@ -127,7 +127,7 @@ function PengaturanContent() {
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-sm transition active:scale-95"
           >
             <Sliders className="w-4 h-4 text-emerald-200" />
-            <span>Pusat Kendali Modal</span>
+            <span>Atur Hierarki</span>
           </button>
           <button
             type="button"
@@ -242,13 +242,13 @@ function PengaturanContent() {
               </div>
             )}
 
-            {/* Pilar 1: Pusat Kendali Admin */}
+            {/* Pilar 1: Atur Hierarki */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between group">
               <div>
                 <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-3">
                   <Sliders className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-slate-900 text-base">Pusat Kendali Admin</h3>
+                <h3 className="font-bold text-slate-900 text-base">Atur Hierarki</h3>
                 <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
                   Kelola struktur pohon lembaga (Tingkat, Kelas, Bagian/Rombel), domisili santri (Blok, Asrama, Kamar), dan jabatan tenaga kependidikan.
                 </p>

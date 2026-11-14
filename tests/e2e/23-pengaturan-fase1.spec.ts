@@ -8,7 +8,7 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
     });
   });
 
-  test('1. Sidebar Desktop meletakkan grup Pengaturan di bawah PKM. Publikasi & Warta dengan 5 sub-menu lengkap', async ({ page }) => {
+  test('1. Sidebar Desktop menghapus grup Pengaturan dan menyisakan tombol footer Pengaturan', async ({ page }) => {
     await page.goto('/santri');
     if (page.url().includes('/login')) {
       await page.getByLabel('Username Pengurus').fill('admin');
@@ -19,98 +19,71 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
     const sidebar = page.getByRole('complementary');
     await expect(sidebar).toBeVisible();
 
-    // Verifikasi teks grup di sidebar (case-insensitive)
+    // Verifikasi teks PUSAT SISTEM dan grup Publikasi & Warta
+    await expect(sidebar.getByText('PUSAT SISTEM')).toBeVisible();
     await expect(sidebar.getByText(/Publikasi & Warta/i)).toBeVisible();
-    await expect(sidebar.getByText(/Pengaturan/i).first()).toBeVisible();
 
     const fullTextUpper = (await sidebar.innerText()).toUpperCase();
-    const publikasiIdx = fullTextUpper.indexOf('PUBLIKASI & WARTA');
-    const pengaturanIdx = fullTextUpper.indexOf('PENGATURAN');
-    const footerPengaturanIdx = fullTextUpper.lastIndexOf('PENGATURAN');
-
-    // 1. Pengaturan harus berada di bawah PKM. Publikasi & Warta
-    expect(pengaturanIdx).toBeGreaterThan(-1);
-    expect(publikasiIdx).toBeGreaterThan(-1);
-    expect(pengaturanIdx).toBeGreaterThan(publikasiIdx);
-
-    // 2. Profil Madrasah dihapus dan diganti tombol footer Pengaturan
+    // Grup Pengaturan (dengan sub-menu Tahun Ajaran Aktif dll.) sudah dihapus dari sidebar
     expect(fullTextUpper.indexOf('PROFIL MADRASAH')).toBe(-1);
-    expect(footerPengaturanIdx).toBeGreaterThan(pengaturanIdx);
+    expect(sidebar.getByRole('link', { name: /Tahun Ajaran Aktif/i })).toHaveCount(0);
 
-    // Verifikasi 5 sub-menu di dalam grup Pengaturan
-    const expectedSubmenus = [
-      'Pusat Kendali Admin',
-      'Ubah Sidebar',
-      'Aturan KBM & Libur',
-      'Aturan Muhafadzoh',
-      'Log Aktivitas Sistem',
-    ];
-
-    for (const sub of expectedSubmenus) {
-      await expect(sidebar.getByRole('link', { name: new RegExp(sub, 'i') })).toBeVisible();
-    }
+    // Tombol footer Pengaturan tetap ada di bagian bawah sidebar
+    const footerSettings = sidebar.locator('a[href="/pengaturan"]').last();
+    await expect(footerSettings).toBeVisible();
+    await expect(footerSettings).toContainText(/Pengaturan/i);
   });
 
-  test('2. Dropdown profil Navbar menampilkan bagian Pengaturan tepat di atas tulisan Keluar / Logout', async ({ page }) => {
+  test('2. Dropdown profil Navbar ringkas tanpa blok sub-item Pengaturan', async ({ page }) => {
     await page.goto('/santri');
+    if (page.url().includes('/login')) {
+      await page.getByLabel('Username Pengurus').fill('admin');
+      await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+      await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
+      await page.waitForURL('**/santri**', { timeout: 60000 });
+    }
 
     // Buka dropdown Menu Profil di pojok kanan atas
-    const profileBtn = page.getByRole('button', { name: /Menu Profil/i });
+    const profileBtn = page.getByRole('button', { name: /Master Administrator/i });
     await expect(profileBtn).toBeVisible();
     await profileBtn.click();
 
     // Dropdown terbuka
-    await expect(page.getByText('Master Administrator')).toBeVisible();
+    const menu = page.getByRole('menu');
+    await expect(menu.getByText('Master Administrator')).toBeVisible();
 
-    // Verifikasi keberadaan sub-item Pengaturan di dropdown
-    const adminBtn = page.getByRole('button', { name: /Pusat Kendali Admin/i });
-    const auditBtn = page.getByRole('button', { name: /Log Aktivitas Sistem/i });
-    const sidebarLink = page.getByRole('link', { name: /Ubah Sidebar & Menu/i });
+    // Sub-item Pengaturan di dropdown sudah dihapus
+    await expect(menu.getByRole('button', { name: /Pusat Kendali Admin/i })).toHaveCount(0);
+    await expect(menu.getByRole('button', { name: /Log Aktivitas Sistem/i })).toHaveCount(0);
+    await expect(menu.getByRole('link', { name: /Ubah Sidebar & Menu/i })).toHaveCount(0);
 
-    await expect(adminBtn).toBeVisible();
-    await expect(auditBtn).toBeVisible();
-    await expect(sidebarLink).toBeVisible();
-
-    // Verifikasi tombol Keluar / Logout ada di bawah bagian Pengaturan
-    const logoutBtn = page.getByRole('button', { name: /Keluar \/ Logout/i });
-    await expect(logoutBtn).toBeVisible();
-
-    // Buka modal Pusat Kendali Admin dari navbar
-    await adminBtn.click();
-
-    // Modal terbuka (ditandai dengan heading atau dialog)
-    const modalDialog = page.getByRole('dialog');
-    await expect(modalDialog).toBeVisible();
-
-    // Tutup modal secara bersih menggunakan tombol Tutup ber-aria-label atau tombol Batal di dalam dialog
-    const closeDialogBtn = modalDialog.getByRole('button', { name: /Tutup pengaturan hierarki|Batal/i }).first();
-    if (await closeDialogBtn.isVisible()) {
-      await closeDialogBtn.click();
-    } else {
-      await page.keyboard.press('Escape');
-    }
-
-    // Modal telah tertutup
-    await expect(modalDialog).not.toBeVisible();
+    // Tombol Keluar / Logout tetap ada
+    await expect(menu.getByRole('button', { name: /Keluar \/ Logout/i })).toBeVisible();
   });
 
-  test('3. Navigasi ke /pengaturan memuat Hub Pengaturan dan tab-tab pilar terpadu', async ({ page }) => {
+  test('3. Navigasi ke /pengaturan memuat Hub Pengaturan dengan label Atur Hierarki', async ({ page }) => {
     await page.goto('/pengaturan');
+    if (page.url().includes('/login')) {
+      await page.getByLabel('Username Pengurus').fill('admin');
+      await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+      await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
+      await page.waitForURL('**/pengaturan**', { timeout: 60000 });
+    }
 
-    // 1. Header Hub Pengaturan
+    // 1. Header Hub Pengaturan & tombol Atur Hierarki (dulu Pusat Kendali Modal)
     await expect(page.getByRole('heading', { name: /Pengaturan Sistem Madina Blokagung/i })).toBeVisible();
-    await expect(page.getByText(/Pusat Konfigurasi Lembaga/i)).toBeVisible();
+    await expect(page.getByTestId('btn-open-hierarchy-modal')).toContainText('Atur Hierarki');
 
-    // 2. Tab Navigation
+    // 2. Tab Navigation (tab-hierarki sekarang bernama Atur Hierarki)
     await expect(page.getByTestId('tab-overview')).toBeVisible();
     await expect(page.getByTestId('tab-sidebar')).toBeVisible();
-    await expect(page.getByTestId('tab-hierarki')).toBeVisible();
+    await expect(page.getByTestId('tab-hierarki')).toContainText('Atur Hierarki');
     await expect(page.getByTestId('tab-audit')).toBeVisible();
     await expect(page.getByTestId('tab-akademik')).toBeVisible();
     await expect(page.getByTestId('tab-muhafadzoh')).toBeVisible();
 
-    // 3. Overview Cards: 6 Pilar
-    await expect(page.getByText('Pusat Kendali Admin').first()).toBeVisible();
+    // 3. Overview Cards
+    await expect(page.getByRole('heading', { name: 'Atur Hierarki' })).toBeVisible();
     await expect(page.getByText('Ubah Sidebar & Menu').first()).toBeVisible();
     await expect(page.getByText('Log Aktivitas Sistem').first()).toBeVisible();
     await expect(page.getByText('Aturan KBM & Hari Libur').first()).toBeVisible();

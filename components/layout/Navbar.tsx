@@ -9,8 +9,6 @@ import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import { useRbacStore } from '@/stores/useRbacStore';
 import { useTableViewerStore } from '@/stores/useTableViewerStore';
 import { canAccessSettingsAuthority } from '@/lib/utils/rbacHelper';
-import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
-import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
 import ModalUniversalSearch from '@/components/common/ModalUniversalSearch';
 import NotificationBellPrompt from '@/components/common/NotificationBellPrompt';
 import { supabase } from '@/lib/supabase/client';
@@ -26,8 +24,6 @@ export default function Navbar() {
   const isAppSecurityEnabled = useRbacStore((s) => s.isAppSecurityEnabled);
   const clearCurrentAccount = useRbacStore((s) => s.clearCurrentAccount);
   const toggleFloatingTools = useTableViewerStore((s) => s.toggleFloatingTools);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showAuditModal, setShowAuditModal] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
   const [showUniversalSearch, setShowUniversalSearch] = useState(false);
@@ -353,67 +349,6 @@ export default function Navbar() {
                   </span>
                 </div>
 
-                {allowSettings && (
-                  <div className="my-1.5 pt-1.5 border-t border-slate-100">
-                    <div className="px-3 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
-                      <span>Pengaturan</span>
-                      <Link
-                        href="/pengaturan"
-                        onClick={() => setDropdownOpen(false)}
-                        className="text-[10px] text-amber-700 hover:underline font-semibold"
-                      >
-                        Buka Hub ↗
-                      </Link>
-                    </div>
-
-                    {isMasterAdmin && isAppSecurityEnabled && (
-                      <Link
-                        href="/pengaturan?tab=akun"
-                        onClick={() => setDropdownOpen(false)}
-                        className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg flex items-center gap-2.5 transition"
-                      >
-                        <UserCog className="w-4 h-4 text-madin-700" />
-                        <span>Kelola Akun &amp; Otoritas</span>
-                      </Link>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDropdownOpen(false);
-                        setShowSettingsModal(true);
-                      }}
-                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg flex items-center gap-2.5 transition"
-                    >
-                      <Sliders className="w-4 h-4 text-madin-700" />
-                      <span>Pusat Kendali Admin</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDropdownOpen(false);
-                        setShowAuditModal(true);
-                      }}
-                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg flex items-center gap-2.5 transition"
-                    >
-                      <ShieldCheck className="w-4 h-4 text-madin-700" />
-                      <span>Log Aktivitas Sistem</span>
-                    </button>
-
-                    <Link
-                      href="/pengaturan?tab=sidebar"
-                      onClick={() => setDropdownOpen(false)}
-                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg flex items-center gap-2.5 transition"
-                    >
-                      <LayoutList className="w-4 h-4 text-madin-700" />
-                      <span>Ubah Sidebar &amp; Menu</span>
-                    </Link>
-                  </div>
-                )}
-
-                <hr className="my-1.5 border-slate-100" />
-
                 {isLoggedIn ? (
                   <button
                     type="button"
@@ -440,14 +375,6 @@ export default function Navbar() {
         </div>
       </header>
 
-      <ModalHierarchyBuilder
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-      />
-      <ModalAuditLogs
-        isOpen={showAuditModal}
-        onClose={() => setShowAuditModal(false)}
-      />
       <ModalUniversalSearch
         isOpen={showUniversalSearch}
         onClose={() => setShowUniversalSearch(false)}

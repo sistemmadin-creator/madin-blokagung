@@ -13,6 +13,8 @@ export interface ActiveUserSession {
   deviceModel?: string;
   osVersion?: string;
   currentPath: string;
+  lastAction?: string;
+  lastActionAt?: string;
   connectedAt: string;
 }
 

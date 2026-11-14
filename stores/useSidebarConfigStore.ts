@@ -254,42 +254,22 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
       { id: 'item-berita', title: 'Kelola Berita', href: '/kelola-berita', iconName: 'Newspaper' },
     ],
   },
-  {
-    id: 'grp-pengaturan',
-    group: 'Pengaturan',
-    items: [
-      {
-        id: 'item-pengaturan-hub',
-        title: 'Pengaturan',
-        href: '/pengaturan',
-        iconName: 'Settings',
-        children: [
-          { id: 'sub-tahun-ajaran', title: 'Tahun Ajaran Aktif', href: '/pengaturan?tab=tahun-ajaran', iconName: 'CalendarDays' },
-          { id: 'sub-akun', title: 'Kelola Akun & Otoritas', href: '/pengaturan?tab=akun', iconName: 'ShieldCheck' },
-          { id: 'sub-hierarki', title: 'Pusat Kendali Admin', href: '/pengaturan?tab=hierarki', iconName: 'Sliders' },
-          { id: 'sub-sidebar', title: 'Ubah Sidebar', href: '/pengaturan?tab=sidebar', iconName: 'LayoutList' },
-          { id: 'sub-akademik', title: 'Aturan KBM & Libur', href: '/pengaturan?tab=akademik', iconName: 'CalendarDays' },
-          { id: 'sub-muhafadzoh', title: 'Aturan Muhafadzoh', href: '/pengaturan?tab=muhafadzoh', iconName: 'BookOpen' },
-          { id: 'sub-audit', title: 'Log Aktivitas Sistem', href: '/pengaturan?tab=audit', iconName: 'ShieldCheck' },
-        ],
-      },
-    ],
-  },
 ];
 
 function mergeMissingDefaultItems(loadedGroups: ConfigMenuGroup[]): ConfigMenuGroup[] {
   if (!Array.isArray(loadedGroups) || loadedGroups.length === 0) return DEFAULT_SIDEBAR_GROUPS;
 
-  const existingGroupIds = new Set(loadedGroups.map((g) => g.id));
+  const filteredLoaded = loadedGroups.filter((g) => g.id !== 'grp-pengaturan');
+  const existingGroupIds = new Set(filteredLoaded.map((g) => g.id));
   const existingItemIds = new Set<string>();
-  loadedGroups.forEach((g) => {
+  filteredLoaded.forEach((g) => {
     (g.items || []).forEach((it) => {
       existingItemIds.add(it.id);
     });
   });
 
   // 1. Merge missing items into existing groups and ensure essential groups are visible
-  const merged = loadedGroups.map((g) => {
+  const merged = filteredLoaded.map((g) => {
     const defGroup = DEFAULT_SIDEBAR_GROUPS.find((dg) => dg.id === g.id);
     if (!defGroup) return g;
 

@@ -125,40 +125,96 @@ export default function SidebarDesktop() {
     return canViewPage(currentAccount, pageId, href);
   };
 
-  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
-    'Jadwal KBM': true,
-    'Setor Mustahiq': true,
-    'Rekap Absensi': true,
-    'Pengaturan': true,
-    'Tentang Ujian': true,
-    'Tentang Lulus': true,
-    'Tentang Ijazah': true,
-  });
+  const OPEN_GROUPS_KEY = 'madina_sidebar_open_groups_v1';
+  const OPEN_SUBMENUS_KEY = 'madina_sidebar_open_submenus_v1';
+
+  // Default semua grup & submenu tertutup saat pertama kali masuk
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setMounted(true);
+    try {
+      const savedGroups = window.localStorage.getItem(OPEN_GROUPS_KEY);
+      if (savedGroups) {
+        const parsed = JSON.parse(savedGroups);
+        if (parsed && typeof parsed === 'object') setOpenGroups(parsed);
+      }
+      const savedSubs = window.localStorage.getItem(OPEN_SUBMENUS_KEY);
+      if (savedSubs) {
+        const parsed = JSON.parse(savedSubs);
+        if (parsed && typeof parsed === 'object') setOpenSubmenus(parsed);
+      }
+    } catch {
+      // Abaikan error localStorage
+    }
   }, []);
 
   const activeGroups = mounted ? groups : DEFAULT_SIDEBAR_GROUPS;
 
-  // Automatically keep parent submenu open if current path is a child
+  // Pertahankan grup & submenu yang sudah dibuka, serta otomatis buka induk rute aktif
   useEffect(() => {
+    if (!mounted) return;
+    let groupChanged = false;
+    let subChanged = false;
+    const nextGroups: Record<string, boolean> = { ...openGroups };
+    const nextSubs: Record<string, boolean> = { ...openSubmenus };
+
     activeGroups.forEach((grp: ConfigMenuGroup) => {
+      const grpKey = grp.id || grp.group;
       grp.items.forEach((item: ConfigMenuItem) => {
-        if (item.children) {
-          const isChildActive = item.children.some((sub: ConfigSubMenuItem) => sub.href === pathname);
-          if (isChildActive) {
-            setOpenSubmenus((prev) => ({ ...prev, [item.title]: true }));
+        const isDirectMatch = item.href && item.href === pathname;
+        const isChildMatch =
+          item.children && item.children.some((sub: ConfigSubMenuItem) => sub.href === pathname);
+
+        if (isDirectMatch || isChildMatch) {
+          if (!nextGroups[grpKey]) {
+            nextGroups[grpKey] = true;
+            groupChanged = true;
+          }
+          if (isChildMatch && !nextSubs[item.title]) {
+            nextSubs[item.title] = true;
+            subChanged = true;
           }
         }
       });
     });
-  }, [pathname, activeGroups]);
+
+    if (groupChanged) {
+      setOpenGroups(nextGroups);
+      try {
+        window.localStorage.setItem(OPEN_GROUPS_KEY, JSON.stringify(nextGroups));
+      } catch {}
+    }
+    if (subChanged) {
+      setOpenSubmenus(nextSubs);
+      try {
+        window.localStorage.setItem(OPEN_SUBMENUS_KEY, JSON.stringify(nextSubs));
+      } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, mounted, activeGroups]);
+
+  const toggleGroup = (grpKey: string) => {
+    setOpenGroups((prev) => {
+      const next = { ...prev, [grpKey]: !prev[grpKey] };
+      try {
+        window.localStorage.setItem(OPEN_GROUPS_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
 
   const toggleSubmenu = (title: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setOpenSubmenus((prev) => ({ ...prev, [title]: !prev[title] }));
+    setOpenSubmenus((prev) => {
+      const next = { ...prev, [title]: !prev[title] };
+      try {
+        window.localStorage.setItem(OPEN_SUBMENUS_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
   };
 
   return (
@@ -170,8 +226,18 @@ export default function SidebarDesktop() {
       {/* Header Sidebar & Tombol Toggle Bulat Melayang */}
       <div className="h-[70px] relative flex items-center px-5 flex-shrink-0 border-b border-white/10">
         {!isSidebarCollapsed && (
-          <div className="font-bold text-white text-base tracking-tight truncate">
-            Pusat Sistem
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0 shadow-inner">
+              <ShieldCheck className="w-4 h-4 text-emerald-200" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-extrabold text-white text-sm uppercase tracking-[0.14em] truncate leading-tight">
+                PUSAT SISTEM
+              </div>
+              <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-200/75 truncate mt-0.5">
+                Madina Blokagung
+              </div>
+            </div>
           </div>
         )}
 
@@ -210,18 +276,47 @@ export default function SidebarDesktop() {
             });
             if (visibleItems.length === 0) return null;
 
+            const grpKey = grp.id || grp.group;
+            const isGroupOpen = Boolean(openGroups[grpKey]);
+            const hasActiveChildInGroup = visibleItems.some(
+              (it) =>
+                it.href === pathname ||
+                it.children?.some((sub) => sub.href === pathname)
+            );
+
             return (
-              <div key={grp.id || grp.group} className="space-y-1">
-                {/* Judul Grup */}
+              <div key={grpKey} className="space-y-1">
+                {/* Judul Grup (Dropdown Accordion) */}
                 {!isSidebarCollapsed ? (
-                  <div className="text-[10px] font-bold tracking-wider text-white/45 uppercase px-3 pt-2 pb-1">
-                    {grp.group}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(grpKey)}
+                    aria-expanded={isGroupOpen}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-bold tracking-wider uppercase transition-colors cursor-pointer ${
+                      hasActiveChildInGroup
+                        ? 'text-emerald-200 bg-white/10'
+                        : isGroupOpen
+                          ? 'text-white/80 bg-white/5 hover:bg-white/10'
+                          : 'text-white/55 hover:text-white/85 hover:bg-white/5'
+                    }`}
+                  >
+                    <span className="truncate flex items-center gap-2">
+                      {hasActiveChildInGroup && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 shrink-0" />
+                      )}
+                      <span>{grp.group}</span>
+                    </span>
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${
+                        isGroupOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
                 ) : (
                   <div className="border-t border-white/10 my-2 mx-2" />
                 )}
 
-                {visibleItems.map((item: ConfigMenuItem) => {
+                {(isSidebarCollapsed || isGroupOpen) && visibleItems.map((item: ConfigMenuItem) => {
                   const visibleChildren = item.children?.filter(
                     (sub: ConfigSubMenuItem) =>
                       !sub.hidden && isHrefPermitted(sub.href, sub.id)

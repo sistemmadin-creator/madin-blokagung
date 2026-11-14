@@ -15,6 +15,7 @@ import {
   Globe,
   Clock,
   LogOut,
+  MousePointerClick,
 } from 'lucide-react';
 
 interface ModalUserAktifProps {
@@ -282,6 +283,15 @@ export default function ModalUserAktif({ isOpen, onClose }: ModalUserAktifProps)
                             <div className="text-[10px] text-slate-400 font-mono">
                               ID Perangkat: {sess.deviceId.slice(0, 8)}
                             </div>
+                            {sess.lastAction && (
+                              <div className="mt-1 inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50/80 border border-emerald-200/70 px-1.5 py-0.5 rounded">
+                                <MousePointerClick className="w-3 h-3 shrink-0" />
+                                <span className="truncate max-w-[260px]">
+                                  Terakhir klik: &ldquo;{sess.lastAction}&rdquo;
+                                  {sess.lastActionAt ? ` (${formatConnectedTime(sess.lastActionAt)})` : ''}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
 

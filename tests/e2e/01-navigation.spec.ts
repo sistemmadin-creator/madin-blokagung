@@ -24,7 +24,7 @@ test.describe('Navigation & System Shell', () => {
 
     // Brand title in sidebar & navbar
     const sidebar = page.getByRole('complementary');
-    await expect(sidebar.getByText('Pusat Sistem')).toBeVisible();
+    await expect(sidebar.getByText('PUSAT SISTEM')).toBeVisible();
     await expect(sidebar.getByText('Madrasah Diniyyah')).toHaveCount(0);
     await expect(page.getByText(/Madin Blokagung/i).first()).toBeVisible();
 
@@ -62,6 +62,7 @@ test.describe('Navigation & System Shell', () => {
     await gotoWithAuth(page, '/santri');
     await page.goto('/asatidz');
     await expect(page).toHaveURL(/\/asatidz/);
+    await expect(page.getByRole('heading', { name: /(Database|Data Dewan) Asatidz/i })).toBeVisible();
 
     const sidebar = page.getByRole('complementary');
     const toggleBtn = sidebar.getByRole('button', { name: /Klik 1x untuk kembali ke halaman sebelumnya/i });
@@ -81,6 +82,35 @@ test.describe('Navigation & System Shell', () => {
     await toggleBtn.click();
     await page.waitForURL(/\/santri/);
     await expect(page).toHaveURL(/\/santri/);
+  });
+
+  test('sidebar groups default closed, toggle as dropdown, and persist across page navigation', async ({ page }) => {
+    await gotoWithAuth(page, '/beranda');
+    await page.evaluate(() => {
+      window.localStorage.removeItem('madina_sidebar_open_groups_v1');
+      window.localStorage.removeItem('madina_sidebar_open_submenus_v1');
+    });
+    await page.reload();
+
+    const sidebar = page.getByRole('complementary');
+
+    // Grup Beranda terbuka karena rute aktif /beranda, sedangkan grup lain seperti PKM. Kurikulum default tertutup
+    const kurikulumGroupBtn = sidebar.getByRole('button', { name: /PKM\. Kurikulum/i });
+    await expect(kurikulumGroupBtn).toHaveAttribute('aria-expanded', 'false');
+    await expect(sidebar.getByRole('button', { name: /Jadwal KBM/i })).toHaveCount(0);
+
+    // Buka grup PKM. Kurikulum & submenu Jadwal KBM
+    await kurikulumGroupBtn.click();
+    await expect(kurikulumGroupBtn).toHaveAttribute('aria-expanded', 'true');
+    const jadwalBtn = sidebar.getByRole('button', { name: /Jadwal KBM/i });
+    await expect(jadwalBtn).toBeVisible();
+    await jadwalBtn.click();
+    await expect(sidebar.getByRole('link', { name: /Jadwal KBM Per Kelas/i })).toBeVisible();
+
+    // Pindah halaman ke /santri; grup PKM. Kurikulum & submenu Jadwal KBM harus tetap terbuka (diingat)
+    await page.goto('/santri');
+    await expect(sidebar.getByRole('button', { name: /PKM\. Kurikulum/i })).toHaveAttribute('aria-expanded', 'true');
+    await expect(sidebar.getByRole('link', { name: /Jadwal KBM Per Kelas/i })).toBeVisible();
   });
 
   test('navbar hierarchy builder modal opens and closes cleanly', async ({ page }) => {

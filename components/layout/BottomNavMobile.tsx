@@ -447,7 +447,7 @@ export default function BottomNavMobile() {
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800 text-left"
           >
             <Settings className="w-4 h-4 text-madin-700" />
-            <span>Pusat Kendali Admin</span>
+            <span>Atur Hierarki</span>
           </button>
           <Link
             href="/pengaturan?tab=sidebar"

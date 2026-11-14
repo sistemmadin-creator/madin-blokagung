@@ -46,6 +46,11 @@ export default function ActivePresenceTracker() {
     deviceModel?: string;
     osVersion?: string;
   }>({});
+  const lastActionRef = useRef<{
+    label?: string;
+    at?: string;
+  }>({});
+  const clickThrottleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const buildPayload = (): ActiveUserSession => {
     const deviceId = getOrCreateStorageId(window.localStorage, DEVICE_STORAGE_KEY);
@@ -65,6 +70,8 @@ export default function ActivePresenceTracker() {
       deviceModel: detailedDeviceRef.current.deviceModel,
       osVersion: detailedDeviceRef.current.osVersion,
       currentPath: pathname || '/beranda',
+      lastAction: lastActionRef.current.label,
+      lastActionAt: lastActionRef.current.at,
       connectedAt: connectedAtRef.current,
     };
   };
@@ -153,7 +160,48 @@ export default function ActivePresenceTracker() {
         }
       });
 
+    const extractClickLabel = (target: EventTarget | null): string | null => {
+      if (!(target instanceof Element)) return null;
+      const interactive = target.closest(
+        'button, a, [role="button"], [role="tab"], [role="menuitem"], summary'
+      );
+      if (!interactive) return null;
+
+      const raw =
+        interactive.getAttribute('data-track-label') ||
+        interactive.getAttribute('aria-label') ||
+        interactive.getAttribute('title') ||
+        interactive.textContent ||
+        '';
+      const cleaned = raw.replace(/\s+/g, ' ').trim();
+      if (!cleaned) return null;
+      return cleaned.length > 45 ? `${cleaned.slice(0, 42)}...` : cleaned;
+    };
+
+    const handleGlobalClick = (e: MouseEvent) => {
+      const label = extractClickLabel(e.target);
+      if (!label) return;
+      lastActionRef.current = {
+        label,
+        at: new Date().toISOString(),
+      };
+      if (clickThrottleTimerRef.current) return;
+      clickThrottleTimerRef.current = setTimeout(() => {
+        clickThrottleTimerRef.current = null;
+        if (usePresenceStore.getState().isConnected && channelRef.current) {
+          channelRef.current.track(buildPayload()).catch(() => {});
+        }
+      }, 600);
+    };
+
+    document.addEventListener('click', handleGlobalClick, true);
+
     return () => {
+      document.removeEventListener('click', handleGlobalClick, true);
+      if (clickThrottleTimerRef.current) {
+        clearTimeout(clickThrottleTimerRef.current);
+        clickThrottleTimerRef.current = null;
+      }
       setConnected(false);
       setSendForceLogout(null);
       channel.untrack().catch(() => {});
