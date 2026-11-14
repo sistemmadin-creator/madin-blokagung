@@ -30,7 +30,6 @@ interface SantriContact {
   no_induk: string;
   telepon?: string | null;
   nama_ayah?: string | null;
-  nama_ibu?: string | null;
 }
 
 export default function RekapLulusAngkatanPage() {
@@ -78,7 +77,7 @@ export default function RekapLulusAngkatanPage() {
           .order('urutan', { ascending: true }),
         supabase
           .from('santri')
-          .select('no_induk, telepon, nama_ayah, nama_ibu')
+          .select('no_induk, telepon, nama_ayah')
           .limit(3000),
       ]);
 
@@ -174,7 +173,7 @@ export default function RekapLulusAngkatanPage() {
         const matchesName = r.nama_santri.toLowerCase().includes(q);
         const matchesNis = r.no_induk.toLowerCase().includes(q);
         const contact = contacts[r.no_induk];
-        const matchesWali = (contact?.nama_ayah || contact?.nama_ibu || '').toLowerCase().includes(q);
+        const matchesWali = (contact?.nama_ayah || '').toLowerCase().includes(q);
         if (!matchesName && !matchesNis && !matchesWali) return false;
       }
       return true;
@@ -208,7 +207,7 @@ export default function RekapLulusAngkatanPage() {
 
 Kepada Yth. Wali Santri dari:
 • *Nama Santri*: ${record.nama_santri}
-• *No. Induk*: ${record.no_induk}
+• *NIS*: ${record.no_induk}
 • *Tingkat / Kelas*: ${record.tingkat} ${record.din_kls} ${record.din_bag}
 • *Angkatan*: ${tahunText}
 • *Status Kelulusan*: Ditunda / Belum Memenuhi Syarat
@@ -251,7 +250,7 @@ _Panitia Kelulusan EBTADIN Madin Al-Amiriyyah Blokagung_`;
       return {
         No: idx + 1,
         'Tahun Angkatan': th ? `${th.tahun_masehi} (${th.tahun_hijriyah} H)` : '-',
-        'No. Induk': r.no_induk,
+        'NIS': r.no_induk,
         'Nama Santri': r.nama_santri,
         Tingkat: r.tingkat,
         Kelas: `${r.din_kls} ${r.din_bag}`,
@@ -260,7 +259,7 @@ _Panitia Kelulusan EBTADIN Madin Al-Amiriyyah Blokagung_`;
         Predikat: r.predikat || '-',
         Catatan: r.catatan || '-',
         'No. Telepon / WA Wali': contact?.telepon || '-',
-        'Nama Wali': contact?.nama_ayah || contact?.nama_ibu || '-',
+        'Nama Wali': contact?.nama_ayah || '-',
         'Ditetapkan Oleh': r.ditetapkan_oleh || '-',
       };
     });
@@ -649,7 +648,7 @@ _Panitia Kelulusan EBTADIN Madin Al-Amiriyyah Blokagung_`;
                 <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
                   <tr>
                     <th className="py-3 px-4 w-12 text-center">No</th>
-                    <th className="py-3 px-4">Santri &amp; No. Induk</th>
+                    <th className="py-3 px-4">Santri &amp; NIS</th>
                     <th className="py-3 px-4">Angkatan</th>
                     <th className="py-3 px-4">Kelas / Rombel</th>
                     <th className="py-3 px-4">Alasan Penundaan</th>
@@ -668,7 +667,7 @@ _Panitia Kelulusan EBTADIN Madin Al-Amiriyyah Blokagung_`;
                     auditList.map((r, idx) => {
                       const th = tahunMap.get(r.tahun_ebtadin_id);
                       const contact = contacts[r.no_induk];
-                      const waliName = contact?.nama_ayah || contact?.nama_ibu;
+                      const waliName = contact?.nama_ayah;
                       return (
                         <tr key={r.id} className="hover:bg-rose-50/30 transition">
                           <td className="py-3 px-4 text-center font-medium text-slate-400">
@@ -854,7 +853,7 @@ _Panitia Kelulusan EBTADIN Madin Al-Amiriyyah Blokagung_`;
                 <table className="w-full text-left text-xs text-slate-700">
                   <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
                     <tr>
-                      <th className="py-3 px-4">Santri &amp; No. Induk</th>
+                      <th className="py-3 px-4">Santri &amp; NIS</th>
                       <th className="py-3 px-4">Angkatan</th>
                       <th className="py-3 px-4">Tingkat &amp; Kelas</th>
                       <th className="py-3 px-4">Status Kelulusan</th>

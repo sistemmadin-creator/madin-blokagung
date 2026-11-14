@@ -56,7 +56,7 @@ export const NotificationGatewayService = {
       `Pesantren Darussalam Blokagung\n\n` +
       `Yth. Wali Santri dari ananda:\n` +
       `👤 *Nama:* ${params.namaSantri}\n` +
-      `🆔 *No. Induk:* ${params.noInduk}\n` +
+      `🆔 *NIS:* ${params.noInduk}\n` +
       `🏫 *Kelas Madin:* ${params.kelas}\n\n` +
       `Memberitahukan bahwa pada:\n` +
       `📅 *Tanggal:* ${params.tanggal}\n` +

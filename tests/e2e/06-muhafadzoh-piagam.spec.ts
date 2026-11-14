@@ -59,7 +59,7 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
     await expect(table).toBeVisible();
 
     await expect(table.getByRole('columnheader', { name: 'NO', exact: true })).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: 'NO. INDUK' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'NIS' })).toBeVisible();
     await expect(table.getByRole('columnheader', { name: 'TGL SETOR' })).toBeVisible();
     await expect(table.getByRole('columnheader', { name: 'NAMA SANTRI' })).toBeVisible();
     await expect(table.getByRole('columnheader', { name: 'TEMPAT, TGL LAHIR' })).toBeVisible();
@@ -144,7 +144,7 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
 
     // Quick Tags
     await expect(page.getByRole('button', { name: '+ Nama', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '+ No. Induk', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '+ NIS', exact: true })).toBeVisible();
 
     // Tambah Blok Teks button
     await expect(page.getByRole('button', { name: /Tambah Blok Teks/i })).toBeVisible();

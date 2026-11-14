@@ -1,7 +1,5 @@
 export interface Santri {
   no_induk: string;
-  no_biro?: string;
-  nisn?: string;
   pa_pi: 'PA' | 'PI';
   nama: string;
   tempat_lahir?: string;
@@ -25,21 +23,13 @@ export interface Santri {
   din_kls?: string;
   din_bag?: string;
   tingkat?: string;
-  orda?: string;
-  nik?: string;
-  no_kk?: string;
   nama_ayah?: string;
-  nik_ayah?: string;
-  nama_ibu?: string;
-  nik_ibu?: string;
   telepon?: string;
   foto?: string;
 }
 
 export const SANTRI_COLUMNS: { key: keyof Santri; label: string; locked?: boolean }[] = [
-  { key: 'no_induk', label: 'No. Induk' },
-  { key: 'no_biro', label: 'No. Biro' },
-  { key: 'nisn', label: 'NISN' },
+  { key: 'no_induk', label: 'NIS' },
   { key: 'pa_pi', label: 'Gender' },
   { key: 'nama', label: 'Nama Lengkap', locked: true },
   { key: 'tempat_lahir', label: 'Tempat Lahir' },
@@ -63,13 +53,7 @@ export const SANTRI_COLUMNS: { key: keyof Santri; label: string; locked?: boolea
   { key: 'din_kls', label: 'Din.Kls' },
   { key: 'din_bag', label: 'Din.Bag' },
   { key: 'tingkat', label: 'Tingkat' },
-  { key: 'orda', label: 'ORDA' },
-  { key: 'nik', label: 'NIK Santri' },
-  { key: 'no_kk', label: 'No. KK' },
   { key: 'nama_ayah', label: 'Nama Ayah' },
-  { key: 'nik_ayah', label: 'NIK Ayah' },
-  { key: 'nama_ibu', label: 'Nama Ibu' },
-  { key: 'nik_ibu', label: 'NIK Ibu' },
   { key: 'telepon', label: 'Telepon' },
 ];
 
@@ -83,11 +67,10 @@ export const SANTRI_FILTER_CATEGORIES = [
   { name: 'Provinsi', key: 'provinsi' as keyof Santri },
   { name: 'Blok', key: 'blok' as keyof Santri },
   { name: 'Asrama', key: 'asrama' as keyof Santri },
-  { name: 'Kode', key: 'kode' as keyof Santri },
+  { key: 'kode' as keyof Santri, name: 'Kode' },
   { name: 'Unit', key: 'unit' as keyof Santri },
   { name: 'Jurusan', key: 'jurusan' as keyof Santri },
   { name: 'Semester', key: 'semester' as keyof Santri },
   { name: 'Tingkat', key: 'tingkat' as keyof Santri },
   { name: 'Din.Bag', key: 'din_bag' as keyof Santri },
-  { name: 'ORDA', key: 'orda' as keyof Santri },
 ];

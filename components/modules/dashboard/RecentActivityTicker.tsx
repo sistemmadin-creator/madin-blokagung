@@ -25,7 +25,7 @@ export default function RecentActivityTicker({ activities: externalActivities }:
       waktu: '10 mnt lalu',
       kategori: 'setoran',
       judul: 'Setoran Nadzom Imrithi Diterima',
-      detail: 'M. Ali Ridho (No. Induk 20240192) tuntas Bait 1-50 • Penjaga: Ust. Musthofa',
+      detail: 'M. Ali Ridho (NIS 20240192) tuntas Bait 1-50 • Penjaga: Ust. Musthofa',
     },
     {
       id: '2',

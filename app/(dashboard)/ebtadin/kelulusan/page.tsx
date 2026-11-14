@@ -190,7 +190,7 @@ export default function RekapKelulusanPage() {
     if (records.length === 0) return;
     const data = records.map((r, idx) => ({
       No: idx + 1,
-      'No. Induk': r.no_induk,
+      'NIS': r.no_induk,
       'Nama Santri': r.nama_santri,
       Tingkat: r.tingkat,
       Kelas: `${r.din_kls} ${r.din_bag}`,

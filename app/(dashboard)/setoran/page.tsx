@@ -654,7 +654,7 @@ export default function SetoranPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-emerald-700 mb-1">
-                    No. Induk (Ketik/Pilih)
+                    NIS (Ketik/Pilih)
                   </label>
                   <input
                     list="dl_m_induk"
@@ -911,7 +911,7 @@ export default function SetoranPage() {
                   />
                 </th>
                 <th style={{ width: 40 }} className="text-center">NO</th>
-                <th style={{ width: 90 }}>NO. INDUK</th>
+                <th style={{ width: 90 }}>NIS</th>
                 <th style={{ width: 130 }}>TGL SETOR</th>
                 <th style={{ minWidth: 160 }}>NAMA SANTRI</th>
                 <th style={{ minWidth: 150 }}>TEMPAT, TGL LAHIR</th>

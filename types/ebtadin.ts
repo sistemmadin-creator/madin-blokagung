@@ -36,7 +36,6 @@ export interface EbtadinSantri {
   ebtadin_formasi_id: string;
   source_santri_id?: number | null;
   no_induk: string;
-  nisn?: string | null;
   nama: string;
   pa_pi: string;
   tempat_lahir?: string | null;

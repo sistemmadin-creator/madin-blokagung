@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { usePagePermission } from '@/stores/useRbacStore';
-import { User, MapPin, Home, GraduationCap, Users, Phone, Edit, Trash2, ZoomIn } from 'lucide-react';
+import { User, MapPin, Home, GraduationCap, Phone, Edit, Trash2, ZoomIn } from 'lucide-react';
 import ModalFotoZoom from './ModalFotoZoom';
 
 export default function ModalDetailSantri() {
@@ -82,13 +82,8 @@ export default function ModalDetailSantri() {
                 {selectedSantri.pa_pi === 'PA' ? 'Santri Putra (PA)' : 'Santri Putri (PI)'}
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-slate-200 text-slate-700">
-                No. Induk: {selectedSantri.no_induk}
+                NIS: {selectedSantri.no_induk}
               </span>
-              {selectedSantri.nisn && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-slate-100 text-slate-600 border border-slate-200">
-                  NISN: {selectedSantri.nisn}
-                </span>
-              )}
             </div>
 
             <h2 className="text-xl font-bold text-slate-800">{selectedSantri.nama}</h2>
@@ -101,12 +96,19 @@ export default function ModalDetailSantri() {
               </span>
             </p>
 
-            {selectedSantri.telepon && (
-              <p className="text-xs text-slate-500 flex items-center justify-center sm:justify-start gap-1">
-                <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{selectedSantri.telepon}</span>
-              </p>
-            )}
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1 text-xs text-slate-500">
+              {selectedSantri.nama_ayah && (
+                <span>
+                  Nama Ayah: <span className="font-semibold text-slate-700">{selectedSantri.nama_ayah}</span>
+                </span>
+              )}
+              {selectedSantri.telepon && (
+                <span className="flex items-center gap-1">
+                  <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{selectedSantri.telepon}</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -209,36 +211,6 @@ export default function ModalDetailSantri() {
                 <p className="text-slate-400 text-[11px]">Provinsi</p>
                 <p className="font-semibold text-slate-700">{selectedSantri.provinsi || '-'}</p>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Data Keluarga & Kependudukan */}
-        <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-2 shadow-2xs">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 border-bottom pb-1">
-            <Users className="w-4 h-4 text-purple-600" />
-            Data Kependudukan & Orang Tua / Wali
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
-            <div>
-              <p className="text-slate-400 text-[11px]">NIK Santri</p>
-              <p className="font-mono font-medium text-slate-700">{selectedSantri.nik || '-'}</p>
-            </div>
-            <div>
-              <p className="text-slate-400 text-[11px]">Nomor KK</p>
-              <p className="font-mono font-medium text-slate-700">{selectedSantri.no_kk || '-'}</p>
-            </div>
-            <div>
-              <p className="text-slate-400 text-[11px]">Nama Ayah (NIK)</p>
-              <p className="font-semibold text-slate-700">
-                {selectedSantri.nama_ayah || '-'} {selectedSantri.nik_ayah ? `(${selectedSantri.nik_ayah})` : ''}
-              </p>
-            </div>
-            <div>
-              <p className="text-slate-400 text-[11px]">Nama Ibu (NIK)</p>
-              <p className="font-semibold text-slate-700">
-                {selectedSantri.nama_ibu || '-'} {selectedSantri.nik_ibu ? `(${selectedSantri.nik_ibu})` : ''}
-              </p>
             </div>
           </div>
         </div>

@@ -243,7 +243,7 @@ export const useSantriStore = create<SantriState>((set, get) => ({
           .update(data)
           .eq('no_induk', oldNoInduk);
         if (error) throw error;
-        await logActivity('EDIT DATA SANTRI', `Memperbarui santri No. Induk: ${data.no_induk} (${data.nama})`);
+        await logActivity('EDIT DATA SANTRI', `Memperbarui santri NIS: ${data.no_induk} (${data.nama})`);
 
         if (!skipHistory && prevSantri) {
           const { prevDelta, nextDelta, hasChanges } = calculateFieldDelta(prevSantri, data);
@@ -279,7 +279,7 @@ export const useSantriStore = create<SantriState>((set, get) => ({
 
                   const proceed = await useUndoRedoStore.getState().requestConflictResolution({
                     title: 'Peringatan Konflik Data Santri',
-                    entityName: `${existRow.nama || data.nama} (No. Induk: ${data.no_induk})`,
+                    entityName: `${existRow.nama || data.nama} (NIS: ${data.no_induk})`,
                     message: `Kolom [${conflictingKeys.join(', ')}] telah diubah oleh pengguna lain di server sejak aksi Anda disimpan.`,
                     currentServerState: serverValuesStr,
                     proposedUndoState: undoValuesStr,
@@ -321,7 +321,7 @@ export const useSantriStore = create<SantriState>((set, get) => ({
           .from('santri')
           .insert([data]);
         if (error) throw error;
-        await logActivity('TAMBAH SANTRI', `Menambahkan santri baru No. Induk: ${data.no_induk} (${data.nama})`);
+        await logActivity('TAMBAH SANTRI', `Menambahkan santri baru NIS: ${data.no_induk} (${data.nama})`);
 
         if (!skipHistory) {
           useUndoRedoStore.getState().recordAction({
@@ -359,14 +359,14 @@ export const useSantriStore = create<SantriState>((set, get) => ({
 
   deleteSantri: async (no_induk, skipHistory = false) => {
     const targetSantri = get().santriList.find((s) => s.no_induk === no_induk);
-    if (!confirm(`Yakin ingin menghapus santri dengan No. Induk: ${no_induk}?`)) return false;
+    if (!confirm(`Yakin ingin menghapus santri dengan NIS: ${no_induk}?`)) return false;
     try {
       const { error } = await supabase
         .from('santri')
         .delete()
         .eq('no_induk', no_induk);
       if (error) throw error;
-      await logActivity('HAPUS DATA SANTRI', `Menghapus santri No. Induk: ${no_induk}`);
+      await logActivity('HAPUS DATA SANTRI', `Menghapus santri NIS: ${no_induk}`);
 
       if (!skipHistory && targetSantri) {
         useUndoRedoStore.getState().recordAction({

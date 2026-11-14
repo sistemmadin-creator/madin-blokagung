@@ -92,7 +92,7 @@ export default function ModalFilterSantri() {
     <Dialog
       isOpen={isFilterModalOpen}
       onClose={closeFilterModal}
-      title="Filter Lanjutan Data Santri (16 Kategori)"
+      title={`Filter Lanjutan Data Santri (${SANTRI_FILTER_CATEGORIES.length} Kategori)`}
       maxWidth="2xl"
     >
       <div className="space-y-4">

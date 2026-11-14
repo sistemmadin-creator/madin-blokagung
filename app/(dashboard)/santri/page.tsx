@@ -122,7 +122,7 @@ export default function SantriPage() {
       isPersonAllowed({ blok: s.blok, pa_pi: s.pa_pi })
     );
 
-    // 1. Keyword search (nama, no_induk, nisn, kamar, blok, desa)
+    // 1. Keyword search (nama, no_induk, kamar, blok, desa)
     if (searchKeyword.trim()) {
       const q = searchKeyword.toLowerCase();
       result = result.filter(
@@ -372,7 +372,7 @@ export default function SantriPage() {
               type="text"
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
-              placeholder="Cari nama, nomor induk, kamar..."
+              placeholder="Cari nama, NIS, kamar..."
               className="w-full pl-9 pr-7 py-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-madin-600 focus:border-transparent"
             />
             {searchKeyword && (

@@ -107,7 +107,6 @@ export function parseMergeTags(
   if (santri) {
     const sInduk = String(santri.no_induk || santri[1] || '').trim();
     const sNama = String(santri.nama || santri[5] || '').trim();
-    const sNisn = String(santri.nisn || santri[3] || '').trim();
     const sTtl = `${santri.tempat_lahir || santri[6] || '-'}, ${
       santri.tgl_lahir || santri[7] || ''
     } ${santri.bln_lahir || santri[8] || ''} ${santri.thn_lahir || santri[9] || ''}`.trim();
@@ -136,7 +135,6 @@ export function parseMergeTags(
     const tagValues: Record<string, string> = {
       '<<NAMA>>': sNama,
       '<<NO_INDUK>>': sInduk,
-      '<<NISN>>': sNisn,
       '<<TTL>>': sTtl,
       '<<GENDER>>': sGender,
       '<<ALAMAT>>': sAlamat,

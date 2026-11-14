@@ -30,7 +30,6 @@ interface SantriContact {
   no_induk: string;
   telepon?: string | null;
   nama_ayah?: string | null;
-  nama_ibu?: string | null;
 }
 
 export default function RekapAngkatanPage() {
@@ -79,7 +78,7 @@ export default function RekapAngkatanPage() {
           .order('nama_santri', { ascending: true }),
         supabase
           .from('santri')
-          .select('no_induk, telepon, nama_ayah, nama_ibu')
+          .select('no_induk, telepon, nama_ayah')
           .limit(3000),
       ]);
 
@@ -160,7 +159,7 @@ export default function RekapAngkatanPage() {
         const matchesNis = r.no_induk.toLowerCase().includes(q);
         const matchesNoIjazah = (r.nomor_seri_ijazah || '').toLowerCase().includes(q);
         const contact = contacts[r.no_induk];
-        const matchesWali = (contact?.nama_ayah || contact?.nama_ibu || '').toLowerCase().includes(q);
+        const matchesWali = (contact?.nama_ayah || '').toLowerCase().includes(q);
         if (!matchesName && !matchesNis && !matchesNoIjazah && !matchesWali) return false;
       }
       return true;
@@ -193,7 +192,7 @@ export default function RekapAngkatanPage() {
 
 Kepada Yth. Wali Santri dari:
 • *Nama Santri*: ${record.nama_santri}
-• *No. Induk*: ${record.no_induk}
+• *NIS*: ${record.no_induk}
 • *Tingkat / Kelas*: ${record.tingkat} ${record.din_kls} ${record.din_bag}
 • *Angkatan*: ${tahunText}
 • *No. Seri Ijazah*: ${record.nomor_seri_ijazah || 'Tersedia di Sekretariat'}
@@ -296,7 +295,7 @@ _Pengurus EBTADIN Madin Al-Amiriyyah Blokagung_`;
       return {
         No: idx + 1,
         'Tahun Angkatan': th ? `${th.tahun_masehi} (${th.tahun_hijriyah} H)` : '-',
-        'No. Induk': r.no_induk,
+        'NIS': r.no_induk,
         'Nama Santri': r.nama_santri,
         Tingkat: r.tingkat,
         Kelas: `${r.din_kls} ${r.din_bag}`,
@@ -312,7 +311,7 @@ _Pengurus EBTADIN Madin Al-Amiriyyah Blokagung_`;
         'Penerima Ijazah': r.penerima_nama || (r.is_menerima ? r.nama_santri : '-'),
         'Diserahkan Oleh': r.diserahkan_oleh || '-',
         'No. Telepon / WA Wali': contact?.telepon || '-',
-        'Nama Wali': contact?.nama_ayah || contact?.nama_ibu || '-',
+        'Nama Wali': contact?.nama_ayah || '-',
         'Status Penahanan': r.status_penahanan || 'NONE',
         Catatan: r.catatan || '-',
       };
@@ -692,7 +691,7 @@ _Pengurus EBTADIN Madin Al-Amiriyyah Blokagung_`;
                 <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
                   <tr>
                     <th className="py-3 px-4 w-12 text-center">No</th>
-                    <th className="py-3 px-4">Santri &amp; No. Induk</th>
+                    <th className="py-3 px-4">Santri &amp; NIS</th>
                     <th className="py-3 px-4">Angkatan</th>
                     <th className="py-3 px-4">Kelas / Rombel</th>
                     <th className="py-3 px-4">No. Seri Ijazah</th>
@@ -713,7 +712,7 @@ _Pengurus EBTADIN Madin Al-Amiriyyah Blokagung_`;
                     auditList.map((r, idx) => {
                       const th = tahunMap.get(r.tahun_ebtadin_id);
                       const contact = contacts[r.no_induk];
-                      const waliName = contact?.nama_ayah || contact?.nama_ibu;
+                      const waliName = contact?.nama_ayah;
                       return (
                         <tr key={r.id} className="hover:bg-amber-50/30 transition">
                           <td className="py-3 px-4 text-center font-medium text-slate-400">
@@ -824,7 +823,7 @@ _Pengurus EBTADIN Madin Al-Amiriyyah Blokagung_`;
                 <table className="w-full text-left text-xs text-slate-700">
                   <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
                     <tr>
-                      <th className="py-3 px-4">Santri &amp; No. Induk</th>
+                      <th className="py-3 px-4">Santri &amp; NIS</th>
                       <th className="py-3 px-4">Angkatan</th>
                       <th className="py-3 px-4">Tingkat &amp; Kelas</th>
                       <th className="py-3 px-4">Nomor Seri Ijazah</th>
@@ -1058,7 +1057,7 @@ _Pengurus EBTADIN Madin Al-Amiriyyah Blokagung_`;
                       onChange={() => {
                         setSerahModalTipe('wali');
                         const contact = contacts[serahModalRecord.no_induk];
-                        setSerahModalPenerima(contact?.nama_ayah || contact?.nama_ibu || 'Orang Tua / Wali');
+                        setSerahModalPenerima(contact?.nama_ayah || 'Orang Tua / Wali');
                       }}
                       className="text-emerald-600"
                     />

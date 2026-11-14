@@ -47,7 +47,7 @@ export default function EbtadinSantriPage() {
     if (filteredSantri.length === 0) return;
     const data = filteredSantri.map((s, idx) => ({
       No: idx + 1,
-      'No. Induk': s.no_induk,
+      'NIS': s.no_induk,
       'Nama Santri': s.nama,
       Tingkat: s.tingkat,
       Kelas: `${s.din_kls} ${s.din_bag}`,
@@ -140,7 +140,7 @@ export default function EbtadinSantriPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nama santri, no. induk, no. seri ijazah..."
+              placeholder="Cari nama santri, NIS, no. seri ijazah..."
               className="w-full text-xs pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#0f766e]"
             />
           </div>
@@ -175,7 +175,7 @@ export default function EbtadinSantriPage() {
             <thead>
               <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-bold">
                 <th className="py-3 px-3.5 w-12 text-center">No</th>
-                <th className="py-3 px-3.5">No. Induk</th>
+                <th className="py-3 px-3.5">NIS</th>
                 <th className="py-3 px-3.5">Nama Santri</th>
                 <th className="py-3 px-3.5">Tingkat &amp; Rombel</th>
                 <th className="py-3 px-3.5">Gender</th>

@@ -61,9 +61,7 @@ export default function ModalImportExcelSantri() {
 
   const handleDownloadTemplate = () => {
     const headers = [
-      'No. Induk',
-      'No. Biro',
-      'NISN',
+      'NIS (Nomor Induk Santri)',
       'Gender',
       'Nama Lengkap',
       'Tempat Lahir',
@@ -87,20 +85,12 @@ export default function ModalImportExcelSantri() {
       'Semester',
       'Kelas',
       'Bag',
-      'ORDA',
-      'NIK Santri',
-      'No. KK',
       'Nama Ayah',
-      'NIK Ayah',
-      'Nama Ibu',
-      'NIK Ibu',
       'Telepon',
     ];
 
     const contohBaris1 = [
       '12345',
-      'B-001',
-      '0081234567',
       'PA',
       'AHMAD MUZAKKI',
       'BANYUWANGI',
@@ -124,20 +114,12 @@ export default function ModalImportExcelSantri() {
       'Ganjil',
       'VII',
       'A',
-      'IKSASS',
-      '3510011504090001',
-      '3510010101050002',
       'H. ABDULLAH',
-      '3510011005700001',
-      'HJ. MARYAM',
-      '3510012008750002',
       '081234567890',
     ];
 
     const contohBaris2 = [
       '12346',
-      'B-002',
-      '0098765432',
       'PI',
       'FATIMATUZ ZAHRO',
       'JEMBER',
@@ -161,13 +143,7 @@ export default function ModalImportExcelSantri() {
       'Ganjil',
       'VIII',
       'B',
-      'IKAPMII',
-      '3509012009100003',
-      '3509010101060004',
       'AHMAD MUNIR',
-      '3509011204680001',
-      'SITI AMINAH',
-      '3509011507720003',
       '082345678901',
     ];
 
@@ -240,9 +216,10 @@ export default function ModalImportExcelSantri() {
       jsonRows.forEach((row) => {
         const noInduk = getExcelColumnValue(row, [
           'no_induk',
+          'NIS (Nomor Induk Santri)',
+          'NIS',
           'No. Induk',
           'No Induk',
-          'NIS',
           'Nomor Induk',
           'Induk',
         ]).trim();
@@ -256,7 +233,7 @@ export default function ModalImportExcelSantri() {
           'Nama',
         ]).toUpperCase();
 
-        // No. Induk dan Nama adalah identitas wajib minimal
+        // NIS dan Nama adalah identitas wajib minimal
         if (!noInduk || !nama) return;
 
         let papi = getExcelColumnValue(row, ['pa_pi', 'Gender', 'PA/PI', 'JK', 'L/P', 'Jenis Kelamin']).toUpperCase();
@@ -274,8 +251,6 @@ export default function ModalImportExcelSantri() {
           no_induk: noInduk,
           nama,
           pa_pi: papi,
-          no_biro: getExcelColumnValue(row, ['no_biro', 'No. Biro', 'No Biro', 'Biro']),
-          nisn: getExcelColumnValue(row, ['nisn', 'NISN']),
           tempat_lahir: getExcelColumnValue(row, ['tempat_lahir', 'Tempat Lahir', 'Tmp Lahir']),
           tgl_lahir: tglFormatted,
           bln_lahir: blnFormatted,
@@ -297,19 +272,13 @@ export default function ModalImportExcelSantri() {
           semester: getExcelColumnValue(row, ['semester', 'Semester', 'Sem']),
           kelas: getExcelColumnValue(row, ['kelas', 'Kelas Formal', 'Kelas']),
           bag: getExcelColumnValue(row, ['bag', 'Bag Formal', 'Bagian', 'Bag']).toUpperCase(),
-          orda: getExcelColumnValue(row, ['orda', 'ORDA', 'Organisasi Daerah']),
-          nik: getExcelColumnValue(row, ['nik', 'NIK Santri', 'NIK']),
-          no_kk: getExcelColumnValue(row, ['no_kk', 'No. KK', 'No KK', 'KK']),
           nama_ayah: getExcelColumnValue(row, ['nama_ayah', 'Nama Ayah', 'Ayah']),
-          nik_ayah: getExcelColumnValue(row, ['nik_ayah', 'NIK Ayah']),
-          nama_ibu: getExcelColumnValue(row, ['nama_ibu', 'Nama Ibu', 'Ibu']),
-          nik_ibu: getExcelColumnValue(row, ['nik_ibu', 'NIK Ibu']),
           telepon: getExcelColumnValue(row, ['telepon', 'Telepon', 'No HP', 'No. Telepon', 'HP']),
         });
       });
 
       if (recordsToInsert.length === 0) {
-        throw new Error('Tidak ditemukan baris data valid. Pastikan kolom "No. Induk" dan "Nama Lengkap" terisi.');
+        throw new Error('Tidak ditemukan baris data valid. Pastikan kolom "NIS (Nomor Induk Santri)" dan "Nama Lengkap" terisi.');
       }
 
       // Batch upsert per 100 records (Opsi A: Upsert jika no_induk sudah ada)
@@ -384,7 +353,7 @@ export default function ModalImportExcelSantri() {
           </div>
 
           <p className="text-xs text-slate-600 leading-relaxed">
-            Kolom Identitas Wajib: <strong className="text-rose-600">No. Induk</strong> (atau <code>no_induk</code>),{' '}
+            Kolom Identitas Wajib: <strong className="text-rose-600">NIS (Nomor Induk Santri)</strong> (atau <code>no_induk</code>),{' '}
             <strong className="text-rose-600">Nama Lengkap</strong> (atau <code>nama</code>), dan{' '}
             <strong className="text-rose-600">Gender</strong> (<code>PA</code> / <code>PI</code>).
           </p>
@@ -401,7 +370,7 @@ export default function ModalImportExcelSantri() {
               • <strong>Sekolah Formal:</strong> Unit (SMP Plus, MTs, SMA, dll), Jurusan, Semester, Kelas, Bag.
             </p>
             <p className="text-slate-500 text-[10px]">
-              *Jika No. Induk santri sudah ada di database, sistem otomatis memperbarui (*upsert*) dengan data terbaru dari Excel.
+              *Jika NIS santri sudah ada di database, sistem otomatis memperbarui (*upsert*) dengan data terbaru dari Excel.
             </p>
           </div>
         </div>

@@ -168,12 +168,13 @@ test.describe('Modul Santri: Pengujian Komprehensif Fase 1 - 5', () => {
       await expect(desaInput).toBeVisible();
       await expect(dusunInput).toBeVisible();
 
-      // Verifikasi Bagian 6: Data Administrasi Keluarga
-      await expect(modal.getByText(/6\. Data Administrasi Keluarga/i)).toBeVisible();
+      // Verifikasi Bagian 1 menyertakan Nama Ayah & Telepon dan Bagian 6 sudah dihapus
       await expect(modal.locator('input[name="nama_ayah"]')).toBeVisible();
-      await expect(modal.locator('input[name="nama_ibu"]')).toBeVisible();
-      await expect(modal.locator('input[name="nik"]')).toBeVisible();
-      await expect(modal.locator('input[name="no_kk"]')).toBeVisible();
+      await expect(modal.locator('input[name="telepon"]')).toBeVisible();
+      await expect(modal.locator('input[name="nama_ibu"]')).toHaveCount(0);
+      await expect(modal.locator('input[name="nik"]')).toHaveCount(0);
+      await expect(modal.locator('input[name="no_kk"]')).toHaveCount(0);
+      await expect(modal.getByText(/6\. Data Administrasi Keluarga/i)).toHaveCount(0);
 
       // Tutup modal
       await modal.getByRole('button', { name: /Batal/i }).click();

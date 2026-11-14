@@ -41,7 +41,7 @@ test.describe('Modul 01: Master Data Santri', () => {
   });
 
   test('search input filters data dynamically', async ({ page }) => {
-    const searchInput = page.getByPlaceholder(/Cari nama, nomor induk/i);
+    const searchInput = page.getByPlaceholder(/Cari nama, NIS/i);
     await expect(searchInput).toBeVisible();
 
     // Type query

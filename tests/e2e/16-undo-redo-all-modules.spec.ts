@@ -279,7 +279,7 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Absensi, Santri, A
       if (win.useUndoRedoStore) {
         win.useUndoRedoStore.getState().requestConflictResolution({
           title: 'Peringatan Konflik Data Santri',
-          entityName: 'SANTRI E2E TEST (No. Induk: 999123)',
+          entityName: 'SANTRI E2E TEST (NIS: 999123)',
           message: 'Kolom [status, alamat] telah diubah oleh pengguna lain di server sejak aksi Anda disimpan.',
           currentServerState: 'status: "Boyong", alamat: "Surabaya"',
           proposedUndoState: 'status: "Aktif", alamat: "Banyuwangi"',
@@ -291,7 +291,7 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Absensi, Santri, A
     const modal = page.getByRole('dialog');
     await expect(modal).toBeVisible();
     await expect(modal).toContainText('Peringatan Konflik Data Santri');
-    await expect(modal).toContainText('SANTRI E2E TEST (No. Induk: 999123)');
+    await expect(modal).toContainText('SANTRI E2E TEST (NIS: 999123)');
     await expect(modal).toContainText('Kondisi di Server Terkini:');
     await expect(modal).toContainText('Akan Dikembalikan ke (Undo):');
 

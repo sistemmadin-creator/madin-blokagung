@@ -22,7 +22,7 @@ export default function ModalHideColumns() {
     <Dialog
       isOpen={isHideModalOpen}
       onClose={closeHideModal}
-      title="Kelola Tampilan Kolom Tabel Santri (34 Kolom)"
+      title={`Kelola Tampilan Kolom Tabel Santri (${SANTRI_COLUMNS.length} Kolom)`}
       maxWidth="2xl"
     >
       <div className="space-y-4">

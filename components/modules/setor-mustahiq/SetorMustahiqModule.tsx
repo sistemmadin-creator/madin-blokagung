@@ -877,7 +877,7 @@ export default function SetorMustahiqModule() {
   const handleExportCSV = () => {
     const headers = [
       'No',
-      'No. Induk',
+      'NIS',
       'Nama Santri',
       'Kelas',
       'Kamar',

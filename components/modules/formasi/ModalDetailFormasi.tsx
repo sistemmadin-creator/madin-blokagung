@@ -273,7 +273,7 @@ export default function ModalDetailFormasi() {
               <thead className="bg-slate-50 text-slate-600 font-bold sticky top-0 border-b border-slate-200">
                 <tr>
                   <th className="py-2 px-3 text-center w-10">No</th>
-                  <th className="py-2 px-3 w-28">No. Induk</th>
+                  <th className="py-2 px-3 w-28">NIS</th>
                   <th className="py-2 px-3 min-w-[180px]">Nama Lengkap Santri</th>
                   <th className="py-2 px-3 min-w-[140px]">Domisili Kamar</th>
                   <th className="py-2 px-3 min-w-[140px]">Sekolah Formal</th>

@@ -51,8 +51,7 @@ export interface MergeFieldItem {
 
 export const MERGE_FIELDS_LIST: MergeFieldItem[] = [
   { tag: '<<NAMA>>', desc: 'Nama Santri Lengkap', short: 'Nama' },
-  { tag: '<<NO_INDUK>>', desc: 'Nomor Induk', short: 'No. Induk' },
-  { tag: '<<NISN>>', desc: 'NISN Santri', short: 'NISN' },
+  { tag: '<<NO_INDUK>>', desc: 'NIS (Nomor Induk Santri)', short: 'NIS' },
   { tag: '<<TTL>>', desc: 'Tempat, Tgl Lahir', short: 'TTL' },
   { tag: '<<GENDER>>', desc: 'Gender (Putra/Putri)', short: 'Gender' },
   { tag: '<<ALAMAT>>', desc: 'Alamat (Desa, Kec, Kab)', short: 'Alamat' },

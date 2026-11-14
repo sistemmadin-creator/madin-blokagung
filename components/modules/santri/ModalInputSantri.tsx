@@ -69,8 +69,6 @@ export default function ModalInputSantri() {
     } else {
       setFormData({
         no_induk: '',
-        no_biro: '',
-        nisn: '',
         pa_pi: 'PA',
         nama: '',
         tempat_lahir: '',
@@ -94,13 +92,7 @@ export default function ModalInputSantri() {
         tingkat: 'Ula',
         din_kls: '1',
         din_bag: 'A',
-        orda: '',
-        nik: '',
-        no_kk: '',
         nama_ayah: '',
-        nik_ayah: '',
-        nama_ibu: '',
-        nik_ibu: '',
         telepon: '',
         foto: '',
       });
@@ -240,8 +232,6 @@ export default function ModalInputSantri() {
       finalVal = value.toUpperCase();
     } else if (name === 'no_induk') {
       finalVal = value.replace(/\D/g, '').slice(0, 6);
-    } else if (name === 'nisn') {
-      finalVal = value.replace(/\D/g, '').slice(0, 10);
     }
     setFormData((prev) => ({
       ...prev,
@@ -296,8 +286,6 @@ export default function ModalInputSantri() {
             no_induk: String(row.no_induk),
             nama: String(row.nama).toUpperCase(),
             pa_pi: row.pa_pi === 'PI' ? 'PI' : 'PA',
-            no_biro: row.no_biro ? String(row.no_biro) : undefined,
-            nisn: row.nisn ? String(row.nisn) : undefined,
             tempat_lahir: row.tempat_lahir,
             tgl_lahir: row.tgl_lahir ? String(row.tgl_lahir) : undefined,
             bln_lahir: row.bln_lahir ? String(row.bln_lahir) : undefined,
@@ -319,12 +307,7 @@ export default function ModalInputSantri() {
             kabupaten: row.kabupaten,
             provinsi: row.provinsi,
             telepon: row.telepon ? String(row.telepon) : undefined,
-            nik: row.nik ? String(row.nik) : undefined,
-            no_kk: row.no_kk ? String(row.no_kk) : undefined,
             nama_ayah: row.nama_ayah ? String(row.nama_ayah) : undefined,
-            nik_ayah: row.nik_ayah ? String(row.nik_ayah) : undefined,
-            nama_ibu: row.nama_ibu ? String(row.nama_ibu) : undefined,
-            nik_ibu: row.nik_ibu ? String(row.nik_ibu) : undefined,
           };
           await saveSantri(santriObj, false);
           successCount++;
@@ -344,7 +327,7 @@ export default function ModalInputSantri() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.no_induk || !formData.nama || !formData.pa_pi) {
-      alert('Mohon lengkapi No. Induk, Nama Lengkap, dan Gender (PA/PI)');
+      alert('Mohon lengkapi NIS (Nomor Induk Santri), Nama Lengkap, dan Gender (PA/PI)');
       return;
     }
 
@@ -471,7 +454,7 @@ export default function ModalInputSantri() {
               <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    No. Induk <span className="text-rose-500">*</span>
+                    NIS (Nomor Induk Santri) <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -485,25 +468,25 @@ export default function ModalInputSantri() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">No. Biro</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Ayah (BIN)</label>
                   <input
                     type="text"
-                    name="no_biro"
-                    value={formData.no_biro || ''}
+                    name="nama_ayah"
+                    value={formData.nama_ayah || ''}
                     onChange={handleChange}
-                    placeholder="Opsional"
-                    className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-madin-600"
+                    placeholder="Nama Lengkap Ayah"
+                    className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-madin-600 uppercase"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">NISN</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">No. Telepon / WA Aktif</label>
                   <input
                     type="text"
-                    name="nisn"
-                    value={formData.nisn || ''}
+                    name="telepon"
+                    value={formData.telepon || ''}
                     onChange={handleChange}
-                    placeholder="10 Digit NISN"
+                    placeholder="08..."
                     className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-madin-600 font-mono"
                   />
                 </div>
@@ -738,17 +721,6 @@ export default function ModalInputSantri() {
                   </datalist>
                 </div>
               </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">ORDA (Organisasi Daerah)</label>
-                <input
-                  type="text"
-                  name="orda"
-                  value={formData.orda || ''}
-                  onChange={handleChange}
-                  placeholder="Contoh: IKSASS, HIMAS, dll"
-                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white uppercase"
-                />
-              </div>
             </div>
           </div>
 
@@ -939,96 +911,6 @@ export default function ModalInputSantri() {
                     className="w-full text-xs py-1.5 px-2 rounded-lg border border-slate-200 bg-white"
                   />
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bagian 4: Data Administrasi Keluarga & Kontak */}
-          <div className="p-3 border border-slate-200 rounded-xl bg-slate-50 space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-purple-700 flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-purple-600" />
-              6. Data Administrasi Keluarga & Kependudukan
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">NIK Santri</label>
-                <input
-                  type="text"
-                  name="nik"
-                  value={formData.nik || ''}
-                  onChange={handleChange}
-                  placeholder="16 Digit NIK"
-                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Nomor Kartu Keluarga (KK)</label>
-                <input
-                  type="text"
-                  name="no_kk"
-                  value={formData.no_kk || ''}
-                  onChange={handleChange}
-                  placeholder="16 Digit No. KK"
-                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">No. Telepon / WA Aktif</label>
-                <input
-                  type="text"
-                  name="telepon"
-                  value={formData.telepon || ''}
-                  onChange={handleChange}
-                  placeholder="08..."
-                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-200/60">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Nama Ayah (BIN)</label>
-                <input
-                  type="text"
-                  name="nama_ayah"
-                  value={formData.nama_ayah || ''}
-                  onChange={handleChange}
-                  placeholder="Nama Lengkap Ayah"
-                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white uppercase"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">NIK Ayah</label>
-                <input
-                  type="text"
-                  name="nik_ayah"
-                  value={formData.nik_ayah || ''}
-                  onChange={handleChange}
-                  placeholder="NIK Ayah"
-                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Nama Ibu (BINTI)</label>
-                <input
-                  type="text"
-                  name="nama_ibu"
-                  value={formData.nama_ibu || ''}
-                  onChange={handleChange}
-                  placeholder="Nama Lengkap Ibu"
-                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white uppercase"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">NIK Ibu</label>
-                <input
-                  type="text"
-                  name="nik_ibu"
-                  value={formData.nik_ibu || ''}
-                  onChange={handleChange}
-                  placeholder="NIK Ibu"
-                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white font-mono"
-                />
               </div>
             </div>
           </div>

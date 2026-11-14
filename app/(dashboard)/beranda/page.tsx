@@ -1406,7 +1406,7 @@ export default function BerandaPage() {
                 <div>
                   <h3 className="text-sm font-bold">Rincian Data Santri</h3>
                   <p className="text-[11px] text-emerald-200">
-                    No. Induk: {selectedSantriModal.no_induk}
+                    NIS: {selectedSantriModal.no_induk}
                   </p>
                 </div>
               </div>
@@ -1556,16 +1556,12 @@ export default function BerandaPage() {
                   )}
 
                   {/* DATA ORANG TUA & KONTAK */}
-                  <div className="grid grid-cols-2 gap-2.5 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
                     <div className="p-2.5 rounded-lg border border-slate-200 space-y-0.5">
                       <span className="text-[10px] text-slate-400 block font-semibold">Nama Ayah / Wali</span>
                       <p className="font-bold text-slate-700">{selectedSantriModal.nama_ayah || '-'}</p>
                     </div>
                     <div className="p-2.5 rounded-lg border border-slate-200 space-y-0.5">
-                      <span className="text-[10px] text-slate-400 block font-semibold">Nama Ibu</span>
-                      <p className="font-bold text-slate-700">{selectedSantriModal.nama_ibu || '-'}</p>
-                    </div>
-                    <div className="p-2.5 rounded-lg border border-slate-200 space-y-0.5 col-span-2">
                       <span className="text-[10px] text-slate-400 block font-semibold">Kontak Wali / Telepon</span>
                       <div className="flex items-center justify-between">
                         <p className="font-bold text-slate-700 font-mono">{selectedSantriModal.telepon || '-'}</p>

@@ -43,7 +43,7 @@ export default function ModalFotoZoom({
           <div className="truncate pr-2">
             <h3 className="text-sm font-bold text-white truncate">{nama}</h3>
             {noInduk && (
-              <p className="text-[11px] font-mono text-slate-400">No. Induk: {noInduk}</p>
+              <p className="text-[11px] font-mono text-slate-400">NIS: {noInduk}</p>
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">

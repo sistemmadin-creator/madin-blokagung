@@ -415,7 +415,7 @@ export default function ModalSelectSantriPiagam({
                     title="Pilih Semua di Tampilan"
                   />
                 </th>
-                <th className="p-2.5 font-bold w-24">No. Induk</th>
+                <th className="p-2.5 font-bold w-24">NIS</th>
                 <th className="p-2.5 font-bold w-28">Kamar</th>
                 <th className="p-2.5 font-bold">Nama Santri</th>
                 <th className="p-2.5 font-bold w-28">Kelas Diniyyah</th>
