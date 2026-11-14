@@ -353,15 +353,6 @@ export default function Navbar() {
                   </span>
                 </div>
 
-                <Link
-                  href="/"
-                  onClick={() => setDropdownOpen(false)}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 rounded-lg flex items-center gap-2.5 transition"
-                >
-                  <BookOpen className="w-4 h-4 text-emerald-700" />
-                  <span>Lihat Profil Madrasah (Web)</span>
-                </Link>
-
                 {allowSettings && (
                   <div className="my-1.5 pt-1.5 border-t border-slate-100">
                     <div className="px-3 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">

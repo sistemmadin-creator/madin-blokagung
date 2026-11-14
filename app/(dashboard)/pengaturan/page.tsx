@@ -17,6 +17,7 @@ import {
 import SidebarConfigEditor from '@/components/modules/settings/SidebarConfigEditor';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
+import ModalUserAktif from '@/components/modules/settings/ModalUserAktif';
 import ModalHierarkiBlokKBM from '@/components/modules/formasi/ModalHierarkiBlokKBM';
 import CardAturanAkademik from '@/components/modules/settings/CardAturanAkademik';
 import CardPengaturanTahunAjaran from '@/components/modules/settings/CardPengaturanTahunAjaran';
@@ -25,7 +26,8 @@ import CardAturanPiagam from '@/components/modules/settings/CardAturanPiagam';
 import CardPengaturanNotifikasi from '@/components/modules/settings/CardPengaturanNotifikasi';
 import AccountAuthorityManager from '@/components/modules/settings/AccountAuthorityManager';
 import { usePagePermission, useRbacStore } from '@/stores/useRbacStore';
-import { BellRing, CalendarRange } from 'lucide-react';
+import { usePresenceStore } from '@/stores/usePresenceStore';
+import { BellRing, CalendarRange, Users } from 'lucide-react';
 
 type TabKey = 'overview' | 'tahun-ajaran' | 'akun' | 'sidebar' | 'hierarki' | 'audit' | 'akademik' | 'muhafadzoh' | 'piagam' | 'notifikasi';
 
@@ -41,6 +43,9 @@ function PengaturanContent() {
   const [showHierarchyModal, setShowHierarchyModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [showHierarkiKbmModal, setShowHierarkiKbmModal] = useState(false);
+  const [showActiveUsersModal, setShowActiveUsersModal] = useState(false);
+  const activeSessions = usePresenceStore((s) => s.activeSessions);
+  const activeUserCount = new Set(activeSessions.map((s) => s.username)).size;
 
   useEffect(() => {
     void fetchAppSecurityStatus();
@@ -133,6 +138,27 @@ function PengaturanContent() {
             <ShieldCheck className="w-4 h-4 text-slate-600" />
             <span>Audit Log Modal</span>
           </button>
+
+          {isMasterAdmin && (
+            <button
+              type="button"
+              data-testid="btn-open-active-users-modal"
+              onClick={() => setShowActiveUsersModal(true)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold transition active:scale-95"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <Users className="w-4 h-4 text-emerald-700" />
+              <span>User Aktif</span>
+              {activeUserCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-emerald-700 text-white text-[10px] font-bold leading-none">
+                  {activeUserCount}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -553,6 +579,13 @@ function PengaturanContent() {
         isOpen={showAuditModal}
         onClose={() => setShowAuditModal(false)}
       />
+
+      {isMasterAdmin && (
+        <ModalUserAktif
+          isOpen={showActiveUsersModal}
+          onClose={() => setShowActiveUsersModal(false)}
+        />
+      )}
     </div>
   );
 }

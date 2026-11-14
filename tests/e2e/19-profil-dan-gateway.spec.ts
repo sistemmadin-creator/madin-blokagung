@@ -110,16 +110,24 @@ test.describe('19 - SPA Profil Madrasah (Clean Public Profile)', () => {
 
     // 3. Masuk ke halaman Sistem KBM secara langsung
     await page.goto('/jadwal-kbm');
+    if (page.url().includes('/login')) {
+      await page.getByLabel('Username Pengurus').fill('admin');
+      await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+      await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
+      await page.waitForURL('**/jadwal-kbm**', { timeout: 60000 });
+    }
     await expect(page).toHaveURL(/\/jadwal-kbm/);
 
-    // 4. Verifikasi Tautan Balik di Sidebar Desktop
-    const sidebarBackLink = page.getByRole('complementary').getByRole('link', { name: /Profil Madrasah/i });
-    await expect(sidebarBackLink).toBeVisible();
+    // 4. Verifikasi Profil Madrasah telah dihapus dari Sidebar dan diganti Pengaturan
+    const sidebar = page.getByRole('complementary');
+    await expect(sidebar.getByRole('link', { name: /Profil Madrasah/i })).toHaveCount(0);
+    const sidebarSettingsLink = sidebar.locator('a[href="/pengaturan"]').last();
+    await expect(sidebarSettingsLink).toBeVisible();
+    await expect(sidebarSettingsLink).toContainText(/Pengaturan/i);
 
-    // 5. Klik Tautan Balik untuk Kembali ke Profil Madrasah
-    await sidebarBackLink.click();
-    await page.waitForURL('/');
-    await expect(page).toHaveURL('/');
-    await expect(page.getByRole('heading', { name: /Madrasah Diniyyah Al-Amiriyyah/i })).toBeVisible();
+    // 5. Klik Tautan Pengaturan di Footer Sidebar
+    await sidebarSettingsLink.click();
+    await page.waitForURL(/\/pengaturan/);
+    await expect(page).toHaveURL(/\/pengaturan/);
   });
 });

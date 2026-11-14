@@ -10,6 +10,12 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
 
   test('1. Sidebar Desktop meletakkan grup Pengaturan di bawah PKM. Publikasi & Warta dengan 5 sub-menu lengkap', async ({ page }) => {
     await page.goto('/santri');
+    if (page.url().includes('/login')) {
+      await page.getByLabel('Username Pengurus').fill('admin');
+      await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+      await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
+      await page.waitForURL('**/santri**', { timeout: 60000 });
+    }
     const sidebar = page.getByRole('complementary');
     await expect(sidebar).toBeVisible();
 
@@ -20,15 +26,16 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
     const fullTextUpper = (await sidebar.innerText()).toUpperCase();
     const publikasiIdx = fullTextUpper.indexOf('PUBLIKASI & WARTA');
     const pengaturanIdx = fullTextUpper.indexOf('PENGATURAN');
-    const profilIdx = fullTextUpper.indexOf('PROFIL MADRASAH');
+    const footerPengaturanIdx = fullTextUpper.lastIndexOf('PENGATURAN');
 
     // 1. Pengaturan harus berada di bawah PKM. Publikasi & Warta
     expect(pengaturanIdx).toBeGreaterThan(-1);
     expect(publikasiIdx).toBeGreaterThan(-1);
     expect(pengaturanIdx).toBeGreaterThan(publikasiIdx);
 
-    // 2. Profil Madrasah (footer web publik) harus berada di bawah Pengaturan
-    expect(profilIdx).toBeGreaterThan(pengaturanIdx);
+    // 2. Profil Madrasah dihapus dan diganti tombol footer Pengaturan
+    expect(fullTextUpper.indexOf('PROFIL MADRASAH')).toBe(-1);
+    expect(footerPengaturanIdx).toBeGreaterThan(pengaturanIdx);
 
     // Verifikasi 5 sub-menu di dalam grup Pengaturan
     const expectedSubmenus = [
@@ -185,5 +192,28 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
       const resetTextUpper = (await sidebar.innerText()).toUpperCase();
       expect(resetTextUpper.indexOf('BERANDA')).toBeLessThan(resetTextUpper.indexOf('UTAMA'));
     }).toPass({ timeout: 5000 });
+  });
+
+  test('6. Master Admin dapat membuka Modal User Aktif dari header Pengaturan', async ({ page }) => {
+    await page.goto('/pengaturan');
+    if (page.url().includes('/login')) {
+      await page.getByLabel('Username Pengurus').fill('admin');
+      await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+      await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
+      await page.waitForURL('**/pengaturan**', { timeout: 60000 });
+    }
+
+    const activeUsersBtn = page.getByTestId('btn-open-active-users-modal');
+    await expect(activeUsersBtn).toBeVisible();
+    await activeUsersBtn.click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Monitoring User Aktif & Perangkat')).toBeVisible();
+    await expect(dialog.getByText('User Online')).toBeVisible();
+    await expect(dialog.getByText('Total Perangkat')).toBeVisible();
+
+    await dialog.getByRole('button', { name: /Tutup/i }).first().click();
+    await expect(dialog).toBeHidden();
   });
 });

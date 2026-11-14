@@ -10,6 +10,7 @@ import FloatingUndoToast from '@/components/common/FloatingUndoToast';
 import UndoConflictModal from '@/components/common/UndoConflictModal';
 import RealtimeSyncListener from '@/components/common/RealtimeSyncListener';
 import OfflineStatusIndicator from '@/components/common/OfflineStatusIndicator';
+import ActivePresenceTracker from '@/components/common/ActivePresenceTracker';
 import { useAppStore } from '@/stores/useAppStore';
 import { useRbacStore } from '@/stores/useRbacStore';
 import {
@@ -168,6 +169,7 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800">
       <UndoRedoGlobalHandler />
+      <ActivePresenceTracker />
       <Navbar />
       <SidebarDesktop />
       <main

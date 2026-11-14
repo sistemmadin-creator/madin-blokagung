@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Users,
   UserCheck,
@@ -19,7 +19,6 @@ import {
   ChevronDown,
   ChevronLeft,
   BookOpen,
-  ArrowUpRight,
   Newspaper,
   LayoutDashboard,
   Settings,
@@ -81,7 +80,31 @@ const SUB_ICON_REGISTRY: Record<string, React.ReactNode> = {
 
 export default function SidebarDesktop() {
   const pathname = usePathname();
+  const router = useRouter();
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isSidebarCollapsed, toggleSidebarCollapse } = useAppStore();
+
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+    };
+  }, []);
+
+  const handleFloatingButtonClick = () => {
+    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+    clickTimerRef.current = setTimeout(() => {
+      clickTimerRef.current = null;
+      router.back();
+    }, 220);
+  };
+
+  const handleFloatingButtonDoubleClick = () => {
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+    toggleSidebarCollapse();
+  };
   const { groups } = useSidebarConfigStore();
   const currentAccount = useRbacStore((s) => s.currentAccount);
   const isAppSecurityEnabled = useRbacStore((s) => s.isAppSecurityEnabled);
@@ -148,15 +171,17 @@ export default function SidebarDesktop() {
       <div className="h-[70px] relative flex items-center px-5 flex-shrink-0 border-b border-white/10">
         {!isSidebarCollapsed && (
           <div className="font-bold text-white text-base tracking-tight truncate">
-            Madrasah Diniyyah
+            Pusat Sistem
           </div>
         )}
 
         {/* Tombol Bulat Melayang di Perbatasan Kanan Header Sidebar */}
         <button
           type="button"
-          onClick={toggleSidebarCollapse}
-          title={isSidebarCollapsed ? 'Perlebar Sidebar' : 'Lipat Sidebar'}
+          onClick={handleFloatingButtonClick}
+          onDoubleClick={handleFloatingButtonDoubleClick}
+          title="Klik 1x: Kembali | Klik 2x: Lipat/Perlebar Sidebar"
+          aria-label="Klik 1x untuk kembali ke halaman sebelumnya, klik 2x untuk buka atau tutup sidebar"
           className="absolute -right-4 top-[19px] w-8 h-8 rounded-full bg-white text-slate-800 shadow-md flex items-center justify-center cursor-pointer border border-slate-200 z-50 hover:scale-110 active:scale-95 transition-all"
         >
           <ChevronLeft
@@ -300,29 +325,37 @@ export default function SidebarDesktop() {
           })}
       </nav>
 
-      {/* Tautan Balik ke Halaman Profil Madrasah */}
+      {/* Tautan Langsung ke Halaman Pengaturan */}
       <div className="p-3 border-t border-white/10 flex-shrink-0">
         {!isSidebarCollapsed ? (
           <Link
-            href="/"
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-amber-300 hover:text-amber-200 transition-all text-xs font-semibold border border-amber-400/25 shadow-sm group"
-            title="Kembali ke Halaman Profil Madrasah"
+            href="/pengaturan"
+            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs font-semibold border shadow-sm group ${
+              pathname.startsWith('/pengaturan')
+                ? 'bg-white text-emerald-950 border-white'
+                : 'bg-white/10 hover:bg-white/20 text-white border-white/15'
+            }`}
+            title="Buka Halaman Pengaturan"
           >
-            <BookOpen className="w-4 h-4 text-amber-300 group-hover:scale-110 transition-transform flex-shrink-0" />
-            <div className="flex flex-col truncate">
-              <span className="truncate leading-tight">Profil Madrasah</span>
-              <span className="text-[10px] text-white/60 font-normal leading-tight">Web Resmi Publik</span>
-            </div>
-            <ArrowUpRight className="w-3.5 h-3.5 text-white/60 ml-auto group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform flex-shrink-0" />
+            <Settings
+              className={`w-4 h-4 flex-shrink-0 group-hover:rotate-45 transition-transform ${
+                pathname.startsWith('/pengaturan') ? 'text-emerald-700' : 'text-amber-300'
+              }`}
+            />
+            <span className="truncate leading-tight">Pengaturan</span>
           </Link>
         ) : (
           <div className="flex justify-center">
             <Link
-              href="/"
-              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-amber-300 flex items-center justify-center transition-all border border-amber-400/25 group"
-              title="Kembali ke Halaman Profil Madrasah"
+              href="/pengaturan"
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border group ${
+                pathname.startsWith('/pengaturan')
+                  ? 'bg-white text-emerald-950 border-white'
+                  : 'bg-white/10 hover:bg-white/20 text-amber-300 border-white/15'
+              }`}
+              title="Pengaturan"
             >
-              <BookOpen className="w-5 h-5 text-amber-300 group-hover:scale-110 transition-transform" />
+              <Settings className="w-5 h-5 group-hover:rotate-45 transition-transform" />
             </Link>
           </div>
         )}
