@@ -18,7 +18,7 @@ interface AsatidzState {
   editAsatidzData: Asatidz | null;
 
   // Multi-row selection & Column visibility
-  selectedNiaList: string[];
+  selectedKodeGuruList: string[];
   hiddenColumns: string[];
 
   // Modals state
@@ -28,7 +28,7 @@ interface AsatidzState {
   isImportModalOpen: boolean;
   isHideModalOpen: boolean;
   isFotoZoomOpen: boolean;
-  zoomFotoData: { url: string; nama: string; nia?: string } | null;
+  zoomFotoData: { url: string; nama: string; kodeGuru?: string } | null;
 
   // Pagination & Sorting
   page: number;
@@ -66,20 +66,20 @@ interface AsatidzState {
   closeImportModal: () => void;
   openHideModal: () => void;
   closeHideModal: () => void;
-  openFotoZoom: (url: string, nama: string, nia?: string) => void;
+  openFotoZoom: (url: string, nama: string, kodeGuru?: string) => void;
   closeFotoZoom: () => void;
 
-  // Helper NIA generator
-  generateNextNIA: (prefix: string) => string;
+  // Helper Kode Guru (KG) generator
+  generateNextKodeGuru: (prefix: string) => string;
 
   // CRUD
   saveAsatidz: (
     data: Asatidz,
     isEdit: boolean,
-    oldNia?: string,
+    oldKodeGuru?: string,
     skipHistory?: boolean
   ) => Promise<boolean>;
-  deleteAsatidz: (nia: string, skipHistory?: boolean) => Promise<boolean>;
+  deleteAsatidz: (kodeGuru: string, skipHistory?: boolean) => Promise<boolean>;
   deleteSelectedAsatidz: (skipHistory?: boolean) => Promise<boolean>;
   handleRealtimeAsatidz: (payload: { eventType: string; new?: any; old?: any }) => void;
 }
@@ -92,7 +92,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
   selectedAsatidz: null,
   editAsatidzData: null,
 
-  selectedNiaList: [],
+  selectedKodeGuruList: [],
   hiddenColumns: ['alamat_asal'],
 
   isInputModalOpen: false,
@@ -161,30 +161,30 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
       return { sortKey: key, sortDirection: 'asc', page: 1 };
     }),
 
-  toggleSelectRow: (nia) =>
+  toggleSelectRow: (kodeGuru) =>
     set((state) => {
-      const exists = state.selectedNiaList.includes(nia);
+      const exists = state.selectedKodeGuruList.includes(kodeGuru);
       return {
-        selectedNiaList: exists
-          ? state.selectedNiaList.filter((item) => item !== nia)
-          : [...state.selectedNiaList, nia],
+        selectedKodeGuruList: exists
+          ? state.selectedKodeGuruList.filter((item) => item !== kodeGuru)
+          : [...state.selectedKodeGuruList, kodeGuru],
       };
     }),
 
   toggleSelectAll: (keys) =>
     set((state) => {
-      const allSelected = keys.every((k) => state.selectedNiaList.includes(k));
+      const allSelected = keys.every((k) => state.selectedKodeGuruList.includes(k));
       if (allSelected) {
         return {
-          selectedNiaList: state.selectedNiaList.filter((k) => !keys.includes(k)),
+          selectedKodeGuruList: state.selectedKodeGuruList.filter((k) => !keys.includes(k)),
         };
       } else {
-        const setUnion = new Set([...state.selectedNiaList, ...keys]);
-        return { selectedNiaList: Array.from(setUnion) };
+        const setUnion = new Set([...state.selectedKodeGuruList, ...keys]);
+        return { selectedKodeGuruList: Array.from(setUnion) };
       }
     }),
 
-  clearSelection: () => set({ selectedNiaList: [] }),
+  clearSelection: () => set({ selectedKodeGuruList: [] }),
 
   toggleColumn: (key) =>
     set((state) => {
@@ -217,20 +217,20 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
   openHideModal: () => set({ isHideModalOpen: true }),
   closeHideModal: () => set({ isHideModalOpen: false }),
 
-  openFotoZoom: (url, nama, nia) =>
-    set({ isFotoZoomOpen: true, zoomFotoData: { url, nama, nia } }),
+  openFotoZoom: (url, nama, kodeGuru) =>
+    set({ isFotoZoomOpen: true, zoomFotoData: { url, nama, kodeGuru } }),
   closeFotoZoom: () => set({ isFotoZoomOpen: false, zoomFotoData: null }),
 
-  generateNextNIA: (prefix: string) => {
+  generateNextKodeGuru: (prefix: string) => {
     const list = get().asatidzList;
     const cleanPrefix = String(prefix || '').trim().toUpperCase();
     if (!cleanPrefix) return '';
 
     let maxNum = 0;
     list.forEach((row) => {
-      const nia = String(row.nia || '').trim().toUpperCase();
-      if (nia.length > cleanPrefix.length && nia.startsWith(cleanPrefix)) {
-        const num = parseInt(nia.substring(cleanPrefix.length), 10);
+      const kg = String(row.kode_guru || '').trim().toUpperCase();
+      if (kg.length > cleanPrefix.length && kg.startsWith(cleanPrefix)) {
+        const num = parseInt(kg.substring(cleanPrefix.length), 10);
         if (!isNaN(num) && num > maxNum) maxNum = num;
       }
     });
@@ -239,15 +239,15 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
     return `${cleanPrefix}${nextNum}`;
   },
 
-  saveAsatidz: async (data, isEdit, oldNia, skipHistory = false) => {
+  saveAsatidz: async (data, isEdit, oldKodeGuru, skipHistory = false) => {
     try {
       const prevAsatidz = isEdit
-        ? get().asatidzList.find((a) => a.nia === (oldNia || data.nia))
+        ? get().asatidzList.find((a) => a.kode_guru === (oldKodeGuru || data.kode_guru))
         : null;
 
       const payload: Record<string, any> = { ...data };
       delete payload.id; // Let supabase handle primary key or update
-      delete payload.nis; // Sanitize: tabel asatidz tidak memiliki kolom nis
+      payload.status = payload.status || 'aktif';
       if (payload.nama_asatidz) {
         payload.nama_asatidz = String(payload.nama_asatidz).toUpperCase();
       }
@@ -257,18 +257,18 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
         const uploadedUrl = await StorageService.uploadPhoto(
           payload.foto_asatidz,
           'asatidz',
-          payload.nia || oldNia || 'asatidz'
+          payload.kode_guru || oldKodeGuru || 'asatidz'
         );
         if (uploadedUrl) {
           payload.foto_asatidz = uploadedUrl;
         }
       }
 
-      if (isEdit && oldNia) {
+      if (isEdit && oldKodeGuru) {
         const { error } = await supabase
           .from('asatidz')
           .update(payload)
-          .eq('nia', oldNia);
+          .eq('kode_guru', oldKodeGuru);
         if (error) throw error;
 
         // Cascade rename ke Fan Pelajaran, Jadwal KBM, Formasi, & Konsorsium jika nama asatidz berhasil diupdate
@@ -284,7 +284,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
           );
         }
 
-        await logActivity('EDIT DEWAN ASATIDZ', `Memperbarui asatidz: ${data.nama_asatidz} (NIA: ${data.nia})`);
+        await logActivity('EDIT DEWAN ASATIDZ', `Memperbarui asatidz: ${data.nama_asatidz} (KG: ${data.kode_guru})`);
 
         if (!skipHistory && prevAsatidz) {
           const prevPayload = { ...prevAsatidz };
@@ -299,12 +299,12 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
                 const { data: existRow, error: fetchErr } = await supabase
                   .from('asatidz')
                   .select('*')
-                  .eq('nia', data.nia)
+                  .eq('kode_guru', data.kode_guru)
                   .maybeSingle();
 
                 if (fetchErr) throw fetchErr;
                 if (!existRow) {
-                  console.warn(`[UNDO ASATIDZ] Gagal: Asatidz ${data.nia} tidak ditemukan.`);
+                  console.warn(`[UNDO ASATIDZ] Gagal: Asatidz ${data.kode_guru} tidak ditemukan.`);
                   await get().fetchAsatidz();
                   return false;
                 }
@@ -328,7 +328,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
 
                   const proceed = await useUndoRedoStore.getState().requestConflictResolution({
                     title: 'Peringatan Konflik Data Asatidz',
-                    entityName: `${existRow.nama_asatidz || data.nama_asatidz} (NIA: ${data.nia})`,
+                    entityName: `${existRow.nama_asatidz || data.nama_asatidz} (KG: ${data.kode_guru})`,
                     message: `Kolom [${conflictingKeys.join(', ')}] telah diubah oleh pengguna lain di server sejak aksi Anda disimpan.`,
                     currentServerState: serverValuesStr,
                     proposedUndoState: undoValuesStr,
@@ -343,7 +343,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
                 const { error: undoErr } = await supabase
                   .from('asatidz')
                   .update(prevDelta)
-                  .eq('nia', data.nia);
+                  .eq('kode_guru', data.kode_guru);
                 if (undoErr) throw undoErr;
 
                 // Rollback relasional jika nama asatidz diubah
@@ -358,11 +358,11 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
                 return true;
               },
               redo: async () => {
-                const targetKey = (prevDelta.nia as string) || data.nia;
+                const targetKey = (prevDelta.kode_guru as string) || data.kode_guru;
                 const { data: existRow, error: fetchErr } = await supabase
                   .from('asatidz')
-                  .select('nia')
-                  .eq('nia', targetKey)
+                  .select('kode_guru')
+                  .eq('kode_guru', targetKey)
                   .maybeSingle();
 
                 if (fetchErr) throw fetchErr;
@@ -375,7 +375,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
                 const { error: redoErr } = await supabase
                   .from('asatidz')
                   .update(nextDelta)
-                  .eq('nia', targetKey);
+                  .eq('kode_guru', targetKey);
                 if (redoErr) throw redoErr;
 
                 // Terapkan kembali relasional rename jika nama asatidz diubah
@@ -397,7 +397,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
           .from('asatidz')
           .insert([payload]);
         if (error) throw error;
-        await logActivity('TAMBAH ASATIDZ', `Menambahkan asatidz baru: ${data.nama_asatidz} (NIA: ${data.nia})`);
+        await logActivity('TAMBAH ASATIDZ', `Menambahkan asatidz baru: ${data.nama_asatidz} (KG: ${data.kode_guru})`);
 
         if (!skipHistory) {
           useUndoRedoStore.getState().recordAction({
@@ -407,7 +407,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
               const { error: undoErr } = await supabase
                 .from('asatidz')
                 .delete()
-                .eq('nia', data.nia);
+                .eq('kode_guru', data.kode_guru);
               if (undoErr) throw undoErr;
               await get().fetchAsatidz();
               return true;
@@ -415,8 +415,8 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
             redo: async () => {
               const { data: existRow } = await supabase
                 .from('asatidz')
-                .select('nia')
-                .eq('nia', data.nia)
+                .select('kode_guru')
+                .eq('kode_guru', data.kode_guru)
                 .maybeSingle();
 
               if (!existRow) {
@@ -440,8 +440,8 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
     }
   },
 
-  deleteAsatidz: async (nia, skipHistory = false) => {
-    const targetAsatidz = get().asatidzList.find((a) => a.nia === nia);
+  deleteAsatidz: async (kodeGuru, skipHistory = false) => {
+    const targetAsatidz = get().asatidzList.find((a) => a.kode_guru === kodeGuru);
     try {
       // 1. Eksekusi cascade deletion ke Fan Pelajaran, Jadwal KBM, dan Formasi Kelas
       let cascadeSnapshot: CascadeDeleteSnapshot | null = null;
@@ -452,21 +452,21 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
       const { error } = await supabase
         .from('asatidz')
         .delete()
-        .eq('nia', nia);
+        .eq('kode_guru', kodeGuru);
       if (error) throw error;
-      await logActivity('HAPUS DEWAN ASATIDZ', `Menghapus asatidz NIA: ${nia}`);
+      await logActivity('HAPUS DEWAN ASATIDZ', `Menghapus asatidz KG: ${kodeGuru}`);
 
       if (!skipHistory && targetAsatidz) {
         const restorePayload = { ...targetAsatidz };
         delete restorePayload.id;
         useUndoRedoStore.getState().recordAction({
           module: 'asatidz',
-          title: `Hapus Asatidz: ${targetAsatidz.nama_asatidz || nia}`,
+          title: `Hapus Asatidz: ${targetAsatidz.nama_asatidz || kodeGuru}`,
           undo: async () => {
             const { data: existRow, error: fetchErr } = await supabase
               .from('asatidz')
-              .select('nia')
-              .eq('nia', nia)
+              .select('kode_guru')
+              .eq('kode_guru', kodeGuru)
               .maybeSingle();
 
             if (fetchErr) throw fetchErr;
@@ -482,7 +482,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
             return true;
           },
           redo: async () => {
-            const { error: delErr } = await supabase.from('asatidz').delete().eq('nia', nia);
+            const { error: delErr } = await supabase.from('asatidz').delete().eq('kode_guru', kodeGuru);
             if (delErr) throw delErr;
             if (targetAsatidz) {
               await CascadeAsatidzService.cascadeDeleteAsatidz([targetAsatidz]);
@@ -494,7 +494,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
       }
 
       set((state) => ({
-        selectedNiaList: state.selectedNiaList.filter((n) => n !== nia),
+        selectedKodeGuruList: state.selectedKodeGuruList.filter((k) => k !== kodeGuru),
       }));
       await get().fetchAsatidz();
       return true;
@@ -506,9 +506,9 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
   },
 
   deleteSelectedAsatidz: async (skipHistory = false) => {
-    const selected = get().selectedNiaList;
+    const selected = get().selectedKodeGuruList;
     if (selected.length === 0) return false;
-    const deletedList = get().asatidzList.filter((a) => selected.includes(a.nia));
+    const deletedList = get().asatidzList.filter((a) => selected.includes(a.kode_guru));
 
     try {
       // 1. Eksekusi cascade deletion ke Fan Pelajaran, Jadwal KBM, dan Formasi Kelas
@@ -520,7 +520,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
       const { error } = await supabase
         .from('asatidz')
         .delete()
-        .in('nia', selected);
+        .in('kode_guru', selected);
       if (error) throw error;
       await logActivity('HAPUS BANYAK ASATIDZ', `Menghapus ${selected.length} asatidz terpilih`);
 
@@ -536,13 +536,13 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
           undo: async () => {
             const { data: existingRows, error: fetchErr } = await supabase
               .from('asatidz')
-              .select('nia')
-              .in('nia', selected);
+              .select('kode_guru')
+              .in('kode_guru', selected);
 
             if (fetchErr) throw fetchErr;
 
-            const existingKeys = new Set((existingRows || []).map((r) => r.nia));
-            const toInsert = restoreList.filter((a) => !existingKeys.has(a.nia));
+            const existingKeys = new Set((existingRows || []).map((r) => r.kode_guru));
+            const toInsert = restoreList.filter((a) => !existingKeys.has(a.kode_guru));
             if (toInsert.length > 0) {
               const { error: insertErr } = await supabase.from('asatidz').insert(toInsert);
               if (insertErr) throw insertErr;
@@ -554,7 +554,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
             return true;
           },
           redo: async () => {
-            const { error: delErr } = await supabase.from('asatidz').delete().in('nia', selected);
+            const { error: delErr } = await supabase.from('asatidz').delete().in('kode_guru', selected);
             if (delErr) throw delErr;
             if (deletedList.length > 0) {
               await CascadeAsatidzService.cascadeDeleteAsatidz(deletedList);
@@ -565,7 +565,7 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
         });
       }
 
-      set({ selectedNiaList: [] });
+      set({ selectedKodeGuruList: [] });
       await get().fetchAsatidz();
       return true;
     } catch (err: any) {
@@ -580,18 +580,18 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
     const currentList = get().asatidzList;
 
     if (eventType === 'INSERT' && newRecord) {
-      const exists = currentList.some((a) => a.nia === newRecord.nia);
+      const exists = currentList.some((a) => a.kode_guru === newRecord.kode_guru);
       if (!exists) {
         set({ asatidzList: [newRecord, ...currentList] });
       }
     } else if (eventType === 'UPDATE' && newRecord) {
       const updatedList = currentList.map((a) =>
-        a.nia === newRecord.nia ? { ...a, ...newRecord } : a
+        a.kode_guru === newRecord.kode_guru ? { ...a, ...newRecord } : a
       );
       set({ asatidzList: updatedList });
     } else if (eventType === 'DELETE' && oldRecord) {
       const filteredList = currentList.filter((a) => {
-        if (oldRecord.nia) return a.nia !== oldRecord.nia;
+        if (oldRecord.kode_guru) return a.kode_guru !== oldRecord.kode_guru;
         if (oldRecord.id) return a.id !== oldRecord.id;
         return true;
       });

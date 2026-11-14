@@ -145,7 +145,7 @@ export default function PengajarFanPage() {
           grp.namaGrup.toLowerCase().replace(/\s+/g, ' ').includes(qClean);
         const rows = grp.asatidzList
           .map((a) => {
-            const kode = a.nia || '-';
+            const kode = a.kode_guru || '-';
             const nama = a.nama_asatidz;
             const jah = a.jah_asatidz || '-';
             let entries =

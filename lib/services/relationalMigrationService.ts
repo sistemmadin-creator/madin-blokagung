@@ -125,8 +125,8 @@ export const RelationalMigrationService = {
     const niaMap = new Map<string, string>();
     if (asatidzList) {
       asatidzList.forEach((a) => {
-        if (a.nama_asatidz && a.nia) {
-          niaMap.set(a.nama_asatidz.trim().toUpperCase(), a.nia.trim());
+        if (a.nama_asatidz && a.kode_guru) {
+          niaMap.set(a.nama_asatidz.trim().toUpperCase(), a.kode_guru.trim());
         }
       });
     }

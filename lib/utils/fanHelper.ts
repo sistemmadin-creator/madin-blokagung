@@ -29,10 +29,10 @@ export function compareNIANatural(niaA: string | undefined | null, niaB: string 
 /**
  * Mengurutkan array Asatidz berdasarkan properti `nia` secara natural
  */
-export function sortAsatidzByKodeNatural<T extends { nia?: string }>(list: T[]): T[] {
+export function sortAsatidzByKodeNatural<T extends { kode_guru?: string; nia?: string }>(list: T[]): T[] {
   return (list || []).slice().sort((a, b) => {
-    const niaA = String(a?.nia || '').trim();
-    const niaB = String(b?.nia || '').trim();
+    const niaA = String(a?.kode_guru || '').trim();
+    const niaB = String(b?.kode_guru || '').trim();
     if (!niaA && !niaB) return 0;
     if (!niaA) return 1;
     if (!niaB) return -1;

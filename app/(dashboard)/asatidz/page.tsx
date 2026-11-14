@@ -52,7 +52,7 @@ export default function AsatidzPage() {
     searchKeyword,
     setSearchKeyword,
     filterValues,
-    selectedNiaList,
+    selectedKodeGuruList,
     hiddenColumns,
     page,
     pageSize,
@@ -106,7 +106,10 @@ export default function AsatidzPage() {
       result = result.filter(
         (a) =>
           (a.nama_asatidz && a.nama_asatidz.toLowerCase().includes(q)) ||
+          (a.nis && a.nis.toLowerCase().includes(q)) ||
           (a.nia && a.nia.toLowerCase().includes(q)) ||
+          (a.kode_guru && a.kode_guru.toLowerCase().includes(q)) ||
+          (a.status && a.status.toLowerCase().includes(q)) ||
           (a.kamar && a.kamar.toLowerCase().includes(q)) ||
           (a.asrama && a.asrama.toLowerCase().includes(q)) ||
           (a.blok && a.blok.toLowerCase().includes(q)) ||
@@ -157,21 +160,24 @@ export default function AsatidzPage() {
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
 
-  const paginatedNiaKeys = paginatedData.map((a) => a.nia);
+  const paginatedKodeGuruKeys = paginatedData.map((a) => a.kode_guru);
   const isAllPaginatedSelected =
     paginatedData.length > 0 &&
-    paginatedNiaKeys.every((nia) => selectedNiaList.includes(nia));
+    paginatedKodeGuruKeys.every((kg) => selectedKodeGuruList.includes(kg));
 
   const handleExport = () => {
     const exportRows = filteredData.map((a, idx) => ({
       No: idx + 1,
-      NIA: a.nia,
+      NIS: a.nis || '-',
+      NIA: a.nia || '-',
+      KG: a.kode_guru || '-',
       'Nama Lengkap': a.nama_asatidz,
       'PA/PI': a.pa_pi,
       Tingkat: a.tingkat_asatidz || '-',
       'Din. Kls': a.din_kls_asatidz || '-',
       'Din. Bag': a.din_bag_asatidz || '-',
       Jah: a.jah_asatidz || '-',
+      Status: a.status || 'aktif',
       'Lokasi Diniyyah': a.lokasi_diniyyah || '-',
       'Lokasi Takror': a.lokasi_takror || '-',
       'Tempat Lahir': a.tempat_lahir || '-',
@@ -190,7 +196,7 @@ export default function AsatidzPage() {
   };
 
   const handleTriggerBulkDelete = () => {
-    if (selectedNiaList.length === 0) {
+    if (selectedKodeGuruList.length === 0) {
       alert('Centang minimal satu data Asatidz terlebih dahulu!');
       return;
     }
@@ -312,9 +318,9 @@ export default function AsatidzPage() {
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Hapus</span>
-                {selectedNiaList.length > 0 && (
+                {selectedKodeGuruList.length > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px]">
-                    {selectedNiaList.length}
+                    {selectedKodeGuruList.length}
                   </span>
                 )}
                 <ChevronDown className="w-3 h-3 ml-0.5 opacity-70" />
@@ -329,7 +335,7 @@ export default function AsatidzPage() {
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>
-                      Hapus Terpilih {selectedNiaList.length > 0 ? `(${selectedNiaList.length})` : ''}
+                      Hapus Terpilih {selectedKodeGuruList.length > 0 ? `(${selectedKodeGuruList.length})` : ''}
                     </span>
                   </button>
                 </div>
@@ -374,7 +380,7 @@ export default function AsatidzPage() {
             type="text"
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
-            placeholder="Pencarian: Nama, NIA, Kamar, Jah..."
+            placeholder="Pencarian: Nama, NIS, NIA, KG, Kamar, Jah..."
             className="w-full pl-9 pr-7 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-600 text-slate-800 placeholder:text-slate-400"
           />
           {searchKeyword && (
@@ -400,7 +406,7 @@ export default function AsatidzPage() {
                   <input
                     type="checkbox"
                     checked={isAllPaginatedSelected}
-                    onChange={() => toggleSelectAll(paginatedNiaKeys)}
+                    onChange={() => toggleSelectAll(paginatedKodeGuruKeys)}
                     className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                   />
                 </th>
@@ -415,6 +421,19 @@ export default function AsatidzPage() {
                   <th className="p-3 w-14 text-center whitespace-nowrap">FOTO</th>
                 )}
 
+                {/* NIS */}
+                {!hiddenColumns.includes('nis') && (
+                  <th
+                    onClick={() => setSort('nis')}
+                    className="p-3 text-center whitespace-nowrap cursor-pointer hover:bg-slate-100/80 transition group"
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>NIS</span>
+                      {renderSortIcon('nis')}
+                    </div>
+                  </th>
+                )}
+
                 {/* NIA */}
                 {!hiddenColumns.includes('nia') && (
                   <th
@@ -424,6 +443,19 @@ export default function AsatidzPage() {
                     <div className="flex items-center justify-center gap-1.5">
                       <span>NIA</span>
                       {renderSortIcon('nia')}
+                    </div>
+                  </th>
+                )}
+
+                {/* KG (Kode Guru) */}
+                {!hiddenColumns.includes('kode_guru') && (
+                  <th
+                    onClick={() => setSort('kode_guru')}
+                    className="p-3 text-center whitespace-nowrap cursor-pointer hover:bg-slate-100/80 transition group"
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>KG</span>
+                      {renderSortIcon('kode_guru')}
                     </div>
                   </th>
                 )}
@@ -485,6 +517,19 @@ export default function AsatidzPage() {
                   </th>
                 )}
 
+                {/* STATUS */}
+                {!hiddenColumns.includes('status') && (
+                  <th
+                    onClick={() => setSort('status')}
+                    className="p-3 text-center whitespace-nowrap cursor-pointer hover:bg-slate-100/80 transition group"
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>STATUS</span>
+                      {renderSortIcon('status')}
+                    </div>
+                  </th>
+                )}
+
                 {/* LOKASI DINIYYAH */}
                 {!hiddenColumns.includes('lokasi_diniyyah') && (
                   <th
@@ -537,15 +582,22 @@ export default function AsatidzPage() {
               ) : (
                 paginatedData.map((a, idx) => {
                   const rowNumber = startIndex + idx + 1;
-                  const isChecked = selectedNiaList.includes(a.nia);
+                  const isChecked = selectedKodeGuruList.includes(a.kode_guru);
                   const isMustahiq = /mustahiq/i.test(a.jah_asatidz || '');
+                  const statusVal = (a.status || 'aktif').toLowerCase();
+                  const statusBadgeClass =
+                    statusVal === 'aktif'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : statusVal === 'dikeluarkan'
+                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                      : 'bg-slate-100 text-slate-600 border-slate-200';
                   const kelasStr = `${a.din_kls_asatidz || ''}${a.din_bag_asatidz || ''} ${a.tingkat_asatidz || ''}`.trim();
                   const ttlStr = `${a.tempat_lahir || '-'}, ${a.tgl_lahir || ''} ${a.bln_lahir || ''} ${a.thn_lahir || ''}`.trim();
                   const kamarStr = `${a.blok || '-'} - ${a.asrama || '-'} - ${a.kode || '-'} - ${a.kamar || '-'}`;
 
                   return (
                     <tr
-                      key={a.nia || idx}
+                      key={a.kode_guru || a.id || idx}
                       onClick={() => openDetailModal(a)}
                       className={`hover:bg-slate-50/90 transition cursor-pointer ${
                         isChecked ? 'bg-emerald-50/40' : ''
@@ -560,7 +612,7 @@ export default function AsatidzPage() {
                         <input
                           type="checkbox"
                           checked={isChecked}
-                          onChange={() => toggleSelectRow(a.nia)}
+                          onChange={() => toggleSelectRow(a.kode_guru)}
                           className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                         />
                       </td>
@@ -579,7 +631,7 @@ export default function AsatidzPage() {
                           onClick={(e) => {
                             if (a.foto_asatidz) {
                               e.stopPropagation();
-                              openFotoZoom(a.foto_asatidz, a.nama_asatidz, a.nia);
+                              openFotoZoom(a.foto_asatidz, a.nama_asatidz, a.kode_guru);
                             }
                           }}
                         >
@@ -598,10 +650,24 @@ export default function AsatidzPage() {
                         </td>
                       )}
 
+                      {/* NIS */}
+                      {!hiddenColumns.includes('nis') && (
+                        <td className="p-3 text-center font-mono text-slate-600 whitespace-nowrap">
+                          {a.nis || '-'}
+                        </td>
+                      )}
+
                       {/* NIA */}
                       {!hiddenColumns.includes('nia') && (
+                        <td className="p-3 text-center font-mono text-slate-600 whitespace-nowrap">
+                          {a.nia || '-'}
+                        </td>
+                      )}
+
+                      {/* KG (Kode Guru) */}
+                      {!hiddenColumns.includes('kode_guru') && (
                         <td className="p-3 text-center font-mono font-bold text-slate-700 whitespace-nowrap">
-                          {a.nia}
+                          {a.kode_guru || '-'}
                         </td>
                       )}
 
@@ -666,6 +732,17 @@ export default function AsatidzPage() {
                         </td>
                       )}
 
+                      {/* STATUS */}
+                      {!hiddenColumns.includes('status') && (
+                        <td className="p-3 text-center whitespace-nowrap">
+                          <span
+                            className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold border capitalize ${statusBadgeClass}`}
+                          >
+                            {a.status || 'aktif'}
+                          </span>
+                        </td>
+                      )}
+
                       {/* LOKASI DINIYYAH */}
                       {!hiddenColumns.includes('lokasi_diniyyah') && (
                         <td className="p-3 text-slate-600 whitespace-nowrap">
@@ -716,9 +793,9 @@ export default function AsatidzPage() {
               {totalItems > 0 ? startIndex + 1 : 0} - {Math.min(startIndex + pageSize, totalItems)}
             </span>{' '}
             dari <span className="font-semibold text-slate-800">{totalItems}</span> asatidz
-            {selectedNiaList.length > 0 && (
+            {selectedKodeGuruList.length > 0 && (
               <span className="ml-2 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
-                {selectedNiaList.length} asatidz dicentang
+                {selectedKodeGuruList.length} asatidz dicentang
               </span>
             )}
           </div>
@@ -789,7 +866,7 @@ export default function AsatidzPage() {
                 Peringatan: Tindakan ini permanen
               </h4>
               <p className="text-xs text-rose-700 leading-relaxed">
-                Anda akan menghapus sebanyak <strong>{selectedNiaList.length} data asatidz</strong> dari database. Data yang dihapus tidak dapat dikembalikan lagi.
+                Anda akan menghapus sebanyak <strong>{selectedKodeGuruList.length} data asatidz</strong> dari database. Data yang dihapus tidak dapat dikembalikan lagi.
               </p>
             </div>
           </div>

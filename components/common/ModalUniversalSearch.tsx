@@ -150,7 +150,7 @@ export default function ModalUniversalSearch({
     const matchedAsatidz = (asatidzList || [])
       .filter((a) => {
         const nama = norm(a.nama_asatidz || '');
-        const nia = norm(a.nia || '');
+        const nia = norm(a.kode_guru || '');
         const jabatan = norm(a.jah_asatidz || '');
         return nama.includes(q) || nia.includes(q) || jabatan.includes(q);
       })
@@ -291,7 +291,7 @@ export default function ModalUniversalSearch({
                   <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden bg-slate-50/50">
                     {searchResults.asatidz.map((a) => (
                       <button
-                        key={a.nia || a.nama_asatidz}
+                        key={a.kode_guru || a.nama_asatidz}
                         type="button"
                         onClick={() => navigateTo(`/asatidz?cari=${encodeURIComponent(a.nama_asatidz)}`)}
                         className="w-full text-left p-2.5 hover:bg-teal-50/60 transition flex items-center justify-between gap-2 cursor-pointer group"
@@ -301,7 +301,7 @@ export default function ModalUniversalSearch({
                             {a.nama_asatidz}
                           </p>
                           <p className="text-[11px] text-slate-400">
-                            NIA: {a.nia || '-'} • Jabatan: {a.jah_asatidz || 'Dewan Pengajar'} • Kode: {a.kode || '-'}
+                            KG: {a.kode_guru || '-'} • Jabatan: {a.jah_asatidz || 'Dewan Pengajar'} • Kode: {a.kode || '-'}
                           </p>
                         </div>
                         <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-teal-700 shrink-0" />

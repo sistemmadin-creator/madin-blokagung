@@ -237,13 +237,13 @@ describe('Gender-Aware Class Matching & Schedule Isolation (PA vs PI)', () => {
     const asatidzList: Asatidz[] = [
       {
         id: '10',
-        nia: '10',
+        kode_guru: '10',
         nama_asatidz: "KUNI NAFI'AH",
         pa_pi: 'PI',
       },
       {
         id: '20',
-        nia: '20',
+        kode_guru: '20',
         nama_asatidz: 'AHMAD ZAINI',
         pa_pi: 'PA',
       },
@@ -359,7 +359,7 @@ describe('Gender-Aware Class Matching & Schedule Isolation (PA vs PI)', () => {
     ];
 
     const mockAsatidzKamarPribadi: Asatidz = {
-      nia: 'A001',
+      kode_guru: 'A001',
       nama_asatidz: 'Ustadz Ahmad',
       pa_pi: 'PA',
       blok: 'Kamar Asrama 10', // Kamar asrama pribadi guru (BUKAN blok KBM santri)

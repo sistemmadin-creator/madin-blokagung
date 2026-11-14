@@ -1568,7 +1568,7 @@ export default function ModalSettingsHafalan() {
 
                         return (
                           <div
-                            key={a.id || a.nia || nama}
+                            key={a.id || a.kode_guru || nama}
                             onClick={() => handleAddPenjagaBebas(nama)}
                             className="p-2 text-xs hover:bg-emerald-50 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-between"
                           >

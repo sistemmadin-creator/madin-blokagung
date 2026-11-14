@@ -9,14 +9,14 @@ describe('Relational Migration Service (Fase 1 - Zero Data Loss Verification)', 
   const mockAsatidz: Asatidz[] = [
     {
       id: '1',
-      nia: 'A01',
+      kode_guru: 'A01',
       nama_asatidz: 'LUKMAN',
       jah_asatidz: 'Asatidz',
       pa_pi: 'PA',
     },
     {
       id: '2',
-      nia: 'A02',
+      kode_guru: 'A02',
       nama_asatidz: 'MUTOHAR',
       jah_asatidz: 'Mustahiq',
       pa_pi: 'PA',

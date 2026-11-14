@@ -61,7 +61,7 @@ export default function ModalPilihAsatidzFan() {
     // 1. Filter
     const filtered = asatidzList.filter((a) => {
       const nama = String(a.nama_asatidz || '').trim();
-      const nia = String(a.nia || '').trim();
+      const nia = String(a.kode_guru || '').trim();
       const jah = String(a.jah_asatidz || '').trim();
       const kat = cekKategoriJahAsatidz(jah);
 
@@ -85,7 +85,7 @@ export default function ModalPilihAsatidzFan() {
       const selA = selectedSet.has(nA) ? 0 : 1;
       const selB = selectedSet.has(nB) ? 0 : 1;
       if (selA !== selB) return selA - selB;
-      return compareNIANatural(a.nia, b.nia);
+      return compareNIANatural(a.kode_guru, b.kode_guru);
     });
   }, [asatidzList, selectedNames, filterMS, filterMB, search]);
 
@@ -221,7 +221,7 @@ export default function ModalPilihAsatidzFan() {
             ) : (
               sortedAndFilteredAsatidz.map((a, idx) => {
                 const nama = a.nama_asatidz;
-                const nia = a.nia || '-';
+                const nia = a.kode_guru || '-';
                 const jah = a.jah_asatidz || '-';
                 const kat = cekKategoriJahAsatidz(jah);
                 const isChecked = selectedNames.includes(nama);

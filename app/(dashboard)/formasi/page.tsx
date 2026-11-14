@@ -79,7 +79,7 @@ export default function FormasiMasterPage() {
       const kapasitas = f.kapasitas_maksimal || 80;
       const persentase = Math.round((count / kapasitas) * 100);
 
-      const mustahiqKG = syncInfo.matchedAsatidz[0]?.nia || '-';
+      const mustahiqKG = syncInfo.matchedAsatidz[0]?.kode_guru || '-';
 
       return {
         ...f,

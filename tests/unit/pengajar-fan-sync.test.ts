@@ -52,7 +52,7 @@ describe('Pemisahan Fan MS & Sinkronisasi Pengajar Fan', () => {
   const mockAsatidz: Asatidz[] = [
     {
       id: 'a1',
-      nia: 'B50',
+      kode_guru: 'B50',
       nama_asatidz: 'RIZQI MAULANA ACHMAD',
       jah_asatidz: 'Mustahiq',
       tingkat_asatidz: 'WUSTHO',
@@ -62,7 +62,7 @@ describe('Pemisahan Fan MS & Sinkronisasi Pengajar Fan', () => {
     },
     {
       id: 'a2',
-      nia: 'C57',
+      kode_guru: 'C57',
       nama_asatidz: 'ARMIA ZULIA PUTRI',
       jah_asatidz: 'Mustahiqoh',
       tingkat_asatidz: 'WUSTHO',
@@ -72,7 +72,7 @@ describe('Pemisahan Fan MS & Sinkronisasi Pengajar Fan', () => {
     },
     {
       id: 'a3',
-      nia: 'B52',
+      kode_guru: 'B52',
       nama_asatidz: 'ARIF MUHTADI',
       jah_asatidz: 'Mustahiq',
       tingkat_asatidz: 'WUSTHO',
@@ -82,7 +82,7 @@ describe('Pemisahan Fan MS & Sinkronisasi Pengajar Fan', () => {
     },
     {
       id: 'a4',
-      nia: 'C60',
+      kode_guru: 'C60',
       nama_asatidz: 'LILIK HIDAYATI',
       jah_asatidz: 'Mustahiqoh',
       tingkat_asatidz: 'WUSTHO',
@@ -241,7 +241,7 @@ describe('Pemisahan Fan MS & Sinkronisasi Pengajar Fan', () => {
     const mockAsatidzLocal: Asatidz[] = [
       {
         id: 'hbn',
-        nia: 'B29',
+        kode_guru: 'B29',
         nama_asatidz: 'HAUL BAHRUN NAIM',
         jah_asatidz: 'Mustahiq',
         tingkat_asatidz: 'ULA',
@@ -289,7 +289,7 @@ describe('Pemisahan Fan MS & Sinkronisasi Pengajar Fan', () => {
     const mockAsatidzLocal: Asatidz[] = [
       {
         id: 'az',
-        nia: 'A01',
+        kode_guru: 'A01',
         nama_asatidz: 'AHMAD ZAINI', // Single space di master asatidz
         jah_asatidz: 'Mustahiq',
         tingkat_asatidz: 'ULA',
@@ -328,7 +328,7 @@ describe('Pemisahan Fan MS & Sinkronisasi Pengajar Fan', () => {
     const mockAsatidzLocal: Asatidz[] = [
       {
         id: 'gi',
-        nia: 'A02',
+        kode_guru: 'A02',
         nama_asatidz: 'GURU IST',
         jah_asatidz: 'Mustahiq',
         tingkat_asatidz: 'ISTI\'DAD',
@@ -375,7 +375,7 @@ describe('Pemisahan Fan MS & Sinkronisasi Pengajar Fan', () => {
     const mockAsatidzLocal: Asatidz[] = [
       {
         id: 'ua',
-        nia: 'A99',
+        kode_guru: 'A99',
         nama_asatidz: 'USTADZ A',
         jah_asatidz: 'Asatidz',
         pa_pi: 'PA',

@@ -193,7 +193,7 @@ export default function HariKbmPage() {
       if (!rawJadwalHari.trim()) return;
 
       const a: Asatidz = asatidzMap.get(nama.toUpperCase()) || {
-        nia: '-',
+        kode_guru: '-',
         nama_asatidz: nama,
         jah_asatidz: '-',
         tingkat_asatidz: '',
@@ -222,7 +222,7 @@ export default function HariKbmPage() {
 
         result.push({
           rawRow: a,
-          nia: String(a.nia || '-').trim() || '-',
+          nia: String(a.kode_guru || '-').trim() || '-',
           nama,
           jah: String(a.jah_asatidz || '-').trim() || '-',
           tingkat: defaultTingkat,

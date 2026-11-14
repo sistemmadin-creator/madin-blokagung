@@ -165,7 +165,7 @@ export default function SetorMustahiqModule() {
     // Cek di tabel asatidz
     const matchedAsatidz = asatidzList.find((a) => {
       const nAsatidz = norm(a.nama_asatidz);
-      const niaAsatidz = norm(a.nia);
+      const niaAsatidz = norm(a.kode_guru);
       return (
         (accName && nAsatidz && (nAsatidz === accName || nAsatidz.includes(accName))) ||
         (accUser && niaAsatidz && niaAsatidz === accUser)

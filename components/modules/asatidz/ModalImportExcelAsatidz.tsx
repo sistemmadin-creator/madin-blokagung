@@ -59,13 +59,16 @@ export default function ModalImportExcelAsatidz() {
 
   const handleDownloadTemplate = () => {
     const headers = [
+      'NIS',
       'NIA',
+      'KG',
       'Nama Lengkap',
       'PA/PI',
       'Tingkat',
       'Din. Kls',
       'Din. Bag',
       'Jah',
+      'Status',
       'Lokasi Diniyyah',
       'Lokasi Takror',
       'Tempat Lahir',
@@ -84,13 +87,16 @@ export default function ModalImportExcelAsatidz() {
     ];
 
     const contohBaris1 = [
-      '201901',
+      '',
+      '',
+      'B54',
       'UST. AHMAD FAUZI',
       'PA',
       'ULA',
       '1',
       'A',
       'Mustahiq',
+      'aktif',
       'Gedung Al-Falah R.01',
       'Masjid Lt. 1',
       'BANYUWANGI',
@@ -109,13 +115,16 @@ export default function ModalImportExcelAsatidz() {
     ];
 
     const contohBaris2 = [
-      '202015',
+      '',
+      '',
+      'PI15',
       'USTZ. SITI AISYAH',
       'PI',
       'WUSTHO',
       '1',
       'A',
       'Mustahiqoh',
+      'aktif',
       'Gedung Al-Munawwaroh R.02',
       'Aula Putri',
       'JEMBER',
@@ -136,13 +145,16 @@ export default function ModalImportExcelAsatidz() {
     // Contoh Baris 3: Jah Selain Mustahiq (Contoh: TU, Munawib, TOP dll)
     // Kolom KBM (Tingkat, Din. Kls, Din. Bag, Lokasi Diniyyah, Lokasi Takror) dikosongkan
     const contohBaris3 = [
-      '202109',
+      '',
+      '',
+      'B109',
       'UST. M. ROFIQ',
       'PA',
       '', // Tingkat: Kosong
       '', // Din. Kls: Kosong
       '', // Din. Bag: Kosong
       'TU',
+      'aktif',
       '', // Lokasi Diniyyah: Kosong
       '', // Lokasi Takror: Kosong
       'BANYUWANGI',
@@ -226,11 +238,17 @@ export default function ModalImportExcelAsatidz() {
 
         const jah = getExcelColumnValue(row, ['jah_asatidz', 'Jah', 'Jabatan']);
         const isTeaching = isEligibleForTeaching(jah);
+        const rawStatus = getExcelColumnValue(row, ['status', 'Status']).toLowerCase();
+        const status =
+          rawStatus === 'tidak aktif' || rawStatus === 'dikeluarkan' ? rawStatus : 'aktif';
 
         recordsToInsert.push({
-          nia: getExcelColumnValue(row, ['nia', 'NIA', 'Kode', 'Kode Guru']).toUpperCase(),
+          nis: getExcelColumnValue(row, ['nis', 'NIS', 'No Induk Santri']),
+          nia: getExcelColumnValue(row, ['nia', 'NIA', 'Nomor Induk Asatidz']),
+          kode_guru: getExcelColumnValue(row, ['kode_guru', 'KG', 'Kode Guru']).toUpperCase(),
           nama_asatidz: nama,
           pa_pi: papi,
+          status,
           tempat_lahir: getExcelColumnValue(row, ['tempat_lahir', 'Tempat Lahir', 'Tmp Lahir']),
           tgl_lahir: tglFormatted,
           bln_lahir: blnFormatted,

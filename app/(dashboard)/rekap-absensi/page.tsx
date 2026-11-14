@@ -453,7 +453,7 @@ export default function RekapAbsensiPage() {
 
       mapAsatidz[key] = {
         nama,
-        nia: a.nia || '-',
+        nia: a.kode_guru || '-',
         blok: dapatkanBlokRekapAsatidz(a, formasiList),
         jah: a.jah_asatidz || '-',
         tingkat: a.tingkat_asatidz || '-',

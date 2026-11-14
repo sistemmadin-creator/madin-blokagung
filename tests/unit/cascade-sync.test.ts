@@ -53,7 +53,7 @@ vi.mock('@/lib/supabase/client', () => {
 describe('Cascade Deletion & Synchronization Engine', () => {
   const mockTeacher: Asatidz = {
     id: 't1',
-    nia: 'C2',
+    kode_guru: 'C2',
     nama_asatidz: 'DEWI MASYITOH ANNEIRA RAHMA',
     jah_asatidz: 'Mustahiqoh',
     tingkat_asatidz: 'ULA',
@@ -65,7 +65,7 @@ describe('Cascade Deletion & Synchronization Engine', () => {
   it('berhasil menghapus asatidz secara cascade dan menghasilkan snapshot undo', async () => {
     const snapshot = await CascadeAsatidzService.cascadeDeleteAsatidz([mockTeacher]);
     expect(snapshot).not.toBeNull();
-    expect(snapshot?.deletedAsatidz[0].nia).toBe('C2');
+    expect(snapshot?.deletedAsatidz[0].kode_guru).toBe('C2');
     expect(snapshot?.fanDetailBefore).toBeDefined();
     expect(snapshot?.jadwalMapBefore).toBeDefined();
   });

@@ -1,8 +1,13 @@
+export type StatusAsatidz = 'aktif' | 'tidak aktif' | 'dikeluarkan';
+
 export interface Asatidz {
   id?: string | number;
-  nia: string;
+  nis?: string;
+  nia?: string;
+  kode_guru: string;
   nama_asatidz: string;
   pa_pi: 'PA' | 'PI';
+  status?: StatusAsatidz;
   tempat_lahir?: string;
   tgl_lahir?: string;
   bln_lahir?: string;
@@ -35,12 +40,15 @@ export interface AsatidzColumnConfig {
 export const ASATIDZ_TABLE_COLUMNS: AsatidzColumnConfig[] = [
   { key: 'no', label: 'NO', locked: true, defaultVisible: true },
   { key: 'foto', label: 'FOTO', defaultVisible: true },
+  { key: 'nis', label: 'NIS', defaultVisible: true },
   { key: 'nia', label: 'NIA', defaultVisible: true },
+  { key: 'kode_guru', label: 'KG', defaultVisible: true },
   { key: 'pa_pi', label: 'PA/PI', defaultVisible: true },
   { key: 'kelas_diniyyah', label: 'KELAS DINIYYAH', defaultVisible: true },
   { key: 'blok', label: 'BLOK', defaultVisible: true },
   { key: 'nama_asatidz', label: 'NAMA ASATIDZ', locked: true, defaultVisible: true },
   { key: 'jah_asatidz', label: 'JAH', defaultVisible: true },
+  { key: 'status', label: 'STATUS', defaultVisible: true },
   { key: 'lokasi_diniyyah', label: 'LOKASI DINIYYAH', defaultVisible: true },
   { key: 'lokasi_takror', label: 'LOKASI TAKROR', defaultVisible: true },
   { key: 'ttl', label: 'TTL', defaultVisible: true },
@@ -53,4 +61,5 @@ export const ASATIDZ_FILTER_CATEGORIES = [
   { name: 'Kelas Diniyyah', key: 'din_kls_asatidz' as keyof Asatidz },
   { name: 'Blok', key: 'blok' as keyof Asatidz },
   { name: 'Jah', key: 'jah_asatidz' as keyof Asatidz },
+  { name: 'Status', key: 'status' as keyof Asatidz },
 ];

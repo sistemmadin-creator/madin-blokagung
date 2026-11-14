@@ -12,7 +12,7 @@ export default function ModalFotoZoomAsatidz() {
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = zoomFotoData.url;
-    link.download = `Foto_Asatidz_${zoomFotoData.nia || 'Madin'}_${(zoomFotoData.nama || 'Asatidz').replace(/\s+/g, '_')}.jpg`;
+    link.download = `Foto_Asatidz_${zoomFotoData.kodeGuru || 'Madin'}_${(zoomFotoData.nama || 'Asatidz').replace(/\s+/g, '_')}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -34,8 +34,8 @@ export default function ModalFotoZoomAsatidz() {
               <UserCheck className="w-4 h-4 text-emerald-400" />
               <span>{zoomFotoData.nama}</span>
             </h3>
-            {zoomFotoData.nia && (
-              <p className="text-[11px] font-mono text-emerald-400">NIA: {zoomFotoData.nia}</p>
+            {zoomFotoData.kodeGuru && (
+              <p className="text-[11px] font-mono text-emerald-400">KG: {zoomFotoData.kodeGuru}</p>
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">

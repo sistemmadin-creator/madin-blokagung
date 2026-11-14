@@ -62,12 +62,12 @@ vi.mock('@/lib/supabase/client', () => ({
             order: async () => ({ data: [...mockAsatidzDb], error: null }),
             eq: (_col: string, val: any) => ({
               maybeSingle: async () => {
-                const row = mockAsatidzDb.find((a) => a.nia === val);
+                const row = mockAsatidzDb.find((a) => a.kode_guru === val);
                 return { data: row || null, error: null };
               },
             }),
             in: async (_col: string, vals: any[]) => ({
-              data: mockAsatidzDb.filter((a) => vals.includes(a.nia)),
+              data: mockAsatidzDb.filter((a) => vals.includes(a.kode_guru)),
               error: null,
             }),
           }),
@@ -77,18 +77,18 @@ vi.mock('@/lib/supabase/client', () => ({
           },
           update: (fields: any) => ({
             eq: async (_col: string, val: any) => {
-              const idx = mockAsatidzDb.findIndex((a) => a.nia === val);
+              const idx = mockAsatidzDb.findIndex((a) => a.kode_guru === val);
               if (idx !== -1) mockAsatidzDb[idx] = { ...mockAsatidzDb[idx], ...fields };
               return { error: null };
             },
           }),
           delete: () => ({
             eq: async (_col: string, val: any) => {
-              mockAsatidzDb = mockAsatidzDb.filter((a) => a.nia !== val);
+              mockAsatidzDb = mockAsatidzDb.filter((a) => a.kode_guru !== val);
               return { error: null };
             },
             in: async (_col: string, vals: any[]) => {
-              mockAsatidzDb = mockAsatidzDb.filter((a) => !vals.includes(a.nia));
+              mockAsatidzDb = mockAsatidzDb.filter((a) => !vals.includes(a.kode_guru));
               return { error: null };
             },
           }),
@@ -392,7 +392,7 @@ describe('Integrasi Modul 3: Data Santri & Asatidz Undo/Redo', () => {
   it('merekam aksi tambah & hapus asatidz dan mendukung undo/redo', async () => {
     const asatidzStore = useAsatidzStore.getState();
     const asatidzBaru: any = {
-      nia: 'A001',
+      kode_guru: 'A001',
       nama_asatidz: 'Ust. Zaid',
       kategori: 'Tetap',
       tugas_mengajar: 'Nahwu',
@@ -840,21 +840,21 @@ describe('Realtime Sync Handlers (Fase 3: Auto-Sync State antar Browser)', () =>
     // 1. INSERT event
     asatidzStore.handleRealtimeAsatidz({
       eventType: 'INSERT',
-      new: { nia: 'A301', nama_asatidz: 'Ust. Realtime' },
+      new: { kode_guru: 'A301', nama_asatidz: 'Ust. Realtime' },
     });
     expect(useAsatidzStore.getState().asatidzList.length).toBe(1);
 
     // 2. UPDATE event
     asatidzStore.handleRealtimeAsatidz({
       eventType: 'UPDATE',
-      new: { nia: 'A301', nama_asatidz: 'Ust. Realtime Updated' },
+      new: { kode_guru: 'A301', nama_asatidz: 'Ust. Realtime Updated' },
     });
     expect(useAsatidzStore.getState().asatidzList[0].nama_asatidz).toBe('Ust. Realtime Updated');
 
     // 3. DELETE event
     asatidzStore.handleRealtimeAsatidz({
       eventType: 'DELETE',
-      old: { nia: 'A301' },
+      old: { kode_guru: 'A301' },
     });
     expect(useAsatidzStore.getState().asatidzList.length).toBe(0);
   });

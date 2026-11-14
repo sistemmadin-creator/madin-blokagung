@@ -37,8 +37,8 @@ export const CascadeAsatidzService = {
     const namesUpperSet = new Set(
       asatidzToDelete.map((a) => (a.nama_asatidz || '').trim().toUpperCase()).filter(Boolean)
     );
-    const niasUpperSet = new Set(
-      asatidzToDelete.map((a) => (a.nia || '').trim().toUpperCase()).filter(Boolean)
+    const kgUpperSet = new Set(
+      asatidzToDelete.map((a) => (a.kode_guru || '').trim().toUpperCase()).filter(Boolean)
     );
 
     try {
@@ -65,7 +65,7 @@ export const CascadeAsatidzService = {
       // Sisa daftar asatidz setelah penghapusan untuk validasi label MS/MB
       const currentAsatidzList = useAsatidzStore.getState().asatidzList;
       const remainingAsatidzList = currentAsatidzList.filter(
-        (a) => !niasUpperSet.has(String(a.nia || '').trim().toUpperCase())
+        (a) => !kgUpperSet.has(String(a.kode_guru || '').trim().toUpperCase())
       );
 
       // 2. Cascade Clean FAN_PELAJARAN_DETAIL
@@ -102,7 +102,7 @@ export const CascadeAsatidzService = {
 
       Object.entries(jadwalMapBefore).forEach(([keyUpper, row]) => {
         const rowName = (row.nama_asatidz || keyUpper).trim().toUpperCase();
-        if (namesUpperSet.has(rowName) || niasUpperSet.has(rowName)) {
+        if (namesUpperSet.has(rowName) || kgUpperSet.has(rowName)) {
           jadwalModified = true;
           return; // Hapus baris guru ini
         }
@@ -121,8 +121,8 @@ export const CascadeAsatidzService = {
         const mustahiqUpper = String(f.id_mustahiq || '').trim().toUpperCase();
         const waliUpper = String(f.wali_kelas || '').trim().toUpperCase();
 
-        const matchMustahiq = namesUpperSet.has(mustahiqUpper) || niasUpperSet.has(mustahiqUpper);
-        const matchWali = namesUpperSet.has(waliUpper) || niasUpperSet.has(waliUpper);
+        const matchMustahiq = namesUpperSet.has(mustahiqUpper) || kgUpperSet.has(mustahiqUpper);
+        const matchWali = namesUpperSet.has(waliUpper) || kgUpperSet.has(waliUpper);
 
         if (matchMustahiq || matchWali) {
           formasiBefore.push({
@@ -178,7 +178,7 @@ export const CascadeAsatidzService = {
         const angNiaUpper = String(ang.nia || '').trim().toUpperCase();
         const angNamaUpper = String(ang.nama || ang.nama_asatidz || '').trim().toUpperCase();
         return (
-          (angNiaUpper && angNiaUpper !== '-' && niasUpperSet.has(angNiaUpper)) ||
+          (angNiaUpper && angNiaUpper !== '-' && kgUpperSet.has(angNiaUpper)) ||
           (angNamaUpper && namesUpperSet.has(angNamaUpper))
         );
       });

@@ -78,7 +78,7 @@ export default function ModalGrupAsal() {
 
     const filtered = asatidzList.filter((a) => {
       if (!q) return true;
-      const full = `${a.nama_asatidz} ${a.nia || ''} ${a.jah_asatidz || ''} ${mapGrupLain[a.nama_asatidz.toUpperCase()] || ''}`.toLowerCase();
+      const full = `${a.nama_asatidz} ${a.kode_guru || ''} ${a.jah_asatidz || ''} ${mapGrupLain[a.nama_asatidz.toUpperCase()] || ''}`.toLowerCase();
       return full.includes(q);
     });
 
@@ -88,7 +88,7 @@ export default function ModalGrupAsal() {
       const selA = selectedSet.has(nA) ? 0 : 1;
       const selB = selectedSet.has(nB) ? 0 : 1;
       if (selA !== selB) return selA - selB;
-      return compareNIANatural(a.nia, b.nia);
+      return compareNIANatural(a.kode_guru, b.kode_guru);
     });
   }, [asatidzList, selectedAsatidz, search, mapGrupLain]);
 
@@ -105,7 +105,7 @@ export default function ModalGrupAsal() {
     // Temukan asatidz dengan awalan huruf ini yang tidak dikunci grup lain
     const targetNames = asatidzList
       .filter((a) => {
-        const nia = String(a.nia || '').toLowerCase();
+        const nia = String(a.kode_guru || '').toLowerCase();
         const isLocked = !!mapGrupLain[a.nama_asatidz.toUpperCase()];
         return nia.startsWith(hLower) && !isLocked;
       })
@@ -269,7 +269,7 @@ export default function ModalGrupAsal() {
               ) : (
                 sortedAndFilteredAsatidz.map((a, idx) => {
                   const nama = a.nama_asatidz;
-                  const nia = a.nia || '-';
+                  const nia = a.kode_guru || '-';
                   const jah = a.jah_asatidz || '-';
                   const grupLain = mapGrupLain[nama.toUpperCase()];
                   const isChecked = selectedAsatidz.includes(nama);

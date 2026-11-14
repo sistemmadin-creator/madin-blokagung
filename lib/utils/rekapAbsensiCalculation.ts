@@ -485,7 +485,7 @@ export function computeRekapStatusSummary(
 
     teacherProfileMap.set(key, {
       nama,
-      nia: a.nia || '-',
+      nia: a.kode_guru || '-',
       blok,
       jah: a.jah_asatidz || '-',
       jenjang: primaryJenjang,

@@ -276,7 +276,7 @@ export function ekstraksiSesiJadwalHariIni(
     const nama = String(a.nama_asatidz || '').trim();
     if (!nama) return;
 
-    const nia = String(a.nia || '-').trim();
+    const nia = String(a.kode_guru || '-').trim();
     const gender = String(a.pa_pi || '-').trim();
     const tingkat = String(a.tingkat_asatidz || '-').trim();
     const dinKls = String(a.din_kls_asatidz || '-').trim();

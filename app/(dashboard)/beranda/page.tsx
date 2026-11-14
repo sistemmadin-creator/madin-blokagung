@@ -287,7 +287,7 @@ export default function BerandaPage() {
   const asatidzAbsensiStat = useMemo(() => {
     if (!selectedAsatidzModal) return null;
     const a = selectedAsatidzModal;
-    const targetNia = String(a.nia || '').trim();
+    const targetNia = String(a.kode_guru || '').trim();
     const targetNama = norm(a.nama_asatidz || '');
 
     let hadir = 0;
@@ -754,7 +754,7 @@ export default function BerandaPage() {
       });
 
       const matchedMustahiq = (asatidzList || []).find(
-        (a) => a.nia === f.id_mustahiq || String(a.id) === String(f.id_mustahiq)
+        (a) => a.kode_guru === f.id_mustahiq || String(a.id) === String(f.id_mustahiq)
       );
       const mustahiqName =
         matchedMustahiq?.nama_asatidz ||
@@ -823,7 +823,7 @@ export default function BerandaPage() {
     const matchedAsatidz = (asatidzList || [])
       .filter((a) => {
         const nama = (a.nama_asatidz || '').toLowerCase();
-        const nia = (a.nia || '').toLowerCase();
+        const nia = (a.kode_guru || '').toLowerCase();
         const jabatan = (a.jah_asatidz || '').toLowerCase();
         return nama.includes(q) || nia.includes(q) || jabatan.includes(q);
       })
@@ -1141,7 +1141,7 @@ export default function BerandaPage() {
                   <div className="space-y-1.5 max-h-56 overflow-y-auto pr-0.5">
                     {omniSearchResults.asatidz.map((a) => (
                       <button
-                        key={a.nia || String(a.id)}
+                        key={a.kode_guru || String(a.id)}
                         type="button"
                         onClick={() => setSelectedAsatidzModal(a)}
                         className="w-full text-left p-2 rounded-lg bg-white border border-teal-100 hover:border-teal-300 hover:bg-teal-50/70 transition shadow-2xs group cursor-pointer flex items-center justify-between gap-2"
@@ -1151,7 +1151,7 @@ export default function BerandaPage() {
                             {a.nama_asatidz}
                           </p>
                           <p className="text-[10px] text-slate-400 font-mono truncate">
-                            NIA: {a.nia || '-'} • {a.jah_asatidz || 'Dewan Pengajar'}
+                            KG: {a.kode_guru || '-'} • {a.jah_asatidz || 'Dewan Pengajar'}
                           </p>
                         </div>
                         <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-teal-100 text-teal-800 flex-shrink-0">
@@ -1844,7 +1844,7 @@ export default function BerandaPage() {
                 <div>
                   <h3 className="text-sm font-bold">Rincian Data Asatidz</h3>
                   <p className="text-[11px] text-teal-200">
-                    NIA: {selectedAsatidzModal.nia || '-'}
+                    KG: {selectedAsatidzModal.kode_guru || '-'}
                   </p>
                 </div>
               </div>

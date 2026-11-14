@@ -348,8 +348,8 @@ export default function ModalInputFormasi({
             />
             <datalist id="listAsatidzMustahiqInput">
               {asatidzOptions.map((a) => (
-                <option key={a.id || a.nia} value={a.nama_asatidz}>
-                  {a.jah_asatidz || 'Mustahiq'} - {a.nia}
+                <option key={a.id || a.kode_guru} value={a.nama_asatidz}>
+                  {a.jah_asatidz || 'Mustahiq'} - {a.kode_guru}
                 </option>
               ))}
             </datalist>

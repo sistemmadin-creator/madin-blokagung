@@ -98,7 +98,7 @@ export default function DaftarPendidikPage() {
         const listCocok = grupCocok
           ? grp.asatidzList
           : grp.asatidzList.filter((a) => {
-              const fullText = `${a.nia || ''} ${a.nama_asatidz} ${a.jah_asatidz || ''}`.toLowerCase();
+              const fullText = `${a.kode_guru || ''} ${a.nama_asatidz} ${a.jah_asatidz || ''}`.toLowerCase();
               return fullText.includes(q) || fullText.replace(/\s+/g, '').includes(qClean);
             });
         return { namaGrup: grp.namaGrup, asatidzList: listCocok };
@@ -144,7 +144,7 @@ export default function DaftarPendidikPage() {
     kelompokTampil.forEach((grp) => {
       const asalStr = grp.namaGrup || '-';
       grp.asatidzList.forEach((a) => {
-        const kode = a.nia || '-';
+        const kode = a.kode_guru || '-';
         const nama = a.nama_asatidz;
         const jah = a.jah_asatidz || '-';
         const jdw = getJadwalGuruFromMap(nama, jadwalMap);
@@ -366,7 +366,7 @@ export default function DaftarPendidikPage() {
                   const rowCount = grp.asatidzList.length;
 
                   return grp.asatidzList.map((a, idxInGroup) => {
-                    const kode = a.nia || '-';
+                    const kode = a.kode_guru || '-';
                     const nama = a.nama_asatidz;
                     const jah = a.jah_asatidz || '-';
                     const jdw = getJadwalGuruFromMap(nama, jadwalMap);
@@ -396,7 +396,7 @@ export default function DaftarPendidikPage() {
                     };
 
                     return (
-                      <tr key={a.id || `${a.nia}-${nama}`} className="hover:bg-slate-50/60 transition">
+                      <tr key={a.id || `${a.kode_guru}-${nama}`} className="hover:bg-slate-50/60 transition">
                         {/* KODE */}
                         <td className="border border-slate-300 text-center py-1 px-1 font-mono font-bold text-xs text-slate-900 bg-slate-50 sticky left-0 z-10">
                           {kode}

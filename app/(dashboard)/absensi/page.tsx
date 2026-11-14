@@ -596,7 +596,7 @@ export default function AbsensiAsatidzPage() {
       {/* Datalist global untuk input Nama Pengganti (Badal) */}
       <datalist id="datalist-asatidz-pengganti">
         {asatidzList.map((a) => (
-          <option key={a.nia} value={a.nama_asatidz} />
+          <option key={a.kode_guru || a.id} value={a.nama_asatidz} />
         ))}
       </datalist>
 

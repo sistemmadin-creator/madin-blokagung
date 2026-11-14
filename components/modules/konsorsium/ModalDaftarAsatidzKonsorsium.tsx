@@ -20,7 +20,7 @@ interface ModalDaftarAsatidzKonsorsiumProps {
 }
 
 function getAsatidzUniqueKey(a: Asatidz): string {
-  return a.nia || (a.id ? String(a.id) : a.nama_asatidz);
+  return a.kode_guru || (a.id ? String(a.id) : a.nama_asatidz);
 }
 
 export default function ModalDaftarAsatidzKonsorsium({
@@ -70,7 +70,7 @@ export default function ModalDaftarAsatidzKonsorsium({
   }, [anggotaList, kelas]);
 
   const isAsatidzEnrolled = (a: Asatidz) => {
-    if (a.nia && enrolledKeySet.has(a.nia)) return true;
+    if (a.kode_guru && enrolledKeySet.has(a.kode_guru)) return true;
     if (a.id && enrolledKeySet.has(String(a.id))) return true;
     return false;
   };
@@ -82,7 +82,7 @@ export default function ModalDaftarAsatidzKonsorsium({
       const matchSearch =
         !q ||
         a.nama_asatidz?.toLowerCase().includes(q) ||
-        a.nia?.toLowerCase().includes(q);
+        a.kode_guru?.toLowerCase().includes(q);
 
       const matchGender =
         filterGender === 'ALL' ||
@@ -125,7 +125,7 @@ export default function ModalDaftarAsatidzKonsorsium({
       const selectedAsatidzData = asatidzList
         .filter((a) => selectedKeys.includes(getAsatidzUniqueKey(a)))
         .map((a) => ({
-          nia: a.nia || '-',
+          nia: a.kode_guru || '-',
           nama: a.nama_asatidz,
           gender: a.pa_pi,
           asatidzId: a.id ? String(a.id) : undefined,
@@ -269,7 +269,7 @@ export default function ModalDaftarAsatidzKonsorsium({
 
               return (
                 <div
-                  key={a.id || a.nia || idx}
+                  key={a.id || a.kode_guru || idx}
                   onClick={() => toggleSelectKey(a)}
                   className={`px-4 py-2.5 flex items-center justify-between transition-colors ${
                     isEnrolled
@@ -298,7 +298,7 @@ export default function ModalDaftarAsatidzKonsorsium({
                         )}
                       </div>
                       <div className="text-xs text-slate-400 font-mono">
-                        NIA: {a.nia || '-'}
+                        KG: {a.kode_guru || '-'}
                       </div>
                     </div>
                   </div>

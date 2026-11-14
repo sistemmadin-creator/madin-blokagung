@@ -63,7 +63,7 @@ export const QRCodeHelper = {
       };
     }
 
-    // Fallback: Jika input berupa angka murni NIS atau kode pendek NIA
+    // Fallback: Jika input berupa angka murni NIS atau Kode Guru (KG)
     if (/^\d{3,}$/.test(raw)) {
       return {
         type: 'SANTRI',

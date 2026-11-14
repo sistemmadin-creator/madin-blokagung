@@ -1232,7 +1232,7 @@ export function buildMasterStrukturKelasKBM(
         bag,
         papi,
         mustahiqNama: namaMustahiqFormasi || '-',
-        mustahiqKG: profilMustahiq?.nia || '-',
+        mustahiqKG: profilMustahiq?.kode_guru || '-',
         mustahiqJah: profilMustahiq?.jah_asatidz || 'Mustahiq',
         lokal: f.lokasi_diniyyah || '-',
         isUnggulan: isUg,
@@ -1248,7 +1248,7 @@ export function buildMasterStrukturKelasKBM(
     const bag = (a.din_bag_asatidz || '').trim().toUpperCase();
     const papi = (a.pa_pi || '').trim().toUpperCase();
     const nama = (a.nama_asatidz || '').trim();
-    const nia = (a.nia || '').trim();
+    const nia = (a.kode_guru || '').trim();
     const jah = (a.jah_asatidz || '').trim();
 
     if (tingkat && kls && bag) {
@@ -1302,7 +1302,7 @@ export function buildMasterStrukturKelasKBM(
     const namaGuru = (guruMaster?.nama_asatidz || jdw.nama_asatidz || keyUpper).trim();
     if (!namaGuru) return;
 
-    const kgGuru = guruMaster?.nia || '-';
+    const kgGuru = guruMaster?.kode_guru || '-';
     const jahGuru = guruMaster?.jah_asatidz || '';
     const genderGuru = String(guruMaster?.pa_pi || '').trim().toUpperCase();
 

@@ -90,7 +90,7 @@ export default function ModalDetailAsatidz() {
   };
 
   const handleDelete = async () => {
-    if (await deleteAsatidz(selectedAsatidz.nia)) {
+    if (await deleteAsatidz(selectedAsatidz.kode_guru)) {
       closeDetailModal();
     }
   };
@@ -117,7 +117,7 @@ export default function ModalDetailAsatidz() {
           <div
             onClick={() =>
               selectedAsatidz.foto_asatidz &&
-              openFotoZoom(selectedAsatidz.foto_asatidz, selectedAsatidz.nama_asatidz, selectedAsatidz.nia)
+              openFotoZoom(selectedAsatidz.foto_asatidz, selectedAsatidz.nama_asatidz, selectedAsatidz.kode_guru)
             }
             className={`w-24 h-32 rounded-xl border border-slate-300 bg-white shadow-xs overflow-hidden shrink-0 flex items-center justify-center relative group ${
               selectedAsatidz.foto_asatidz ? 'cursor-zoom-in' : ''
@@ -154,8 +154,20 @@ export default function ModalDetailAsatidz() {
                 {selectedAsatidz.pa_pi === 'PA' ? 'Asatidz (PA)' : 'Ustadzah (PI)'}
               </span>
 
+              {selectedAsatidz.nis && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                  NIS: {selectedAsatidz.nis}
+                </span>
+              )}
+
+              {selectedAsatidz.nia && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                  NIA: {selectedAsatidz.nia}
+                </span>
+              )}
+
               <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-slate-800 text-white">
-                NIA: {selectedAsatidz.nia}
+                KG: {selectedAsatidz.kode_guru || '-'}
               </span>
 
               {selectedAsatidz.jah_asatidz && (
@@ -163,6 +175,18 @@ export default function ModalDetailAsatidz() {
                   {selectedAsatidz.jah_asatidz}
                 </span>
               )}
+
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border capitalize ${
+                  (selectedAsatidz.status || 'aktif') === 'aktif'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : selectedAsatidz.status === 'dikeluarkan'
+                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                }`}
+              >
+                {selectedAsatidz.status || 'aktif'}
+              </span>
             </div>
 
             <h2 className="text-lg font-bold text-slate-800">{selectedAsatidz.nama_asatidz}</h2>

@@ -62,7 +62,13 @@ export function isEligibleForTeaching(jah: string | null | undefined): boolean {
   return clean === 'mustahiq' || clean === 'mustahiqoh' || clean === 'ms & koor';
 }
 
-const NIA_PREFIX_OPTIONS = ['A', 'B', 'C', 'D', 'E', 'PA', 'PI'];
+const KG_PREFIX_OPTIONS = ['A', 'B', 'C', 'D', 'E', 'PA', 'PI'];
+
+const STATUS_ASATIDZ_OPTIONS = [
+  { value: 'aktif', label: 'Aktif' },
+  { value: 'tidak aktif', label: 'Tidak Aktif' },
+  { value: 'dikeluarkan', label: 'Dikeluarkan' },
+] as const;
 
 const BULAN_OPTIONS = [
   { val: '01', label: 'Jan' },
@@ -86,13 +92,14 @@ export default function ModalInputAsatidz() {
     openImportModal,
     editAsatidzData,
     saveAsatidz,
-    generateNextNIA,
+    generateNextKodeGuru,
   } = useAsatidzStore();
 
   const isEdit = !!editAsatidzData;
 
   const [formData, setFormData] = useState<Partial<Asatidz>>({
     pa_pi: 'PA',
+    status: 'aktif',
     tingkat_asatidz: 'Ula',
     din_kls_asatidz: '1',
     din_bag_asatidz: 'A',
@@ -123,20 +130,26 @@ export default function ModalInputAsatidz() {
 
   useEffect(() => {
     if (editAsatidzData) {
-      setFormData({ ...editAsatidzData });
-      // Detect prefix from existing NIA
-      const niaStr = String(editAsatidzData.nia || '').trim();
-      const match = niaStr.match(/^([A-Za-z]+)/);
-      if (match && NIA_PREFIX_OPTIONS.includes(match[1].toUpperCase())) {
+      setFormData({
+        ...editAsatidzData,
+        status: editAsatidzData.status || 'aktif',
+      });
+      // Detect prefix from existing Kode Guru (KG)
+      const kgStr = String(editAsatidzData.kode_guru || '').trim();
+      const match = kgStr.match(/^([A-Za-z]+)/);
+      if (match && KG_PREFIX_OPTIONS.includes(match[1].toUpperCase())) {
         setSelectedPrefix(match[1].toUpperCase());
       } else {
         setSelectedPrefix('');
       }
     } else {
       setFormData({
+        nis: '',
         nia: '',
+        kode_guru: '',
         nama_asatidz: '',
         pa_pi: 'PA',
+        status: 'aktif',
         jah_asatidz: 'Mustahiq',
         tempat_lahir: '',
         tgl_lahir: '',
@@ -268,15 +281,15 @@ export default function ModalInputAsatidz() {
     const prefix = e.target.value;
     setSelectedPrefix(prefix);
     if (prefix) {
-      const nextNIA = generateNextNIA(prefix);
-      setFormData((prev) => ({ ...prev, nia: nextNIA }));
+      const nextKG = generateNextKodeGuru(prefix);
+      setFormData((prev) => ({ ...prev, kode_guru: nextKG }));
     }
   };
 
-  const handleAutoGenerateNIA = () => {
+  const handleAutoGenerateKodeGuru = () => {
     const prefix = selectedPrefix || (formData.pa_pi === 'PI' ? 'PI' : 'PA');
-    const nextNIA = generateNextNIA(prefix);
-    setFormData((prev) => ({ ...prev, nia: nextNIA }));
+    const nextKG = generateNextKodeGuru(prefix);
+    setFormData((prev) => ({ ...prev, kode_guru: nextKG }));
   };
 
   const handleFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -310,14 +323,15 @@ export default function ModalInputAsatidz() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.nia || !formData.nama_asatidz || !formData.pa_pi) {
-      alert('Mohon lengkapi NIA, Nama Lengkap Asatidz, dan Gender (PA/PI)');
+    if (!formData.kode_guru || !formData.nama_asatidz || !formData.pa_pi) {
+      alert('Mohon lengkapi Kode Guru (KG), Nama Lengkap Asatidz, dan Gender (PA/PI)');
       return;
     }
 
     const isTeachingJah = isEligibleForTeaching(formData.jah_asatidz);
     const sanitizedPayload: Asatidz = {
       ...(formData as Asatidz),
+      status: formData.status || 'aktif',
       tingkat_asatidz: isTeachingJah ? (formData.tingkat_asatidz || '') : '',
       din_kls_asatidz: isTeachingJah ? (formData.din_kls_asatidz || '') : '',
       din_bag_asatidz: isTeachingJah ? (formData.din_bag_asatidz || '') : '',
@@ -329,7 +343,7 @@ export default function ModalInputAsatidz() {
     const success = await saveAsatidz(
       sanitizedPayload,
       isEdit,
-      editAsatidzData?.nia
+      editAsatidzData?.kode_guru
     );
     setIsSubmitting(false);
 
@@ -443,20 +457,50 @@ export default function ModalInputAsatidz() {
 
               {/* Form Input Identitas */}
               <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* NIA dengan Prefix Selector */}
-                <div className="sm:col-span-2">
+                {/* NIS (Nomor Induk Santri) - Netral */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    NIS (Nomor Induk Santri)
+                  </label>
+                  <input
+                    type="text"
+                    name="nis"
+                    value={formData.nis || ''}
+                    onChange={handleChange}
+                    placeholder="Masukkan NIS"
+                    className="w-full text-xs py-2 px-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-600 font-mono text-slate-800"
+                  />
+                </div>
+
+                {/* NIA (Nomor Induk Asatidz) - Netral */}
+                <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     NIA (Nomor Induk Asatidz) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="nia"
+                    value={formData.nia || ''}
+                    onChange={handleChange}
+                    placeholder="Masukkan NIA"
+                    className="w-full text-xs py-2 px-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-600 font-mono text-slate-800"
+                  />
+                </div>
+
+                {/* Kode Guru (KG) dengan Prefix Selector & Auto-Generate */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Kode Guru (KG) <span className="text-rose-500">*</span>
                   </label>
                   <div className="flex gap-1.5">
                     <select
                       value={selectedPrefix}
                       onChange={handlePrefixChange}
-                      title="Pilih Prefix Huruf NIA"
+                      title="Pilih Prefix Huruf Kode Guru"
                       className="w-14 text-xs py-2 px-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-900 font-bold focus:outline-none"
                     >
                       <option value="">-</option>
-                      {NIA_PREFIX_OPTIONS.map((p) => (
+                      {KG_PREFIX_OPTIONS.map((p) => (
                         <option key={p} value={p}>
                           {p}
                         </option>
@@ -466,8 +510,8 @@ export default function ModalInputAsatidz() {
                     <div className="relative flex-1">
                       <input
                         type="text"
-                        name="nia"
-                        value={formData.nia || ''}
+                        name="kode_guru"
+                        value={formData.kode_guru || ''}
                         onChange={handleChange}
                         required
                         placeholder="Contoh: B54"
@@ -476,8 +520,8 @@ export default function ModalInputAsatidz() {
                       {!isEdit && (
                         <button
                           type="button"
-                          onClick={handleAutoGenerateNIA}
-                          title="Generate Otomatis Nomor NIA"
+                          onClick={handleAutoGenerateKodeGuru}
+                          title="Generate Otomatis Kode Guru (KG)"
                           className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-600 hover:text-emerald-800"
                         >
                           <Sparkles className="w-3.5 h-3.5" />
@@ -485,22 +529,6 @@ export default function ModalInputAsatidz() {
                       )}
                     </div>
                   </div>
-                </div>
-
-                {/* Gender PA/PI */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Gender <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    name="pa_pi"
-                    value={formData.pa_pi || 'PA'}
-                    onChange={handleChange}
-                    className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-                  >
-                    <option value="PA">PA - Ustadz</option>
-                    <option value="PI">PI - Ustadzah</option>
-                  </select>
                 </div>
 
                 {/* Nama Lengkap Asatidz */}
@@ -519,6 +547,22 @@ export default function ModalInputAsatidz() {
                   />
                 </div>
 
+                {/* Gender PA/PI */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Gender <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    name="pa_pi"
+                    value={formData.pa_pi || 'PA'}
+                    onChange={handleChange}
+                    className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                  >
+                    <option value="PA">PA - Ustadz</option>
+                    <option value="PI">PI - Ustadzah</option>
+                  </select>
+                </div>
+
                 {/* Jah / Amanah */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -534,6 +578,25 @@ export default function ModalInputAsatidz() {
                     {jahOptions.map((opt) => (
                       <option key={opt} value={opt}>
                         {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status Keaktifan */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    value={formData.status || 'aktif'}
+                    onChange={handleChange}
+                    className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                  >
+                    {STATUS_ASATIDZ_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
                       </option>
                     ))}
                   </select>

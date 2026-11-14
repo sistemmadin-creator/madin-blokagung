@@ -416,7 +416,7 @@ export default function ModalBuatKelasKonsorsium({
                 const matched = asatidzList.find(
                   (a) => a.nama_asatidz?.toLowerCase() === nextVal.trim().toLowerCase()
                 );
-                setPembimbingNia(matched?.nia || '');
+                setPembimbingNia(matched?.kode_guru || '');
                 setIsPembimbingDropdownOpen(true);
               }}
               onFocus={() => setIsPembimbingDropdownOpen(true)}
@@ -442,11 +442,11 @@ export default function ModalBuatKelasKonsorsium({
               {filteredAsatidz.length > 0 ? (
                 filteredAsatidz.map((a) => (
                   <button
-                    key={a.id || a.nia}
+                    key={a.id || a.kode_guru}
                     type="button"
                     onClick={() => {
                       setPembimbingNama(a.nama_asatidz);
-                      setPembimbingNia(a.nia || '');
+                      setPembimbingNia(a.kode_guru || '');
                       setPembimbingSearch(a.nama_asatidz);
                       setIsPembimbingDropdownOpen(false);
                     }}
@@ -455,7 +455,7 @@ export default function ModalBuatKelasKonsorsium({
                     <div>
                       <div className="font-medium text-slate-800">{a.nama_asatidz}</div>
                       <div className="text-[11px] text-slate-400 font-mono">
-                        NIA: {a.nia || '-'}
+                        KG: {a.kode_guru || '-'}
                       </div>
                     </div>
                     {pembimbingNama === a.nama_asatidz && (
