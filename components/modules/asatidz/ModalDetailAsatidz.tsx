@@ -25,6 +25,16 @@ import {
   Calendar,
 } from 'lucide-react';
 
+function splitKelasAndLokasi(rawLokasi: string): { kelas: string; lokasi: string } {
+  const clean = String(rawLokasi || '').trim();
+  if (!clean || clean === '-') return { kelas: '', lokasi: '' };
+  const match = clean.match(/^(.*?)\s*\(([^()]+)\)$/);
+  if (match && !/^(PA|PI)$/i.test(match[2].trim())) {
+    return { kelas: match[1].trim(), lokasi: match[2].trim() };
+  }
+  return { kelas: clean, lokasi: '' };
+}
+
 export default function ModalDetailAsatidz() {
   const {
     isDetailModalOpen,
@@ -316,11 +326,19 @@ export default function ModalDetailAsatidz() {
             </div>
           </div>
 
-          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-            <div className="text-[11px] font-bold text-slate-500 mb-1.5">
-              Rincian Jadwal Mengajar (Sabtu s/d Kamis):
+          <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Rincian Jadwal Mengajar (Sabtu s/d Kamis)
+              </span>
+              {activeHari && (
+                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                  Hari Aktif: {activeHari}
+                </span>
+              )}
             </div>
-            <div className="divide-y divide-slate-200/70">
+
+            <div className="space-y-2">
               {LIST_HARI.map((h) => {
                 const hVal = jdwObj[h.toLowerCase()] || '';
                 const slots = parseJadwalCell_Client(formatTampilanKelas(hVal));
@@ -329,31 +347,70 @@ export default function ModalDetailAsatidz() {
                 return (
                   <div
                     key={h}
-                    className={`py-2 flex items-start gap-2.5 text-xs ${
-                      isHariAktif ? 'bg-emerald-50/70 px-2 rounded-lg' : ''
+                    className={`rounded-lg border p-2.5 transition ${
+                      isHariAktif
+                        ? 'bg-emerald-50/60 border-emerald-200'
+                        : 'bg-white border-slate-200/80'
                     }`}
                   >
-                    <span className="px-2 py-0.5 rounded bg-emerald-100/80 text-emerald-800 border border-emerald-200 font-bold text-[11px] min-w-[64px] text-center shrink-0">
-                      {h}
-                    </span>
-                    <div className="flex flex-wrap items-center gap-1.5 flex-1">
-                      {slots.length === 0 ? (
-                        <span className="text-slate-400 italic text-[11px]">Tidak ada jadwal</span>
-                      ) : (
-                        slots.map((s, sIdx) => {
-                          const fan = s.fan && s.fan !== '-' ? s.fan : '';
-                          const lok = s.lokasi && s.lokasi !== '-' ? `(${s.lokasi})` : '';
-                          const info = [fan, lok].filter(Boolean).join(' ') || '-';
-                          return (
-                            <span
-                              key={`${h}_${sIdx}`}
-                              className="inline-block px-2 py-0.5 rounded bg-white text-slate-800 border border-slate-200 text-[11px] shadow-2xs"
-                            >
-                              <b className="text-emerald-700">Jam {s.jam}:</b> {info}
-                            </span>
-                          );
-                        })
-                      )}
+                    <div className="flex flex-col sm:flex-row sm:items-start gap-2.5">
+                      {/* Label Hari */}
+                      <div className="sm:w-24 shrink-0 flex items-center gap-1.5 sm:pt-0.5">
+                        <span
+                          className={`px-2 py-0.5 rounded-md font-bold text-[11px] min-w-[68px] text-center border ${
+                            isHariAktif
+                              ? 'bg-emerald-600 text-white border-emerald-600'
+                              : 'bg-slate-100 text-slate-700 border-slate-200'
+                          }`}
+                        >
+                          {h}
+                        </span>
+                      </div>
+
+                      {/* Grid Slot Jam */}
+                      <div className="flex-1">
+                        {slots.length === 0 ? (
+                          <div className="py-0.5 text-slate-400 italic text-[11px]">
+                            Tidak ada jadwal
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {slots.map((s, sIdx) => {
+                              const { kelas, lokasi } = splitKelasAndLokasi(s.lokasi);
+                              return (
+                                <div
+                                  key={`${h}_${sIdx}`}
+                                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 shadow-2xs space-y-1"
+                                >
+                                  <div className="flex items-start gap-1.5">
+                                    <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px] shrink-0">
+                                      Jam {s.jam}
+                                    </span>
+                                    <span className="font-semibold text-slate-800 text-[11px] leading-snug">
+                                      {s.fan || '-'}
+                                    </span>
+                                  </div>
+                                  {(kelas || lokasi) && (
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500 pl-0.5">
+                                      {kelas && (
+                                        <span className="font-medium text-slate-600">
+                                          {kelas}
+                                        </span>
+                                      )}
+                                      {lokasi && (
+                                        <span className="inline-flex items-center gap-0.5 text-slate-500">
+                                          <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                                          <span>{lokasi}</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

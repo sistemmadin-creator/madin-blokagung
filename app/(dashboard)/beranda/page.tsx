@@ -601,13 +601,10 @@ export default function BerandaPage() {
     return canViewPage(currentAccount, pageId, sub.href);
   };
 
-  // Inisialisasi status buka/tutup grup: Secara default terbuka semua grup agar pengguna langsung melihat menu
+  // Inisialisasi status buka/tutup grup: Secara default seluruh grup menu tertutup (Tutup Semua)
   useEffect(() => {
-    const initialGroupState: Record<string, boolean> = {};
-    activeGroups.forEach((g) => {
-      initialGroupState[g.id] = true;
-    });
-    setExpandedGroups(initialGroupState);
+    setExpandedGroups({});
+    setExpandedMenus({});
   }, [activeGroups.length]);
 
   // Toggle buka/tutup grup
@@ -1238,7 +1235,7 @@ export default function BerandaPage() {
           </div>
         ) : (
           filteredGroups.map((group) => {
-            const isExpanded = Boolean(expandedGroups[group.id]);
+            const isExpanded = Boolean(searchQuery.trim()) || Boolean(expandedGroups[group.id]);
             const groupIcon = GROUP_ICON_REGISTRY[group.id] || <Layers className="w-6 h-6 text-slate-700" />;
             const groupDesc = GROUP_DESCRIPTIONS[group.id] || 'Grup modul operasional sistem MADINA Blokagung.';
 

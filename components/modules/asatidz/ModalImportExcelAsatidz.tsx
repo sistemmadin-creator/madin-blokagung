@@ -117,7 +117,7 @@ export default function ModalImportExcelAsatidz() {
     const contohBaris2 = [
       '',
       '',
-      'PI15',
+      'C15',
       'USTZ. SITI AISYAH',
       'PI',
       'WUSTHO',

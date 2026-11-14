@@ -53,6 +53,8 @@ test.describe('Modul 02: Master Data Dewan Asatidz', () => {
     await expect(page.getByPlaceholder('Masukkan NIS')).toBeVisible();
     await expect(page.getByPlaceholder('Masukkan NIA')).toBeVisible();
     await expect(page.getByPlaceholder('Contoh: B54')).toBeVisible();
+    const kgPrefixSelect = page.getByTitle('Pilih Prefix Huruf Kode Guru');
+    await expect(kgPrefixSelect.locator('option')).toHaveText(['-', 'A', 'B', 'C', 'D']);
     await expect(page.getByTitle('Generate Otomatis Kode Guru (KG)')).toBeVisible();
     await expect(page.locator('select[name="status"]')).toHaveValue('aktif');
     await expect(page.getByPlaceholder(/Nama lengkap asatidz/i)).toBeVisible();
@@ -71,5 +73,21 @@ test.describe('Modul 02: Master Data Dewan Asatidz', () => {
     const applyBtn = page.getByRole('button', { name: /Terapkan Filter/i }).first();
     await applyBtn.click();
     await expect(page.getByRole('heading', { name: /Filter Data Dewan Asatidz/i })).toBeHidden();
+  });
+
+  test('opens Detail Asatidz modal and renders Rincian Jadwal Mengajar', async ({ page }) => {
+    const firstRow = page.locator('tbody tr[title]').first();
+    await expect(firstRow).toBeVisible({ timeout: 15000 });
+    await firstRow.click();
+
+    await expect(page.getByRole('heading', { name: /Detail Profil Asatidz & Santri Binaan/i })).toBeVisible();
+    await expect(page.getByText(/Rincian Jadwal Mengajar \(Sabtu s\/d Kamis\)/i)).toBeVisible();
+  });
+
+  test('beranda defaults to all group menus collapsed', async ({ page }) => {
+    await gotoWithAuth(page, '/beranda');
+    await expect(page.getByRole('button', { name: /Buka Semua/i })).toBeVisible();
+    // Sub-item inside group card (e.g. "Buka Modul" under Data Santri) should be hidden when collapsed
+    await expect(page.getByText('Buka Modul').first()).toBeHidden();
   });
 });

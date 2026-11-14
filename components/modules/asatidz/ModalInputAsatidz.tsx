@@ -62,7 +62,7 @@ export function isEligibleForTeaching(jah: string | null | undefined): boolean {
   return clean === 'mustahiq' || clean === 'mustahiqoh' || clean === 'ms & koor';
 }
 
-const KG_PREFIX_OPTIONS = ['A', 'B', 'C', 'D', 'E', 'PA', 'PI'];
+const KG_PREFIX_OPTIONS = ['A', 'B', 'C', 'D'];
 
 const STATUS_ASATIDZ_OPTIONS = [
   { value: 'aktif', label: 'Aktif' },
@@ -287,7 +287,7 @@ export default function ModalInputAsatidz() {
   };
 
   const handleAutoGenerateKodeGuru = () => {
-    const prefix = selectedPrefix || (formData.pa_pi === 'PI' ? 'PI' : 'PA');
+    const prefix = selectedPrefix || 'B';
     const nextKG = generateNextKodeGuru(prefix);
     setFormData((prev) => ({ ...prev, kode_guru: nextKG }));
   };
