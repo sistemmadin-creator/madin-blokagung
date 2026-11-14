@@ -212,8 +212,70 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
     await expect(dialog.getByText('Monitoring User Aktif & Perangkat')).toBeVisible();
     await expect(dialog.getByText('User Online')).toBeVisible();
     await expect(dialog.getByText('Total Perangkat')).toBeVisible();
+    await expect(dialog.getByText('Perangkat Ini').first()).toBeVisible({ timeout: 10000 });
 
     await dialog.getByRole('button', { name: /Tutup/i }).first().click();
     await expect(dialog).toBeHidden();
+  });
+
+  test('7. Master Admin dapat mengeluarkan perangkat lain secara remote dari Modal User Aktif', async ({ browser }) => {
+    const adminContext = await browser.newContext();
+    const secondContext = await browser.newContext();
+
+    try {
+      const adminPage = await adminContext.newPage();
+      const secondPage = await secondContext.newPage();
+
+      // Login di perangkat 1 (Master Admin)
+      await adminPage.goto('/pengaturan');
+      if (adminPage.url().includes('/login')) {
+        await adminPage.getByLabel('Username Pengurus').fill('admin');
+        await adminPage.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+        await adminPage.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
+        await adminPage.waitForURL('**/pengaturan**', { timeout: 60000 });
+      }
+
+      // Login di perangkat 2 (sesi terpisah)
+      await secondPage.goto('/santri');
+      if (secondPage.url().includes('/login')) {
+        await secondPage.getByLabel('Username Pengurus').fill('admin');
+        await secondPage.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+        await secondPage.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
+        await secondPage.waitForURL('**/santri**', { timeout: 60000 });
+      }
+
+      // Tunggu ActivePresenceTracker menulis deviceId perangkat 2 ke localStorage
+      await expect
+        .poll(
+          () => secondPage.evaluate(() => window.localStorage.getItem('madina_presence_device_id')),
+          { timeout: 15000 }
+        )
+        .toBeTruthy();
+      const secondDeviceId = await secondPage.evaluate(() =>
+        window.localStorage.getItem('madina_presence_device_id')
+      );
+      expect(secondDeviceId).toBeTruthy();
+
+      // Buka Modal User Aktif di perangkat 1
+      await adminPage.getByTestId('btn-open-active-users-modal').click();
+      const dialog = adminPage.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+
+      // Tunggu sampai perangkat 2 terdeteksi dan tombol Keluarkan perangkat 2 muncul
+      const kickBtn = dialog.getByTestId(`btn-kick-device-${secondDeviceId!.slice(0, 8)}`);
+      await expect(kickBtn).toBeVisible({ timeout: 15000 });
+
+      adminPage.once('dialog', (d) => d.accept());
+      await kickBtn.click();
+
+      // Perangkat 2 harus otomatis keluar ke /login?reason=kicked
+      await secondPage.waitForURL(/\/login\?reason=kicked/, { timeout: 15000 });
+      await expect(
+        secondPage.getByText('Sesi Anda pada perangkat ini telah diakhiri oleh Master Administrator.')
+      ).toBeVisible();
+    } finally {
+      await adminContext.close();
+      await secondContext.close();
+    }
   });
 });

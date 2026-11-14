@@ -19,12 +19,17 @@ function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawNextParam = searchParams.get('next');
+  const reasonParam = searchParams.get('reason');
   const nextPath = sanitizeNextPath(rawNextParam);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(
+    reasonParam === 'kicked'
+      ? 'Sesi Anda pada perangkat ini telah diakhiri oleh Master Administrator.'
+      : null
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRestoringDeviceSession, setIsRestoringDeviceSession] = useState(false);
   const [publicPortalUrl, setPublicPortalUrl] = useState('/');
