@@ -40,6 +40,13 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  Type,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 
 export default function PiagamPage() {
@@ -84,8 +91,51 @@ export default function PiagamPage() {
   const [activeBgTab, setActiveBgTab] = useState<'drive' | 'upload'>('drive');
   const [isPrinting, setIsPrinting] = useState(false);
   const [printSantriList, setPrintSantriList] = useState<any[]>([]);
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
 
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('madina_piagam_panels_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.left === 'boolean') setIsLeftPanelCollapsed(parsed.left);
+        if (typeof parsed.right === 'boolean') setIsRightPanelCollapsed(parsed.right);
+      }
+    } catch {}
+  }, []);
+
+  const persistPanels = (left: boolean, right: boolean) => {
+    try {
+      window.localStorage.setItem('madina_piagam_panels_v1', JSON.stringify({ left, right }));
+    } catch {}
+  };
+
+  const toggleLeftPanel = (next?: boolean) => {
+    setIsLeftPanelCollapsed((prev) => {
+      const val = typeof next === 'boolean' ? next : !prev;
+      persistPanels(val, isRightPanelCollapsed);
+      return val;
+    });
+  };
+
+  const toggleRightPanel = (next?: boolean) => {
+    setIsRightPanelCollapsed((prev) => {
+      const val = typeof next === 'boolean' ? next : !prev;
+      persistPanels(isLeftPanelCollapsed, val);
+      return val;
+    });
+  };
+
+  const isFocusMode = isLeftPanelCollapsed && isRightPanelCollapsed;
+  const toggleFocusMode = () => {
+    const nextCollapsed = !isFocusMode;
+    setIsLeftPanelCollapsed(nextCollapsed);
+    setIsRightPanelCollapsed(nextCollapsed);
+    persistPanels(nextCollapsed, nextCollapsed);
+  };
 
   useEffect(() => {
     loadTemplates();
@@ -257,19 +307,54 @@ export default function PiagamPage() {
       </div>
 
       {/* 2. Main Grid: Panel Pengaturan Kiri & Kanvas Kanan */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="flex flex-col lg:flex-row items-start gap-4">
         {/* PANEL PENGATURAN KIRI */}
-        <div className="print:hidden lg:col-span-5 xl:col-span-4 space-y-4">
-          <div className="card-panel border-t-4 border-t-emerald-700 bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3.5">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-              <h2 className="text-sm font-bold text-slate-800 m-0 flex items-center gap-1.5">
-                <Sliders className="w-4 h-4 text-emerald-700" />
-                <span>Pengaturan Piagam</span>
-              </h2>
-              <span className="badge bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-semibold px-2 py-0.5 rounded">
-                A4 {orientation === 'landscape' ? 'Landscape' : 'Portrait'}
+        <div
+          className={`print:hidden order-1 transition-all duration-200 shrink-0 ${
+            isLeftPanelCollapsed
+              ? 'w-full lg:w-11'
+              : 'w-full lg:w-[275px] xl:w-[305px]'
+          }`}
+        >
+          {isLeftPanelCollapsed ? (
+            <div className="bg-white rounded-xl border border-slate-200 border-t-4 border-t-emerald-700 shadow-xs p-2 flex lg:flex-col items-center justify-between lg:justify-start gap-3 lg:sticky lg:top-20">
+              <button
+                type="button"
+                data-testid="btn-expand-left-panel"
+                onClick={() => toggleLeftPanel(false)}
+                className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition"
+                title="Buka Pengaturan Piagam"
+                aria-label="Buka Pengaturan Piagam"
+              >
+                <PanelLeftOpen className="w-4 h-4" />
+              </button>
+              <span className="text-[11px] font-bold text-slate-600 lg:[writing-mode:vertical-rl] lg:rotate-180 tracking-wide select-none">
+                Pengaturan Piagam
               </span>
             </div>
+          ) : (
+            <div className="card-panel border-t-4 border-t-emerald-700 bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3.5 lg:max-h-[calc(100vh-140px)] lg:overflow-y-auto">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200 gap-2">
+                <h2 className="text-sm font-bold text-slate-800 m-0 flex items-center gap-1.5 truncate">
+                  <Sliders className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span className="truncate">Pengaturan Piagam</span>
+                </h2>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="badge bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-semibold px-1.5 py-0.5 rounded">
+                    A4 {orientation === 'landscape' ? 'Landscape' : 'Portrait'}
+                  </span>
+                  <button
+                    type="button"
+                    data-testid="btn-collapse-left-panel"
+                    onClick={() => toggleLeftPanel(true)}
+                    className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-emerald-700 border border-slate-200 transition"
+                    title="Kecilkan ke Samping Kiri"
+                    aria-label="Kecilkan Pengaturan Piagam ke samping kiri"
+                  >
+                    <PanelLeftClose className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
 
             {/* 1. TEMPLATE PIAGAM TERSIMPAN */}
             <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-1.5">
@@ -454,19 +539,67 @@ export default function PiagamPage() {
                 <ChevronRight className="w-4 h-4 text-slate-400" />
               </button>
             </div>
+          </div>
+          )}
+        </div>
 
-            {/* 5. STRUKTUR ELEMEN TEKS PIAGAM */}
-            <div className="border-t border-slate-200 pt-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-800 m-0">Elemen Teks Piagam</h3>
-                <button
-                  type="button"
-                  onClick={addColumn}
-                  className="flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-900"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  <span>Tambah Blok Teks</span>
-                </button>
+        {/* PANEL KANAN: ELEMEN TEKS PIAGAM (DI SEBELAH KANAN LIVE PREVIEW) */}
+        <div
+          className={`print:hidden order-3 transition-all duration-200 shrink-0 ${
+            isRightPanelCollapsed
+              ? 'w-full lg:w-11'
+              : 'w-full lg:w-[285px] xl:w-[320px]'
+          }`}
+        >
+          {isRightPanelCollapsed ? (
+            <div className="bg-white rounded-xl border border-slate-200 border-t-4 border-t-emerald-700 shadow-xs p-2 flex lg:flex-col items-center justify-between lg:justify-start gap-3 lg:sticky lg:top-20">
+              <button
+                type="button"
+                data-testid="btn-expand-right-panel"
+                onClick={() => toggleRightPanel(false)}
+                className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition"
+                title="Buka Elemen Teks Piagam"
+                aria-label="Buka Elemen Teks Piagam"
+              >
+                <PanelRightOpen className="w-4 h-4" />
+              </button>
+              <div className="flex lg:flex-col items-center gap-1.5">
+                <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                  {columns.length}
+                </span>
+                <span className="text-[11px] font-bold text-slate-600 lg:[writing-mode:vertical-rl] tracking-wide select-none">
+                  Elemen Teks
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="card-panel border-t-4 border-t-emerald-700 bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3 lg:max-h-[calc(100vh-140px)] lg:overflow-y-auto">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200 gap-2">
+                <h3 className="text-sm font-bold text-slate-800 m-0 flex items-center gap-1.5 truncate">
+                  <Type className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span className="truncate">Elemen Teks Piagam</span>
+                </h3>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={addColumn}
+                    aria-label="Tambah Blok Teks"
+                    className="flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-900 px-2 py-1 rounded-lg hover:bg-emerald-50 transition"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>Tambah</span>
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="btn-collapse-right-panel"
+                    onClick={() => toggleRightPanel(true)}
+                    className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-emerald-700 border border-slate-200 transition"
+                    title="Kecilkan ke Samping Kanan"
+                    aria-label="Kecilkan Elemen Teks ke samping kanan"
+                  >
+                    <PanelRightClose className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               {/* Tag Cepat / Chips Penolong */}
@@ -491,7 +624,7 @@ export default function PiagamPage() {
               </div>
 
               {/* Accordion Elemen Teks */}
-              <div className="space-y-2 max-h-[460px] overflow-y-auto pr-0.5">
+              <div className="space-y-2">
                 {columns.map((col, index) => {
                   const isActive = activeElementId === col.id;
 
@@ -758,11 +891,11 @@ export default function PiagamPage() {
                 })}
               </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* PANEL KANAN: LIVE PREVIEW PANEL */}
-        <div className="print:hidden lg:col-span-7 xl:col-span-8 flex flex-col items-center">
+        {/* PANEL TENGAH: LIVE PREVIEW PANEL */}
+        <div className="print:hidden order-2 flex-1 min-w-0 w-full flex flex-col items-center lg:sticky lg:top-20">
           {/* Toolbar Pratinjau Atas */}
           <div className="w-full flex flex-wrap items-center justify-between bg-white p-2.5 px-3.5 rounded-xl border border-slate-200 mb-3 shadow-2xs gap-2">
             <div className="flex items-center gap-2">
@@ -813,7 +946,7 @@ export default function PiagamPage() {
               </div>
             )}
 
-            {/* Kontrol Zoom */}
+            {/* Kontrol Zoom & Mode Fokus */}
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-bold text-slate-500">Zoom:</span>
               <input
@@ -827,18 +960,32 @@ export default function PiagamPage() {
               <span className="badge bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[10px] w-10 text-center py-0.5 rounded">
                 {Math.round(zoomScale * 100)}%
               </span>
+              <button
+                type="button"
+                data-testid="btn-toggle-focus-mode"
+                onClick={toggleFocusMode}
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-semibold transition ${
+                  isFocusMode
+                    ? 'bg-emerald-700 text-white border-emerald-700'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+                title={isFocusMode ? 'Tampilkan Panel Kiri & Kanan' : 'Mode Fokus (Lipat Panel Kiri & Kanan)'}
+              >
+                {isFocusMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">{isFocusMode ? 'Tampilkan Panel' : 'Fokus'}</span>
+              </button>
             </div>
           </div>
 
           {/* Tips Cetak Info Banner */}
-          <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-2.5 px-3.5 text-xs text-blue-900 flex items-center justify-between mb-3 shadow-2xs">
-            <div className="flex items-center gap-1.5">
+          <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-2.5 px-3.5 text-xs text-blue-900 flex flex-wrap items-center justify-between gap-1.5 mb-3 shadow-2xs">
+            <div className="flex items-center gap-1.5 min-w-0">
               <Lightbulb className="w-4 h-4 text-amber-500 shrink-0" />
               <span>
                 <strong>Tips Cetak:</strong> Pastikan opsi <em>&quot;Grafik Latar Belakang&quot; (Background Graphics)</em> tercentang dan <em>Margin</em> diatur ke <em>&quot;None&quot;</em> pada dialog cetak browser.
               </span>
             </div>
-            <span className="text-[11px] text-blue-700/80 italic hidden md:inline shrink-0 ml-2">
+            <span className="text-[11px] text-blue-700/80 italic hidden xl:inline shrink-0">
               Klik teks pada kanvas untuk mengedit posisi
             </span>
           </div>
@@ -896,6 +1043,7 @@ export default function PiagamPage() {
                       onClick={(e) => {
                         e.stopPropagation();
                         setActiveElementId(col.id);
+                        if (isRightPanelCollapsed) toggleRightPanel(false);
                       }}
                       style={{
                         left: `${col.x}%`,

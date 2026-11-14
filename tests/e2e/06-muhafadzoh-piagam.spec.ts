@@ -168,4 +168,44 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
     // Certificate preview element on canvas
     await expect(page.getByText(/MADRASAH DINIYYAH AL AMIRIYYAH BLOKAGUNG/i)).toBeVisible();
   });
+
+  test('Cetak Piagam 3-Pane Studio: collapse panel kiri/kanan, mode fokus, dan auto-open saat klik kanvas', async ({ page }) => {
+    await page.goto('/piagam');
+    if (page.url().includes('/login')) {
+      await page.getByLabel('Username Pengurus').fill('admin');
+      await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+      await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
+      await page.waitForURL('**/piagam**', { timeout: 60000 });
+    }
+
+    await page.evaluate(() => window.localStorage.removeItem('madina_piagam_panels_v1'));
+    await page.reload();
+
+    // Kedua panel awalnya terbuka
+    await expect(page.getByTestId('btn-collapse-left-panel')).toBeVisible();
+    await expect(page.getByTestId('btn-collapse-right-panel')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Pengaturan Piagam' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Elemen Teks Piagam' })).toBeVisible();
+
+    // Kecilkan panel kiri ke samping kiri
+    await page.getByTestId('btn-collapse-left-panel').click({ force: true });
+    await expect(page.getByTestId('btn-expand-left-panel')).toBeVisible();
+
+    // Kecilkan panel kanan ke samping kanan
+    await page.getByTestId('btn-collapse-right-panel').click({ force: true });
+    await expect(page.getByTestId('btn-expand-right-panel')).toBeVisible();
+
+    // Klik elemen teks di kanvas -> panel kanan otomatis terbuka kembali
+    await page.locator('.piagam-element').first().click({ force: true });
+    await expect(page.getByTestId('btn-collapse-right-panel')).toBeVisible();
+
+    // Toggle Mode Fokus -> menutup kedua panel, lalu klik lagi -> membuka keduanya
+    await page.getByTestId('btn-toggle-focus-mode').click({ force: true });
+    await expect(page.getByTestId('btn-expand-left-panel')).toBeVisible();
+    await expect(page.getByTestId('btn-expand-right-panel')).toBeVisible();
+
+    await page.getByTestId('btn-toggle-focus-mode').click({ force: true });
+    await expect(page.getByTestId('btn-collapse-left-panel')).toBeVisible();
+    await expect(page.getByTestId('btn-collapse-right-panel')).toBeVisible();
+  });
 });
