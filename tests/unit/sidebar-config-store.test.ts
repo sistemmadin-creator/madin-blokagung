@@ -14,15 +14,16 @@ describe('useSidebarConfigStore Unit Tests (Fase 1 & Fase 2)', () => {
     expect(groupNames).toContain('Beranda');
     expect(groupNames).toContain('Utama');
     expect(groupNames).toContain('PKM. Kurikulum');
+    expect(groupNames).toContain('EBTADIN');
     expect(groupNames).toContain('PKM. Muhafadzoh');
     expect(groupNames).toContain('PKM. Kesiswaan');
+    expect(groupNames).toContain('PKM. Sapras');
     expect(groupNames).toContain('PKM. Publikasi & Warta');
-    expect(groupNames).toContain('Pengaturan');
 
-    // Posisi Pengaturan berada setelah PKM. Publikasi & Warta
+    // Posisi PKM. Publikasi & Warta berada setelah PKM. Sapras
+    const idxSapras = groupNames.indexOf('PKM. Sapras');
     const idxPublikasi = groupNames.indexOf('PKM. Publikasi & Warta');
-    const idxPengaturan = groupNames.indexOf('Pengaturan');
-    expect(idxPengaturan).toBeGreaterThan(idxPublikasi);
+    expect(idxPublikasi).toBeGreaterThan(idxSapras);
   });
 
   it('2. mengubah nama grup dengan renameGroup', () => {

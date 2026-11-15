@@ -60,7 +60,7 @@ test.describe('Keamanan Zona Publik & Privat (Supabase Auth + Middleware)', () =
     await expect(page).toHaveURL(/\/login\?next=%2Fsantri/);
 
     await page.getByLabel('Username Pengurus').fill('admin');
-    await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+    await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
     await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
 
     await page.waitForURL('**/santri', { timeout: 25_000 });
@@ -84,7 +84,7 @@ test.describe('Keamanan Zona Publik & Privat (Supabase Auth + Middleware)', () =
     await page.goto('/login');
 
     await page.getByLabel('Username Pengurus').fill('kurikulum');
-    await page.getByLabel('Kata Sandi', { exact: true }).fill('Kurikulum@1951');
+    await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_KURIKULUM_PASSWORD || ''));
     await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
 
     await page.waitForURL('**/dashboard', { timeout: 25_000 });

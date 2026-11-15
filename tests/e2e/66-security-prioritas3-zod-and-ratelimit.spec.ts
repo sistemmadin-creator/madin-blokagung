@@ -6,7 +6,7 @@ test.describe('Prioritas 3: Validasi Skema Zod & Proteksi DoS Rate Limiting', ()
       await page.goto('/login');
       if (page.url().includes('/login')) {
         await page.getByLabel('Username Pengurus').fill('admin');
-        await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+        await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
         await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
         await page.waitForURL('**/dashboard**', { timeout: 30000 });
       }
@@ -31,7 +31,7 @@ test.describe('Prioritas 3: Validasi Skema Zod & Proteksi DoS Rate Limiting', ()
       await page.goto('/login');
       if (page.url().includes('/login')) {
         await page.getByLabel('Username Pengurus').fill('admin');
-        await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+        await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
         await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
         await page.waitForURL('**/dashboard**', { timeout: 30000 });
       }
@@ -56,7 +56,7 @@ test.describe('Prioritas 3: Validasi Skema Zod & Proteksi DoS Rate Limiting', ()
       await page.goto('/login');
       if (page.url().includes('/login')) {
         await page.getByLabel('Username Pengurus').fill('admin');
-        await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+        await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
         await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
         await page.waitForURL('**/dashboard**', { timeout: 30000 });
       }
@@ -84,7 +84,7 @@ test.describe('Prioritas 3: Validasi Skema Zod & Proteksi DoS Rate Limiting', ()
       await page.goto('/login');
       if (page.url().includes('/login')) {
         await page.getByLabel('Username Pengurus').fill('admin');
-        await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+        await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
         await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
         await page.waitForURL('**/dashboard**', { timeout: 30000 });
       }
@@ -114,7 +114,7 @@ test.describe('Prioritas 3: Validasi Skema Zod & Proteksi DoS Rate Limiting', ()
       await page.goto('/login');
       if (page.url().includes('/login')) {
         await page.getByLabel('Username Pengurus').fill('admin');
-        await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+        await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
         await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
         await page.waitForURL('**/dashboard**', { timeout: 30000 });
       }
@@ -140,7 +140,7 @@ test.describe('Prioritas 3: Validasi Skema Zod & Proteksi DoS Rate Limiting', ()
       await page.goto('/login');
       if (page.url().includes('/login')) {
         await page.getByLabel('Username Pengurus').fill('admin');
-        await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+        await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
         await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
         await page.waitForURL('**/dashboard**', { timeout: 30000 });
       }
@@ -190,7 +190,7 @@ test.describe('Prioritas 3: Validasi Skema Zod & Proteksi DoS Rate Limiting', ()
       await page.goto('/login');
       if (page.url().includes('/login')) {
         await page.getByLabel('Username Pengurus').fill('admin');
-        await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+        await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
         await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
         await page.waitForURL('**/dashboard**', { timeout: 30000 });
       }

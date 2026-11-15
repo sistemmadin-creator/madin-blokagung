@@ -12,7 +12,7 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
     await page.goto('/santri');
     if (page.url().includes('/login')) {
       await page.getByLabel('Username Pengurus').fill('admin');
-      await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+      await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
       await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
       await page.waitForURL('**/santri**', { timeout: 60000 });
     }
@@ -38,7 +38,7 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
     await page.goto('/santri');
     if (page.url().includes('/login')) {
       await page.getByLabel('Username Pengurus').fill('admin');
-      await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+      await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
       await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
       await page.waitForURL('**/santri**', { timeout: 60000 });
     }
@@ -65,7 +65,7 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
     await page.goto('/pengaturan');
     if (page.url().includes('/login')) {
       await page.getByLabel('Username Pengurus').fill('admin');
-      await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+      await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
       await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
       await page.waitForURL('**/pengaturan**', { timeout: 60000 });
     }
@@ -171,7 +171,7 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
     await page.goto('/pengaturan');
     if (page.url().includes('/login')) {
       await page.getByLabel('Username Pengurus').fill('admin');
-      await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+      await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
       await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
       await page.waitForURL('**/pengaturan**', { timeout: 60000 });
     }
@@ -203,7 +203,7 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
       await adminPage.goto('/pengaturan');
       if (adminPage.url().includes('/login')) {
         await adminPage.getByLabel('Username Pengurus').fill('admin');
-        await adminPage.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+        await adminPage.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
         await adminPage.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
         await adminPage.waitForURL('**/pengaturan**', { timeout: 60000 });
       }
@@ -212,7 +212,7 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
       await secondPage.goto('/santri');
       if (secondPage.url().includes('/login')) {
         await secondPage.getByLabel('Username Pengurus').fill('admin');
-        await secondPage.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+        await secondPage.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
         await secondPage.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
         await secondPage.waitForURL('**/santri**', { timeout: 60000 });
       }

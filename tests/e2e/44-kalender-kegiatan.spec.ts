@@ -12,7 +12,7 @@ test.describe('Kalender Kegiatan (TA 2026/2027), Pengaturan Tahun Ajaran Global 
     await page.goto('/kalender-kegiatan');
     if (page.url().includes('/login')) {
       await page.getByLabel('Username Pengurus').fill('admin');
-      await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+      await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
       await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
       await page.waitForURL('**/kalender-kegiatan', { timeout: 25000 });
     }

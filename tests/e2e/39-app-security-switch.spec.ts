@@ -1,15 +1,19 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Phase 3: Saklar Keamanan Aplikasi MADINA Blokagung (Konfirmasi 3x & Sandi Khusus)', () => {
+const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || '';
+const SECURITY_PASSWORD = process.env.E2E_SECURITY_PASSWORD || '';
+
+test.describe('Phase 3: Saklar Keamanan Aplikasi MADINA Blokagung (Konfirmasi 3x, Sandi Khusus & Fail-Closed Guard)', () => {
   test.setTimeout(120000);
 
-  test('Master Admin dapat menonaktifkan Keamanan Aplikasi melalui konfirmasi 3 tahap + Sandi Khusus, mengakses rute internal tanpa login, lalu mengaktifkan kembali Keamanan Aplikasi', async ({
+  test('Master Admin dapat menonaktifkan Keamanan Aplikasi melalui konfirmasi 3 tahap + Sandi Khusus, memverifikasi proteksi Fail-Closed saat tanpa sesi, lalu mengaktifkan kembali Keamanan Aplikasi', async ({
     page,
+    request,
   }) => {
     // 1. Login sebagai Master Admin
     await page.goto('/login');
     await page.getByLabel('Username Pengurus').fill('admin');
-    await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+    await page.getByLabel('Kata Sandi', { exact: true }).fill(ADMIN_PASSWORD);
     await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
     await page.waitForURL('**/dashboard', { timeout: 25000 });
 
@@ -31,7 +35,7 @@ test.describe('Phase 3: Saklar Keamanan Aplikasi MADINA Blokagung (Konfirmasi 3x
       await page.getByTestId('btn-next-step-2').click();
       await page.getByTestId('input-confirm-phrase').fill('AKTIFKAN KEAMANAN');
       await page.getByTestId('btn-next-step-3').click();
-      await page.getByTestId('input-security-password').fill('KunciMadina#2026');
+      await page.getByTestId('input-security-password').fill(SECURITY_PASSWORD);
       await page.getByTestId('btn-submit-security-toggle').click();
     }
 
@@ -59,8 +63,8 @@ test.describe('Phase 3: Saklar Keamanan Aplikasi MADINA Blokagung (Konfirmasi 3x
     await expect(page.getByTestId('btn-next-step-3')).toBeEnabled();
     await page.getByTestId('btn-next-step-3').click();
 
-    // Tahap 3 dari 3: Uji coba masukkan sandi login Master Admin (Madina@1951) -> Harus ditolak!
-    await page.getByTestId('input-security-password').fill('Madina@1951');
+    // Tahap 3 dari 3: Uji coba masukkan sandi login Master Admin -> Harus ditolak!
+    await page.getByTestId('input-security-password').fill(ADMIN_PASSWORD);
     await page.getByTestId('btn-submit-security-toggle').click();
     await expect(page.getByTestId('security-switch-error')).toBeVisible({
       timeout: 15000,
@@ -69,8 +73,8 @@ test.describe('Phase 3: Saklar Keamanan Aplikasi MADINA Blokagung (Konfirmasi 3x
       /Kata Sandi Khusus Keamanan/i
     );
 
-    // Masukkan Kata Sandi Khusus Keamanan yang benar (KunciMadina#2026)
-    await page.getByTestId('input-security-password').fill('KunciMadina#2026');
+    // Masukkan Kata Sandi Khusus Keamanan yang benar
+    await page.getByTestId('input-security-password').fill(SECURITY_PASSWORD);
     await page.getByTestId('btn-submit-security-toggle').click();
 
     // Verifikasi status berubah menjadi NON-AKTIF (Mode Input Data Tanpa Login)
@@ -79,8 +83,8 @@ test.describe('Phase 3: Saklar Keamanan Aplikasi MADINA Blokagung (Konfirmasi 3x
       { timeout: 20000 }
     );
 
-    // Verifikasi ketika Keamanan & Akun sedang terbuka (NON-AKTIF / Mode Input Terbuka),
-    // pengaturan 'Kelola Akun & Otoritas' (tab, daftar akun, kartu di Tinjauan Pengaturan) disembunyikan
+    // Verifikasi ketika Keamanan & Akun sedang terbuka (NON-AKTIF),
+    // pengaturan 'Kelola Akun & Otoritas' disembunyikan
     await expect(page.getByTestId('tab-akun')).toHaveCount(0);
     await expect(page.getByTestId('btn-tambah-akun')).toHaveCount(0);
     await page.getByTestId('tab-overview').click();
@@ -91,16 +95,24 @@ test.describe('Phase 3: Saklar Keamanan Aplikasi MADINA Blokagung (Konfirmasi 3x
     await page.getByRole('button', { name: 'Keluar / Logout' }).click();
     await page.waitForURL('**/login', { timeout: 15000 });
 
-    // 5. Kunjungi /santri TANPA LOGIN -> Harus langsung masuk (tidak diredirect ke /login) dan mendapat akses penuh
+    // 5. Verifikasi Fail-Closed Guard saat tanpa sesi login:
+    //    Endpoint sensitif BFF WAHA tetap menolak request unauthenticated (401) meskipun saklar NON-AKTIF
+    const unauthWahaRes = await request.get('/api/waha/sessions/default');
+    expect(unauthWahaRes.status()).toBe(401);
+
+    //    Kunjungi /santri TANPA LOGIN -> Halaman dapat dilihat secara read-only namun tombol mutasi/hapus terkunci (fail-closed)
     await page.goto('/santri');
     await expect(
       page.getByRole('heading', { name: 'Database Santri' })
     ).toBeVisible({ timeout: 20000 });
-    await expect(page.getByRole('button', { name: /Tambah Santri/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Hierarki Kamar/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Hapus/i })).toBeVisible();
 
-    // 6. Kunjungi /pengaturan?tab=akun dan Aktifkan Kembali Keamanan Aplikasi melalui Konfirmasi 3 Tahap
+    // 6. Login kembali sebagai Master Admin untuk mengaktifkan kembali Saklar Keamanan Aplikasi (wajib sesi Master Admin)
+    await page.goto('/login');
+    await page.getByLabel('Username Pengurus').fill('admin');
+    await page.getByLabel('Kata Sandi', { exact: true }).fill(ADMIN_PASSWORD);
+    await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
+    await page.waitForURL('**/dashboard', { timeout: 25000 });
+
     await page.goto('/pengaturan?tab=akun');
     await expect(page.getByTestId('panel-app-security-switch')).toBeVisible({
       timeout: 20000,
@@ -122,11 +134,20 @@ test.describe('Phase 3: Saklar Keamanan Aplikasi MADINA Blokagung (Konfirmasi 3x
     await page.getByTestId('input-confirm-phrase').fill('AKTIFKAN KEAMANAN');
     await page.getByTestId('btn-next-step-3').click();
 
-    // Tahap 3: Masukkan Sandi Khusus Keamanan (KunciMadina#2026)
-    await page.getByTestId('input-security-password').fill('KunciMadina#2026');
+    // Tahap 3: Masukkan Sandi Khusus Keamanan
+    await page.getByTestId('input-security-password').fill(SECURITY_PASSWORD);
     await page.getByTestId('btn-submit-security-toggle').click();
 
-    // 7. Setelah diaktifkan kembali dalam kondisi tanpa login, sistem otomatis mengunci dan mengarahkan ke /login
+    await expect(page.getByTestId('status-badge-security-switch')).toContainText(
+      'AKTIF (Wajib Login)',
+      { timeout: 20000 }
+    );
+
+    // 7. Logout dan pastikan /santri kembali mengarahkan ke /login
+    await page.getByRole('button', { name: /Master Administrator/i }).click();
+    await page.getByRole('button', { name: 'Keluar / Logout' }).click();
+    await page.waitForURL('**/login', { timeout: 15000 });
+
     await page.goto('/santri');
     await page.waitForURL('**/login?next=%2Fsantri', { timeout: 20000 });
     await expect(

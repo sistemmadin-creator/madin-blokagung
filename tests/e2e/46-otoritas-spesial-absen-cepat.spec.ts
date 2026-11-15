@@ -11,7 +11,7 @@ test.describe('Otoritas Spesial: Sesi Perangkat Tetap & Pintasan Langsung ke Abs
     // 1. Login sebagai Master Admin
     await page.goto('/login');
     await page.getByLabel('Username Pengurus').fill('admin');
-    await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+    await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
     await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
     await page.waitForURL('**/dashboard', { timeout: 25000 });
 
@@ -35,7 +35,7 @@ test.describe('Otoritas Spesial: Sesi Perangkat Tetap & Pintasan Langsung ke Abs
       await page.getByTestId('btn-next-step-2').click();
       await page.getByTestId('input-confirm-phrase').fill('AKTIFKAN KEAMANAN');
       await page.getByTestId('btn-next-step-3').click();
-      await page.getByTestId('input-security-password').fill('KunciMadina#2026');
+      await page.getByTestId('input-security-password').fill((process.env.E2E_SECURITY_PASSWORD || ''));
       await page.getByTestId('btn-submit-security-toggle').click();
     }
 
@@ -126,7 +126,7 @@ test.describe('Otoritas Spesial: Sesi Perangkat Tetap & Pintasan Langsung ke Abs
 
     // 8. Bersihkan akun uji & kembalikan status Saklar Keamanan seperti semula
     await page.getByLabel('Username Pengurus').fill('admin');
-    await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+    await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
     await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
     await page.waitForURL('**/dashboard', { timeout: 25000 });
 
@@ -148,7 +148,7 @@ test.describe('Otoritas Spesial: Sesi Perangkat Tetap & Pintasan Langsung ke Abs
         .getByTestId('input-confirm-phrase')
         .fill('NONAKTIFKAN KEAMANAN');
       await page.getByTestId('btn-next-step-3').click();
-      await page.getByTestId('input-security-password').fill('KunciMadina#2026');
+      await page.getByTestId('input-security-password').fill((process.env.E2E_SECURITY_PASSWORD || ''));
       await page.getByTestId('btn-submit-security-toggle').click();
       await expect(
         page.getByTestId('status-badge-security-switch')

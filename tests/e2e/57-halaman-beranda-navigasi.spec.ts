@@ -4,7 +4,7 @@ async function performLogin(page: Page) {
   await page.goto('/login');
   await page.waitForLoadState('domcontentloaded');
   await page.getByLabel('Username Pengurus').fill('admin');
-  await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+  await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
   await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
 }
 

@@ -12,7 +12,7 @@ test.describe('Sub-Menu Rekap Status Absensi Asatidz (/rekap-absensi/status)', (
     await page.goto('/rekap-absensi');
     if (page.url().includes('/login')) {
       await page.getByLabel('Username Pengurus').fill('admin');
-      await page.getByLabel('Kata Sandi', { exact: true }).fill('Madina@1951');
+      await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
       await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
       await page.waitForURL('**/rekap-absensi', { timeout: 25000 });
     }

@@ -38,13 +38,14 @@ describe('useDashboardStore - Fase 2 Agregasi & Time-Slice Engine', () => {
     expect(state.kpiData.setoranDeltaText).toContain('pekan ini');
   });
 
-  it('setTimeRange sebulan updates chart to 4 weeks (Pekan 1 - 4)', () => {
+  it('setTimeRange sebulan updates chart to 30 daily points grouped into 4 weeks (Pekan 1 - 4)', () => {
     useDashboardStore.getState().setTimeRange('sebulan');
     const state = useDashboardStore.getState();
 
     expect(state.timeRange).toBe('sebulan');
-    expect(state.chartPoints).toHaveLength(4);
-    expect(state.chartPoints.map((p) => p.label)).toEqual([
+    expect(state.chartPoints).toHaveLength(30);
+    const uniqueWeeks = Array.from(new Set(state.chartPoints.map((p) => p.pekanLabel)));
+    expect(uniqueWeeks).toEqual([
       'Pekan 1',
       'Pekan 2',
       'Pekan 3',
