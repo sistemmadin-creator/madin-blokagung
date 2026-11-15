@@ -349,17 +349,35 @@ export const useRbacStore = create<RbacStoreState>((set, get) => ({
 // Custom Hook Terpusat untuk Pengecekan Hak Akses & Filter Data Per Halaman
 export function usePagePermission(pageId: AppPageId) {
   const currentAccount = useRbacStore((s) => s.currentAccount);
+  const isLoadingCurrent = useRbacStore((s) => s.isLoadingCurrent);
+  const isAppSecurityEnabled = useRbacStore((s) => s.isAppSecurityEnabled);
+
+  // Fail-closed ketika sistem keamanan aplikasi aktif dan profil akun belum termuat / null
+  const isBypassMode = !isAppSecurityEnabled && !currentAccount && !isLoadingCurrent;
 
   const isMasterAdmin =
-    !currentAccount ||
-    currentAccount.role === 'master_admin' ||
-    currentAccount.username === 'admin';
+    isBypassMode ||
+    Boolean(
+      currentAccount &&
+        currentAccount.is_active !== false &&
+        (currentAccount.role === 'master_admin' || currentAccount.username === 'admin')
+    );
 
-  const canView = canViewPage(currentAccount, pageId);
-  const canCreate = canCreateOnPage(currentAccount, pageId);
-  const canEdit = canEditOnPage(currentAccount, pageId);
-  const canDelete = canDeleteOnPage(currentAccount, pageId);
-  const canAccessSettings = canAccessSettingsAuthority(currentAccount);
+  const canView = currentAccount
+    ? canViewPage(currentAccount, pageId)
+    : isBypassMode;
+  const canCreate = currentAccount
+    ? canCreateOnPage(currentAccount, pageId)
+    : isBypassMode;
+  const canEdit = currentAccount
+    ? canEditOnPage(currentAccount, pageId)
+    : isBypassMode;
+  const canDelete = currentAccount
+    ? canDeleteOnPage(currentAccount, pageId)
+    : isBypassMode;
+  const canAccessSettings = currentAccount
+    ? canAccessSettingsAuthority(currentAccount)
+    : isBypassMode;
 
   const blokScope = currentAccount?.special_authorities.blok_scope ?? 'SEMUA';
   const genderScope = currentAccount?.special_authorities.gender_scope ?? 'semua';
@@ -368,7 +386,8 @@ export function usePagePermission(pageId: AppPageId) {
     blok?: string | null;
     pa_pi?: string | null;
   }): boolean => {
-    if (!currentAccount || isMasterAdmin) return true;
+    if (isMasterAdmin) return true;
+    if (!currentAccount) return isBypassMode;
     if (!isGenderAllowed(item.pa_pi, genderScope)) return false;
     if (!isBlokAllowed(item.blok, blokScope)) return false;
     return true;
@@ -391,11 +410,13 @@ export function usePagePermission(pageId: AppPageId) {
       blok?: string;
     }>
   ): boolean => {
+    if (!currentAccount && !isBypassMode) return false;
     return isClassAllowedByAuthority(kelas, currentAccount, santriList, asatidzList);
   };
 
   return {
     currentAccount,
+    isLoadingCurrent,
     isMasterAdmin,
     canView,
     canCreate,

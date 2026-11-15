@@ -43,6 +43,7 @@ export interface PushNotificationPayload {
 }
 
 export interface PushSubscriptionRecord {
+  user_id?: string | null;
   endpoint: string;
   p256dh: string;
   auth: string;
@@ -52,9 +53,9 @@ export interface PushSubscriptionRecord {
   device_type?: string;
 }
 
-type SupabaseServerClient = ReturnType<typeof createServerClient>;
+type SupabaseServerClient = Awaited<ReturnType<typeof createServerClient>>;
 
-function resolveClient(passedClient?: SupabaseServerClient): SupabaseServerClient {
+async function resolveClient(passedClient?: SupabaseServerClient): Promise<SupabaseServerClient> {
   if (passedClient) return passedClient;
   return createServerClient();
 }
@@ -64,12 +65,22 @@ export const WebPushServerService = {
    * Menyimpan atau memperbarui data langganan push (upsert)
    */
   async saveSubscription(data: PushSubscriptionRecord & { dbClient?: SupabaseServerClient }) {
-    const { endpoint, p256dh, auth, role, target_identifier, user_agent, device_type, dbClient } = data;
-    const client = resolveClient(dbClient);
+    const {
+      user_id,
+      endpoint,
+      p256dh,
+      auth,
+      role,
+      target_identifier,
+      user_agent,
+      device_type,
+      dbClient,
+    } = data;
+    const client = await resolveClient(dbClient);
 
     const { data: existing, error: findError } = await client
       .from('push_subscriptions')
-      .select('id')
+      .select('id, user_id')
       .eq('endpoint', endpoint)
       .maybeSingle();
 
@@ -78,28 +89,7 @@ export const WebPushServerService = {
     }
 
     if (existing?.id) {
-      const { error: updateError } = await client
-        .from('push_subscriptions')
-        .update({
-          p256dh,
-          auth,
-          role: role || 'wali',
-          target_identifier: target_identifier || null,
-          user_agent: user_agent || null,
-          device_type: device_type || 'mobile',
-          is_active: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existing.id);
-
-      if (updateError) throw updateError;
-      return { id: existing.id, updated: true };
-    }
-
-    const { data: inserted, error: insertError } = await client
-      .from('push_subscriptions')
-      .insert({
-        endpoint,
+      const updatePayload: Record<string, unknown> = {
         p256dh,
         auth,
         role: role || 'wali',
@@ -107,7 +97,38 @@ export const WebPushServerService = {
         user_agent: user_agent || null,
         device_type: device_type || 'mobile',
         is_active: true,
-      })
+        updated_at: new Date().toISOString(),
+      };
+      if (user_id !== undefined) {
+        updatePayload.user_id = user_id;
+      }
+
+      const { error: updateError } = await client
+        .from('push_subscriptions')
+        .update(updatePayload)
+        .eq('id', existing.id);
+
+      if (updateError) throw updateError;
+      return { id: existing.id, updated: true };
+    }
+
+    const insertPayload: Record<string, unknown> = {
+      endpoint,
+      p256dh,
+      auth,
+      role: role || 'wali',
+      target_identifier: target_identifier || null,
+      user_agent: user_agent || null,
+      device_type: device_type || 'mobile',
+      is_active: true,
+    };
+    if (user_id !== undefined) {
+      insertPayload.user_id = user_id;
+    }
+
+    const { data: inserted, error: insertError } = await client
+      .from('push_subscriptions')
+      .insert(insertPayload)
       .select('id')
       .single();
 
@@ -119,7 +140,7 @@ export const WebPushServerService = {
    * Menghapus langganan push dari database jika dinonaktifkan
    */
   async removeSubscription(endpoint: string, dbClient?: SupabaseServerClient) {
-    const client = resolveClient(dbClient);
+    const client = await resolveClient(dbClient);
     const { error } = await client
       .from('push_subscriptions')
       .delete()
@@ -180,7 +201,7 @@ export const WebPushServerService = {
       // Jika endpoint sudah tidak valid / expired (404 / 410 Gone)
       if (errorObj.statusCode === 404 || errorObj.statusCode === 410) {
         try {
-          const client = resolveClient(dbClient);
+          const client = await resolveClient(dbClient);
           await client
             .from('push_subscriptions')
             .update({ is_active: false })
@@ -217,7 +238,7 @@ export const WebPushServerService = {
       };
     }
 
-    const client = resolveClient(params.dbClient);
+    const client = await resolveClient(params.dbClient);
     let query = client
       .from('push_subscriptions')
       .select('endpoint, p256dh, auth')

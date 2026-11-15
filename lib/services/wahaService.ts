@@ -36,7 +36,7 @@ export interface DeliveryLog {
 }
 
 export const DEFAULT_WAHA_CONFIG: WahaConfig = {
-  baseUrl: 'http://localhost:3008',
+  baseUrl: process.env.NEXT_PUBLIC_WAHA_BASE_URL || '',
   apiKey: '',
   session: 'default',
   autoSendOnInput: false,
@@ -67,12 +67,27 @@ Wassalamu'alaikum Wr. Wb.
 const CONFIG_STORAGE_KEY = 'madin_waha_config_v1';
 const LOGS_STORAGE_KEY = 'madin_wa_delivery_logs_v1';
 
+function isHttpsBrowserContext(): boolean {
+  return typeof window !== 'undefined' && window.location.protocol === 'https:';
+}
+
 export function getWahaConfig(): WahaConfig {
   if (typeof window === 'undefined') return DEFAULT_WAHA_CONFIG;
   const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
   if (!saved) return DEFAULT_WAHA_CONFIG;
   try {
-    return { ...DEFAULT_WAHA_CONFIG, ...JSON.parse(saved) };
+    const parsed = JSON.parse(saved);
+    const merged: WahaConfig = { ...DEFAULT_WAHA_CONFIG, ...parsed };
+    const isHttps = isHttpsBrowserContext();
+    let cleanBase = (merged.baseUrl || '').trim().replace(/\/+$/, '');
+    if (isHttps && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(cleanBase)) {
+      cleanBase = '';
+    }
+    return {
+      ...merged,
+      baseUrl: cleanBase,
+      apiKey: isHttps ? '' : merged.apiKey || '',
+    };
   } catch {
     return DEFAULT_WAHA_CONFIG;
   }
@@ -80,7 +95,17 @@ export function getWahaConfig(): WahaConfig {
 
 export function saveWahaConfig(config: WahaConfig): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+  const isHttps = isHttpsBrowserContext();
+  let cleanBase = (config.baseUrl || '').trim().replace(/\/+$/, '');
+  if (isHttps && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(cleanBase)) {
+    cleanBase = '';
+  }
+  const sanitized: WahaConfig = {
+    ...config,
+    baseUrl: cleanBase,
+    apiKey: isHttps ? '' : config.apiKey || '',
+  };
+  localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(sanitized));
 }
 
 /**
@@ -150,17 +175,32 @@ async function fetchWithProxyFallback(
   subPath: string,
   options: RequestInit
 ): Promise<Response> {
-  const cleanUrl = (config.baseUrl || DEFAULT_WAHA_CONFIG.baseUrl).replace(/\/+$/, '');
+  const rawBase = (config.baseUrl || '').trim().replace(/\/+$/, '');
+  const isHttpsPage = isHttpsBrowserContext();
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...(options.headers as Record<string, string>),
   };
-  if (config.apiKey) {
+
+  // Mode BFF Resmi (Default Produksi): ketika baseUrl kosong ('') atau di halaman HTTPS masih menunjuk localhost,
+  // langsung panggil /api/waha/... tanpa mengekspos x-waha-target / x-api-key dari browser.
+  const useServerManagedBff =
+    !rawBase ||
+    (isHttpsPage && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(rawBase));
+
+  if (useServerManagedBff) {
+    return await fetch(`/api/waha/${subPath}`, {
+      ...options,
+      headers,
+    });
+  }
+
+  if (config.apiKey && !isHttpsPage) {
     headers['X-Api-Key'] = config.apiKey;
   }
 
   try {
-    return await fetch(`${cleanUrl}/api/${subPath}`, {
+    return await fetch(`${rawBase}/api/${subPath}`, {
       ...options,
       headers,
     });
@@ -169,9 +209,9 @@ async function fetchWithProxyFallback(
     if (typeof window !== 'undefined') {
       const proxyHeaders: Record<string, string> = {
         ...headers,
-        'x-waha-target': cleanUrl,
+        'x-waha-target': rawBase,
       };
-      if (config.apiKey) {
+      if (config.apiKey && !isHttpsPage) {
         proxyHeaders['x-api-key'] = config.apiKey;
       }
       return await fetch(`/api/waha/${subPath}`, {
@@ -184,7 +224,7 @@ async function fetchWithProxyFallback(
 }
 
 export async function checkWahaSession(config: WahaConfig): Promise<WahaSessionStatus> {
-  const cleanUrl = (config.baseUrl || DEFAULT_WAHA_CONFIG.baseUrl).replace(/\/+$/, '');
+  const cleanUrl = (config.baseUrl || '').trim().replace(/\/+$/, '');
 
   try {
     const res = await fetchWithProxyFallback(

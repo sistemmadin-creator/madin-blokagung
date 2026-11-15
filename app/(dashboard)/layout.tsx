@@ -133,17 +133,10 @@ export default function DashboardLayout({
       currentAccount.special_authorities?.persistent_absen_cepat === true;
 
     if (isPersistent) {
-      setPersistentAbsenCepatCookie(true);
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user?.id === currentAccount.id) {
-          savePersistentDeviceSession({
-            userId: currentAccount.id,
-            username: currentAccount.username,
-            email: currentAccount.email,
-            accessToken: session.access_token,
-            refreshToken: session.refresh_token,
-          });
-        }
+      savePersistentDeviceSession({
+        userId: currentAccount.id,
+        username: currentAccount.username,
+        email: currentAccount.email,
       });
 
       // Jika mendarat di /dashboard dan memiliki Otoritas Spesial Absen Cepat, langsung arahkan ke /absen-cepat

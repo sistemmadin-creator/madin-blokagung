@@ -4,21 +4,38 @@ import { WebPushServerService } from '@/lib/services/webPushServer';
 import { pushSendSchema } from '@/lib/validations/pushNotificationSchema';
 import {
   checkRateLimit,
-  getClientIdentifier,
+  getUserOrClientIdentifier,
   createRateLimitResponse,
   RATE_LIMIT_PROFILES,
 } from '@/lib/security/rateLimiter';
+import { verifySameOriginRequest } from '@/lib/security/csrfGuard';
+
+const ALLOWED_BROADCAST_ROLES = new Set([
+  'master_admin',
+  'admin',
+  'pkm_kurikulum',
+  'ketua_madin',
+  'pimpinan',
+  'pengurus',
+  'dewan_guru',
+  'asatidz',
+  'wali_kelas',
+  'mustahiq',
+  'custom_user',
+]);
 
 export async function POST(req: NextRequest) {
-  // 1. Proteksi Beban & Rate Limiting (Maksimal 10 broadcast per menit per IP/akun)
-  const identifier = getClientIdentifier(req, 'push_send');
-  const rateLimitResult = checkRateLimit(identifier, RATE_LIMIT_PROFILES.PUSH_SEND);
-  if (!rateLimitResult.success) {
-    return createRateLimitResponse(rateLimitResult);
+  // 0. CSRF Origin & Content-Type Guard
+  const csrf = verifySameOriginRequest(req);
+  if (!csrf.allowed) {
+    return NextResponse.json(
+      { error: csrf.reason || 'Permintaan ditolak oleh proteksi CSRF.' },
+      { status: csrf.status || 403 }
+    );
   }
 
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -30,47 +47,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Verifikasi Otoritas Peran Pengguna (Role-Based Authorization & Anti-BOLA)
+    // 1. Proteksi Beban & Rate Limiting (Maksimal 10 broadcast per menit per akun/IP)
+    const identifier = getUserOrClientIdentifier(req, 'push_send', user.id);
+    const rateLimitResult = checkRateLimit(identifier, RATE_LIMIT_PROFILES.PUSH_SEND);
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
+    // 2. Verifikasi Otoritas Peran Pengguna secara Fail-Closed dari Tabel user_accounts
+    const { data: userAcc } = await supabase
+      .from('user_accounts')
+      .select('role, username, is_active')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (userAcc && userAcc.is_active === false) {
+      return NextResponse.json(
+        { error: 'Akses ditolak: Akun pengurus Anda sedang dinonaktifkan.' },
+        { status: 403 }
+      );
+    }
+
     const appMeta = (user.app_metadata || {}) as Record<string, unknown>;
-    let userRole = String(appMeta.role || '').toLowerCase();
-    const username = String(appMeta.username || '').toLowerCase();
+    const userRole = String(userAcc?.role || appMeta.role || '').toLowerCase();
+    const username = String(userAcc?.username || appMeta.username || '').toLowerCase();
     const isMaster =
       userRole === 'master_admin' ||
       username === 'admin' ||
-      (user.email && user.email.startsWith('admin@'));
+      Boolean(user.email && user.email.toLowerCase().startsWith('admin@'));
 
-    // Jika role belum tertera di JWT app_metadata, verifikasi ke tabel user_accounts
-    if (!isMaster && !userRole) {
-      const { data: userAcc } = await supabase
-        .from('user_accounts')
-        .select('role, is_active')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (userAcc) {
-        if (userAcc.is_active === false) {
-          return NextResponse.json(
-            { error: 'Akses ditolak: Akun pengurus Anda sedang dinonaktifkan.' },
-            { status: 403 }
-          );
-        }
-        userRole = String(userAcc.role || '').toLowerCase();
-      }
-    }
-
-    const ALLOWED_BROADCAST_ROLES = new Set([
-      'master_admin',
-      'admin',
-      'pkm_kurikulum',
-      'ketua_madin',
-      'pengurus',
-      'custom_user',
-    ]);
-    const FORBIDDEN_ROLES = new Set(['wali', 'santri', 'tamu', 'guest']);
-
-    if (FORBIDDEN_ROLES.has(userRole) || (!isMaster && userRole && !ALLOWED_BROADCAST_ROLES.has(userRole))) {
+    // Fail-closed: tolak jika bukan Master Admin dan userRole kosong atau tidak ada di ALLOWED_BROADCAST_ROLES
+    if (!isMaster && !ALLOWED_BROADCAST_ROLES.has(userRole)) {
       return NextResponse.json(
-        { error: 'Akses ditolak: Peran akun Anda tidak memiliki hak akses untuk menyiarkan notifikasi push.' },
+        {
+          error:
+            'Akses ditolak: Peran akun Anda tidak memiliki hak akses untuk menyiarkan notifikasi push.',
+        },
         { status: 403 }
       );
     }

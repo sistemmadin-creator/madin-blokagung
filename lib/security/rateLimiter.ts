@@ -16,7 +16,7 @@ export interface RateLimitResult {
 // Penyimpanan in-memory per-identifier: Map<key, timestamp[]>
 const requestLog = new Map<string, number[]>();
 
-// Jadwal pembersihan memori otomatis (garbage collection) setiap 5 menit
+// Jadwal pembersihan memori otomatis (garbage collection) setiap 1 menit
 let lastCleanup = Date.now();
 function cleanupExpired(windowMs: number) {
   const now = Date.now();
@@ -34,7 +34,7 @@ function cleanupExpired(windowMs: number) {
 }
 
 /**
- * Mendapatkan identifier client yang aman dari request headers (IP atau User ID)
+ * Mendapatkan identifier client yang aman dari request headers (IP)
  */
 export function getClientIdentifier(req: NextRequest, prefix: string = 'global'): string {
   const forwardedFor = req.headers.get('x-forwarded-for');
@@ -46,6 +46,21 @@ export function getClientIdentifier(req: NextRequest, prefix: string = 'global')
   }
 
   return `${prefix}:${ip}`;
+}
+
+/**
+ * Mendapatkan identifier berbasis User ID (jika sudah login) atau fallback ke IP client.
+ * Mencegah beberapa pengurus di satu WiFi sekolah saling menghabiskan kuota rate-limit.
+ */
+export function getUserOrClientIdentifier(
+  req: NextRequest,
+  prefix: string,
+  userId?: string | null
+): string {
+  if (userId && userId.trim()) {
+    return `${prefix}:user:${userId.trim()}`;
+  }
+  return getClientIdentifier(req, prefix);
 }
 
 /**
@@ -119,8 +134,12 @@ export function createRateLimitResponse(result: RateLimitResult): NextResponse {
 export const RATE_LIMIT_PROFILES = {
   // Pengiriman Broadcast Push Notifikasi: Maksimal 10 request per menit per akun/IP
   PUSH_SEND: { windowMs: 60_000, max: 10 },
-  // Pendaftaran Subscription Push: Maksimal 20 request per menit per IP
+  // Pendaftaran Subscription Push: Maksimal 20 request per menit per akun/IP
   PUSH_SUBSCRIBE: { windowMs: 60_000, max: 20 },
-  // WAHA WhatsApp Gateway Proxy: Maksimal 30 request per menit per IP
-  WAHA_PROXY: { windowMs: 60_000, max: 30 },
+  // WAHA Status & QR Polling (GET): Maksimal 60 request per menit per akun
+  WAHA_STATUS: { windowMs: 60_000, max: 60 },
+  // WAHA Send & Logout Action (POST): Maksimal 45 request per menit per akun
+  WAHA_SEND: { windowMs: 60_000, max: 45 },
+  // Alias kompatibilitas
+  WAHA_PROXY: { windowMs: 60_000, max: 45 },
 };

@@ -743,7 +743,7 @@ export default function KirimWaHafalanModule() {
     });
     refreshLogsState();
 
-    window.open(link, '_blank');
+    window.open(link, '_blank', 'noopener,noreferrer');
 
     setWaWebModalInfo({
       open: true,
@@ -2012,7 +2012,7 @@ export default function KirimWaHafalanModule() {
                     onChange={(e) =>
                       setWahaConfig({ ...wahaConfig, baseUrl: e.target.value })
                     }
-                    placeholder="Contoh: http://localhost:3008 atau https://...trycloudflare.com"
+                    placeholder="Kosongkan untuk Server Resmi Madrasah (Otomatis via Server Proxy)"
                     className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 font-mono text-xs"
                   />
                   <button
@@ -2032,20 +2032,31 @@ export default function KirimWaHafalanModule() {
                   <button
                     type="button"
                     onClick={() => {
+                      const nextCfg = { ...wahaConfig, baseUrl: '', apiKey: '' };
+                      setWahaConfig(nextCfg);
+                      void checkGateway(nextCfg);
+                    }}
+                    className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200 hover:bg-emerald-100 cursor-pointer"
+                  >
+                    Server Resmi Madrasah (Rekomendasi)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
                       const nextCfg = { ...wahaConfig, baseUrl: 'http://localhost:3008' };
                       setWahaConfig(nextCfg);
                       void checkGateway(nextCfg);
                     }}
                     className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-bold border border-slate-200 hover:bg-slate-200 cursor-pointer"
                   >
-                    Port Lokal (http://localhost:3008)
+                    Port Lokal Dev (http://localhost:3008)
                   </button>
                 </div>
               </div>
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
-                  API Key WAHA (Opsional):
+                  API Key WAHA (Khusus Mode Lokal Dev):
                 </label>
                 <input
                   type="password"
@@ -2053,7 +2064,7 @@ export default function KirimWaHafalanModule() {
                   onChange={(e) =>
                     setWahaConfig({ ...wahaConfig, apiKey: e.target.value })
                   }
-                  placeholder="Kosongkan jika WAHA tidak dipasangi API Key"
+                  placeholder="Dikelola otomatis oleh server produksi (kosongkan)"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 font-mono"
                 />
               </div>

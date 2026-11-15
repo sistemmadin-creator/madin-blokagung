@@ -127,9 +127,6 @@ function LoginFormContent() {
           userId: data.user.id,
           username: trimmedUser.toLowerCase(),
           email,
-          password,
-          accessToken: data.session?.access_token,
-          refreshToken: data.session?.refresh_token,
         });
       } else {
         clearPersistentDeviceSession();

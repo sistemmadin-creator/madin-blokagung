@@ -190,6 +190,7 @@ export function canViewPage(
   pathname?: string
 ): boolean {
   if (!account) return true;
+  if (account.is_active === false) return false;
   if (account.role === 'master_admin') return true;
 
   if (
@@ -242,7 +243,8 @@ export function canCreateOnPage(
   account: UserAccountRecord | null,
   pageId: AppPageId
 ): boolean {
-  if (!account) return true;
+  if (!account) return false;
+  if (account.is_active === false) return false;
   if (account.role === 'master_admin') return true;
   if (!canViewPage(account, pageId)) return false;
   return account.page_permissions[pageId] === 'edit';
@@ -253,7 +255,8 @@ export function canEditOnPage(
   account: UserAccountRecord | null,
   pageId: AppPageId
 ): boolean {
-  if (!account) return true;
+  if (!account) return false;
+  if (account.is_active === false) return false;
   if (account.role === 'master_admin') return true;
   if (!canCreateOnPage(account, pageId)) return false;
   return !account.special_authorities.hide_edit_pages.includes(pageId);
@@ -264,7 +267,8 @@ export function canDeleteOnPage(
   account: UserAccountRecord | null,
   pageId: AppPageId
 ): boolean {
-  if (!account) return true;
+  if (!account) return false;
+  if (account.is_active === false) return false;
   if (account.role === 'master_admin') return true;
   if (!canCreateOnPage(account, pageId)) return false;
   return !account.special_authorities.hide_delete_pages.includes(pageId);
@@ -274,7 +278,8 @@ export function canDeleteOnPage(
 export function canAccessSettingsAuthority(
   account: UserAccountRecord | null
 ): boolean {
-  if (!account) return true;
+  if (!account) return false;
+  if (account.is_active === false) return false;
   if (account.role === 'master_admin') return true;
   if (account.special_authorities.pengaturan_status === 'non_aktif') return false;
   return account.page_permissions.pengaturan !== 'sembunyikan';
