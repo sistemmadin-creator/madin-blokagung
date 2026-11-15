@@ -22,7 +22,7 @@ import {
   X,
   ExternalLink,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { exportToExcel } from '@/lib/utils/excel';
 import { supabase } from '@/lib/supabase/client';
 import { EbtadinTahunAjaran, EbtadinSerahIjazah } from '@/types/ebtadin';
 
@@ -287,7 +287,7 @@ _Pengurus EBTADIN Madin Al-Amiriyyah Blokagung_`;
   };
 
   // Export to Excel
-  const handleExportFullExcel = () => {
+  const handleExportFullExcel = async () => {
     if (records.length === 0) return;
     const data = records.map((r, idx) => {
       const th = tahunMap.get(r.tahun_ebtadin_id);
@@ -317,10 +317,11 @@ _Pengurus EBTADIN Madin Al-Amiriyyah Blokagung_`;
       };
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekap Multi-Angkatan');
-    XLSX.writeFile(workbook, `Rekap_Arsip_Ijazah_EBTADIN_${new Date().getFullYear()}.xlsx`);
+    await exportToExcel(
+      data,
+      `Rekap_Arsip_Ijazah_EBTADIN_${new Date().getFullYear()}.xlsx`,
+      'Rekap Multi-Angkatan'
+    );
   };
 
   return (

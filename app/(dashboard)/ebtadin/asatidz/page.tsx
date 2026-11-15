@@ -10,7 +10,7 @@ import {
   FileSpreadsheet,
   ShieldCheck,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { exportToExcel } from '@/lib/utils/excel';
 import { useEbtadinStore } from '@/stores/useEbtadinStore';
 
 export default function EbtadinAsatidzPage() {
@@ -39,7 +39,7 @@ export default function EbtadinAsatidzPage() {
   const totalAsatidz = asatidzList.length;
   const totalMustahiq = asatidzList.filter((a) => (a.peran_ebtadin || '').toLowerCase().includes('mustahiq')).length || totalAsatidz;
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (filteredAsatidz.length === 0) return;
     const data = filteredAsatidz.map((a, idx) => ({
       No: idx + 1,
@@ -50,10 +50,11 @@ export default function EbtadinAsatidzPage() {
       'Putra/Putri': a.pa_pi || '-',
       'Peran EBTADIN': a.peran_ebtadin || 'Mustahiq / Pengawas Ruang',
     }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Asatidz_EBTADIN');
-    XLSX.writeFile(wb, `Asatidz_EBTADIN_${activeTahun?.tahun_masehi || 2026}.xlsx`);
+    await exportToExcel(
+      data,
+      `Asatidz_EBTADIN_${activeTahun?.tahun_masehi || 2026}.xlsx`,
+      'Asatidz_EBTADIN'
+    );
   };
 
   return (

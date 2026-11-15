@@ -16,7 +16,7 @@ import {
   UserCheck,
   CalendarDays,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { exportToExcel } from '@/lib/utils/excel';
 import { useEbtadinStore } from '@/stores/useEbtadinStore';
 import { useSerahIjazahStore } from '@/stores/useSerahIjazahStore';
 import { EbtadinSerahIjazah } from '@/types/ebtadin';
@@ -118,7 +118,7 @@ export default function SerahIjazahPage() {
     return Array.from(map.values()).filter((g) => g.santri.length > 0);
   }, [formasiList, filteredRecords]);
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (records.length === 0) return;
     const data = records.map((r, idx) => ({
       No: idx + 1,
@@ -139,10 +139,11 @@ export default function SerahIjazahPage() {
       'Diserahkan Oleh': r.diserahkan_oleh || '-',
       Catatan: r.catatan || '-',
     }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Serah_Ijazah_EBTADIN');
-    XLSX.writeFile(wb, `Serah_Ijazah_EBTADIN_${activeTahun?.tahun_masehi || 2026}.xlsx`);
+    await exportToExcel(
+      data,
+      `Serah_Ijazah_EBTADIN_${activeTahun?.tahun_masehi || 2026}.xlsx`,
+      'Serah_Ijazah_EBTADIN'
+    );
   };
 
   const handleSaveDetail = async () => {

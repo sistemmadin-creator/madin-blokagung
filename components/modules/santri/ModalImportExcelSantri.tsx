@@ -5,7 +5,7 @@ import Dialog from '@/components/ui/Dialog';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
-import * as XLSX from 'xlsx';
+import { exportAoaToExcel, parseExcelFile } from '@/lib/utils/excel';
 import {
   FileSpreadsheet,
   Download,
@@ -59,7 +59,7 @@ export default function ModalImportExcelSantri() {
     closeImportModal();
   };
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     const headers = [
       'NIS (Nomor Induk Santri)',
       'Gender',
@@ -147,12 +147,16 @@ export default function ModalImportExcelSantri() {
       '082345678901',
     ];
 
-    const ws = XLSX.utils.aoa_to_sheet([headers, contohBaris1, contohBaris2]);
-    ws['!cols'] = headers.map((h) => ({ wch: Math.max(h.length + 5, 14) }));
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Template_Santri');
-    XLSX.writeFile(wb, 'Template_Import_Data_Santri.xlsx');
+    await exportAoaToExcel({
+      filename: 'Template_Import_Data_Santri.xlsx',
+      sheets: [
+        {
+          name: 'Template_Santri',
+          rows: [headers, contohBaris1, contohBaris2],
+          colWidths: headers.map((h) => Math.max(h.length + 5, 14)),
+        },
+      ],
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,10 +204,10 @@ export default function ModalImportExcelSantri() {
     setProgressMsg('Membaca berkas Excel...');
 
     try {
-      const buffer = await selectedFile.arrayBuffer();
-      const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { defval: '' });
+      const jsonRows = await parseExcelFile(selectedFile, {
+        maxBytes: 5 * 1024 * 1024,
+        maxRows: 15000,
+      });
 
       if (!jsonRows || jsonRows.length === 0) {
         throw new Error('File Excel kosong atau format tidak dapat dibaca.');
@@ -326,7 +330,7 @@ export default function ModalImportExcelSantri() {
           </div>
           <div className="space-y-1">
             <h4 className="text-xs font-bold text-emerald-950">
-              Unggah File Spreadsheet (.xlsx / .xls / .csv)
+              Unggah File Spreadsheet (.xlsx / .csv)
             </h4>
             <p className="text-xs text-emerald-800 leading-relaxed">
               Tambahkan data ratusan santri sekaligus ke dalam database. Pastikan format kolom sesuai dengan template standar sistem.
@@ -392,7 +396,7 @@ export default function ModalImportExcelSantri() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".xlsx, .xls, .csv"
+            accept=".xlsx, .csv"
             onChange={handleFileChange}
             className="hidden"
           />
@@ -430,7 +434,7 @@ export default function ModalImportExcelSantri() {
                 Klik atau seret file Excel ke sini
               </p>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Mendukung format berkas .xlsx, .xls, dan .csv
+                Mendukung format berkas .xlsx dan .csv
               </p>
             </>
           )}

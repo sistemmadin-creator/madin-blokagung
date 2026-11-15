@@ -10,7 +10,7 @@ import {
   FileSpreadsheet,
   MapPin,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { exportToExcel } from '@/lib/utils/excel';
 import { useEbtadinStore } from '@/stores/useEbtadinStore';
 
 export default function EbtadinFormasiPaPage() {
@@ -40,7 +40,7 @@ export default function EbtadinFormasiPaPage() {
 
   const totalRombel = formasiList.filter((f) => f.pa_pi === 'PA').length;
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (formasiPa.length === 0) return;
     const data = formasiPa.map((f, idx) => ({
       No: idx + 1,
@@ -54,10 +54,11 @@ export default function EbtadinFormasiPaPage() {
       'Blok Takror': f.blok_takror || '-',
       Kapasitas: f.kapasitas_maksimal || '-',
     }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Formasi_EBTADIN_PA');
-    XLSX.writeFile(wb, `Formasi_EBTADIN_Putra_${activeTahun?.tahun_masehi || 2026}.xlsx`);
+    await exportToExcel(
+      data,
+      `Formasi_EBTADIN_Putra_${activeTahun?.tahun_masehi || 2026}.xlsx`,
+      'Formasi_EBTADIN_PA'
+    );
   };
 
   return (

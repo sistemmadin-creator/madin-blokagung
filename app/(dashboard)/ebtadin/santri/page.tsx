@@ -10,7 +10,7 @@ import {
   Award,
   FileSpreadsheet,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { exportToExcel } from '@/lib/utils/excel';
 import { useEbtadinStore } from '@/stores/useEbtadinStore';
 
 export default function EbtadinSantriPage() {
@@ -43,7 +43,7 @@ export default function EbtadinSantriPage() {
   const totalPutri = santriList.filter((s) => s.pa_pi === 'PI').length;
   const totalWithIjazah = santriList.filter((s) => s.nomor_seri_ijazah).length;
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (filteredSantri.length === 0) return;
     const data = filteredSantri.map((s, idx) => ({
       No: idx + 1,
@@ -55,10 +55,11 @@ export default function EbtadinSantriPage() {
       'Asrama/Kamar': `${s.asrama || '-'} ${s.kamar || ''}`,
       'No. Seri Ijazah': s.nomor_seri_ijazah || '-',
     }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Santri_EBTADIN');
-    XLSX.writeFile(wb, `Santri_EBTADIN_${activeTahun?.tahun_masehi || 2026}.xlsx`);
+    await exportToExcel(
+      data,
+      `Santri_EBTADIN_${activeTahun?.tahun_masehi || 2026}.xlsx`,
+      'Santri_EBTADIN'
+    );
   };
 
   return (

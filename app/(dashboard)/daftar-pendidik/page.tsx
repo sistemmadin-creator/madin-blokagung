@@ -18,7 +18,7 @@ import {
   X,
   GitFork,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { exportAoaToExcel } from '@/lib/utils/excel';
 
 export default function DaftarPendidikPage() {
   const { asatidzList, fetchAsatidz, openDetailModal, isLoading: loadingAsatidz } = useAsatidzStore();
@@ -110,7 +110,7 @@ export default function DaftarPendidikPage() {
     return kelompokTampil.reduce((acc, g) => acc + g.asatidzList.length, 0);
   }, [kelompokTampil]);
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     const rows: (string | number)[][] = [
       [
         'KODE',
@@ -188,10 +188,15 @@ export default function DaftarPendidikPage() {
       });
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Daftar Pendidik');
-    XLSX.writeFile(wb, 'Daftar_Tenaga_Pendidik_Madin.xlsx');
+    await exportAoaToExcel({
+      filename: 'Daftar_Tenaga_Pendidik_Madin.xlsx',
+      sheets: [
+        {
+          name: 'Daftar Pendidik',
+          rows,
+        },
+      ],
+    });
   };
 
   const handlePrint = () => {

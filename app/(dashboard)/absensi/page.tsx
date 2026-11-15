@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import * as XLSX from 'xlsx';
+import { exportToExcel } from '@/lib/utils/excel';
 import {
   UserCheck,
   Calendar,
@@ -508,7 +508,7 @@ export default function AbsensiAsatidzPage() {
     }
   };
 
-  const handleExportRiwayatExcel = () => {
+  const handleExportRiwayatExcel = async () => {
     if (filteredRiwayatList.length === 0) {
       showToast('error', 'Tidak ada data riwayat untuk diekspor.');
       return;
@@ -534,10 +534,11 @@ export default function AbsensiAsatidzPage() {
       'Waktu Update': r.waktuUpdate || r.timestamp || '-',
     }));
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Riwayat Absensi');
-    XLSX.writeFile(wb, `Riwayat_Absensi_Asatidz_${selectedDate}.xlsx`);
+    await exportToExcel(
+      rows,
+      `Riwayat_Absensi_Asatidz_${selectedDate}.xlsx`,
+      'Riwayat Absensi'
+    );
   };
 
   const handleDeleteRiwayat = async (item: RiwayatAbsensiItem) => {

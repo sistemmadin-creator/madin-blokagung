@@ -23,7 +23,7 @@ import {
   XCircle,
   HelpCircle,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { exportToExcel } from '@/lib/utils/excel';
 import { useEbtadinStore } from '@/stores/useEbtadinStore';
 import { useEbtadinKelulusanStore } from '@/stores/useEbtadinKelulusanStore';
 import { EbtadinKelulusan, EbtadinAlasanOption } from '@/types/ebtadin';
@@ -186,7 +186,7 @@ export default function RekapKelulusanPage() {
   };
 
   // Ekspor Excel
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (records.length === 0) return;
     const data = records.map((r, idx) => ({
       No: idx + 1,
@@ -204,12 +204,10 @@ export default function RekapKelulusanPage() {
         : '-',
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekap Kelulusan Santri');
-    XLSX.writeFile(
-      workbook,
-      `Rekap_Kelulusan_EBTADIN_${activeTahun?.tahun_masehi || new Date().getFullYear()}.xlsx`
+    await exportToExcel(
+      data,
+      `Rekap_Kelulusan_EBTADIN_${activeTahun?.tahun_masehi || new Date().getFullYear()}.xlsx`,
+      'Rekap Kelulusan Santri'
     );
   };
 
