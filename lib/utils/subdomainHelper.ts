@@ -12,9 +12,38 @@ const PUBLIC_EXACT_PATHS = new Set([
 const PUBLIC_PREFIX_PATHS = [
   '/berita',
   '/api/og/rapor-hafalan',
-  '/api/monitoring',
-  '/test-crash',
 ];
+
+function isAllowedHost(hostname: string): boolean {
+  if (!hostname) return false;
+  const h = hostname.toLowerCase().trim();
+  return (
+    h === 'localhost' ||
+    h === '127.0.0.1' ||
+    h === 'sistem.localhost' ||
+    h === 'madinblokagung.com' ||
+    h === 'www.madinblokagung.com' ||
+    h === 'sistem.madinblokagung.com' ||
+    h.endsWith('.madinblokagung.com') ||
+    h.endsWith('.vercel.app')
+  );
+}
+
+function resolveValidatedOrigin(envUrl: string | undefined, fallbackOrigin: string): string {
+  if (!envUrl) return fallbackOrigin;
+  try {
+    const parsed = new URL(envUrl);
+    if (
+      (parsed.protocol === 'https:' || parsed.protocol === 'http:') &&
+      isAllowedHost(parsed.hostname)
+    ) {
+      return parsed.origin;
+    }
+  } catch {
+    // Gunakan fallback jika env tidak valid
+  }
+  return fallbackOrigin;
+}
 
 /**
  * Memeriksa apakah request ditujukan ke subdomain sistem admin.
@@ -34,9 +63,10 @@ export function isSistemSubdomain(request: NextRequest): boolean {
   const hostname = rawHost.split(':')[0].toLowerCase().trim();
 
   if (
-    hostname.startsWith('sistem.') ||
-    hostname.startsWith('sistem-') ||
-    hostname === 'sistem.localhost'
+    isAllowedHost(hostname) &&
+    (hostname.startsWith('sistem.') ||
+      hostname.startsWith('sistem-') ||
+      hostname === 'sistem.localhost')
   ) {
     return true;
   }
@@ -64,14 +94,20 @@ export function getPublicPortalOrigin(request: NextRequest): string {
 
   const hostname = rawHost.split(':')[0].toLowerCase().trim();
 
-  if (hostname.includes('localhost') || hostname === '127.0.0.1') {
+  if (
+    hostname === 'localhost' ||
+    hostname === 'sistem.localhost' ||
+    hostname === '127.0.0.1'
+  ) {
     const portMatch = rawHost.match(/:(\d+)$/);
     const port = portMatch ? `:${portMatch[1]}` : ':3000';
     return `http://localhost${port}`;
   }
 
-  // Sesuai konfigurasi Vercel: domain produksi utama adalah www.madinblokagung.com
-  return process.env.NEXT_PUBLIC_PUBLIC_PORTAL_URL || 'https://www.madinblokagung.com';
+  return resolveValidatedOrigin(
+    process.env.NEXT_PUBLIC_PUBLIC_PORTAL_URL,
+    'https://www.madinblokagung.com'
+  );
 }
 
 /**
@@ -86,13 +122,20 @@ export function getSistemPortalOrigin(request: NextRequest): string {
 
   const hostname = rawHost.split(':')[0].toLowerCase().trim();
 
-  if (hostname.includes('localhost') || hostname === '127.0.0.1') {
+  if (
+    hostname === 'localhost' ||
+    hostname === 'sistem.localhost' ||
+    hostname === '127.0.0.1'
+  ) {
     const portMatch = rawHost.match(/:(\d+)$/);
     const port = portMatch ? `:${portMatch[1]}` : ':3000';
     return `http://sistem.localhost${port}`;
   }
 
-  return process.env.NEXT_PUBLIC_SISTEM_PORTAL_URL || 'https://sistem.madinblokagung.com';
+  return resolveValidatedOrigin(
+    process.env.NEXT_PUBLIC_SISTEM_PORTAL_URL,
+    'https://sistem.madinblokagung.com'
+  );
 }
 
 /**

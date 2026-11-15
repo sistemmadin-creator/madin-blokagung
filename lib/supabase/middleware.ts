@@ -49,15 +49,13 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(targetUrl, 308);
   }
 
-  // File publik / manifest / worker / error monitoring yang diizinkan di subdomain sistem
+  // File publik / manifest / worker yang diizinkan di subdomain sistem
   if (
     pathname === '/manifest.webmanifest' ||
     pathname === '/sw.js' ||
     pathname === '/favicon.ico' ||
     pathname === '/icon.png' ||
-    pathname === '/logo-madin.png' ||
-    pathname.startsWith('/api/monitoring') ||
-    pathname.startsWith('/test-crash')
+    pathname === '/logo-madin.png'
   ) {
     return NextResponse.next({ request });
   }
@@ -73,24 +71,52 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // Header anti-cache dari @supabase/ssr hanya dikirim pada penulisan cookie pertama,
+  // jadi disimpan agar tetap terpasang walau supabaseResponse dibuat ulang.
+  const authResponseHeaders: Record<string, string> = {};
+
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, headersToSet) {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value)
         );
+        Object.assign(authResponseHeaders, headersToSet);
         supabaseResponse = NextResponse.next({
           request,
         });
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, options)
         );
+        Object.entries(authResponseHeaders).forEach(([key, value]) =>
+          supabaseResponse.headers.set(key, value)
+        );
       },
     },
   });
+
+  /**
+   * Menyalin cookie sesi (hasil refresh token) dan header anti-cache dari
+   * supabaseResponse ke respons lain, agar sesi tidak hilang saat redirect.
+   */
+  const withSupabaseCookies = <T extends NextResponse>(response: T): T => {
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie);
+    });
+    Object.entries(authResponseHeaders).forEach(([key, value]) =>
+      response.headers.set(key, value)
+    );
+    return response;
+  };
+
+  const redirectWithSupabaseCookies = (
+    targetUrl: URL,
+    status?: number
+  ): NextResponse =>
+    withSupabaseCookies(NextResponse.redirect(targetUrl, status));
 
   // Always use getUser() in server middleware to revalidate the JWT with Supabase Auth.
   const {
@@ -115,17 +141,17 @@ export async function updateSession(request: NextRequest) {
     if (!user) {
       if (hasPersistentCookie) {
         const restoreUrl = new URL('/login?next=%2Fabsen-cepat', request.url);
-        return NextResponse.redirect(restoreUrl);
+        return redirectWithSupabaseCookies(restoreUrl);
       }
       const loginUrl = new URL('/login', request.url);
-      return NextResponse.redirect(loginUrl, 307);
+      return redirectWithSupabaseCookies(loginUrl, 307);
     }
 
     const targetPath = isUserPersistentAbsenCepat
       ? '/absen-cepat'
       : '/dashboard';
     const redirectUrl = new URL(targetPath, request.url);
-    return NextResponse.redirect(redirectUrl, 307);
+    return redirectWithSupabaseCookies(redirectUrl, 307);
   }
 
   // 3. HALAMAN LOGIN ("sistem.madinblokagung.com/login"):
@@ -138,7 +164,7 @@ export async function updateSession(request: NextRequest) {
           : '/absen-cepat'
         : sanitizeNextPath(rawNext);
       const redirectUrl = new URL(targetPath, request.url);
-      return NextResponse.redirect(redirectUrl);
+      return redirectWithSupabaseCookies(redirectUrl);
     }
     return supabaseResponse;
   }
@@ -152,9 +178,11 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (pathname.startsWith('/api/')) {
-      return NextResponse.json(
-        { error: 'Akses ditolak. Silakan login terlebih dahulu.' },
-        { status: 401 }
+      return withSupabaseCookies(
+        NextResponse.json(
+          { error: 'Akses ditolak. Silakan login terlebih dahulu.' },
+          { status: 401 }
+        )
       );
     }
 
@@ -162,7 +190,7 @@ export async function updateSession(request: NextRequest) {
     loginUrl.pathname = '/login';
     const intendedTarget = `${pathname}${search || ''}`;
     loginUrl.search = `?next=${encodeURIComponent(intendedTarget)}`;
-    return NextResponse.redirect(loginUrl);
+    return redirectWithSupabaseCookies(loginUrl);
   }
 
   return supabaseResponse;
