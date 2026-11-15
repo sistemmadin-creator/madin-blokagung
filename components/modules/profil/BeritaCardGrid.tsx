@@ -1,5 +1,7 @@
 'use client';
 
+import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
+
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Clock, BookOpen } from 'lucide-react';
@@ -13,10 +15,7 @@ export default function BeritaCardGrid({ post }: BeritaCardGridProps) {
   const [hasImgError, setHasImgError] = useState(false);
   const topikMeta = TOPIK_BERITA_MAP[post.topic] || TOPIK_BERITA_MAP.tingkat_ula;
 
-  const formattedDate = new Date(post.published_at).toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-  });
+  const formattedDate = formatBeritaDateWib(post.published_at, 'dayMonth');
 
   return (
     <Link

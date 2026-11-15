@@ -16,6 +16,7 @@ import {
   Filter
 } from 'lucide-react';
 import { useBeritaStore } from '@/stores/useBeritaStore';
+import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
 import { usePagePermission } from '@/stores/useRbacStore';
 import { TopikBerita, StatusBerita, TOPIK_BERITA_MAP } from '@/types/berita';
 
@@ -336,11 +337,7 @@ export default function TabelKelolaBerita() {
                             <span>•</span>
                             <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3" />
-                              {new Date(post.published_at).toLocaleDateString('id-ID', {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric',
-                              })}
+                              {formatBeritaDateWib(post.published_at, 'short')}
                             </span>
                             <span>•</span>
                             <span>{post.views_count} pembaca</span>

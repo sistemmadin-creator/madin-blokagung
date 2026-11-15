@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { NavbarProfil, FooterProfil } from '@/components/modules/profil';
 import { useBeritaStore } from '@/stores/useBeritaStore';
+import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
 import { TopikBerita, TOPIK_BERITA_MAP } from '@/types/berita';
 
 export default function ArsipBeritaPage() {
@@ -149,11 +150,7 @@ export default function ArsipBeritaPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredPosts.map((post) => {
                 const topikMeta = TOPIK_BERITA_MAP[post.topic];
-                const formattedDate = new Date(post.published_at).toLocaleDateString('id-ID', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                });
+                const formattedDate = formatBeritaDateWib(post.published_at, 'short');
 
                 return (
                   <Link

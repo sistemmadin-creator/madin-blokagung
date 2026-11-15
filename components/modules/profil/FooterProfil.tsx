@@ -1,5 +1,7 @@
 'use client';
 
+import { getCurrentYearWib } from '@/lib/utils/beritaDateHelper';
+
 import React from 'react';
 import { 
   MapPin, 
@@ -100,7 +102,7 @@ export default function FooterProfil() {
         {/* Bottom Bar: Copyright & Attribution */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-emerald-300/70 text-center sm:text-left">
           <p>
-            &copy; {new Date().getFullYear()} Madrasah Diniyyah Al-Amiriyyah (MADINA) PP. Darussalam Blokagung.
+            &copy; {getCurrentYearWib()} Madrasah Diniyyah Al-Amiriyyah (MADINA) PP. Darussalam Blokagung.
           </p>
           <div className="flex items-center gap-1 text-emerald-400/80">
             <span>Dirawat dengan khidmah untuk pesantren salaf</span>

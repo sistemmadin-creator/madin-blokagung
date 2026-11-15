@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Newspaper, ChevronRight, ChevronLeft, Clock } from 'lucide-react';
 import { useBeritaStore } from '@/stores/useBeritaStore';
+import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
 import { TopikBerita, TOPIK_BERITA_MAP } from '@/types/berita';
 import BeritaCardHero from './BeritaCardHero';
 import BeritaCardGrid from './BeritaCardGrid';
@@ -251,11 +252,7 @@ export default function BeritaShowcaseSection() {
               <div className="space-y-3">
                 {latestPosts.map((post) => {
                   const topikMeta = TOPIK_BERITA_MAP[post.topic];
-                  const formattedDate = new Date(post.published_at).toLocaleDateString('id-ID', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  });
+                  const formattedDate = formatBeritaDateWib(post.published_at, 'short');
 
                   return (
                     <Link

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { NavbarProfil, FooterProfil } from '@/components/modules/profil';
 import { useBeritaStore } from '@/stores/useBeritaStore';
+import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
 import { TOPIK_BERITA_MAP, SEED_BERITA } from '@/types/berita';
 import { sanitizeHttpUrl, sanitizeRelativeOrHttpUrl } from '@/lib/security/urlSanitizer';
 
@@ -105,12 +106,7 @@ export default function DetailBeritaPage() {
     );
   }
 
-  const formattedDate = new Date(currentPost.published_at).toLocaleDateString('id-ID', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  const formattedDate = formatBeritaDateWib(currentPost.published_at, 'longWithWeekday');
 
   const tikTokVideoId = extractTikTokVideoId(currentPost.tiktok_url);
 
@@ -434,10 +430,7 @@ export default function DetailBeritaPage() {
                           {post.title}
                         </h4>
                         <span className="text-[10px] text-slate-400 pt-2 block">
-                          {new Date(post.published_at).toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'short',
-                          })}
+                          {formatBeritaDateWib(post.published_at, 'dayMonth')}
                         </span>
                       </div>
                     </Link>

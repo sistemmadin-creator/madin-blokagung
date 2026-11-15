@@ -82,7 +82,9 @@ function loadFromLocal(): WartaBerita[] {
 }
 
 export const useBeritaStore = create<BeritaState>((set, get) => ({
-  posts: typeof window !== 'undefined' ? loadFromLocal() : SEED_BERITA,
+  // Mulai secara deterministik dengan SEED_BERITA agar SSR dan hidrasi awal klien identik;
+  // cache localStorage dimuat di fetchPosts() pasca-mount.
+  posts: SEED_BERITA,
   isLoading: false,
   error: null,
 
@@ -95,7 +97,8 @@ export const useBeritaStore = create<BeritaState>((set, get) => ({
   selectedPostForDetail: null,
 
   fetchPosts: async () => {
-    set({ isLoading: true, error: null });
+    const cachedLocal = loadFromLocal();
+    set({ posts: cachedLocal, isLoading: true, error: null });
 
     // Coba ambil dari Supabase
     try {

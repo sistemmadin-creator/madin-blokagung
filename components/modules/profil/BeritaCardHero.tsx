@@ -1,5 +1,7 @@
 'use client';
 
+import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
+
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Clock, Tag, ArrowRight, BookOpen } from 'lucide-react';
@@ -13,12 +15,8 @@ export default function BeritaCardHero({ post }: BeritaCardHeroProps) {
   const [hasImgError, setHasImgError] = useState(false);
   const topikMeta = TOPIK_BERITA_MAP[post.topic] || TOPIK_BERITA_MAP.kelas_unggulan;
 
-  // Format tanggal publikasi
-  const formattedDate = new Date(post.published_at).toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  // Format tanggal publikasi secara deterministik pada kalender WIB
+  const formattedDate = formatBeritaDateWib(post.published_at, 'short');
 
   return (
     <Link
