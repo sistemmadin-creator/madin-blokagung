@@ -355,19 +355,30 @@ async function handleProxyRequest(req: NextRequest, pathSegments: string[], meth
     const isProd = process.env.NODE_ENV === 'production';
     const serverBaseUrl = (
       process.env.WAHA_BASE_URL ||
+      process.env.WAHA_API_URL ||
       process.env.NEXT_PUBLIC_WAHA_BASE_URL ||
       ''
     ).trim();
     const serverApiKey = (process.env.WAHA_API_KEY || '').trim();
 
-    if (isProd && (!serverBaseUrl || !serverApiKey)) {
+    // Jika di produksi server WAHA belum disiapkan (kosong atau diset 'disabled'/'dummy'),
+    // kembalikan respons OFFLINE yang bersih (200 untuk pengecekan status sesi agar tidak memicu error console,
+    // 503 untuk pengiriman otomatis) sehingga Mode Kirim Manual (wa.me) tetap berjalan 100% normal.
+    if (
+      isProd &&
+      (!serverBaseUrl ||
+        !serverApiKey ||
+        serverBaseUrl.toLowerCase() === 'disabled' ||
+        serverBaseUrl.toLowerCase() === 'dummy')
+    ) {
       return NextResponse.json(
         {
           online: false,
-          status: 'SERVER_MISCONFIGURED',
-          error: 'Konfigurasi WAHA_BASE_URL / WAHA_API_KEY belum diset di server produksi.',
+          status: 'OFFLINE',
+          error:
+            'Server WAHA Gateway belum diaktifkan. Silakan gunakan Mode Kirim Manual (wa.me).',
         },
-        { status: 503 }
+        { status: method === 'GET' ? 200 : 503 }
       );
     }
 

@@ -678,4 +678,25 @@ BEGIN
 END
 $$;
 
+-- -----------------------------------------------------------------------------
+-- 6. Kunci search_path fungsi EBTADIN/trigger & cabut EXECUTE anon pada RPC Admin
+-- -----------------------------------------------------------------------------
+ALTER FUNCTION public.fn_daftar_kelas_ebtadin(uuid, uuid[]) SET search_path = public;
+ALTER FUNCTION public.fn_generate_nomor_seri_ijazah(uuid) SET search_path = public;
+ALTER FUNCTION public.fn_sanitize_asatidz_kbm_assignment() SET search_path = public;
+ALTER FUNCTION public.fn_sinkronkan_ebtadin_dari_master(uuid) SET search_path = public;
+ALTER FUNCTION public.fn_tetapkan_data_ebtadin(uuid, text) SET search_path = public;
+ALTER FUNCTION public.set_updated_at() SET search_path = public;
+
+REVOKE EXECUTE ON FUNCTION public.admin_delete_user_account(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_delete_user_account(uuid) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.admin_update_security_password(text, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_update_security_password(text, text) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.admin_upsert_user_account(uuid, text, text, text, text, text, jsonb, jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_upsert_user_account(uuid, text, text, text, text, text, jsonb, jsonb) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated;
+
 COMMIT;
