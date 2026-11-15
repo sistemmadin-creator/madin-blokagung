@@ -17,7 +17,7 @@ import {
   Layers,
   Lock,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { exportAoaToExcel } from '@/lib/utils/excel';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
@@ -462,13 +462,12 @@ export default function RekapSetorMustahiqModule() {
   ]);
 
   // Ekspor Rekap ke Excel (.xlsx)
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (kelompokGroups.length === 0) {
       alert('Belum ada data rekap setor untuk diekspor pada tingkatan ini.');
       return;
     }
 
-    const wb = XLSX.utils.book_new();
     const aoa: any[][] = [
       [`REKAPITULASI SETORAN MUSTAHIQ - TINGKAT ${selectedTingkat} (${tahun})`],
       ['Madrasah Diniyyah Al Amiriyyah Blokagung'],
@@ -508,9 +507,20 @@ export default function RekapSetorMustahiqModule() {
       });
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    XLSX.utils.book_append_sheet(wb, ws, `Rekap_${selectedTingkat}`);
-    XLSX.writeFile(wb, `Rekap_Setor_Mustahiq_${selectedTingkat}_${tahun}.xlsx`);
+    await exportAoaToExcel({
+      filename: `Rekap_Setor_Mustahiq_${selectedTingkat}_${tahun}.xlsx`,
+      sheets: [
+        {
+          name: `Rekap_${selectedTingkat}`,
+          rows: aoa,
+          merges: [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
+          ],
+          colWidths: [18, 18, 26, 24, 14, 14, 42, 14, 45],
+        },
+      ],
+    });
   };
 
   return (

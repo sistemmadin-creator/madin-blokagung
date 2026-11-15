@@ -9,7 +9,7 @@ import {
   getTahunAjaranKonsorsium,
   getHariNamaKonsorsium,
 } from '@/lib/utils/konsorsiumHelper';
-import * as XLSX from 'xlsx';
+import { exportAoaToExcel } from '@/lib/utils/excel';
 import { FileSpreadsheet } from 'lucide-react';
 
 interface ModalDetailMatriksTahunanProps {
@@ -127,7 +127,7 @@ export default function ModalDetailMatriksTahunan({
     return resultMap;
   }, [tahunAjaranData, enrolledAnggota, attendanceMap]);
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (!kelas || !tahunAjaranData) return;
 
     const headers: string[] = ['NO', 'NIA', 'NAMA ASATIDZ'];
@@ -163,13 +163,15 @@ export default function ModalDetailMatriksTahunan({
       rows.push(row);
     });
 
-    const worksheet = XLSX.utils.aoa_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Matriks Konsorsium');
-    XLSX.writeFile(
-      workbook,
-      `Matriks_Absen_${kelas.namaKelas.replace(/\s+/g, '_')}_${tahunAjaranData.labelTahunAjaran.replace('/', '-')}.xlsx`
-    );
+    await exportAoaToExcel({
+      filename: `Matriks_Absen_${kelas.namaKelas.replace(/\s+/g, '_')}_${tahunAjaranData.labelTahunAjaran.replace('/', '-')}.xlsx`,
+      sheets: [
+        {
+          name: 'Matriks Konsorsium',
+          rows,
+        },
+      ],
+    });
   };
 
   if (!kelas || !tahunAjaranData) return null;

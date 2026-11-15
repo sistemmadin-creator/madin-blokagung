@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import * as XLSX from 'xlsx';
+import { exportAoaToExcel } from '@/lib/utils/excel';
 import {
   BarChart2,
   ClipboardCheck,
@@ -757,7 +757,7 @@ export default function RekapAbsensiPage() {
   // ============================================================================
   // EXPORT EXCEL (2 SHEET: "Ringkasan" & "Detail") & CETAK DOKUMEN RESMI
   // ============================================================================
-  const handleExportRekapExcel = () => {
+  const handleExportRekapExcel = async () => {
     if (criteriaFilteredRows.length === 0) {
       showToast('info', 'Tidak ada data rekap untuk diekspor.');
       return;
@@ -831,15 +831,13 @@ export default function RekapAbsensiPage() {
       });
     });
 
-    const ws1 = XLSX.utils.aoa_to_sheet(ringkasanData);
-    const ws2 = XLSX.utils.aoa_to_sheet(detailData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws1, 'Ringkasan');
-    XLSX.utils.book_append_sheet(wb, ws2, 'Detail');
-    XLSX.writeFile(
-      wb,
-      `Rekap_Absensi_Asatidz_${startDate}_sd_${endDate}.xlsx`
-    );
+    await exportAoaToExcel({
+      filename: `Rekap_Absensi_Asatidz_${startDate}_sd_${endDate}.xlsx`,
+      sheets: [
+        { name: 'Ringkasan', rows: ringkasanData },
+        { name: 'Detail', rows: detailData },
+      ],
+    });
   };
 
   const handleCetakRekapResmi = () => {
@@ -878,7 +876,7 @@ export default function RekapAbsensiPage() {
     }, 150);
   };
 
-  const handleExportTop10AlfaExcel = () => {
+  const handleExportTop10AlfaExcel = async () => {
     setShowTop10Dropdown(false);
     if (top10AlfaList.length === 0) {
       showToast(
@@ -921,13 +919,10 @@ export default function RekapAbsensiPage() {
       ]);
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Top_10_Alfa');
-    XLSX.writeFile(
-      wb,
-      `Top_10_Alfa_Asatidz_${startDate}_sd_${endDate}.xlsx`
-    );
+    await exportAoaToExcel({
+      filename: `Top_10_Alfa_Asatidz_${startDate}_sd_${endDate}.xlsx`,
+      sheets: [{ name: 'Top_10_Alfa', rows: wsData }],
+    });
   };
 
   const renderSortIcon = (colKey: SortKeyRekap) => {

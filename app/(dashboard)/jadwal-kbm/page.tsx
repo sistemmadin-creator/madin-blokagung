@@ -19,7 +19,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { exportAoaToExcel, ExcelMergeRange } from '@/lib/utils/excel';
 import {
   dapatkanTahunAjaranKBM,
   buildMasterStrukturKelasKBM,
@@ -453,7 +453,7 @@ export default function JadwalKbmPage() {
   };
 
   // Export Excel
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (masterStrukturKelasKBM.length === 0) {
       alert('Data jadwal KBM masih kosong atau belum dimuat.');
       return;
@@ -509,10 +509,34 @@ export default function JadwalKbmPage() {
       aoaData.push(row2);
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(aoaData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Jadwal_KBM');
-    XLSX.writeFile(wb, 'Jadwal_KBM_Madrasah_Diniyyah.xlsx');
+    const merges: ExcelMergeRange[] = [
+      { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },
+      { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
+      { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } },
+      { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } },
+      { s: { r: 0, c: 4 }, e: { r: 1, c: 4 } },
+    ];
+    LIST_HARI.forEach((_, idx) => {
+      const cStart = 5 + idx * 2;
+      merges.push({ s: { r: 0, c: cStart }, e: { r: 0, c: cStart + 1 } });
+    });
+    const tailCol = 5 + LIST_HARI.length * 2;
+    merges.push(
+      { s: { r: 0, c: tailCol }, e: { r: 1, c: tailCol } },
+      { s: { r: 0, c: tailCol + 1 }, e: { r: 1, c: tailCol + 1 } },
+      { s: { r: 0, c: tailCol + 2 }, e: { r: 1, c: tailCol + 2 } }
+    );
+
+    await exportAoaToExcel({
+      filename: 'Jadwal_KBM_Madrasah_Diniyyah.xlsx',
+      sheets: [
+        {
+          name: 'Jadwal_KBM',
+          rows: aoaData,
+          merges,
+        },
+      ],
+    });
   };
 
   const handlePrint = () => {

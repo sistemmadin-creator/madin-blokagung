@@ -28,7 +28,7 @@ import {
 } from '@/stores/useSetorMustahiqStore';
 import { ItemHafalanDetail } from '@/types/setoran';
 import { dapatkanTahunAjaranKBM } from '@/lib/utils/jadwalHelper';
-import * as XLSX from 'xlsx';
+import { exportAoaToExcel } from '@/lib/utils/excel';
 
 type FilterTingkat = 'ALL' | 'ULA' | 'WUSTHO' | 'ULYA';
 type FilterGender = 'ALL' | 'PA' | 'PI';
@@ -628,7 +628,7 @@ export default function RekapHafalanPage() {
   }, [filteredRows]);
 
   // Export Excel Handler
-  const handleExport = () => {
+  const handleExport = async () => {
     if (filteredRows.length === 0) {
       alert('Tidak ada data rekapitulasi untuk diekspor.');
       return;
@@ -678,13 +678,21 @@ export default function RekapHafalanPage() {
       ]);
     });
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Pertingkatan');
-    XLSX.writeFile(
-      wb,
-      `Rekap_Hafalan_Pertingkatan_${new Date().toISOString().slice(0, 10)}.xlsx`
-    );
+    await exportAoaToExcel({
+      filename: `Rekap_Hafalan_Pertingkatan_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      sheets: [
+        {
+          name: 'Rekap Pertingkatan',
+          rows: aoa,
+          merges: [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 12 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 12 } },
+            { s: { r: 2, c: 0 }, e: { r: 2, c: 12 } },
+          ],
+          colWidths: [5, 16, 28, 8, 12, 16, 18, 16, 18, 16, 18, 22, 24],
+        },
+      ],
+    });
   };
 
   // Print Handler

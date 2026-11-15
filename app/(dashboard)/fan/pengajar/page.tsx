@@ -13,7 +13,7 @@ import {
   normNameKey,
   normalizeTingkatName,
 } from '@/lib/utils/pengajarFanHelper';
-import * as XLSX from 'xlsx';
+import { exportAoaToExcel } from '@/lib/utils/excel';
 import ModalGrupAsal from '@/components/modules/fan/ModalGrupAsal';
 import ModalDetailAsatidz from '@/components/modules/asatidz/ModalDetailAsatidz';
 import {
@@ -186,7 +186,7 @@ export default function PengajarFanPage() {
   const persentaseKeterisian = totalItemFan > 0 ? Math.round((itemFanTerisi / totalItemFan) * 100) : 0;
 
   // Export Excel
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (groupedAsatidzList.length === 0) {
       alert('Tidak ada data untuk diexport!');
       return;
@@ -207,19 +207,16 @@ export default function PengajarFanPage() {
       });
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [
-      { wch: 5 },
-      { wch: 8 },
-      { wch: 34 },
-      { wch: 18 },
-      { wch: 16 },
-      { wch: 70 },
-      { wch: 12 },
-    ];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Pengajar Fan');
-    XLSX.writeFile(wb, 'Daftar_Pengajar_Fan_Madin.xlsx');
+    await exportAoaToExcel({
+      filename: 'Daftar_Pengajar_Fan_Madin.xlsx',
+      sheets: [
+        {
+          name: 'Pengajar Fan',
+          rows,
+          colWidths: [5, 8, 34, 18, 16, 70, 12],
+        },
+      ],
+    });
   };
 
   const handlePrint = () => {

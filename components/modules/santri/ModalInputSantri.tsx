@@ -360,7 +360,7 @@ export default function ModalInputSantri() {
             <input
               type="file"
               ref={modalExcelInputRef}
-              accept=".xlsx, .xls"
+              accept=".xlsx, .csv"
               onChange={handleModalImportExcel}
               className="hidden"
             />

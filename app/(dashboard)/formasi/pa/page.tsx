@@ -19,7 +19,7 @@ import {
   RefreshCw,
   FolderTree,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { exportToExcel } from '@/lib/utils/excel';
 import ModalInputFormasi from '@/components/modules/formasi/ModalInputFormasi';
 import ModalDetailFormasi from '@/components/modules/formasi/ModalDetailFormasi';
 import ModalGeneratorFormasi from '@/components/modules/formasi/ModalGeneratorFormasi';
@@ -213,7 +213,7 @@ export default function FormasiPaPage() {
     });
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (sortedList.length === 0) {
       alert('Tidak ada data formasi putra untuk diekspor.');
       return;
@@ -231,10 +231,7 @@ export default function FormasiPaPage() {
       'BLOK TAKROR': f.blok_takror || f.blok_takror_sync || '-',
     }));
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Formasi_Putra');
-    XLSX.writeFile(wb, 'Formasi_Kelas_Putra_Madin.xlsx');
+    await exportToExcel(data, 'Formasi_Kelas_Putra_Madin.xlsx', 'Formasi_Putra');
   };
 
   const handlePrint = () => {

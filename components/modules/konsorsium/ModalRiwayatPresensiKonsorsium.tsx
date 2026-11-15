@@ -5,7 +5,7 @@ import Dialog from '@/components/ui/Dialog';
 import { useKonsorsiumStore } from '@/stores/useKonsorsiumStore';
 import { KelasKonsorsium, SesiPresensiKonsorsium } from '@/types/konsorsium';
 import { getLocalTodayISO } from '@/lib/utils/konsorsiumHelper';
-import * as XLSX from 'xlsx';
+import { exportToExcel } from '@/lib/utils/excel';
 import {
   Calendar,
   FileSpreadsheet,
@@ -45,7 +45,7 @@ export default function ModalRiwayatPresensiKonsorsium({
     setExpandedSesiId((prev) => (prev === id ? null : id));
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (!kelas || kelasSesiList.length === 0) return;
 
     const rows: Record<string, string | number>[] = [];
@@ -68,12 +68,10 @@ export default function ModalRiwayatPresensiKonsorsium({
       });
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Presensi Konsorsium');
-    XLSX.writeFile(
-      workbook,
-      `Presensi_Konsorsium_${kelas.namaKelas.replace(/\s+/g, '_')}_${getLocalTodayISO()}.xlsx`
+    await exportToExcel(
+      rows,
+      `Presensi_Konsorsium_${kelas.namaKelas.replace(/\s+/g, '_')}_${getLocalTodayISO()}.xlsx`,
+      'Presensi Konsorsium'
     );
   };
 

@@ -12,7 +12,7 @@ import {
   parseFanItemString,
   URUTAN_TINGKAT,
 } from '@/lib/utils/fanHelper';
-import * as XLSX from 'xlsx';
+import { exportAoaToExcel } from '@/lib/utils/excel';
 import ModalPengaturanFan from '@/components/modules/fan/ModalPengaturanFan';
 import ModalAturFanMS from '@/components/modules/fan/ModalAturFanMS';
 import ModalPilihAsatidzFan from '@/components/modules/fan/ModalPilihAsatidzFan';
@@ -186,7 +186,7 @@ export default function FanPelajaranPage() {
   }, [filteredItemsToRender]);
 
   // Export Excel
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (listMasterReguler.length === 0) {
       alert('Data belum siap untuk diexport!');
       return;
@@ -234,10 +234,15 @@ export default function FanPelajaranPage() {
       });
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Fan Pelajaran');
-    XLSX.writeFile(wb, 'Daftar_Mata_Pelajaran_Kelas_Madin.xlsx');
+    await exportAoaToExcel({
+      filename: 'Daftar_Mata_Pelajaran_Kelas_Madin.xlsx',
+      sheets: [
+        {
+          name: 'Fan Pelajaran',
+          rows,
+        },
+      ],
+    });
   };
 
   const handlePrint = () => {

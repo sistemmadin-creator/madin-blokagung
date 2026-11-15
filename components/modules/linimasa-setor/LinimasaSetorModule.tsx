@@ -12,7 +12,7 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { exportAoaToExcel, ExcelMergeRange } from '@/lib/utils/excel';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
@@ -543,13 +543,13 @@ export default function LinimasaSetorModule() {
   };
 
   // Ekspor ke Berkas Excel (.xlsx) dengan struktur persis seperti Gambar 2
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     // 1. Baris 1: Header Bulan
     const headerRow1: any[] = ['NO', 'NAMA', 'KELAS'];
     // 2. Baris 2: Sub-header Minggu
     const headerRow2: any[] = ['', '', ''];
 
-    const merges: XLSX.Range[] = [
+    const merges: ExcelMergeRange[] = [
       { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, // NO
       { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }, // NAMA
       { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }, // KELAS
@@ -590,22 +590,22 @@ export default function LinimasaSetorModule() {
     });
 
     const worksheetData = [headerRow1, headerRow2, ...dataRows];
-    const ws = XLSX.utils.aoa_to_sheet(worksheetData);
-    ws['!merges'] = merges;
-
-    // Set Column Widths
-    const colWidths = [{ wch: 6 }, { wch: 32 }, { wch: 18 }];
+    const colWidths = [6, 32, 18];
     for (let i = 3; i < currentCol; i++) {
-      colWidths.push({ wch: 14 });
+      colWidths.push(14);
     }
-    ws['!cols'] = colWidths;
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Linimasa Setoran');
-    XLSX.writeFile(
-      wb,
-      `Linimasa_Setor_Santri_${activeTingkat}_${startYear}-${startYear + 1}.xlsx`
-    );
+    await exportAoaToExcel({
+      filename: `Linimasa_Setor_Santri_${activeTingkat}_${startYear}-${startYear + 1}.xlsx`,
+      sheets: [
+        {
+          name: 'Linimasa Setoran',
+          rows: worksheetData,
+          merges,
+          colWidths,
+        },
+      ],
+    });
   };
 
   return (

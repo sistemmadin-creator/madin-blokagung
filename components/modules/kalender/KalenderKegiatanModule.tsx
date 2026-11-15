@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import * as XLSX from 'xlsx';
+import { exportToExcel } from '@/lib/utils/excel';
 import {
   Calendar,
   CalendarDays,
@@ -274,7 +274,7 @@ export function KalenderKegiatanModule() {
     );
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     const rows = sortedAgendaList.map((item, idx) => {
       const hInfo = masehiToHijri(
         item.tanggalMasehi,
@@ -297,12 +297,10 @@ export function KalenderKegiatanModule() {
       };
     });
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Kalender_Kegiatan');
-    XLSX.writeFile(
-      wb,
-      `Kalender_Kegiatan_Madin_${activeTahunAjaran.replace('/', '-')}.xlsx`
+    await exportToExcel(
+      rows,
+      `Kalender_Kegiatan_Madin_${activeTahunAjaran.replace('/', '-')}.xlsx`,
+      'Kalender_Kegiatan'
     );
   };
 

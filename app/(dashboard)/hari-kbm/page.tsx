@@ -20,7 +20,7 @@ import {
   MapPin,
   Building2,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { exportAoaToExcel } from '@/lib/utils/excel';
 import {
   parseSlotHariKBM,
   dapatkanBlokDariSesiMengajar,
@@ -385,7 +385,7 @@ export default function HariKbmPage() {
   }, [filteredGuruAktif, fltJam]);
 
   // Export Excel (Mengekspor seluruh data asatidz terfilter, tidak terpotong halaman tampilan)
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (sortedGuruAktif.length === 0) {
       alert('Tidak ada data yang dapat diexport.');
       return;
@@ -441,10 +441,15 @@ export default function HariKbmPage() {
       });
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, `Hari_${activeHari}`);
-    XLSX.writeFile(wb, `Jadwal_Hari_${activeHari}_Madin.xlsx`);
+    await exportAoaToExcel({
+      filename: `Jadwal_Hari_${activeHari}_Madin.xlsx`,
+      sheets: [
+        {
+          name: `Hari_${activeHari}`,
+          rows,
+        },
+      ],
+    });
   };
 
   const handlePrint = () => {
