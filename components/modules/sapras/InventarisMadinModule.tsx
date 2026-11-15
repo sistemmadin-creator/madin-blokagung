@@ -39,6 +39,7 @@ import {
 import { ModalBarcodeScanner } from './ModalBarcodeScanner';
 import { ModalCetakLabelSapras } from './ModalCetakLabelSapras';
 import { generateQrSvgPath } from '@/lib/utils/qrSvgGenerator';
+import { formatSafeCsvCell } from '@/lib/security/urlSanitizer';
 
 export function InventarisMadinModule() {
   const {
@@ -277,21 +278,22 @@ export function InventarisMadinModule() {
       const place = tempatList.find((t) => t.id === item.tempatId);
       return [
         idx + 1,
-        `"${item.kodeBarcode}"`,
-        `"${item.namaBarang.replace(/"/g, '""')}"`,
-        `"${KATEGORI_INVENTARIS_MADIN_META[item.kategori]?.label || item.kategori}"`,
-        `"${place?.nama || item.tempatId}"`,
-        `"${KONDISI_SAPRAS_META[item.kondisi]?.shortLabel || item.kondisi}"`,
+        formatSafeCsvCell(item.kodeBarcode),
+        formatSafeCsvCell(item.namaBarang),
+        formatSafeCsvCell(KATEGORI_INVENTARIS_MADIN_META[item.kategori]?.label || item.kategori),
+        formatSafeCsvCell(place?.nama || item.tempatId),
+        formatSafeCsvCell(KONDISI_SAPRAS_META[item.kondisi]?.shortLabel || item.kondisi),
         item.jumlah,
-        `"${item.satuan}"`,
+        formatSafeCsvCell(item.satuan),
         item.tahunPerolehan || '-',
-        `"${item.sumberDana || '-'}"`,
+        formatSafeCsvCell(item.sumberDana || '-'),
         item.nilaiPerolehan || 0,
-        `"${(item.spesifikasi || item.catatan || '').replace(/"/g, '""')}"`,
+        formatSafeCsvCell(item.spesifikasi || item.catatan || ''),
       ].join(',');
     });
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+    const csvContent =
+      '\uFEFF' + [headers.map((h) => formatSafeCsvCell(h)).join(','), ...rows].join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

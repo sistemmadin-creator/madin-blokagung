@@ -21,6 +21,7 @@ import {
 import { NavbarProfil, FooterProfil } from '@/components/modules/profil';
 import { useBeritaStore } from '@/stores/useBeritaStore';
 import { TOPIK_BERITA_MAP, SEED_BERITA } from '@/types/berita';
+import { sanitizeHttpUrl, sanitizeRelativeOrHttpUrl } from '@/lib/security/urlSanitizer';
 
 // Helper mengekstrak ID video TikTok dari berbagai format URL
 function extractTikTokVideoId(url?: string): string | null {
@@ -73,7 +74,7 @@ export default function DetailBeritaPage() {
   const handleShareWhatsApp = () => {
     if (typeof window !== 'undefined' && currentPost) {
       const text = encodeURIComponent(`*${currentPost.title}*\n\nBaca warta selengkapnya di Portal Madin Blokagung:\n${window.location.href}`);
-      window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+      window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -196,7 +197,7 @@ export default function DetailBeritaPage() {
               <div className="rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-md aspect-video w-full bg-slate-100 dark:bg-slate-900 relative">
                 {!coverImgError && currentPost.cover_image_url ? (
                   <img
-                    src={currentPost.cover_image_url}
+                    src={sanitizeRelativeOrHttpUrl(currentPost.cover_image_url, '')}
                     alt={currentPost.title}
                     onError={() => setCoverImgError(true)}
                     className="w-full h-full object-cover"
@@ -222,7 +223,8 @@ export default function DetailBeritaPage() {
                   const imgMatch = trimmed.match(/^!\[(.*?)\]\((.*?)\)/);
                   if (imgMatch) {
                     const caption = imgMatch[1];
-                    const url = imgMatch[2];
+                    const url = sanitizeRelativeOrHttpUrl(imgMatch[2], '');
+                    if (!url) return null;
                     return (
                       <figure key={idx} className="my-7 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-md bg-white dark:bg-slate-900">
                         <div className="relative aspect-video sm:aspect-16/10 w-full overflow-hidden bg-slate-100 dark:bg-slate-900">
@@ -329,7 +331,7 @@ export default function DetailBeritaPage() {
                     </div>
                     {currentPost.tiktok_url && (
                       <a
-                        href={currentPost.tiktok_url}
+                        href={sanitizeHttpUrl(currentPost.tiktok_url) || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-black hover:bg-slate-800 text-white font-bold text-xs transition shadow-xs"

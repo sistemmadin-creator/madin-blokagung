@@ -10,9 +10,12 @@ const SENSITIVE_KEYS = [
   'secret',
   'private_key',
   'apikey',
+  'api_key',
+  'x-api-key',
   'auth',
   'authorization',
   'cookie',
+  'set-cookie',
   'nis',
   'nik',
   'no_hp',
@@ -33,6 +36,12 @@ const PHONE_REGEX = /(\+?62|0)8[1-9][0-9]{7,11}/g;
 const JWT_REGEX = /eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}/g;
 
 /**
+ * Regex untuk mendeteksi query parameter sensitif pada URL/query string
+ */
+const QUERY_SECRET_REGEX =
+  /([?&](?:token|access_token|refresh_token|password|apikey|api_key|secret|phone|telepon|no_hp)=)([^&#\s]+)/gi;
+
+/**
  * Fungsi sanitasi rekursif untuk membersihkan data sensitif
  */
 export function sanitizeErrorData<T>(input: T): T {
@@ -42,10 +51,9 @@ export function sanitizeErrorData<T>(input: T): T {
 
   if (typeof input === 'string') {
     let sanitized: string = input;
-    // Samarkan nomor telepon
     sanitized = sanitized.replace(PHONE_REGEX, '[PHONE_REDACTED]');
-    // Samarkan token JWT
     sanitized = sanitized.replace(JWT_REGEX, '[JWT_REDACTED]');
+    sanitized = sanitized.replace(QUERY_SECRET_REGEX, '$1[REDACTED]');
     return sanitized as unknown as T;
   }
 
@@ -72,6 +80,66 @@ export function sanitizeErrorData<T>(input: T): T {
 }
 
 /**
+ * Sanitasi menyeluruh pada objek Sentry Event sebelum dikirim ke cloud (beforeSend hook).
+ */
+export function sanitizeSentryEvent<T extends Sentry.Event>(event: T): T {
+  if (!event) return event;
+
+  if (typeof event.message === 'string') {
+    event.message = sanitizeErrorData(event.message);
+  }
+
+  if (event.exception?.values && Array.isArray(event.exception.values)) {
+    event.exception.values = event.exception.values.map((ex) => ({
+      ...ex,
+      value: typeof ex.value === 'string' ? sanitizeErrorData(ex.value) : ex.value,
+    }));
+  }
+
+  if (Array.isArray(event.breadcrumbs)) {
+    event.breadcrumbs = event.breadcrumbs.map((crumb) => ({
+      ...crumb,
+      message: typeof crumb.message === 'string' ? sanitizeErrorData(crumb.message) : crumb.message,
+      data: crumb.data ? sanitizeErrorData(crumb.data) : crumb.data,
+    }));
+  }
+
+  if (event.request) {
+    if (event.request.headers) {
+      delete event.request.headers['authorization'];
+      delete event.request.headers['Authorization'];
+      delete event.request.headers['cookie'];
+      delete event.request.headers['Cookie'];
+      delete event.request.headers['x-api-key'];
+      delete event.request.headers['X-Api-Key'];
+      event.request.headers = sanitizeErrorData(event.request.headers);
+    }
+    if (event.request.cookies) {
+      delete event.request.cookies;
+    }
+    if (event.request.query_string) {
+      event.request.query_string = sanitizeErrorData(event.request.query_string);
+    }
+    if (event.request.url) {
+      event.request.url = sanitizeErrorData(event.request.url);
+    }
+    if (event.request.data) {
+      event.request.data = sanitizeErrorData(event.request.data);
+    }
+  }
+
+  if (event.extra) {
+    event.extra = sanitizeErrorData(event.extra);
+  }
+
+  if (event.contexts) {
+    event.contexts = sanitizeErrorData(event.contexts);
+  }
+
+  return event;
+}
+
+/**
  * Cek apakah Sentry DSN telah dikonfigurasi aktif
  */
 export function isSentryConfigured(): boolean {
@@ -87,13 +155,20 @@ export function captureAppError(
 ): string {
   const sanitizedContext = context ? sanitizeErrorData(context) : {};
 
-  // Log lokal di terminal/console untuk debugging development
   if (process.env.NODE_ENV !== 'production') {
     console.error('[ErrorMonitoring] Error captured:', error, sanitizedContext);
   }
 
   try {
-    const eventId = Sentry.captureException(error, {
+    const normalizedError =
+      error instanceof Error
+        ? Object.assign(new Error(sanitizeErrorData(error.message)), {
+            name: error.name,
+            stack: error.stack ? sanitizeErrorData(error.stack) : undefined,
+          })
+        : sanitizeErrorData(error);
+
+    const eventId = Sentry.captureException(normalizedError, {
       extra: sanitizedContext,
     });
     return eventId || `local-${Date.now()}`;

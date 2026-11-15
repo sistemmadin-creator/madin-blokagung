@@ -329,15 +329,25 @@ export default function CatatanModule() {
 
   const renderFormattedContent = (text: string) => {
     if (!text) return 'Belum ada uraian teks pada catatan ini.';
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = text.split(urlRegex);
+    const urlSplitRegex = /(https?:\/\/[^\s]+)/g;
+    const urlMatchRegex = /^https?:\/\/[^\s]+$/i;
+    const parts = text.split(urlSplitRegex);
 
     return parts.map((part, index) => {
-      if (urlRegex.test(part)) {
+      if (urlMatchRegex.test(part)) {
+        let safeHref = '#';
+        try {
+          const parsed = new URL(part);
+          if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+            safeHref = parsed.toString();
+          }
+        } catch {
+          safeHref = '#';
+        }
         return (
           <a
             key={index}
-            href={part}
+            href={safeHref}
             target="_blank"
             rel="noopener noreferrer"
             className="text-emerald-700 underline font-semibold hover:text-emerald-900 break-all"

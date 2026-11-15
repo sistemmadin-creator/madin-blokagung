@@ -2,37 +2,53 @@ const { Client } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
-const INITIAL_USERS = [
-  {
-    id: '11111111-1111-4111-8111-111111111101',
-    username: 'admin',
-    email: 'admin@madinblokagung.local',
-    password: process.env.ADMIN_INITIAL_PASSWORD || 'Madina@1951',
-    fullName: 'Master Administrator',
-    role: 'master_admin',
-    roleLabel: 'Master Admin',
-  },
-  {
-    id: '11111111-1111-4111-8111-111111111102',
-    username: 'kurikulum',
-    email: 'kurikulum@madinblokagung.local',
-    password: process.env.KURIKULUM_INITIAL_PASSWORD || 'Kurikulum@1951',
-    fullName: 'PKM. Kurikulum',
-    role: 'pkm_kurikulum',
-    roleLabel: 'PKM. Kurikulum',
-  },
-];
+function getRequiredPassword(envVarName) {
+  const val = String(process.env[envVarName] || '').trim();
+  if (!val || val.length < 10) {
+    throw new Error(
+      `Variabel environment ${envVarName} wajib diset (minimal 10 karakter) sebelum menjalankan seed-admin-user.js.`
+    );
+  }
+  return val;
+}
 
 async function run() {
-  const envContent = fs.readFileSync(path.join(process.cwd(), '.env.local'), 'utf8');
-  const dbMatch = envContent.match(/DATABASE_URL=(.*)/);
-  if (!dbMatch) {
-    throw new Error('DATABASE_URL tidak ditemukan di .env.local');
+  const adminPassword = getRequiredPassword('ADMIN_INITIAL_PASSWORD');
+  const kurikulumPassword = getRequiredPassword('KURIKULUM_INITIAL_PASSWORD');
+
+  const INITIAL_USERS = [
+    {
+      id: '11111111-1111-4111-8111-111111111101',
+      username: 'admin',
+      email: 'admin@madinblokagung.local',
+      password: adminPassword,
+      fullName: 'Master Administrator',
+      role: 'master_admin',
+      roleLabel: 'Master Admin',
+    },
+    {
+      id: '11111111-1111-4111-8111-111111111102',
+      username: 'kurikulum',
+      email: 'kurikulum@madinblokagung.local',
+      password: kurikulumPassword,
+      fullName: 'PKM. Kurikulum',
+      role: 'pkm_kurikulum',
+      roleLabel: 'PKM. Kurikulum',
+    },
+  ];
+
+  const envLocalPath = path.join(process.cwd(), '.env.local');
+  const envContent = fs.existsSync(envLocalPath) ? fs.readFileSync(envLocalPath, 'utf8') : '';
+  const dbMatch = envContent.match(/^DATABASE_URL=(.*)$/m);
+  const connectionString = process.env.DATABASE_URL || (dbMatch ? dbMatch[1].trim() : '');
+  if (!connectionString) {
+    throw new Error('DATABASE_URL tidak ditemukan di environment maupun .env.local');
   }
 
+  const allowInsecureSsl = process.env.DB_SSL_INSECURE === 'true';
   const client = new Client({
-    connectionString: dbMatch[1].trim(),
-    ssl: { rejectUnauthorized: false },
+    connectionString,
+    ssl: allowInsecureSsl ? { rejectUnauthorized: false } : { rejectUnauthorized: true },
   });
 
   await client.connect();

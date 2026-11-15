@@ -28,6 +28,7 @@ import {
   StatusFilterSerahPiagam,
 } from '@/types/serah-piagam';
 import { DEFAULT_HAFALAN_WAJIB, norm } from '@/lib/utils/setoranHelper';
+import { formatSafeCsvCell } from '@/lib/security/urlSanitizer';
 import WidgetStatistikSerahPiagam from './WidgetStatistikSerahPiagam';
 import KartuKelasSerahPiagam from './KartuKelasSerahPiagam';
 
@@ -288,22 +289,22 @@ export default function SerahPiagamModule() {
       const headers = ['No', 'No Induk', 'Nama Santri', 'Kelas', 'Tingkat', 'Kamar', 'Status Piagam', 'Tanggal Serah'];
       const rows = allRows.map((s, idx) => [
         idx + 1,
-        `"${s.no_induk}"`,
-        `"${s.nama}"`,
-        `"${s.kelas_label}"`,
-        s.tingkat,
-        `"${s.kamar}"`,
-        s.is_menerima ? 'SUDAH MENERIMA' : 'BELUM MENERIMA',
-        s.tanggal_serah ? `"${new Date(s.tanggal_serah).toLocaleString('id-ID')}"` : '-',
+        formatSafeCsvCell(s.no_induk),
+        formatSafeCsvCell(s.nama),
+        formatSafeCsvCell(s.kelas_label),
+        formatSafeCsvCell(s.tingkat),
+        formatSafeCsvCell(s.kamar),
+        formatSafeCsvCell(s.is_menerima ? 'SUDAH MENERIMA' : 'BELUM MENERIMA'),
+        s.tanggal_serah ? formatSafeCsvCell(new Date(s.tanggal_serah).toLocaleString('id-ID')) : formatSafeCsvCell('-'),
       ]);
 
       const csvContent =
-        'data:text/csv;charset=utf-8,\uFEFF' +
-        [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+        '\uFEFF' + [headers.map((h) => formatSafeCsvCell(h)).join(','), ...rows.map((e) => e.join(','))].join('\r\n');
 
-      const encodedUri = encodeURI(csvContent);
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.setAttribute('href', encodedUri);
+      link.setAttribute('href', url);
       link.setAttribute(
         'download',
         `rekap_serah_piagam_madina_${tahun}_${new Date().toISOString().split('T')[0]}.csv`
@@ -311,6 +312,7 @@ export default function SerahPiagamModule() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } finally {
       setIsExporting(false);
     }

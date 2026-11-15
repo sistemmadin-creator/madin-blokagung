@@ -1,13 +1,30 @@
 import { supabase } from '@/lib/supabase/client';
+import { sanitizeHttpUrl } from '@/lib/security/urlSanitizer';
 
 export const BUCKET_NAME = 'madin-media';
+export const MAX_UPLOAD_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
+export const ALLOWED_IMAGE_MIME = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+]);
+
+function normalizeImageMime(mime?: string): string {
+  const clean = String(mime || '')
+    .split(';')[0]
+    .trim()
+    .toLowerCase();
+  if (clean === 'image/jpg') return 'image/jpeg';
+  return clean;
+}
 
 /**
  * Mengonversi Base64 Data URL menjadi Blob biner agar hemat bandwidth dan memory saat upload.
  */
 export function base64ToBlob(base64Data: string): Blob {
   const parts = base64Data.split(';base64,');
-  const contentType = parts[0]?.replace('data:', '') || 'image/jpeg';
+  const contentType = normalizeImageMime(parts[0]?.replace('data:', '')) || 'image/jpeg';
   const raw = atob(parts[1] || '');
   const rawLength = raw.length;
   const uInt8Array = new Uint8Array(rawLength);
@@ -24,17 +41,12 @@ export type StorageCategory = 'santri' | 'asatidz' | 'formasi';
 /**
  * Service terpadu untuk upload foto ke Supabase Storage.
  * Memiliki fitur SMART FALLBACK: Jika bucket Supabase Storage belum dibuat di dashboard,
- * fungsi akan otomatis mengembalikan string Base64 aslinya sehingga sistem tidak crash
- * dan foto tetap tersimpan dengan aman di database.
+ * fungsi akan otomatis mengembalikan string Base64 yang telah tervalidasi MIME & ukurannya
+ * sehingga sistem tidak crash dan foto tetap tersimpan dengan aman di database.
  */
 export const StorageService = {
   /**
    * Mengunggah foto ke Supabase Storage bucket 'madin-media'
-   * @param imageInput String Base64 atau File/Blob
-   * @param category Kategori folder: 'santri' | 'asatidz' | 'formasi'
-   * @param identifier ID entitas (misal no_induk, nia, atau id_kelas)
-   * @param customSuffix Suffix opsional (misal 'takror' atau 'diniyyah')
-   * @returns URL publik foto (jika bucket aktif) atau string Base64 (jika bucket belum aktif/error)
    */
   async uploadPhoto(
     imageInput: string | File | Blob,
@@ -44,9 +56,8 @@ export const StorageService = {
   ): Promise<string> {
     if (!imageInput) return '';
 
-    // Jika input sudah berupa URL (http/https), tidak perlu upload ulang
     if (typeof imageInput === 'string' && /^https?:\/\//i.test(imageInput)) {
-      return imageInput;
+      return sanitizeHttpUrl(imageInput) || '';
     }
 
     try {
@@ -54,25 +65,47 @@ export const StorageService = {
       let contentType = 'image/jpeg';
 
       if (typeof imageInput === 'string') {
-        if (!imageInput.startsWith('data:image')) {
-          // Bukan data URL dan bukan HTTP URL, kembalikan apa adanya
-          return imageInput;
+        if (!imageInput.startsWith('data:image/')) {
+          return '';
         }
+        const matchType = imageInput.match(/^data:([^;,]+);base64,/i);
+        if (!matchType) {
+          console.warn('[StorageService] Format data URL foto tidak valid.');
+          return '';
+        }
+        const normalizedMime = normalizeImageMime(matchType[1]);
+        if (!ALLOWED_IMAGE_MIME.has(normalizedMime)) {
+          console.warn(
+            `[StorageService] Tipe MIME '${normalizedMime}' ditolak. Hanya JPEG, PNG, dan WEBP yang diizinkan.`
+          );
+          return '';
+        }
+        contentType = normalizedMime;
         fileBlob = base64ToBlob(imageInput);
-        const matchType = imageInput.match(/^data:([^;]+);/);
-        if (matchType) contentType = matchType[1];
       } else {
+        const normalizedMime = normalizeImageMime(imageInput.type);
+        if (!ALLOWED_IMAGE_MIME.has(normalizedMime)) {
+          console.warn(
+            `[StorageService] Tipe file '${normalizedMime || 'unknown'}' ditolak. Hanya JPEG, PNG, dan WEBP yang diizinkan.`
+          );
+          return '';
+        }
+        contentType = normalizedMime;
         fileBlob = imageInput;
-        contentType = imageInput.type || 'image/jpeg';
       }
 
-      // Bersihkan nama file dari karakter terlarang
-      const cleanId = String(identifier || 'temp').replace(/[^a-zA-Z0-9_-]/g, '_');
-      const suffixPart = customSuffix ? `_${customSuffix}` : '';
-      const ext = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg';
-      const filePath = `${category}/${cleanId}${suffixPart}.${ext}`;
+      if (fileBlob.size <= 0 || fileBlob.size > MAX_UPLOAD_SIZE_BYTES) {
+        console.warn(
+          `[StorageService] Ukuran file (${fileBlob.size} byte) tidak valid atau melebihi batas maksimal 2 MB.`
+        );
+        return '';
+      }
 
-      // Coba upload ke Supabase Storage
+      const cleanId = String(identifier || 'temp').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const cleanSuffix = customSuffix ? `_${String(customSuffix).replace(/[^a-zA-Z0-9_-]/g, '_')}` : '';
+      const ext = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
+      const filePath = `${category}/${cleanId}${cleanSuffix}.${ext}`;
+
       const { data, error } = await supabase.storage
         .from(BUCKET_NAME)
         .upload(filePath, fileBlob, {
@@ -82,12 +115,12 @@ export const StorageService = {
         });
 
       if (error) {
-        // Jika error (misal bucket belum dibuat: "Bucket not found" / statusCode 404 / 400)
-        console.warn(`[StorageService] Bucket '${BUCKET_NAME}' belum aktif atau upload gagal (${error.message}). Menggunakan fallback Base64.`);
+        console.warn(
+          `[StorageService] Bucket '${BUCKET_NAME}' belum aktif atau upload gagal (${error.message}). Menggunakan fallback Base64 tervalidasi.`
+        );
         return typeof imageInput === 'string' ? imageInput : '';
       }
 
-      // Ambil Public URL jika upload berhasil
       const { data: publicData } = supabase.storage
         .from(BUCKET_NAME)
         .getPublicUrl(data.path);
@@ -99,7 +132,7 @@ export const StorageService = {
       return typeof imageInput === 'string' ? imageInput : '';
     } catch (err: any) {
       console.warn('[StorageService] Gagal memproses upload foto, menggunakan fallback:', err?.message);
-      return typeof imageInput === 'string' ? imageInput : '';
+      return '';
     }
   },
 
@@ -110,11 +143,14 @@ export const StorageService = {
     if (!photoUrl || !photoUrl.includes(BUCKET_NAME)) return false;
 
     try {
-      // Ekstrak path setelah nama bucket
       const parts = photoUrl.split(`/${BUCKET_NAME}/`);
       if (parts.length < 2) return false;
 
       const relativePath = decodeURIComponent(parts[1].split('?')[0]);
+      if (!relativePath || relativePath.includes('..') || relativePath.startsWith('/')) {
+        return false;
+      }
+
       const { error } = await supabase.storage
         .from(BUCKET_NAME)
         .remove([relativePath]);
