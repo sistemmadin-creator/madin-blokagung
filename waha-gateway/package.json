@@ -1,16 +1,20 @@
 {
   "name": "madin-waha-gateway",
-  "version": "1.0.0",
-  "description": "Lightweight WAHA-compatible WhatsApp Gateway using Baileys for Madin Al Amiriyyah Blokagung",
+  "version": "1.1.0",
+  "description": "Hardened WAHA-compatible WhatsApp Gateway using Baileys for Madin Al Amiriyyah Blokagung (Dedicated VPS Ready)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "check": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.13",
-    "axios": "^1.7.9",
+    "axios": "^1.21.1",
     "cors": "^2.8.5",
-    "express": "^4.21.2",
+    "express": "^4.22.3",
     "pino": "^9.6.0",
     "qrcode": "^1.5.4"
   }
