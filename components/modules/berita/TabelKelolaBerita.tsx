@@ -18,7 +18,9 @@ import {
 import { useBeritaStore } from '@/stores/useBeritaStore';
 import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
 import { usePagePermission } from '@/stores/useRbacStore';
-import { StatusBerita, TOPIK_BERITA_MAP, TOPIK_BERITA_ORDER, getPostTopics, hasPostTopic } from '@/types/berita';
+import { StatusBerita, TOPIK_BERITA_MAP, TOPIK_BERITA_ORDER, getPostTopics, hasPostTopic, hasPostSubTopic } from '@/types/berita';
+import SubKategoriFilterBar from '@/components/modules/media/SubKategoriFilterBar';
+import SubKategoriBadgeList from '@/components/modules/media/SubKategoriBadgeList';
 
 export default function TabelKelolaBerita() {
   const { 
@@ -32,6 +34,8 @@ export default function TabelKelolaBerita() {
     setDisplayType,
     filterTopic,
     setFilterTopic,
+    filterSubTopic,
+    setFilterSubTopic,
     filterStatus,
     setFilterStatus,
     searchKeyword,
@@ -59,8 +63,9 @@ export default function TabelKelolaBerita() {
   // Data Terfilter
   const filteredPosts = useMemo(() => {
     return posts.filter((post) => {
-      // Filter Topik (Mendukung Multi-Kategori)
+      // Filter Topik (Mendukung Multi-Kategori & Sub-Kategori)
       if (filterTopic !== 'all' && !hasPostTopic(post, filterTopic)) return false;
+      if (filterSubTopic !== 'all' && !hasPostSubTopic(post, filterSubTopic)) return false;
       // Filter Status
       if (filterStatus !== 'all' && post.status !== filterStatus) return false;
       // Pencarian Kata Kunci
@@ -212,6 +217,13 @@ export default function TabelKelolaBerita() {
             );
           })}
         </div>
+
+        <SubKategoriFilterBar
+          activeTopic={filterTopic}
+          selectedSubTopic={filterSubTopic}
+          onSelectSubTopic={setFilterSubTopic}
+          getCount={(subId) => posts.filter((p) => hasPostSubTopic(p, subId)).length}
+        />
       </div>
 
       {/* 3. Tampilan Tabel Data Berita (Dengan 3 UI States) */}
@@ -372,6 +384,7 @@ export default function TabelKelolaBerita() {
                               </span>
                             );
                           })}
+                          <SubKategoriBadgeList subTopicIds={post.sub_topics} />
                         </div>
                       </td>
 

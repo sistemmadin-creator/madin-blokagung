@@ -22,6 +22,7 @@ import {
   GaleriSosmedItem,
   getSosmedTopics,
   hasSosmedTopic,
+  hasSosmedSubTopic,
 } from '@/types/galeri-sosmed';
 import {
   TopikBerita,
@@ -32,6 +33,7 @@ import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
 import { sanitizeHttpUrl } from '@/lib/security/urlSanitizer';
 import ModalLightboxSosmed from './ModalLightboxSosmed';
 import MasonrySosmedBoard from './MasonrySosmedBoard';
+import SubKategoriFilterBar from '@/components/modules/media/SubKategoriFilterBar';
 
 interface GaleriSosmedPortfolioViewProps {
   compactMode?: boolean;
@@ -53,6 +55,7 @@ export default function GaleriSosmedPortfolioView({
 
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformSosmed | 'all'>('all');
   const [selectedTopic, setSelectedTopic] = useState<TopikBerita | 'all'>('all');
+  const [selectedSubTopic, setSelectedSubTopic] = useState<string | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -85,6 +88,7 @@ export default function GaleriSosmedPortfolioView({
     return publishedItems.filter((item) => {
       if (selectedPlatform !== 'all' && item.platform !== selectedPlatform) return false;
       if (selectedTopic !== 'all' && !hasSosmedTopic(item, selectedTopic)) return false;
+      if (selectedSubTopic !== 'all' && !hasSosmedSubTopic(item, selectedSubTopic)) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchTitle = item.title.toLowerCase().includes(q);
@@ -94,7 +98,7 @@ export default function GaleriSosmedPortfolioView({
       }
       return true;
     });
-  }, [publishedItems, selectedPlatform, selectedTopic, searchQuery]);
+  }, [publishedItems, selectedPlatform, selectedTopic, selectedSubTopic, searchQuery]);
 
   const displayedGridItems = useMemo(() => {
     if (compactMode) {
@@ -235,7 +239,10 @@ export default function GaleriSosmedPortfolioView({
 
             <button
               type="button"
-              onClick={() => setSelectedTopic('all')}
+              onClick={() => {
+                setSelectedTopic('all');
+                setSelectedSubTopic('all');
+              }}
               className={`min-h-[36px] px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                 selectedTopic === 'all'
                   ? 'bg-[#0b5751] text-white'
@@ -252,7 +259,10 @@ export default function GaleriSosmedPortfolioView({
                 <button
                   key={tKey}
                   type="button"
-                  onClick={() => setSelectedTopic(tKey)}
+                  onClick={() => {
+                    setSelectedTopic(tKey);
+                    setSelectedSubTopic('all');
+                  }}
                   className={`min-h-[36px] px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                     isSelected
                       ? `${meta.badgeBg} ${meta.badgeText} ring-2 ring-emerald-600/40`
@@ -264,6 +274,14 @@ export default function GaleriSosmedPortfolioView({
               );
             })}
           </div>
+
+          <SubKategoriFilterBar
+            activeTopic={selectedTopic}
+            selectedSubTopic={selectedSubTopic}
+            onSelectSubTopic={setSelectedSubTopic}
+            getCount={(subId) => publishedItems.filter((it) => hasSosmedSubTopic(it, subId)).length}
+            variant="pill"
+          />
         </div>
 
         {/* Konten Masonry 4 Kolom (dengan state Loading, Error, Empty) */}
@@ -634,7 +652,10 @@ export default function GaleriSosmedPortfolioView({
 
           <button
             type="button"
-            onClick={() => setSelectedTopic('all')}
+            onClick={() => {
+              setSelectedTopic('all');
+              setSelectedSubTopic('all');
+            }}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
               selectedTopic === 'all'
                 ? 'bg-[#0b5751] text-white'
@@ -651,7 +672,10 @@ export default function GaleriSosmedPortfolioView({
               <button
                 key={tKey}
                 type="button"
-                onClick={() => setSelectedTopic(tKey)}
+                onClick={() => {
+                  setSelectedTopic(tKey);
+                  setSelectedSubTopic('all');
+                }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                   isSelected
                     ? `${meta.badgeBg} ${meta.badgeText} ring-2 ring-emerald-600/40`
@@ -663,6 +687,13 @@ export default function GaleriSosmedPortfolioView({
             );
           })}
         </div>
+
+        <SubKategoriFilterBar
+          activeTopic={selectedTopic}
+          selectedSubTopic={selectedSubTopic}
+          onSelectSubTopic={setSelectedSubTopic}
+          getCount={(subId) => publishedItems.filter((it) => hasSosmedSubTopic(it, subId)).length}
+        />
       </div>
 
       {/* 4. PORTFOLIO GRID DENGAN 3 UI STATES (LOADING, ERROR, EMPTY, DATA) */}

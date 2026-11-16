@@ -23,6 +23,7 @@ import { useBeritaStore } from '@/stores/useBeritaStore';
 import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
 import { TOPIK_BERITA_MAP, SEED_BERITA, getPostTopics } from '@/types/berita';
 import { sanitizeHttpUrl, sanitizeRelativeOrHttpUrl } from '@/lib/security/urlSanitizer';
+import SubKategoriBadgeList from '@/components/modules/media/SubKategoriBadgeList';
 
 // Helper mengekstrak ID video TikTok dari berbagai format URL
 function extractTikTokVideoId(url?: string): string | null {
@@ -143,6 +144,10 @@ export default function DetailBeritaPage() {
                   </span>
                 );
               })}
+              <SubKategoriBadgeList
+                subTopicIds={currentPost.sub_topics}
+                badgeClassName="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+              />
               <span className="text-xs text-slate-500 flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-slate-400" />
                 {formattedDate}

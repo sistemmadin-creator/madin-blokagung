@@ -2,15 +2,18 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Film, Plus, ExternalLink, Sliders, Newspaper } from 'lucide-react';
+import { Film, Plus, ExternalLink, Sliders, Newspaper, Tags } from 'lucide-react';
 import TabelKelolaGaleriSosmed from '@/components/modules/galeri-sosmed/TabelKelolaGaleriSosmed';
 import ModalFormGaleriSosmed from '@/components/modules/galeri-sosmed/ModalFormGaleriSosmed';
 import ModalChannelConfigSosmed from '@/components/modules/galeri-sosmed/ModalChannelConfigSosmed';
+import ModalKelolaSubKategoriMedia from '@/components/modules/media/ModalKelolaSubKategoriMedia';
 import { useGaleriSosmedStore } from '@/stores/useGaleriSosmedStore';
+import { useMediaKategoriStore } from '@/stores/useMediaKategoriStore';
 import { usePagePermission } from '@/stores/useRbacStore';
 
 export default function KelolaGaleriSosmedAdminPage() {
   const { openFormModal, openChannelModal } = useGaleriSosmedStore();
+  const openSubKategoriModal = useMediaKategoriStore((s) => s.openManagerModal);
   const { canCreate, canEdit } = usePagePermission('kelola-galeri-sosmed');
 
   return (
@@ -44,6 +47,17 @@ export default function KelolaGaleriSosmedAdminPage() {
             <Newspaper className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
             <span>Kelola Berita</span>
           </Link>
+
+          {canEdit && (
+            <button
+              type="button"
+              onClick={openSubKategoriModal}
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 text-xs font-bold transition shadow-2xs cursor-pointer"
+            >
+              <Tags className="w-4 h-4 text-amber-600" />
+              <span>Atur Sub-Kategori</span>
+            </button>
+          )}
 
           {canEdit && (
             <button
@@ -85,6 +99,9 @@ export default function KelolaGaleriSosmedAdminPage() {
 
       {/* Modal Konfigurasi Kanal Resmi */}
       <ModalChannelConfigSosmed />
+
+      {/* Modal Pengaturan Sub-Kategori Terpusat */}
+      <ModalKelolaSubKategoriMedia />
     </div>
   );
 }

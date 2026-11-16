@@ -18,15 +18,15 @@ import {
   ContentFormatSosmed,
   PLATFORM_SOSMED_MAP,
   getSosmedTopics,
+  getSosmedSubTopics,
 } from '@/types/galeri-sosmed';
 import {
   TopikBerita,
   StatusBerita,
-  TOPIK_BERITA_MAP,
-  TOPIK_BERITA_ORDER,
 } from '@/types/berita';
 import { parseSosmedUrl, buildSosmedEmbedUrl } from '@/lib/utils/sosmedEmbedHelper';
 import { compressImageFile } from '@/lib/utils/image';
+import MediaKategoriMultiSelector from '@/components/modules/media/MediaKategoriMultiSelector';
 
 export default function ModalFormGaleriSosmed() {
   const {
@@ -45,6 +45,7 @@ export default function ModalFormGaleriSosmed() {
   const [caption, setCaption] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [selectedTopics, setSelectedTopics] = useState<TopikBerita[]>(['umum']);
+  const [selectedSubTopics, setSelectedSubTopics] = useState<string[]>([]);
   const [creatorName, setCreatorName] = useState('Tim Media Madin Blokagung');
   const [isPinned, setIsPinned] = useState(false);
   const [status, setStatus] = useState<StatusBerita>('published');
@@ -65,6 +66,7 @@ export default function ModalFormGaleriSosmed() {
       setCaption(editingItem.caption);
       setThumbnailUrl(editingItem.thumbnail_url);
       setSelectedTopics(getSosmedTopics(editingItem));
+      setSelectedSubTopics(getSosmedSubTopics(editingItem));
       setCreatorName(editingItem.creator_name);
       setIsPinned(Boolean(editingItem.is_pinned));
       setStatus(editingItem.status);
@@ -77,6 +79,7 @@ export default function ModalFormGaleriSosmed() {
       setCaption('');
       setThumbnailUrl('');
       setSelectedTopics(['umum']);
+      setSelectedSubTopics([]);
       setCreatorName('Tim Media Madin Blokagung');
       setIsPinned(false);
       setStatus('published');
@@ -113,15 +116,6 @@ export default function ModalFormGaleriSosmed() {
     } else {
       setAutoDetectedNotice(null);
     }
-  };
-
-  const handleToggleTopic = (target: TopikBerita) => {
-    setSelectedTopics((prev) => {
-      if (prev.includes(target)) {
-        return prev.filter((t) => t !== target);
-      }
-      return TOPIK_BERITA_ORDER.filter((t) => prev.includes(t) || t === target);
-    });
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,6 +167,7 @@ export default function ModalFormGaleriSosmed() {
       embed_id: finalEmbedId,
       thumbnail_url: finalThumb,
       topics: selectedTopics,
+      sub_topics: selectedSubTopics,
       creator_name: creatorName.trim() || 'Tim Media Madin Blokagung',
       is_pinned: isPinned,
       status,
@@ -359,54 +354,15 @@ export default function ModalFormGaleriSosmed() {
             </div>
           </div>
 
-          {/* 3. Pilihan Multi-Kategori Topik */}
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                Pilih Kategori Topik (Dapat Dipilih Lebih dari Satu) <span className="text-rose-500">*</span>
-              </label>
-              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-                Terpilih: {selectedTopics.map((t) => TOPIK_BERITA_MAP[t]?.shortTitle).join(', ') || 'Belum ada'}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-              {TOPIK_BERITA_ORDER.map((key) => {
-                const item = TOPIK_BERITA_MAP[key];
-                const isSelected = selectedTopics.includes(key);
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => handleToggleTopic(key)}
-                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                      isSelected
-                        ? `${item.lightBg} ${item.borderColor} ring-2 ring-emerald-600 shadow-2xs`
-                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${item.badgeBg} ${item.badgeText}`}>
-                        {item.shortTitle}
-                      </span>
-                      <span
-                        className={`w-4 h-4 rounded flex items-center justify-center border ${
-                          isSelected
-                            ? 'bg-emerald-600 border-emerald-600 text-white'
-                            : 'border-slate-300 dark:border-slate-600'
-                        }`}
-                      >
-                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                      </span>
-                    </div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white mt-1">
-                      {item.title}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* 3. Pilihan Multi-Kategori Topik & Sub-Kategori */}
+          <MediaKategoriMultiSelector
+            labelText="Pilih Kategori Topik (Dapat Dipilih Lebih dari Satu)"
+            helperText="Anda dapat mengombinasikan kategori utama dengan sub-kategori Kegiatan, Event, atau Acara."
+            selectedTopics={selectedTopics}
+            selectedSubTopics={selectedSubTopics}
+            onChangeTopics={setSelectedTopics}
+            onChangeSubTopics={setSelectedSubTopics}
+          />
 
           {/* 4. Poster Thumbnail & Pratinjau Embed */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start pt-2 border-t border-slate-100 dark:border-slate-800">

@@ -19,8 +19,15 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useBeritaStore } from '@/stores/useBeritaStore';
-import { TopikBerita, DisplayTypeBerita, StatusBerita, TOPIK_BERITA_MAP, TOPIK_BERITA_ORDER, getPostTopics } from '@/types/berita';
+import {
+  TopikBerita,
+  DisplayTypeBerita,
+  StatusBerita,
+  getPostTopics,
+  getPostSubTopics,
+} from '@/types/berita';
 import { compressImageFile } from '@/lib/utils/image';
+import MediaKategoriMultiSelector from '@/components/modules/media/MediaKategoriMultiSelector';
 
 export default function ModalFormBerita() {
   const { isFormModalOpen, editingPost, closeFormModal, createPost, updatePost } = useBeritaStore();
@@ -28,6 +35,7 @@ export default function ModalFormBerita() {
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [selectedTopics, setSelectedTopics] = useState<TopikBerita[]>(['umum']);
+  const [selectedSubTopics, setSelectedSubTopics] = useState<string[]>([]);
   const [displayType, setDisplayType] = useState<DisplayTypeBerita>('highlight_grid');
   const [coverUrl, setCoverUrl] = useState('');
   const [excerpt, setExcerpt] = useState('');
@@ -70,6 +78,7 @@ export default function ModalFormBerita() {
       setTitle(editingPost.title);
       setSlug(editingPost.slug);
       setSelectedTopics(getPostTopics(editingPost));
+      setSelectedSubTopics(getPostSubTopics(editingPost));
       setDisplayType(editingPost.display_type);
       setCoverUrl(editingPost.cover_image_url);
       setExcerpt(editingPost.excerpt);
@@ -83,6 +92,7 @@ export default function ModalFormBerita() {
       setTitle('');
       setSlug('');
       setSelectedTopics(['umum']);
+      setSelectedSubTopics([]);
       setDisplayType('highlight_grid');
       setCoverUrl('');
       setExcerpt('');
@@ -95,15 +105,6 @@ export default function ModalFormBerita() {
     setContextMenu(null);
     setErrorMessage('');
   }, [editingPost, isFormModalOpen]);
-
-  const handleToggleTopic = (targetTopic: TopikBerita) => {
-    setSelectedTopics((prev) => {
-      if (prev.includes(targetTopic)) {
-        return prev.filter((t) => t !== targetTopic);
-      }
-      return TOPIK_BERITA_ORDER.filter((t) => prev.includes(t) || t === targetTopic);
-    });
-  };
 
   // Handler auto-generate slug saat mengetik judul berita
   const handleTitleChange = (val: string) => {
@@ -230,6 +231,7 @@ export default function ModalFormBerita() {
       slug: slug.trim() || generateSlug(title),
       topic: selectedTopics[0],
       topics: selectedTopics,
+      sub_topics: selectedSubTopics,
       display_type: displayType,
       cover_image_url: coverUrl.trim(),
       excerpt: excerpt.trim(),
@@ -347,62 +349,16 @@ export default function ModalFormBerita() {
             </div>
           </div>
 
-          {/* 2. Pilihan Multi-Kategori Topik Berita */}
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                Pilih Kategori Topik Berita (Dapat Dipilih Lebih dari Satu) <span className="text-rose-500">*</span>
-              </label>
-              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-                Terpilih: {selectedTopics.map((t) => TOPIK_BERITA_MAP[t]?.shortTitle).join(', ') || 'Belum ada'}
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2.5">
-              Anda dapat memilih <strong>Umum</strong> saja, atau mengombinasikan beberapa kategori sekaligus (contoh: <strong>Umum</strong> + <strong>ULA</strong>).
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
-              {TOPIK_BERITA_ORDER.map((key) => {
-                const item = TOPIK_BERITA_MAP[key];
-                const isSelected = selectedTopics.includes(key);
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => handleToggleTopic(key)}
-                    className={`p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
-                      isSelected
-                        ? `${item.lightBg} ${item.borderColor} ring-2 ring-emerald-600 shadow-sm`
-                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-800'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${item.badgeBg} ${item.badgeText}`}>
-                          {item.shortTitle}
-                        </span>
-                        <span
-                          className={`w-4 h-4 rounded flex items-center justify-center border ${
-                            isSelected
-                              ? 'bg-emerald-600 border-emerald-600 text-white'
-                              : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900'
-                          }`}
-                        >
-                          {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                        </span>
-                      </div>
-                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
-                        {item.title}
-                      </h4>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
-                        {item.description}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* 2. Pilihan Multi-Kategori Topik Berita & Sub-Kategori */}
+          <MediaKategoriMultiSelector
+            labelText="Pilih Kategori Topik Berita (Dapat Dipilih Lebih dari Satu)"
+            helperText="Anda dapat memilih Umum saja, mengombinasikan jenjang, atau memilih Kegiatan / Event / Acara beserta sub-kategorinya."
+            selectedTopics={selectedTopics}
+            selectedSubTopics={selectedSubTopics}
+            onChangeTopics={setSelectedTopics}
+            onChangeSubTopics={setSelectedSubTopics}
+            showDescriptions
+          />
 
           {/* 3. Penjelasan Alur Editorial Otomatis */}
           <div className="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs flex items-start gap-2.5">

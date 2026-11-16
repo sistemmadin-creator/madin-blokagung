@@ -96,8 +96,17 @@ test.describe('69 - Media Madin, Multi-Topik Berita (Umum + Jenjang), & Portofol
     ).toBeVisible();
     await page.getByRole('button', { name: /Semua Platform/i }).click();
 
-    // Uji tombol filter kategori topik di Galeri Sosmed
+    // Uji tombol filter kategori topik & sub-kategori di Galeri Sosmed
     await page.getByRole('button', { name: 'Umum', exact: true }).click();
+    await page.getByRole('button', { name: 'Kegiatan', exact: true }).click();
+    await expect(page.getByRole('button', { name: /UUB/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Daur Awwal/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /EBTADIN/i }).first()).toBeVisible();
+    await page.getByRole('button', { name: 'Event', exact: true }).click();
+    await expect(page.getByRole('button', { name: /Lalaran Kubro/i }).first()).toBeVisible();
+    await page.getByRole('button', { name: 'Acara', exact: true }).click();
+    await expect(page.getByRole('button', { name: /APEL Daur Tsani/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Imtihan/i }).first()).toBeVisible();
     await page.getByRole('button', { name: 'Semua Topik', exact: true }).click();
 
     // Klik pin karya pertama di papan Masonry untuk membuka Lightbox pemutar

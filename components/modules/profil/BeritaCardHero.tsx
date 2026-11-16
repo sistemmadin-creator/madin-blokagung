@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Clock, Tag, ArrowRight, BookOpen } from 'lucide-react';
 import { WartaBerita, TOPIK_BERITA_MAP, getPostTopics } from '@/types/berita';
+import SubKategoriBadgeList from '@/components/modules/media/SubKategoriBadgeList';
 
 interface BeritaCardHeroProps {
   post: WartaBerita;
@@ -55,6 +56,10 @@ export default function BeritaCardHero({ post }: BeritaCardHeroProps) {
               </span>
             );
           })}
+          <SubKategoriBadgeList
+            subTopicIds={post.sub_topics}
+            badgeClassName="px-2.5 py-1 rounded-full text-[11px] font-bold bg-black/55 text-amber-200 border border-amber-300/30 backdrop-blur-xs"
+          />
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-slate-200 bg-white/15 backdrop-blur-xs border border-white/15">
             <Clock className="w-3.5 h-3.5 text-amber-300" />
             <span>{formattedDate}</span>

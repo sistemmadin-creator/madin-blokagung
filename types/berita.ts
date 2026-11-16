@@ -3,12 +3,15 @@
  * Mengadopsi tata letak editorial majalah pesantren ala Lirboyo.net
  */
 
-export type TopikBerita = 
+export type TopikBerita =
   | 'umum'
-  | 'kelas_unggulan' 
-  | 'tingkat_ula' 
-  | 'tingkat_wustho' 
-  | 'tingkat_ulya';
+  | 'kelas_unggulan'
+  | 'tingkat_ula'
+  | 'tingkat_wustho'
+  | 'tingkat_ulya'
+  | 'kegiatan'
+  | 'event'
+  | 'acara';
 
 export const TOPIK_BERITA_ORDER: TopikBerita[] = [
   'umum',
@@ -16,6 +19,40 @@ export const TOPIK_BERITA_ORDER: TopikBerita[] = [
   'tingkat_ula',
   'tingkat_wustho',
   'tingkat_ulya',
+  'kegiatan',
+  'event',
+  'acara',
+];
+
+export type ParentTopicWithSub = 'kegiatan' | 'event' | 'acara';
+
+export const PARENT_TOPICS_WITH_SUB: ParentTopicWithSub[] = [
+  'kegiatan',
+  'event',
+  'acara',
+];
+
+export interface SubTopikMedia {
+  id: string;
+  parent_topic: ParentTopicWithSub;
+  nama: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const DEFAULT_SUB_TOPIK_MEDIA: SubTopikMedia[] = [
+  { id: 'sub-keg-uub', parent_topic: 'kegiatan', nama: 'UUB', sort_order: 10, is_active: true },
+  { id: 'sub-keg-daur-awwal', parent_topic: 'kegiatan', nama: 'Daur Awwal', sort_order: 20, is_active: true },
+  { id: 'sub-keg-daur-tsani', parent_topic: 'kegiatan', nama: 'Daur Tsani', sort_order: 30, is_active: true },
+  { id: 'sub-keg-ebtadin', parent_topic: 'kegiatan', nama: 'EBTADIN', sort_order: 40, is_active: true },
+  { id: 'sub-keg-lomba-itmam', parent_topic: 'kegiatan', nama: 'Lomba ITMAM', sort_order: 50, is_active: true },
+  { id: 'sub-evt-lalaran-kubro', parent_topic: 'event', nama: 'Lalaran Kubro', sort_order: 10, is_active: true },
+  { id: 'sub-evt-seminar', parent_topic: 'event', nama: 'Seminar', sort_order: 20, is_active: true },
+  { id: 'sub-evt-diklat', parent_topic: 'event', nama: 'Diklat', sort_order: 30, is_active: true },
+  { id: 'sub-acr-apel-daur-tsani', parent_topic: 'acara', nama: 'APEL Daur Tsani', sort_order: 10, is_active: true },
+  { id: 'sub-acr-imtihan', parent_topic: 'acara', nama: 'Imtihan', sort_order: 20, is_active: true },
 ];
 
 export type DisplayTypeBerita = 
@@ -34,6 +71,7 @@ export interface WartaBerita {
   slug: string;
   topic: TopikBerita;
   topics?: TopikBerita[];
+  sub_topics?: string[];
   display_type: DisplayTypeBerita;
   excerpt: string;
   content: string;
@@ -110,6 +148,36 @@ export const TOPIK_BERITA_MAP: Record<TopikBerita, TopikMeta> = {
     lightBg: 'bg-indigo-50 dark:bg-indigo-950/40',
     description: 'Kajian turots tingkat tinggi (Fathul Wahhab, Ihya Ulumiddin) dan kaderisasi mustahiq.',
   },
+  kegiatan: {
+    code: 'kegiatan',
+    title: 'Kegiatan',
+    shortTitle: 'Kegiatan',
+    badgeBg: 'bg-cyan-700',
+    badgeText: 'text-white font-bold',
+    borderColor: 'border-cyan-500',
+    lightBg: 'bg-cyan-50 dark:bg-cyan-950/40',
+    description: 'Agenda akademik berkala: UUB, Daur Awwal, Daur Tsani, EBTADIN, dan Lomba ITMAM.',
+  },
+  event: {
+    code: 'event',
+    title: 'Event',
+    shortTitle: 'Event',
+    badgeBg: 'bg-violet-700',
+    badgeText: 'text-white font-bold',
+    borderColor: 'border-violet-500',
+    lightBg: 'bg-violet-50 dark:bg-violet-950/40',
+    description: 'Gelaran khusus madrasah seperti Lalaran Kubro, Seminar, dan Diklat.',
+  },
+  acara: {
+    code: 'acara',
+    title: 'Acara',
+    shortTitle: 'Acara',
+    badgeBg: 'bg-rose-700',
+    badgeText: 'text-white font-bold',
+    borderColor: 'border-rose-500',
+    lightBg: 'bg-rose-50 dark:bg-rose-950/40',
+    description: 'Seremonial resmi pesantren dan madrasah: APEL Daur Tsani, Imtihan, dan lainnya.',
+  },
 };
 
 /**
@@ -136,6 +204,25 @@ export function hasPostTopic(
 ): boolean {
   if (target === 'all') return true;
   return getPostTopics(post).includes(target);
+}
+
+export function isParentTopicWithSub(topic: TopikBerita | 'all'): topic is ParentTopicWithSub {
+  return topic === 'kegiatan' || topic === 'event' || topic === 'acara';
+}
+
+export function getPostSubTopics(post: Pick<WartaBerita, 'sub_topics'>): string[] {
+  if (!Array.isArray(post.sub_topics)) return [];
+  return Array.from(
+    new Set(post.sub_topics.map((s) => String(s || '').trim()).filter(Boolean))
+  );
+}
+
+export function hasPostSubTopic(
+  post: Pick<WartaBerita, 'sub_topics'>,
+  targetSubId: string | 'all'
+): boolean {
+  if (targetSubId === 'all') return true;
+  return getPostSubTopics(post).includes(targetSubId);
 }
 
 /**

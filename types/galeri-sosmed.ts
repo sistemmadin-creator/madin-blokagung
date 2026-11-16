@@ -14,6 +14,7 @@ export interface GaleriSosmedItem {
   embed_id: string;
   thumbnail_url: string;
   topics: TopikBerita[];
+  sub_topics?: string[];
   creator_name: string;
   is_pinned: boolean;
   status: StatusBerita;
@@ -104,6 +105,21 @@ export function hasSosmedTopic(
 ): boolean {
   if (target === 'all') return true;
   return getSosmedTopics(item).includes(target);
+}
+
+export function getSosmedSubTopics(item: Pick<GaleriSosmedItem, 'sub_topics'>): string[] {
+  if (!Array.isArray(item.sub_topics)) return [];
+  return Array.from(
+    new Set(item.sub_topics.map((s) => String(s || '').trim()).filter(Boolean))
+  );
+}
+
+export function hasSosmedSubTopic(
+  item: Pick<GaleriSosmedItem, 'sub_topics'>,
+  targetSubId: string | 'all'
+): boolean {
+  if (targetSubId === 'all') return true;
+  return getSosmedSubTopics(item).includes(targetSubId);
 }
 
 export const SEED_GALERI_SOSMED: GaleriSosmedItem[] = [

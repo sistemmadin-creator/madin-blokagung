@@ -6,6 +6,7 @@ import {
   DEFAULT_CREATOR_CHANNEL_CONFIG,
   SEED_GALERI_SOSMED,
   getSosmedTopics,
+  getSosmedSubTopics,
 } from '@/types/galeri-sosmed';
 import { TopikBerita, StatusBerita } from '@/types/berita';
 import { supabase } from '@/lib/supabase/client';
@@ -22,6 +23,7 @@ interface GaleriSosmedState {
   // Filter & Pencarian
   filterPlatform: PlatformSosmed | 'all';
   filterTopic: TopikBerita | 'all';
+  filterSubTopic: string | 'all';
   filterStatus: StatusBerita | 'all';
   searchKeyword: string;
 
@@ -44,6 +46,7 @@ interface GaleriSosmedState {
 
   setFilterPlatform: (platform: PlatformSosmed | 'all') => void;
   setFilterTopic: (topic: TopikBerita | 'all') => void;
+  setFilterSubTopic: (subTopicId: string | 'all') => void;
   setFilterStatus: (status: StatusBerita | 'all') => void;
   setSearchKeyword: (keyword: string) => void;
 
@@ -59,6 +62,7 @@ function normalizeSosmedItem(item: GaleriSosmedItem): GaleriSosmedItem {
   return {
     ...item,
     topics: getSosmedTopics(item),
+    sub_topics: getSosmedSubTopics(item),
     is_pinned: Boolean(item.is_pinned),
     status: item.status || 'published',
   };
@@ -125,6 +129,7 @@ export const useGaleriSosmedStore = create<GaleriSosmedState>((set, get) => ({
 
   filterPlatform: 'all',
   filterTopic: 'all',
+  filterSubTopic: 'all',
   filterStatus: 'all',
   searchKeyword: '',
 
@@ -223,7 +228,11 @@ export const useGaleriSosmedStore = create<GaleriSosmedState>((set, get) => ({
           .update({ is_pinned: false })
           .eq('is_pinned', true);
       }
-      await supabase.from('galeri_sosmed').insert([newItem]);
+      const { error } = await supabase.from('galeri_sosmed').insert([newItem]);
+      if (error && 'sub_topics' in newItem) {
+        const { sub_topics: _ignoredSub, ...legacyPayload } = newItem;
+        await supabase.from('galeri_sosmed').insert([legacyPayload]);
+      }
     } catch {
       // Fallback lokal
     }
@@ -263,7 +272,11 @@ export const useGaleriSosmedStore = create<GaleriSosmedState>((set, get) => ({
           .update({ is_pinned: false })
           .neq('id', id);
       }
-      await supabase.from('galeri_sosmed').update(updates).eq('id', id);
+      const { error } = await supabase.from('galeri_sosmed').update(updates).eq('id', id);
+      if (error && 'sub_topics' in updates) {
+        const { sub_topics: _ignoredSub, ...legacyUpdates } = updates;
+        await supabase.from('galeri_sosmed').update(legacyUpdates).eq('id', id);
+      }
     } catch {
       // Fallback lokal
     }
@@ -313,7 +326,8 @@ export const useGaleriSosmedStore = create<GaleriSosmedState>((set, get) => ({
   },
 
   setFilterPlatform: (filterPlatform) => set({ filterPlatform }),
-  setFilterTopic: (filterTopic) => set({ filterTopic }),
+  setFilterTopic: (filterTopic) => set({ filterTopic, filterSubTopic: 'all' }),
+  setFilterSubTopic: (filterSubTopic) => set({ filterSubTopic }),
   setFilterStatus: (filterStatus) => set({ filterStatus }),
   setSearchKeyword: (searchKeyword) => set({ searchKeyword }),
 

@@ -22,6 +22,7 @@ import { TOPIK_BERITA_MAP } from '@/types/berita';
 import { buildSosmedEmbedUrl } from '@/lib/utils/sosmedEmbedHelper';
 import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
 import { sanitizeHttpUrl } from '@/lib/security/urlSanitizer';
+import SubKategoriBadgeList from '@/components/modules/media/SubKategoriBadgeList';
 
 interface ModalLightboxSosmedProps {
   item: GaleriSosmedItem | null;
@@ -152,6 +153,10 @@ export default function ModalLightboxSosmed({
                   </span>
                 );
               })}
+              <SubKategoriBadgeList
+                subTopicIds={item.sub_topics}
+                badgeClassName="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-emerald-300 border border-emerald-700/60"
+              />
             </div>
 
             {/* Judul Karya */}

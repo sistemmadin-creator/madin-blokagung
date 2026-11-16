@@ -1,5 +1,13 @@
 import { create } from 'zustand';
-import { WartaBerita, TopikBerita, StatusBerita, DisplayTypeBerita, SEED_BERITA, getPostTopics } from '@/types/berita';
+import {
+  WartaBerita,
+  TopikBerita,
+  StatusBerita,
+  DisplayTypeBerita,
+  SEED_BERITA,
+  getPostTopics,
+  getPostSubTopics,
+} from '@/types/berita';
 import { supabase } from '@/lib/supabase/client';
 
 const STORAGE_KEY = 'madina_warta_berita_cache';
@@ -11,6 +19,7 @@ interface BeritaState {
 
   // Filter & Search
   filterTopic: TopikBerita | 'all';
+  filterSubTopic: string | 'all';
   filterStatus: StatusBerita | 'all';
   searchKeyword: string;
 
@@ -28,6 +37,7 @@ interface BeritaState {
   setDisplayType: (id: string, display_type: DisplayTypeBerita) => Promise<boolean>;
 
   setFilterTopic: (topic: TopikBerita | 'all') => void;
+  setFilterSubTopic: (subTopicId: string | 'all') => void;
   setFilterStatus: (status: StatusBerita | 'all') => void;
   setSearchKeyword: (keyword: string) => void;
 
@@ -39,6 +49,7 @@ interface BeritaState {
 
 function normalizePostRecord(item: WartaBerita): WartaBerita {
   const normalizedTopics = getPostTopics(item);
+  const normalizedSubTopics = getPostSubTopics(item);
   const primaryTopic = normalizedTopics[0] || item.topic || 'umum';
   let cover = item.cover_image_url;
   if (cover?.includes('photo-1584697964190-705b89369947')) {
@@ -50,6 +61,7 @@ function normalizePostRecord(item: WartaBerita): WartaBerita {
     ...item,
     topic: primaryTopic,
     topics: normalizedTopics,
+    sub_topics: normalizedSubTopics,
     cover_image_url: cover,
   };
 }
@@ -104,6 +116,7 @@ export const useBeritaStore = create<BeritaState>((set, get) => ({
   error: null,
 
   filterTopic: 'all',
+  filterSubTopic: 'all',
   filterStatus: 'all',
   searchKeyword: '',
 
@@ -153,12 +166,14 @@ export const useBeritaStore = create<BeritaState>((set, get) => ({
     }
 
     const normalizedTopics = getPostTopics(postData);
+    const normalizedSubTopics = getPostSubTopics(postData);
     const primaryTopic = normalizedTopics[0] || postData.topic || 'umum';
 
     const newPost: WartaBerita = {
       ...postData,
       topic: primaryTopic,
       topics: normalizedTopics,
+      sub_topics: normalizedSubTopics,
       id: newId,
       views_count: 0,
       created_at: new Date().toISOString(),
@@ -174,9 +189,13 @@ export const useBeritaStore = create<BeritaState>((set, get) => ({
     try {
       const { error } = await supabase.from('warta_berita').insert([newPost]);
       if (error) {
-        // Fallback jika kolom topics belum dimigrasi di database remote
-        const { topics: _ignoredTopics, ...legacyPayload } = newPost;
-        await supabase.from('warta_berita').insert([legacyPayload]);
+        // Fallback jika kolom sub_topics atau topics belum dimigrasi di database remote
+        const { sub_topics: _ignoredSub, ...withoutSub } = newPost;
+        const { error: errWithoutSub } = await supabase.from('warta_berita').insert([withoutSub]);
+        if (errWithoutSub) {
+          const { topics: _ignoredTopics, ...legacyPayload } = withoutSub;
+          await supabase.from('warta_berita').insert([legacyPayload]);
+        }
       }
     } catch {
       // Disimpan di local storage
@@ -211,9 +230,18 @@ export const useBeritaStore = create<BeritaState>((set, get) => ({
 
     try {
       const { error } = await supabase.from('warta_berita').update(normalizedUpdates).eq('id', id);
-      if (error && 'topics' in normalizedUpdates) {
-        const { topics: _ignoredTopics, ...legacyUpdates } = normalizedUpdates;
-        await supabase.from('warta_berita').update(legacyUpdates).eq('id', id);
+      if (error) {
+        if ('sub_topics' in normalizedUpdates) {
+          const { sub_topics: _ignoredSub, ...withoutSub } = normalizedUpdates;
+          const { error: errWithoutSub } = await supabase.from('warta_berita').update(withoutSub).eq('id', id);
+          if (errWithoutSub && 'topics' in withoutSub) {
+            const { topics: _ignoredTopics, ...legacyUpdates } = withoutSub;
+            await supabase.from('warta_berita').update(legacyUpdates).eq('id', id);
+          }
+        } else if ('topics' in normalizedUpdates) {
+          const { topics: _ignoredTopics, ...legacyUpdates } = normalizedUpdates;
+          await supabase.from('warta_berita').update(legacyUpdates).eq('id', id);
+        }
       }
     } catch {
       // Local fallback
@@ -249,7 +277,8 @@ export const useBeritaStore = create<BeritaState>((set, get) => ({
     return get().updatePost(id, { display_type });
   },
 
-  setFilterTopic: (filterTopic) => set({ filterTopic }),
+  setFilterTopic: (filterTopic) => set({ filterTopic, filterSubTopic: 'all' }),
+  setFilterSubTopic: (filterSubTopic) => set({ filterSubTopic }),
   setFilterStatus: (filterStatus) => set({ filterStatus }),
   setSearchKeyword: (searchKeyword) => set({ searchKeyword }),
 

@@ -1,6 +1,14 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { formatBeritaDateWib, getCurrentYearWib } from '@/lib/utils/beritaDateHelper';
-import { SEED_BERITA, WartaBerita, getPostTopics, hasPostTopic, TOPIK_BERITA_ORDER } from '@/types/berita';
+import {
+  SEED_BERITA,
+  WartaBerita,
+  getPostTopics,
+  hasPostTopic,
+  hasPostSubTopic,
+  TOPIK_BERITA_ORDER,
+  DEFAULT_SUB_TOPIK_MEDIA,
+} from '@/types/berita';
 import { parseSosmedUrl, buildSosmedEmbedUrl } from '@/lib/utils/sosmedEmbedHelper';
 
 describe('Berita Hydration & Deterministic WIB Date Formatter', () => {
@@ -69,24 +77,42 @@ describe('Berita Hydration & Deterministic WIB Date Formatter', () => {
     );
   });
 
-  it('mendukung multi-kategori topik berita termasuk kategori Umum (umum + tingkat_ula)', () => {
+  it('mendukung 8 kategori topik berita termasuk Umum, Kegiatan, Event, dan Acara serta sub-kategorinya', () => {
     expect(TOPIK_BERITA_ORDER).toEqual([
       'umum',
       'kelas_unggulan',
       'tingkat_ula',
       'tingkat_wustho',
       'tingkat_ulya',
+      'kegiatan',
+      'event',
+      'acara',
     ]);
 
-    const multiPost: Pick<WartaBerita, 'topic' | 'topics'> = {
+    const multiPost: Pick<WartaBerita, 'topic' | 'topics' | 'sub_topics'> = {
       topic: 'umum',
-      topics: ['umum', 'tingkat_ula'],
+      topics: ['umum', 'tingkat_ula', 'kegiatan'],
+      sub_topics: ['sub-keg-uub', 'sub-keg-ebtadin'],
     };
-    expect(getPostTopics(multiPost)).toEqual(['umum', 'tingkat_ula']);
+    expect(getPostTopics(multiPost)).toEqual(['umum', 'tingkat_ula', 'kegiatan']);
     expect(hasPostTopic(multiPost, 'umum')).toBe(true);
     expect(hasPostTopic(multiPost, 'tingkat_ula')).toBe(true);
+    expect(hasPostTopic(multiPost, 'kegiatan')).toBe(true);
     expect(hasPostTopic(multiPost, 'tingkat_ulya')).toBe(false);
     expect(hasPostTopic(multiPost, 'all')).toBe(true);
+    expect(hasPostSubTopic(multiPost, 'sub-keg-uub')).toBe(true);
+    expect(hasPostSubTopic(multiPost, 'sub-evt-seminar')).toBe(false);
+    expect(hasPostSubTopic(multiPost, 'all')).toBe(true);
+
+    expect(
+      DEFAULT_SUB_TOPIK_MEDIA.filter((s) => s.parent_topic === 'kegiatan').map((s) => s.nama)
+    ).toEqual(['UUB', 'Daur Awwal', 'Daur Tsani', 'EBTADIN', 'Lomba ITMAM']);
+    expect(
+      DEFAULT_SUB_TOPIK_MEDIA.filter((s) => s.parent_topic === 'event').map((s) => s.nama)
+    ).toEqual(['Lalaran Kubro', 'Seminar', 'Diklat']);
+    expect(
+      DEFAULT_SUB_TOPIK_MEDIA.filter((s) => s.parent_topic === 'acara').map((s) => s.nama)
+    ).toEqual(['APEL Daur Tsani', 'Imtihan']);
   });
 
   it('mem-parsing URL embed YouTube, Instagram, dan TikTok secara akurat untuk Galeri Sosmed', () => {

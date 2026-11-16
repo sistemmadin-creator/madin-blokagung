@@ -13,11 +13,21 @@ import {
 import { NavbarProfil, FooterProfil } from '@/components/modules/profil';
 import { useBeritaStore } from '@/stores/useBeritaStore';
 import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
-import { TopikBerita, TOPIK_BERITA_MAP, TOPIK_BERITA_ORDER, getPostTopics, hasPostTopic } from '@/types/berita';
+import {
+  TopikBerita,
+  TOPIK_BERITA_MAP,
+  TOPIK_BERITA_ORDER,
+  getPostTopics,
+  hasPostTopic,
+  hasPostSubTopic,
+} from '@/types/berita';
+import SubKategoriFilterBar from '@/components/modules/media/SubKategoriFilterBar';
+import SubKategoriBadgeList from '@/components/modules/media/SubKategoriBadgeList';
 
 export default function ArsipBeritaPage() {
   const { posts, fetchPosts, isLoading } = useBeritaStore();
   const [selectedTopic, setSelectedTopic] = useState<TopikBerita | 'all'>('all');
+  const [selectedSubTopic, setSelectedSubTopic] = useState<string | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -29,10 +39,11 @@ export default function ArsipBeritaPage() {
     return posts.filter((p) => p.status === 'published');
   }, [posts]);
 
-  // Filter warta (Mendukung Multi-Kategori)
+  // Filter warta (Mendukung Multi-Kategori & Sub-Kategori)
   const filteredPosts = useMemo(() => {
     return publishedPosts.filter((post) => {
       if (selectedTopic !== 'all' && !hasPostTopic(post, selectedTopic)) return false;
+      if (selectedSubTopic !== 'all' && !hasPostSubTopic(post, selectedSubTopic)) return false;
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchTitle = post.title.toLowerCase().includes(query);
@@ -104,7 +115,10 @@ export default function ArsipBeritaPage() {
 
               <button
                 type="button"
-                onClick={() => setSelectedTopic('all')}
+                onClick={() => {
+                  setSelectedTopic('all');
+                  setSelectedSubTopic('all');
+                }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition whitespace-nowrap ${
                   selectedTopic === 'all'
                     ? 'bg-[#0b5751] text-white shadow-xs'
@@ -122,7 +136,10 @@ export default function ArsipBeritaPage() {
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setSelectedTopic(key)}
+                    onClick={() => {
+                      setSelectedTopic(key);
+                      setSelectedSubTopic('all');
+                    }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition whitespace-nowrap flex items-center gap-1.5 ${
                       isSelected
                         ? `${meta.badgeBg} ${meta.badgeText} shadow-xs ring-2 ring-emerald-600/40`
@@ -137,6 +154,13 @@ export default function ArsipBeritaPage() {
                 );
               })}
             </div>
+
+            <SubKategoriFilterBar
+              activeTopic={selectedTopic}
+              selectedSubTopic={selectedSubTopic}
+              onSelectSubTopic={setSelectedSubTopic}
+              getCount={(subId) => publishedPosts.filter((p) => hasPostSubTopic(p, subId)).length}
+            />
           </div>
 
           {/* Grid Kartu Berita */}
@@ -181,6 +205,10 @@ export default function ArsipBeritaPage() {
                             </span>
                           );
                         })}
+                        <SubKategoriBadgeList
+                          subTopicIds={post.sub_topics}
+                          badgeClassName="px-2 py-1 rounded-lg text-[10px] font-bold bg-black/70 text-amber-200 backdrop-blur-xs"
+                        />
                       </div>
                     </div>
 

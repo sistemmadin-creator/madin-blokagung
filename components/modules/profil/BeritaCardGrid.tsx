@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Clock, BookOpen } from 'lucide-react';
 import { WartaBerita, TOPIK_BERITA_MAP, getPostTopics } from '@/types/berita';
+import SubKategoriBadgeList from '@/components/modules/media/SubKategoriBadgeList';
 
 interface BeritaCardGridProps {
   post: WartaBerita;
@@ -49,6 +50,10 @@ export default function BeritaCardGrid({ post }: BeritaCardGridProps) {
               </span>
             );
           })}
+          <SubKategoriBadgeList
+            subTopicIds={post.sub_topics}
+            badgeClassName="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/65 text-amber-200 backdrop-blur-xs"
+          />
         </div>
       </div>
 

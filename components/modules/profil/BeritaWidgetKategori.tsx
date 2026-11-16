@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Globe, Sparkles, BookOpen, Layers, GraduationCap, ChevronRight } from 'lucide-react';
+import { Globe, Sparkles, BookOpen, Layers, GraduationCap, ChevronRight, CalendarDays, Award, Flag } from 'lucide-react';
 import { TopikBerita, TOPIK_BERITA_MAP, TOPIK_BERITA_ORDER } from '@/types/berita';
 
 interface BeritaWidgetKategoriProps {
@@ -17,6 +17,9 @@ const TOPIK_ICONS: Record<TopikBerita, React.ReactNode> = {
   tingkat_ula: <BookOpen className="w-4 h-4 text-emerald-600" />,
   tingkat_wustho: <Layers className="w-4 h-4 text-blue-600" />,
   tingkat_ulya: <GraduationCap className="w-4 h-4 text-indigo-600" />,
+  kegiatan: <CalendarDays className="w-4 h-4 text-cyan-600" />,
+  event: <Award className="w-4 h-4 text-violet-600" />,
+  acara: <Flag className="w-4 h-4 text-rose-600" />,
 };
 
 export default function BeritaWidgetKategori({

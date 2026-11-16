@@ -11,16 +11,19 @@ import {
   TOPIK_BERITA_ORDER,
   getPostTopics,
   hasPostTopic,
+  hasPostSubTopic,
 } from '@/types/berita';
 import BeritaCardHero from './BeritaCardHero';
 import BeritaCardGrid from './BeritaCardGrid';
 import BeritaWidgetKategori from './BeritaWidgetKategori';
 import GaleriSosmedPortfolioView from '@/components/modules/galeri-sosmed/GaleriSosmedPortfolioView';
+import SubKategoriFilterBar from '@/components/modules/media/SubKategoriFilterBar';
 
 export default function BeritaShowcaseSection() {
   const { posts, fetchPosts, isLoading } = useBeritaStore();
   const [activeMediaView, setActiveMediaView] = useState<'berita' | 'galeri-sosmed'>('berita');
   const [selectedTopic, setSelectedTopic] = useState<TopikBerita | 'all'>('all');
+  const [selectedSubTopic, setSelectedSubTopic] = useState<string | 'all'>('all');
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -33,11 +36,14 @@ export default function BeritaShowcaseSection() {
     return posts.filter((p) => p.status === 'published');
   }, [posts]);
 
-  // Filter berdasarkan topik yang dipilih (Mendukung Multi-Kategori: Umum, Unggulan, ULA, WUSTHO, ULYA)
+  // Filter berdasarkan topik & sub-kategori yang dipilih
   const filteredPosts = useMemo(() => {
-    if (selectedTopic === 'all') return publishedPosts;
-    return publishedPosts.filter((p) => hasPostTopic(p, selectedTopic));
-  }, [publishedPosts, selectedTopic]);
+    return publishedPosts.filter((p) => {
+      if (selectedTopic !== 'all' && !hasPostTopic(p, selectedTopic)) return false;
+      if (selectedSubTopic !== 'all' && !hasPostSubTopic(p, selectedSubTopic)) return false;
+      return true;
+    });
+  }, [publishedPosts, selectedTopic, selectedSubTopic]);
 
   // Urutkan kronologis terbaru (Waterfall Recency)
   const sortedPosts = useMemo(() => {
@@ -69,6 +75,9 @@ export default function BeritaShowcaseSection() {
       tingkat_ula: 0,
       tingkat_wustho: 0,
       tingkat_ulya: 0,
+      kegiatan: 0,
+      event: 0,
+      acara: 0,
     };
     publishedPosts.forEach((p) => {
       const pTopics = getPostTopics(p);
@@ -153,38 +162,53 @@ export default function BeritaShowcaseSection() {
             </p>
           </div>
 
-          {/* Filter Tab 5 Topik di Header (Tampil saat mode Kabar Berita aktif) */}
+          {/* Filter Tab Topik & Sub-Kategori di Header (Tampil saat mode Kabar Berita aktif) */}
           {activeMediaView === 'berita' && (
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
-              <button
-                type="button"
-                onClick={() => setSelectedTopic('all')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                  selectedTopic === 'all'
-                    ? 'bg-[#0b5751] text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                }`}
-              >
-                Semua Topik
-              </button>
-              {TOPIK_BERITA_ORDER.map((key) => {
-                const meta = TOPIK_BERITA_MAP[key];
-                const isSelected = selectedTopic === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setSelectedTopic(key)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                      isSelected
-                        ? `${meta.badgeBg} ${meta.badgeText} shadow-xs ring-2 ring-emerald-600/40`
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                    }`}
-                  >
-                    {meta.shortTitle}
-                  </button>
-                );
-              })}
+            <div className="flex flex-col items-start lg:items-end gap-2 max-w-full">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTopic('all');
+                    setSelectedSubTopic('all');
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                    selectedTopic === 'all'
+                      ? 'bg-[#0b5751] text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                  }`}
+                >
+                  Semua Topik
+                </button>
+                {TOPIK_BERITA_ORDER.map((key) => {
+                  const meta = TOPIK_BERITA_MAP[key];
+                  const isSelected = selectedTopic === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        setSelectedTopic(key);
+                        setSelectedSubTopic('all');
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                        isSelected
+                          ? `${meta.badgeBg} ${meta.badgeText} shadow-xs ring-2 ring-emerald-600/40`
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      {meta.shortTitle}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <SubKategoriFilterBar
+                activeTopic={selectedTopic}
+                selectedSubTopic={selectedSubTopic}
+                onSelectSubTopic={setSelectedSubTopic}
+                getCount={(subId) => publishedPosts.filter((p) => hasPostSubTopic(p, subId)).length}
+              />
             </div>
           )}
         </div>

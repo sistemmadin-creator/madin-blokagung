@@ -2,15 +2,18 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Newspaper, Plus, ExternalLink, Film } from 'lucide-react';
+import { Newspaper, Plus, ExternalLink, Film, Tags } from 'lucide-react';
 import TabelKelolaBerita from '@/components/modules/berita/TabelKelolaBerita';
 import ModalFormBerita from '@/components/modules/berita/ModalFormBerita';
+import ModalKelolaSubKategoriMedia from '@/components/modules/media/ModalKelolaSubKategoriMedia';
 import { useBeritaStore } from '@/stores/useBeritaStore';
+import { useMediaKategoriStore } from '@/stores/useMediaKategoriStore';
 import { usePagePermission } from '@/stores/useRbacStore';
 
 export default function BeritaAdminPage() {
   const { openFormModal } = useBeritaStore();
-  const { canCreate } = usePagePermission('kelola-berita');
+  const openSubKategoriModal = useMediaKategoriStore((s) => s.openManagerModal);
+  const { canCreate, canEdit } = usePagePermission('kelola-berita');
 
   return (
     <div className="space-y-6">
@@ -36,6 +39,17 @@ export default function BeritaAdminPage() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+          {canEdit && (
+            <button
+              type="button"
+              onClick={openSubKategoriModal}
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 text-xs font-bold transition shadow-2xs cursor-pointer"
+            >
+              <Tags className="w-4 h-4 text-amber-600" />
+              <span>Atur Sub-Kategori</span>
+            </button>
+          )}
+
           <Link
             href="/kelola-galeri-sosmed"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100/80 text-xs font-bold transition shadow-2xs"
@@ -70,6 +84,9 @@ export default function BeritaAdminPage() {
 
       {/* Modal Formulir Input & Edit Berita */}
       <ModalFormBerita />
+
+      {/* Modal Pengaturan Sub-Kategori Terpusat */}
+      <ModalKelolaSubKategoriMedia />
     </div>
   );
 }

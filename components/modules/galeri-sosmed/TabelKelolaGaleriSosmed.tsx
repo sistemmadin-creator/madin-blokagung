@@ -21,6 +21,7 @@ import {
   PLATFORM_SOSMED_MAP,
   getSosmedTopics,
   hasSosmedTopic,
+  hasSosmedSubTopic,
 } from '@/types/galeri-sosmed';
 import {
   StatusBerita,
@@ -31,6 +32,8 @@ import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
 import { usePagePermission } from '@/stores/useRbacStore';
 import { sanitizeHttpUrl } from '@/lib/security/urlSanitizer';
 import ModalLightboxSosmed from './ModalLightboxSosmed';
+import SubKategoriFilterBar from '@/components/modules/media/SubKategoriFilterBar';
+import SubKategoriBadgeList from '@/components/modules/media/SubKategoriBadgeList';
 
 export default function TabelKelolaGaleriSosmed() {
   const {
@@ -46,6 +49,8 @@ export default function TabelKelolaGaleriSosmed() {
     setFilterPlatform,
     filterTopic,
     setFilterTopic,
+    filterSubTopic,
+    setFilterSubTopic,
     filterStatus,
     setFilterStatus,
     searchKeyword,
@@ -77,6 +82,7 @@ export default function TabelKelolaGaleriSosmed() {
     return items.filter((item) => {
       if (filterPlatform !== 'all' && item.platform !== filterPlatform) return false;
       if (filterTopic !== 'all' && !hasSosmedTopic(item, filterTopic)) return false;
+      if (filterSubTopic !== 'all' && !hasSosmedSubTopic(item, filterSubTopic)) return false;
       if (filterStatus !== 'all' && item.status !== filterStatus) return false;
       if (searchKeyword.trim()) {
         const q = searchKeyword.toLowerCase();
@@ -87,7 +93,7 @@ export default function TabelKelolaGaleriSosmed() {
       }
       return true;
     });
-  }, [items, filterPlatform, filterTopic, filterStatus, searchKeyword]);
+  }, [items, filterPlatform, filterTopic, filterSubTopic, filterStatus, searchKeyword]);
 
   const handleDeleteConfirm = async (id: string) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus karya ini dari Galeri Sosmed?')) {
@@ -228,6 +234,13 @@ export default function TabelKelolaGaleriSosmed() {
             );
           })}
         </div>
+
+        <SubKategoriFilterBar
+          activeTopic={filterTopic}
+          selectedSubTopic={filterSubTopic}
+          onSelectSubTopic={setFilterSubTopic}
+          getCount={(subId) => items.filter((it) => hasSosmedSubTopic(it, subId)).length}
+        />
       </div>
 
       {/* 3. Tabel Karya Galeri Sosmed (3 UI States) */}
@@ -405,6 +418,7 @@ export default function TabelKelolaGaleriSosmed() {
                               </span>
                             );
                           })}
+                          <SubKategoriBadgeList subTopicIds={item.sub_topics} />
                         </div>
                       </td>
 
