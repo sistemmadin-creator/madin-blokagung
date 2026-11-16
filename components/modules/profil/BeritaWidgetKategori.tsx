@@ -2,14 +2,35 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Globe, Sparkles, BookOpen, Layers, GraduationCap, ChevronRight, CalendarDays, Award, Flag } from 'lucide-react';
-import { TopikBerita, TOPIK_BERITA_MAP, TOPIK_BERITA_ORDER } from '@/types/berita';
+import {
+  Globe,
+  Sparkles,
+  BookOpen,
+  Layers,
+  GraduationCap,
+  ChevronRight,
+  CalendarDays,
+  Award,
+  Flag,
+} from 'lucide-react';
+import { TopikBerita, TOPIK_BERITA_MAP } from '@/types/berita';
 
 interface BeritaWidgetKategoriProps {
   postCounts: Record<TopikBerita, number>;
   onSelectTopic?: (topic: TopikBerita | 'all') => void;
   activeTopic?: TopikBerita | 'all';
 }
+
+const WIDGET_TOPIK_ORDER: TopikBerita[] = [
+  'umum',
+  'kegiatan',
+  'event',
+  'acara',
+  'kelas_unggulan',
+  'tingkat_ula',
+  'tingkat_wustho',
+  'tingkat_ulya',
+];
 
 const TOPIK_ICONS: Record<TopikBerita, React.ReactNode> = {
   umum: <Globe className="w-4 h-4 text-teal-600" />,
@@ -44,9 +65,12 @@ export default function BeritaWidgetKategori({
         </Link>
       </div>
 
-      {/* 5 Kotak Topik Khusus */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
-        {TOPIK_BERITA_ORDER.map((key) => {
+      {/* 4 Kategori Teratas (Umum, Kegiatan, Event, Acara) Langsung Tampil, Lainnya Di-scroll di Dalam Kotak */}
+      <div
+        aria-label="Daftar Kategori Pilihan"
+        className="max-h-[292px] overflow-y-auto pr-1 space-y-2.5"
+      >
+        {WIDGET_TOPIK_ORDER.map((key) => {
           const item = TOPIK_BERITA_MAP[key];
           const count = postCounts[key] || 0;
           const isSelected = activeTopic === key;
@@ -56,7 +80,7 @@ export default function BeritaWidgetKategori({
               key={key}
               type="button"
               onClick={() => onSelectTopic && onSelectTopic(isSelected ? 'all' : key)}
-              className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between group ${
+              className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between group cursor-pointer ${
                 isSelected
                   ? `${item.lightBg} ${item.borderColor} ring-2 ring-emerald-600/40 shadow-xs`
                   : 'border-slate-100 dark:border-slate-700/80 hover:border-slate-200 bg-slate-50/70 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-750'
@@ -83,6 +107,10 @@ export default function BeritaWidgetKategori({
           );
         })}
       </div>
+
+      <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center pt-1 border-t border-slate-100 dark:border-slate-700/60">
+        Gulir di dalam kotak untuk melihat kategori tingkat &amp; unggulan lainnya
+      </p>
     </div>
   );
 }

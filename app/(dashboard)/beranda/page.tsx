@@ -121,6 +121,7 @@ const ITEM_ICON_REGISTRY: Record<string, React.ReactNode> = {
   Wrench: <Wrench className="w-4 h-4 text-amber-700" />,
   CheckSquare: <CheckSquare className="w-4 h-4 text-emerald-600" />,
   Film: <Film className="w-4 h-4 text-emerald-700" />,
+  Layers: <Layers className="w-4 h-4 text-emerald-700" />,
 };
 
 // Deskripsi penjelas ringkas tiap grup menu

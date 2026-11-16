@@ -32,6 +32,7 @@ import {
   CheckSquare,
   Home,
   Film,
+  Layers,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { useSidebarConfigStore, DEFAULT_SIDEBAR_GROUPS } from '@/stores/useSidebarConfigStore';
@@ -67,6 +68,7 @@ const ICON_REGISTRY: Record<string, React.ReactNode> = {
   Wrench: <Wrench className="w-5 h-5 flex-shrink-0" />,
   CheckSquare: <CheckSquare className="w-5 h-5 flex-shrink-0" />,
   Film: <Film className="w-5 h-5 flex-shrink-0" />,
+  Layers: <Layers className="w-5 h-5 flex-shrink-0" />,
 };
 
 const SUB_ICON_REGISTRY: Record<string, React.ReactNode> = {

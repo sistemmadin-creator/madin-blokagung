@@ -29,6 +29,9 @@ export type AppPageId =
   | 'sapras-perbaikan'
   | 'sapras-logistik'
   | 'sapras-rekap'
+  | 'kelola-metrik-lembaga'
+  | 'kelola-model-pembelajaran'
+  | 'kelola-khazanah-turats'
   | 'kelola-berita'
   | 'kelola-galeri-sosmed'
   | 'kelola-kepengurusan'
@@ -310,6 +313,30 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     routes: ['/sapras/rekap'],
     supportsEditOverride: false,
     supportsDeleteOverride: false,
+  },
+  {
+    id: 'kelola-metrik-lembaga',
+    label: 'Skala & Metrik Lembaga',
+    group: 'PKM. Media Madin',
+    routes: ['/kelola-metrik-lembaga'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: true,
+  },
+  {
+    id: 'kelola-model-pembelajaran',
+    label: 'Model Pembelajaran',
+    group: 'PKM. Media Madin',
+    routes: ['/kelola-model-pembelajaran'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: true,
+  },
+  {
+    id: 'kelola-khazanah-turats',
+    label: 'Khazanah Turats Salafiyah',
+    group: 'PKM. Media Madin',
+    routes: ['/kelola-khazanah-turats'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: true,
   },
   {
     id: 'kelola-berita',

@@ -63,6 +63,23 @@ test.describe('69 - Media Madin, Multi-Topik Berita (Umum + Jenjang), & Portofol
       beritaSection.getByRole('heading').nth(1)
     ).toBeVisible();
 
+    // 5b. Widget Kategori Pilihan: urutan 4 teratas Umum, Kegiatan, Event, Acara dalam kontainer scrollable
+    const kategoriBox = beritaSection.getByLabel('Daftar Kategori Pilihan');
+    await expect(kategoriBox).toBeVisible();
+    const kategoriButtons = kategoriBox.locator('button');
+    await expect(kategoriButtons).toHaveCount(8);
+    await expect(kategoriButtons.nth(0)).toContainText('Umum');
+    await expect(kategoriButtons.nth(1)).toContainText('Kegiatan');
+    await expect(kategoriButtons.nth(2)).toContainText('Event');
+    await expect(kategoriButtons.nth(3)).toContainText('Acara');
+    const isScrollable = await kategoriBox.evaluate((el) => el.scrollHeight > el.clientHeight);
+    expect(isScrollable).toBe(true);
+
+    // 5c. Section Landing Page dinamis via useProfilKontenStore (#statistik, #program, #kurikulum)
+    await expect(page.locator('#statistik').getByText('1951 M')).toBeVisible();
+    await expect(page.locator('#program').getByRole('heading', { name: 'Kelas Reguler' })).toBeVisible();
+    await expect(page.locator('#kurikulum').getByRole('button', { name: /Jenjang Ula/i })).toBeVisible();
+
     // 6. Switcher Mode ke 'Galeri Sosmed' di Beranda
     const btnGaleriSosmedTab = beritaSection.getByRole('button', { name: 'Galeri Sosmed' });
     await btnGaleriSosmedTab.click();

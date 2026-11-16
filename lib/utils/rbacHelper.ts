@@ -172,6 +172,9 @@ export function resolvePageIdFromPathname(pathname: string): AppPageId | null {
   if (clean.startsWith('/sapras/logistik')) return 'sapras-logistik';
   if (clean.startsWith('/sapras/rekap')) return 'sapras-rekap';
   if (clean.startsWith('/sapras')) return 'sapras-inventaris';
+  if (clean.startsWith('/kelola-metrik-lembaga')) return 'kelola-metrik-lembaga';
+  if (clean.startsWith('/kelola-model-pembelajaran')) return 'kelola-model-pembelajaran';
+  if (clean.startsWith('/kelola-khazanah-turats')) return 'kelola-khazanah-turats';
   if (clean.startsWith('/kelola-berita')) return 'kelola-berita';
   if (clean.startsWith('/kelola-galeri-sosmed')) return 'kelola-galeri-sosmed';
   if (clean.startsWith('/kelola-kepengurusan')) return 'kelola-kepengurusan';

@@ -251,6 +251,9 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
     id: 'grp-publikasi',
     group: 'PKM. Media Madin',
     items: [
+      { id: 'item-metrik-lembaga', title: 'Skala & Metrik Lembaga', href: '/kelola-metrik-lembaga', iconName: 'BarChart2' },
+      { id: 'item-model-pembelajaran', title: 'Model Pembelajaran', href: '/kelola-model-pembelajaran', iconName: 'Layers' },
+      { id: 'item-khazanah-turats', title: 'Khazanah Turats Salafiyah', href: '/kelola-khazanah-turats', iconName: 'BookOpen' },
       { id: 'item-berita', title: 'Kelola Berita', href: '/kelola-berita', iconName: 'Newspaper' },
       { id: 'item-galeri-sosmed', title: 'Kelola Galeri Sosmed', href: '/kelola-galeri-sosmed', iconName: 'Film' },
       { id: 'item-kepengurusan', title: 'Kelola Kepengurusan', href: '/kelola-kepengurusan', iconName: 'Users' },

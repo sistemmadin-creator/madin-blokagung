@@ -28,6 +28,7 @@ import {
   Wrench,
   CheckSquare,
   Film,
+  Layers,
 } from 'lucide-react';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import ModalAuditLogs from '@/components/modules/settings/ModalAuditLogs';
@@ -189,9 +190,39 @@ export default function BottomNavMobile() {
             <span>Catatan & To-Do List</span>
           </Link>
           <Link
-            href="/kelola-berita"
+            href="/kelola-metrik-lembaga"
             onClick={() => setActiveMenu(null)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 text-sm font-semibold text-amber-900 border-t border-slate-100"
+          >
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+              <BarChart2 className="w-4 h-4" />
+            </div>
+            <span>Skala &amp; Metrik Lembaga</span>
+          </Link>
+          <Link
+            href="/kelola-model-pembelajaran"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 text-sm font-semibold text-amber-900"
+          >
+            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+              <Layers className="w-4 h-4" />
+            </div>
+            <span>Model Pembelajaran</span>
+          </Link>
+          <Link
+            href="/kelola-khazanah-turats"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 text-sm font-semibold text-amber-900"
+          >
+            <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center font-bold">
+              <BookOpen className="w-4 h-4" />
+            </div>
+            <span>Khazanah Turats Salafiyah</span>
+          </Link>
+          <Link
+            href="/kelola-berita"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 text-sm font-semibold text-amber-900"
           >
             <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
               <Newspaper className="w-4 h-4" />
