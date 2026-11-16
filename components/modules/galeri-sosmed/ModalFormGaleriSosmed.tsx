@@ -304,10 +304,13 @@ export default function ModalFormGaleriSosmed() {
                   onChange={(e) => setContentFormat(e.target.value as ContentFormatSosmed)}
                   className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                 >
-                  <option value="landscape">Widescreen 16:9 (YouTube Reguler)</option>
-                  <option value="vertical">Vertical 9:16 (TikTok / Reels / Shorts)</option>
-                  <option value="post">Feed / Carousel 4:5 (Instagram Post)</option>
+                  <option value="landscape">Widescreen 16:9 (Kartu Lebar / YouTube)</option>
+                  <option value="vertical">Vertical 9:16 (Kartu Tinggi / TikTok &amp; Reels)</option>
+                  <option value="post">Feed / Carousel 4:5 (Kartu Sedang / Instagram)</option>
                 </select>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Menentukan proporsi tinggi kartu di papan Masonry Galeri Sosmed.
+                </p>
               </div>
 
               <div>

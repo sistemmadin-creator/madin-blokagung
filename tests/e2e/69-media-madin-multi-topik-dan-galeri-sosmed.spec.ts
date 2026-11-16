@@ -100,14 +100,22 @@ test.describe('69 - Media Madin, Multi-Topik Berita (Umum + Jenjang), & Portofol
     await page.getByRole('button', { name: 'Umum', exact: true }).click();
     await page.getByRole('button', { name: 'Semua Topik', exact: true }).click();
 
-    // Klik tombol Putar Karya Sekarang pada Featured Showreel
-    await page.getByRole('button', { name: /Putar Karya Sekarang/i }).click();
+    // Klik pin karya pertama di papan Masonry untuk membuka Lightbox pemutar
+    await page.getByRole('button', { name: /^Tonton karya /i }).first().click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
 
     // Tutup modal dengan Escape
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
+
+    // Verifikasi responsivitas 2-kolom mobile (375px) pada /galeri-sosmed tanpa overflow
+    await page.setViewportSize({ width: 375, height: 812 });
+    const sosmedOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth
+    );
+    expect(sosmedOverflow).toBe(false);
+    await page.setViewportSize({ width: 1280, height: 800 });
 
     // 8. Navigasi ke Arsip Kabar Berita (/berita) dan uji filter Umum
     await page.getByRole('link', { name: 'Arsip Kabar Berita' }).click();

@@ -215,4 +215,40 @@ export const SEED_GALERI_SOSMED: GaleriSosmedItem[] = [
     published_at: '2026-11-05T16:45:00Z',
     created_at: '2026-11-05T16:45:00Z',
   },
+  {
+    id: 'sosmed-007',
+    title: 'Infografis Jadwal Takror Siang & Persiapan Imtihan Semester Ganjil',
+    caption:
+      'Panduan visual tata tertib takror siang dan persiapan ujian kitab kuning seluruh jenjang Ula, Wustho, dan Ulya.',
+    platform: 'instagram',
+    content_format: 'post',
+    source_url: 'https://www.instagram.com/p/C9abc456def/',
+    embed_id: 'C9abc456def',
+    thumbnail_url:
+      'https://images.unsplash.com/photo-1519682337058-a94d519337bc?auto=format&fit=crop&w=800&q=80',
+    topics: ['umum', 'tingkat_ula', 'tingkat_wustho'],
+    creator_name: 'Divisi Desain Grafis Media Madin',
+    is_pinned: false,
+    status: 'published',
+    published_at: '2026-11-02T09:00:00Z',
+    created_at: '2026-11-02T09:00:00Z',
+  },
+  {
+    id: 'sosmed-008',
+    title: 'Momen Khidmat Setoran Hafalan Nadhom Imrithi & Juz Amma Sore Hari',
+    caption:
+      'Cuplikan semangat santri dalam menyetorkan hafalan muhafadzoh harian sebelum waktu maghrib bersama mustahiq.',
+    platform: 'tiktok',
+    content_format: 'vertical',
+    source_url: 'https://www.tiktok.com/@madinblokagung/video/7350000000000000003',
+    embed_id: '7350000000000000003',
+    thumbnail_url:
+      'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=800&q=80',
+    topics: ['tingkat_ula'],
+    creator_name: 'Tim Reels & TikTok Media Madin',
+    is_pinned: false,
+    status: 'published',
+    published_at: '2026-10-29T17:15:00Z',
+    created_at: '2026-10-29T17:15:00Z',
+  },
 ];

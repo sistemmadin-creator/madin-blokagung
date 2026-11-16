@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   ExternalLink,
@@ -8,6 +8,10 @@ import {
   User,
   Sparkles,
   Play,
+  Copy,
+  Check,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import {
   GaleriSosmedItem,
@@ -22,22 +26,40 @@ import { sanitizeHttpUrl } from '@/lib/security/urlSanitizer';
 interface ModalLightboxSosmedProps {
   item: GaleriSosmedItem | null;
   onClose: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  hasPrev?: boolean;
+  hasNext?: boolean;
 }
 
 export default function ModalLightboxSosmed({
   item,
   onClose,
+  onPrev,
+  onNext,
+  hasPrev = false,
+  hasNext = false,
 }: ModalLightboxSosmedProps) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setCopied(false);
+  }, [item?.id]);
+
   useEffect(() => {
     if (!item) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
+      } else if (e.key === 'ArrowLeft' && hasPrev && onPrev) {
+        onPrev();
+      } else if (e.key === 'ArrowRight' && hasNext && onNext) {
+        onNext();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [item, onClose]);
+  }, [item, onClose, hasPrev, hasNext, onPrev, onNext]);
 
   if (!item) return null;
 
@@ -163,15 +185,70 @@ export default function ModalLightboxSosmed({
 
           {/* Tombol Aksi Bawah */}
           <div className="pt-6 mt-6 border-t border-slate-800 space-y-2.5">
-            <a
-              href={safeExternalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-emerald-950 font-extrabold text-xs sm:text-sm transition shadow-md focus:outline-none focus:ring-2 focus:ring-amber-200"
-            >
-              <span>Buka Langsung di {platformMeta.label}</span>
-              <ExternalLink className="w-4 h-4" />
-            </a>
+            {(hasPrev || hasNext) && (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={!hasPrev}
+                  onClick={onPrev}
+                  className="min-h-[40px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-200 text-xs font-bold transition disabled:opacity-35 cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Sebelumnya</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={!hasNext}
+                  onClick={onNext}
+                  className="min-h-[40px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-200 text-xs font-bold transition disabled:opacity-35 cursor-pointer"
+                >
+                  <span>Berikutnya</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
+              <a
+                href={safeExternalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-emerald-950 font-extrabold text-xs sm:text-sm transition shadow-md focus:outline-none focus:ring-2 focus:ring-amber-200"
+              >
+                <span>Buka di {platformMeta.label}</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  if (safeExternalUrl !== '#' && navigator?.clipboard) {
+                    try {
+                      await navigator.clipboard.writeText(safeExternalUrl);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1800);
+                    } catch {
+                      // Ignore clipboard permission errors
+                    }
+                  }
+                }}
+                aria-label="Salin tautan karya"
+                className="min-h-[44px] px-3.5 py-3 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-200 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span className="text-emerald-300">Tersalin</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>Salin</span>
+                  </>
+                )}
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={onClose}
