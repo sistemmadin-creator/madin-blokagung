@@ -4,12 +4,12 @@ const isDev = process.env.NODE_ENV === 'development';
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://www.tiktok.com`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://www.tiktok.com https://www.instagram.com`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
-  "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://*.tiktokcdn.com",
+  "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://*.tiktokcdn.com https://i.ytimg.com https://img.youtube.com https://*.cdninstagram.com",
   `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.ingest.sentry.io https://*.sentry.io${isDev ? ' http://localhost:* ws://localhost:*' : ''}`,
-  "frame-src 'self' https://www.tiktok.com",
+  "frame-src 'self' https://www.tiktok.com https://www.youtube.com https://www.youtube-nocookie.com https://www.instagram.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

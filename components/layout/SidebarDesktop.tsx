@@ -31,6 +31,7 @@ import {
   Wrench,
   CheckSquare,
   Home,
+  Film,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { useSidebarConfigStore, DEFAULT_SIDEBAR_GROUPS } from '@/stores/useSidebarConfigStore';
@@ -65,6 +66,7 @@ const ICON_REGISTRY: Record<string, React.ReactNode> = {
   Package: <Package className="w-5 h-5 flex-shrink-0" />,
   Wrench: <Wrench className="w-5 h-5 flex-shrink-0" />,
   CheckSquare: <CheckSquare className="w-5 h-5 flex-shrink-0" />,
+  Film: <Film className="w-5 h-5 flex-shrink-0" />,
 };
 
 const SUB_ICON_REGISTRY: Record<string, React.ReactNode> = {
@@ -235,7 +237,7 @@ export default function SidebarDesktop() {
                 PUSAT SISTEM
               </div>
               <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-200/75 truncate mt-0.5">
-                Madina Blokagung
+                Madin Blokagung
               </div>
             </div>
           </div>

@@ -51,7 +51,7 @@ test.describe('E2E: Pengujian Komprehensif Halaman BERANDA & Alur Navigasi Terpa
     await expect(page.getByRole('heading', { name: 'PKM. Muhafadzoh', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'PKM. Kesiswaan', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'PKM. Sapras', exact: true })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'PKM. Publikasi & Warta', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'PKM. Media Madin', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'EBTADIN', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Pengaturan', exact: true })).toBeVisible();
   });

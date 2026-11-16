@@ -5,7 +5,7 @@ import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Clock, BookOpen } from 'lucide-react';
-import { WartaBerita, TOPIK_BERITA_MAP } from '@/types/berita';
+import { WartaBerita, TOPIK_BERITA_MAP, getPostTopics } from '@/types/berita';
 
 interface BeritaCardGridProps {
   post: WartaBerita;
@@ -13,7 +13,7 @@ interface BeritaCardGridProps {
 
 export default function BeritaCardGrid({ post }: BeritaCardGridProps) {
   const [hasImgError, setHasImgError] = useState(false);
-  const topikMeta = TOPIK_BERITA_MAP[post.topic] || TOPIK_BERITA_MAP.tingkat_ula;
+  const postTopics = getPostTopics(post);
 
   const formattedDate = formatBeritaDateWib(post.published_at, 'dayMonth');
 
@@ -36,11 +36,19 @@ export default function BeritaCardGrid({ post }: BeritaCardGridProps) {
             <BookOpen className="w-8 h-8 opacity-40" />
           </div>
         )}
-        {/* Badge Topik di Sudut Kiri Atas */}
-        <div className="absolute top-2.5 left-2.5">
-          <span className={`px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider ${topikMeta.badgeBg} ${topikMeta.badgeText} shadow-xs`}>
-            {topikMeta.shortTitle}
-          </span>
+        {/* Badge Topik (Multi-Kategori) di Sudut Kiri Atas */}
+        <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
+          {postTopics.map((tKey) => {
+            const topikMeta = TOPIK_BERITA_MAP[tKey] || TOPIK_BERITA_MAP.umum;
+            return (
+              <span
+                key={tKey}
+                className={`px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider ${topikMeta.badgeBg} ${topikMeta.badgeText} shadow-xs`}
+              >
+                {topikMeta.shortTitle}
+              </span>
+            );
+          })}
         </div>
       </div>
 

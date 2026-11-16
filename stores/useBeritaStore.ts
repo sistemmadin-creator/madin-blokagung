@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { WartaBerita, TopikBerita, StatusBerita, DisplayTypeBerita, SEED_BERITA } from '@/types/berita';
+import { WartaBerita, TopikBerita, StatusBerita, DisplayTypeBerita, SEED_BERITA, getPostTopics } from '@/types/berita';
 import { supabase } from '@/lib/supabase/client';
 
 const STORAGE_KEY = 'madina_warta_berita_cache';
@@ -37,6 +37,23 @@ interface BeritaState {
   closeDetailModal: () => void;
 }
 
+function normalizePostRecord(item: WartaBerita): WartaBerita {
+  const normalizedTopics = getPostTopics(item);
+  const primaryTopic = normalizedTopics[0] || item.topic || 'umum';
+  let cover = item.cover_image_url;
+  if (cover?.includes('photo-1584697964190-705b89369947')) {
+    cover = 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=1200&q=80';
+  } else if (cover?.includes('photo-1532012164546-f432f2e3edd4')) {
+    cover = 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80';
+  }
+  return {
+    ...item,
+    topic: primaryTopic,
+    topics: normalizedTopics,
+    cover_image_url: cover,
+  };
+}
+
 // Helper sinkronisasi local storage
 function saveToLocal(posts: WartaBerita[]) {
   if (typeof window !== 'undefined') {
@@ -55,21 +72,19 @@ function loadFromLocal(): WartaBerita[] {
       if (data) {
         const parsed = JSON.parse(data) as WartaBerita[];
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Perbaiki otomatis gambar seed yang sempat 404 pada cache lama
           const repaired = parsed.map((item) => {
-            if (item.cover_image_url?.includes('photo-1584697964190-705b89369947')) {
-              return { ...item, cover_image_url: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=1200&q=80' };
-            }
-            if (item.cover_image_url?.includes('photo-1532012164546-f432f2e3edd4')) {
-              return { ...item, cover_image_url: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80' };
-            }
-            return item;
+            const seedMatch = SEED_BERITA.find((s) => s.id === item.id);
+            const mergedItem: WartaBerita =
+              seedMatch && (!Array.isArray(item.topics) || item.topics.length === 0)
+                ? { ...item, topics: seedMatch.topics || [item.topic] }
+                : item;
+            return normalizePostRecord(mergedItem);
           });
           // Tambahkan seed baru jika data lokal lama masih kurang dari daftar seed terbaru
           const existingIds = new Set(repaired.map((p) => p.id));
           const missingSeeds = SEED_BERITA.filter((p) => !existingIds.has(p.id));
           if (missingSeeds.length > 0) {
-            return [...repaired, ...missingSeeds];
+            return [...repaired, ...missingSeeds.map(normalizePostRecord)];
           }
           return repaired;
         }
@@ -78,7 +93,7 @@ function loadFromLocal(): WartaBerita[] {
       // Ignore parse errors
     }
   }
-  return SEED_BERITA;
+  return SEED_BERITA.map(normalizePostRecord);
 }
 
 export const useBeritaStore = create<BeritaState>((set, get) => ({
@@ -108,8 +123,9 @@ export const useBeritaStore = create<BeritaState>((set, get) => ({
         .order('published_at', { ascending: false });
 
       if (!error && data && data.length > 0) {
-        set({ posts: data as WartaBerita[], isLoading: false });
-        saveToLocal(data as WartaBerita[]);
+        const normalized = (data as WartaBerita[]).map(normalizePostRecord);
+        set({ posts: normalized, isLoading: false });
+        saveToLocal(normalized);
         return;
       }
     } catch {
@@ -135,8 +151,14 @@ export const useBeritaStore = create<BeritaState>((set, get) => ({
     } catch {
       newId = `warta-${Date.now()}`;
     }
+
+    const normalizedTopics = getPostTopics(postData);
+    const primaryTopic = normalizedTopics[0] || postData.topic || 'umum';
+
     const newPost: WartaBerita = {
       ...postData,
+      topic: primaryTopic,
+      topics: normalizedTopics,
       id: newId,
       views_count: 0,
       created_at: new Date().toISOString(),
@@ -150,7 +172,12 @@ export const useBeritaStore = create<BeritaState>((set, get) => ({
 
     // Coba simpan ke Supabase jika terhubung
     try {
-      await supabase.from('warta_berita').insert([newPost]);
+      const { error } = await supabase.from('warta_berita').insert([newPost]);
+      if (error) {
+        // Fallback jika kolom topics belum dimigrasi di database remote
+        const { topics: _ignoredTopics, ...legacyPayload } = newPost;
+        await supabase.from('warta_berita').insert([legacyPayload]);
+      }
     } catch {
       // Disimpan di local storage
     }
@@ -161,13 +188,20 @@ export const useBeritaStore = create<BeritaState>((set, get) => ({
   updatePost: async (id, updates) => {
     set({ isLoading: true });
     const current = get().posts;
+    const normalizedUpdates: Partial<WartaBerita> = { ...updates };
+    if (updates.topics && updates.topics.length > 0) {
+      normalizedUpdates.topic = updates.topics[0];
+    } else if (updates.topic && !updates.topics) {
+      normalizedUpdates.topics = [updates.topic];
+    }
+
     const updated = current.map((p) => {
       if (p.id === id) {
-        return {
+        return normalizePostRecord({
           ...p,
-          ...updates,
+          ...normalizedUpdates,
           updated_at: new Date().toISOString(),
-        };
+        });
       }
       return p;
     });
@@ -176,7 +210,11 @@ export const useBeritaStore = create<BeritaState>((set, get) => ({
     saveToLocal(updated);
 
     try {
-      await supabase.from('warta_berita').update(updates).eq('id', id);
+      const { error } = await supabase.from('warta_berita').update(normalizedUpdates).eq('id', id);
+      if (error && 'topics' in normalizedUpdates) {
+        const { topics: _ignoredTopics, ...legacyUpdates } = normalizedUpdates;
+        await supabase.from('warta_berita').update(legacyUpdates).eq('id', id);
+      }
     } catch {
       // Local fallback
     }

@@ -13,7 +13,7 @@ import {
 import { NavbarProfil, FooterProfil } from '@/components/modules/profil';
 import { useBeritaStore } from '@/stores/useBeritaStore';
 import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
-import { TopikBerita, TOPIK_BERITA_MAP } from '@/types/berita';
+import { TopikBerita, TOPIK_BERITA_MAP, TOPIK_BERITA_ORDER, getPostTopics, hasPostTopic } from '@/types/berita';
 
 export default function ArsipBeritaPage() {
   const { posts, fetchPosts, isLoading } = useBeritaStore();
@@ -29,10 +29,10 @@ export default function ArsipBeritaPage() {
     return posts.filter((p) => p.status === 'published');
   }, [posts]);
 
-  // Filter warta
+  // Filter warta (Mendukung Multi-Kategori)
   const filteredPosts = useMemo(() => {
     return publishedPosts.filter((post) => {
-      if (selectedTopic !== 'all' && post.topic !== selectedTopic) return false;
+      if (selectedTopic !== 'all' && !hasPostTopic(post, selectedTopic)) return false;
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchTitle = post.title.toLowerCase().includes(query);
@@ -114,10 +114,10 @@ export default function ArsipBeritaPage() {
                 Semua Topik ({publishedPosts.length})
               </button>
 
-              {(Object.keys(TOPIK_BERITA_MAP) as TopikBerita[]).map((key) => {
+              {TOPIK_BERITA_ORDER.map((key) => {
                 const meta = TOPIK_BERITA_MAP[key];
                 const isSelected = selectedTopic === key;
-                const count = publishedPosts.filter((p) => p.topic === key).length;
+                const count = publishedPosts.filter((p) => hasPostTopic(p, key)).length;
                 return (
                   <button
                     key={key}
@@ -149,7 +149,7 @@ export default function ArsipBeritaPage() {
           ) : filteredPosts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredPosts.map((post) => {
-                const topikMeta = TOPIK_BERITA_MAP[post.topic];
+                const postTopics = getPostTopics(post);
                 const formattedDate = formatBeritaDateWib(post.published_at, 'short');
 
                 return (
@@ -169,10 +169,18 @@ export default function ArsipBeritaPage() {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 relative z-10"
                       />
                       <Newspaper className="w-8 h-8 text-slate-300 dark:text-slate-600 absolute" />
-                      <div className="absolute top-3 left-3 z-20">
-                        <span className={`px-2.5 py-1 rounded-lg text-[10px] uppercase tracking-wider ${topikMeta.badgeBg} ${topikMeta.badgeText} shadow-md`}>
-                          {topikMeta.title}
-                        </span>
+                      <div className="absolute top-3 left-3 z-20 flex flex-wrap gap-1">
+                        {postTopics.map((tKey) => {
+                          const topikMeta = TOPIK_BERITA_MAP[tKey] || TOPIK_BERITA_MAP.umum;
+                          return (
+                            <span
+                              key={tKey}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] uppercase tracking-wider ${topikMeta.badgeBg} ${topikMeta.badgeText} shadow-md`}
+                            >
+                              {topikMeta.title}
+                            </span>
+                          );
+                        })}
                       </div>
                     </div>
 

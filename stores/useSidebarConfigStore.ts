@@ -249,9 +249,10 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
   },
   {
     id: 'grp-publikasi',
-    group: 'PKM. Publikasi & Warta',
+    group: 'PKM. Media Madin',
     items: [
       { id: 'item-berita', title: 'Kelola Berita', href: '/kelola-berita', iconName: 'Newspaper' },
+      { id: 'item-galeri-sosmed', title: 'Kelola Galeri Sosmed', href: '/kelola-galeri-sosmed', iconName: 'Film' },
     ],
   },
 ];
@@ -322,7 +323,16 @@ function mergeMissingDefaultItems(loadedGroups: ConfigMenuGroup[]): ConfigMenuGr
 
     return {
       ...g,
-      hidden: g.id === 'grp-kesiswaan' || g.id === 'grp-sapras' || g.id === 'grp-ebtadin' ? false : g.hidden,
+      group:
+        g.id === 'grp-publikasi' && g.group === 'PKM. Publikasi & Warta'
+          ? 'PKM. Media Madin'
+          : g.group,
+      hidden:
+        g.id === 'grp-kesiswaan' ||
+        g.id === 'grp-sapras' ||
+        g.id === 'grp-ebtadin'
+          ? false
+          : g.hidden,
       items: finalItems,
     };
   });

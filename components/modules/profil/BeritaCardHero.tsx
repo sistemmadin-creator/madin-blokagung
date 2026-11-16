@@ -5,7 +5,7 @@ import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Clock, Tag, ArrowRight, BookOpen } from 'lucide-react';
-import { WartaBerita, TOPIK_BERITA_MAP } from '@/types/berita';
+import { WartaBerita, TOPIK_BERITA_MAP, getPostTopics } from '@/types/berita';
 
 interface BeritaCardHeroProps {
   post: WartaBerita;
@@ -13,7 +13,7 @@ interface BeritaCardHeroProps {
 
 export default function BeritaCardHero({ post }: BeritaCardHeroProps) {
   const [hasImgError, setHasImgError] = useState(false);
-  const topikMeta = TOPIK_BERITA_MAP[post.topic] || TOPIK_BERITA_MAP.kelas_unggulan;
+  const postTopics = getPostTopics(post);
 
   // Format tanggal publikasi secara deterministik pada kalender WIB
   const formattedDate = formatBeritaDateWib(post.published_at, 'short');
@@ -42,11 +42,19 @@ export default function BeritaCardHero({ post }: BeritaCardHeroProps) {
 
       {/* Konten Berita di Atas Scrim */}
       <div className="absolute inset-0 p-5 sm:p-7 lg:p-8 flex flex-col justify-end">
-        {/* Baris Badge Kategori & Waktu */}
-        <div className="flex items-center gap-2.5 flex-wrap mb-3">
-          <span className={`px-3 py-1 rounded-full text-xs uppercase tracking-wider ${topikMeta.badgeBg} ${topikMeta.badgeText} shadow-md`}>
-            {topikMeta.title}
-          </span>
+        {/* Baris Badge Kategori (Multi-Topik) & Waktu */}
+        <div className="flex items-center gap-2 flex-wrap mb-3">
+          {postTopics.map((tKey) => {
+            const topikMeta = TOPIK_BERITA_MAP[tKey] || TOPIK_BERITA_MAP.umum;
+            return (
+              <span
+                key={tKey}
+                className={`px-3 py-1 rounded-full text-xs uppercase tracking-wider ${topikMeta.badgeBg} ${topikMeta.badgeText} shadow-md`}
+              >
+                {topikMeta.title}
+              </span>
+            );
+          })}
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-slate-200 bg-white/15 backdrop-blur-xs border border-white/15">
             <Clock className="w-3.5 h-3.5 text-amber-300" />
             <span>{formattedDate}</span>

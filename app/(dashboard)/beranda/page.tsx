@@ -45,6 +45,7 @@ import {
   School,
   FileCheck,
   MapPin,
+  Film,
 } from 'lucide-react';
 import { useSidebarConfigStore, DEFAULT_SIDEBAR_GROUPS } from '@/stores/useSidebarConfigStore';
 import { ConfigMenuGroup, ConfigMenuItem, ConfigSubMenuItem } from '@/types/sidebar-config';
@@ -119,6 +120,7 @@ const ITEM_ICON_REGISTRY: Record<string, React.ReactNode> = {
   Package: <Package className="w-4 h-4 text-cyan-700" />,
   Wrench: <Wrench className="w-4 h-4 text-amber-700" />,
   CheckSquare: <CheckSquare className="w-4 h-4 text-emerald-600" />,
+  Film: <Film className="w-4 h-4 text-emerald-700" />,
 };
 
 // Deskripsi penjelas ringkas tiap grup menu
@@ -129,7 +131,7 @@ const GROUP_DESCRIPTIONS: Record<string, string> = {
   'grp-muhafadzoh': 'Pencatatan setoran nadhom & Al-Qur’an, rekap hafalan, dan sertifikasi piagam.',
   'grp-kesiswaan': 'Presensi kehadiran pengajar, absen cepat gerbang, dan rekapitulasi KBM.',
   'grp-sapras': 'Pengelolaan sarana prasarana, inventaris kelas, dan perbaikan logistik.',
-  'grp-publikasi': 'Warta madrasah, publikasi artikel berita, dan informasi santri.',
+  'grp-publikasi': 'Kabar madrasah, publikasi artikel berita, dan portofolio galeri sosmed Media Madin.',
   'grp-ebtadin': 'Pusat kendali ujian akhir kelulusan (EBTADIN), rekap nilai, dan serah ijazah.',
   'grp-pengaturan': 'Konfigurasi tahun ajaran, manajemen otoritas akun, dan audit log sistem.',
 };

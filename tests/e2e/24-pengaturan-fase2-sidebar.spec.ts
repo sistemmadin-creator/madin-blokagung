@@ -76,8 +76,8 @@ test.describe('Fase 2: Ubah Sidebar Tingkat Lanjut (Sub-menu, Visibility, Pindah
 
     const sidebar = page.getByRole('complementary');
 
-    // Awalnya grup PKM. Publikasi & Warta terlihat di sidebar
-    await expect(sidebar.getByText(/Publikasi & Warta/i)).toBeVisible();
+    // Awalnya grup PKM. Media Madin terlihat di sidebar
+    await expect(sidebar.getByText(/PKM\. Media Madin/i)).toBeVisible();
 
     // Klik tombol toggle visibility grup Publikasi
     const togglePublikasi = page.getByTestId('btn-toggle-group-visibility-grp-publikasi');
@@ -86,12 +86,12 @@ test.describe('Fase 2: Ubah Sidebar Tingkat Lanjut (Sub-menu, Visibility, Pindah
     // Verifikasi teks indikator di editor
     await expect(page.getByText('Grup Disembunyikan')).toBeVisible();
 
-    // Di sidebar desktop, grup PKM. Publikasi & Warta tidak lagi dirender
-    await expect(sidebar.getByText(/Publikasi & Warta/i)).not.toBeVisible();
+    // Di sidebar desktop, grup PKM. Media Madin tidak lagi dirender
+    await expect(sidebar.getByText(/PKM\. Media Madin/i)).not.toBeVisible();
 
     // Tampilkan kembali grup
     await togglePublikasi.click();
-    await expect(sidebar.getByText(/Publikasi & Warta/i)).toBeVisible();
+    await expect(sidebar.getByText(/PKM\. Media Madin/i)).toBeVisible();
   });
 
   test('4. Dapat memindahkan item menu ke kategori grup lain', async ({ page }) => {

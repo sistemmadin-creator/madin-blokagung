@@ -18,12 +18,19 @@ describe('useSidebarConfigStore Unit Tests (Fase 1 & Fase 2)', () => {
     expect(groupNames).toContain('PKM. Muhafadzoh');
     expect(groupNames).toContain('PKM. Kesiswaan');
     expect(groupNames).toContain('PKM. Sapras');
-    expect(groupNames).toContain('PKM. Publikasi & Warta');
+    expect(groupNames).toContain('PKM. Media Madin');
 
-    // Posisi PKM. Publikasi & Warta berada setelah PKM. Sapras
+    // Posisi PKM. Media Madin berada setelah PKM. Sapras
     const idxSapras = groupNames.indexOf('PKM. Sapras');
-    const idxPublikasi = groupNames.indexOf('PKM. Publikasi & Warta');
+    const idxPublikasi = groupNames.indexOf('PKM. Media Madin');
     expect(idxPublikasi).toBeGreaterThan(idxSapras);
+
+    // Grup PKM. Media Madin memiliki 2 menu: Kelola Berita & Kelola Galeri Sosmed
+    const mediaGroup = groups.find((g) => g.id === 'grp-publikasi');
+    expect(mediaGroup?.items.map((it) => it.title)).toEqual([
+      'Kelola Berita',
+      'Kelola Galeri Sosmed',
+    ]);
   });
 
   it('2. mengubah nama grup dengan renameGroup', () => {

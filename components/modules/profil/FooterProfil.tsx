@@ -25,16 +25,16 @@ export default function FooterProfil() {
               </div>
               <div>
                 <h3 className="text-xl font-bold font-serif text-white tracking-tight">
-                  MADINA Blokagung
+                  Madin Blokagung
                 </h3>
                 <p className="text-xs text-emerald-300 font-medium">
-                  Madrasah Diniyyah Al-Amiriyyah
+                  Ponpes Darussalam Blokagung
                 </p>
               </div>
             </div>
 
             <p className="text-xs sm:text-sm text-emerald-200/80 leading-relaxed max-w-md">
-              Lembaga pendidikan keagamaan Islam klasikal berskala besar di Pondok Pesantren Darussalam Blokagung yang membina ± 5.400 santri dalam khazanah kitab kuning salafiyah dengan disiplin dan keteladanan akhlak mulia.
+              Lembaga pendidikan keagamaan Islam klasikal berskala besar di Ponpes Darussalam Blokagung yang membina ribuan santri dalam khazanah kitab kuning salafiyah dengan disiplin dan keteladanan akhlak mulia.
             </p>
           </div>
 
@@ -45,9 +45,21 @@ export default function FooterProfil() {
             </h4>
             <ul className="space-y-2 text-xs sm:text-sm text-emerald-200/80">
               <li>
-                <a href="#hero" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                <a href="/#hero" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
                   <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
                   <span>Beranda</span>
+                </a>
+              </li>
+              <li>
+                <a href="/#berita" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Media Madin</span>
+                </a>
+              </li>
+              <li>
+                <a href="/galeri-sosmed" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Galeri Sosmed</span>
                 </a>
               </li>
               <li>
@@ -102,7 +114,7 @@ export default function FooterProfil() {
         {/* Bottom Bar: Copyright & Attribution */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-emerald-300/70 text-center sm:text-left">
           <p>
-            &copy; {getCurrentYearWib()} Madrasah Diniyyah Al-Amiriyyah (MADINA) PP. Darussalam Blokagung.
+            &copy; {getCurrentYearWib()} Madrasah Diniyyah Al-Amiriyyah (Madin Blokagung) Ponpes Darussalam Blokagung.
           </p>
           <div className="flex items-center gap-1 text-emerald-400/80">
             <span>Dirawat dengan khidmah untuk pesantren salaf</span>

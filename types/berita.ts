@@ -1,13 +1,22 @@
 /**
- * Tipe Data dan Metadata Modul Warta Berita MADINA Blokagung
+ * Tipe Data dan Metadata Modul Media & Kabar Berita Madin Blokagung
  * Mengadopsi tata letak editorial majalah pesantren ala Lirboyo.net
  */
 
 export type TopikBerita = 
+  | 'umum'
   | 'kelas_unggulan' 
   | 'tingkat_ula' 
   | 'tingkat_wustho' 
   | 'tingkat_ulya';
+
+export const TOPIK_BERITA_ORDER: TopikBerita[] = [
+  'umum',
+  'kelas_unggulan',
+  'tingkat_ula',
+  'tingkat_wustho',
+  'tingkat_ulya',
+];
 
 export type DisplayTypeBerita = 
   | 'hero_lead'      // Kartu besar utama sebelah kiri (seperti di Lirboyo.net)
@@ -24,6 +33,7 @@ export interface WartaBerita {
   title: string;
   slug: string;
   topic: TopikBerita;
+  topics?: TopikBerita[];
   display_type: DisplayTypeBerita;
   excerpt: string;
   content: string;
@@ -50,6 +60,16 @@ export interface TopikMeta {
 }
 
 export const TOPIK_BERITA_MAP: Record<TopikBerita, TopikMeta> = {
+  umum: {
+    code: 'umum',
+    title: 'Umum',
+    shortTitle: 'Umum',
+    badgeBg: 'bg-teal-700',
+    badgeText: 'text-white font-bold',
+    borderColor: 'border-teal-500',
+    lightBg: 'bg-teal-50 dark:bg-teal-950/40',
+    description: 'Kabar umum madrasah, maklumat pesantren, dan kegiatan lintas jenjang.',
+  },
   kelas_unggulan: {
     code: 'kelas_unggulan',
     title: 'Kelas Unggulan',
@@ -93,8 +113,34 @@ export const TOPIK_BERITA_MAP: Record<TopikBerita, TopikMeta> = {
 };
 
 /**
+ * Helper mengembalikan daftar kategori topik yang dimiliki sebuah berita
+ * Mendukung data lama (topic tunggal) maupun data baru (array topics multi-select)
+ */
+export function getPostTopics(post: Pick<WartaBerita, 'topic' | 'topics'>): TopikBerita[] {
+  const validSet = new Set<string>(TOPIK_BERITA_ORDER);
+  if (Array.isArray(post.topics) && post.topics.length > 0) {
+    const cleaned = post.topics.filter((t): t is TopikBerita => validSet.has(t));
+    if (cleaned.length > 0) {
+      return Array.from(new Set(cleaned));
+    }
+  }
+  if (post.topic && validSet.has(post.topic)) {
+    return [post.topic];
+  }
+  return ['umum'];
+}
+
+export function hasPostTopic(
+  post: Pick<WartaBerita, 'topic' | 'topics'>,
+  target: TopikBerita | 'all'
+): boolean {
+  if (target === 'all') return true;
+  return getPostTopics(post).includes(target);
+}
+
+/**
  * Data Awal / Seed Berita Realistis Madin Blokagung
- * Dibuat berbasis kultur otentik Pesantren Darussalam Blokagung
+ * Dibuat berbasis kultur otentik Ponpes Darussalam Blokagung
  */
 export const SEED_BERITA: WartaBerita[] = [
   {
@@ -102,6 +148,7 @@ export const SEED_BERITA: WartaBerita[] = [
     title: 'Kuliah Umum & Penguatan Literasi Kitab Kuning Kelas Unggulan Bersama Dewan Masyayikh',
     slug: 'kuliah-umum-literasi-kitab-kuning-kelas-unggulan',
     topic: 'kelas_unggulan',
+    topics: ['umum', 'kelas_unggulan'],
     display_type: 'hero_lead',
     excerpt: 'Madrasah Diniyyah Al-Amiriyyah menyelenggarakan pembekalan metodologi syawir kutubut turots bagi santri kelas unggulan guna mematangkan kesiapan Daur Tsani tanpa mbalah.',
     content: `Madrasah Diniyyah Al-Amiriyyah Pondok Pesantren Darussalam Blokagung kembali mengukuhkan komitmen penguatan tradisi keilmuan salafiyah melalui penyelenggaraan Kuliah Umum dan Orientasi Metodologi Syawir bagi santri Kelas Unggulan.
@@ -110,7 +157,7 @@ Bertempat di Aula Utama Madrasah, kegiatan ini dihadiri jajaran Majelis Pendidik
 
 Sebagaimana dawuh Almaghfurlah KH. Mukhtar Syafa'at: "Openono perkoro seng ono, mongko bakal maujud perkoro seng ora ono." Semangat menjaga kemurnian kajian turots inilah yang menjadi pilar utama kaderisasi ulama di Blokagung.`,
     cover_image_url: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=1200&q=80',
-    author_name: 'Redaksi Media Madina',
+    author_name: 'Redaksi Madin Blokagung',
     status: 'published',
     views_count: 428,
     tags: ['Kelas Unggulan', 'Syawir Kubro', 'Turots Salaf'],
@@ -123,6 +170,7 @@ Sebagaimana dawuh Almaghfurlah KH. Mukhtar Syafa'at: "Openono perkoro seng ono, 
     title: 'Ujian Tasmi\' Nadzom Al-Jurumiyyah & Imrithi Serentak Santri Tingkat ULA Semester Gasal',
     slug: 'ujian-tasmi-nadzom-tingkat-ula-semester-gasal',
     topic: 'tingkat_ula',
+    topics: ['umum', 'tingkat_ula'],
     display_type: 'highlight_grid',
     excerpt: 'Ribuan santri tingkat ULA mengikuti evaluasi muhafadzoh nadzom dasar dengan metode setoran berhadapan langsung di hadapan mustahiq penguji.',
     content: `Sebanyak 1.800 santri Tingkat ULA (1 Ula hingga 4 Ula) serentak mengikuti rangkaian Ujian Tasmi' Muhafadzoh Nadzom Jurumiyyah, Aqidatul Awam, dan Imrithi. Kegiatan berlangsung khidmah di serambi asrama masing-masing di bawah pengawasan langsung tim PKM Muhafadzoh.
@@ -144,6 +192,7 @@ Setiap santri wajib menyetorkan bait demi bait dengan intonasi bahr yang tepat d
     title: 'Musyawarah Wustho: Mengurai Masail Fiqhiyyah Kontemporer Berpijak Fathul Qorib',
     slug: 'musyawarah-wustho-masail-fiqhiyyah-fathul-qorib',
     topic: 'tingkat_wustho',
+    topics: ['tingkat_wustho'],
     display_type: 'highlight_grid',
     excerpt: 'Diskusi mingguan santri Wustho mengasah nalar ushul dan ketepatan ibarat kitab dalam menjawab dinamika muamalah terkini santri.',
     content: `Forum musyawarah antar-rombel tingkat Wustho kembali digelar malam Selasa. Mengangkat tema kajian bab Muamalah Fathul Qorib Mujib, para musyawirin aktif beradu argumen dalil dan kutipan syarah para ulama Syafi'iyyah.`,
@@ -161,6 +210,7 @@ Setiap santri wajib menyetorkan bait demi bait dengan intonasi bahr yang tepat d
     title: 'Kaderisasi Mustahiq: Halaqoh Fathul Wahhab Tingkat ULYA Menuju Khidmah Pesantren',
     slug: 'kaderisasi-mustahiq-halaqoh-fathul-wahhab-ulya',
     topic: 'tingkat_ulya',
+    topics: ['tingkat_ulya'],
     display_type: 'highlight_grid',
     excerpt: 'Santri tingkat akhir Ulya dibekali sanad keilmuan dan metodologi mengajar kitab berjenjang guna persiapan penugasan mengajar di asrama.',
     content: `Menjelang akhir tahun ajaran, santri 2 Ulya mengikuti halaqoh intensif pendalaman kitab Fathul Wahhab karya Syaikhul Islam Zakariya Al-Anshari. Program ini merupakan jenjang puncak kaderisasi mustahiq di Madin Al-Amiriyyah Blokagung.`,
@@ -177,12 +227,13 @@ Setiap santri wajib menyetorkan bait demi bait dengan intonasi bahr yang tepat d
     id: 'warta-005',
     title: 'Prestasi Gemilang Delegasi Bahtsul Masail Kubro Antar-Pondok Pesantren Se-Jawa Timur',
     slug: 'prestasi-gemilang-delegasi-bahtsul-masail-kubro',
-    topic: 'kelas_unggulan',
+    topic: 'umum',
+    topics: ['umum', 'kelas_unggulan', 'tingkat_ulya'],
     display_type: 'highlight_grid',
     excerpt: 'Kombinasi ketajaman analisa santri Kelas Unggulan dan Ulya membuktikan ketangguhan sistem takror madrasah di kancah bahtsul masail eksternal.',
     content: `Kafilah Bahtsul Masail Madin Blokagung berhasil meraih predikat musyawirin terbaik dalam ajang Bahtsul Masail Kubro. Keberhasilan ini tidak lepas dari pembiasaan takror rutin dan kemandirian kajian di kelas unggulan.`,
     cover_image_url: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=800&q=80',
-    author_name: 'Humas PP. Darussalam Blokagung',
+    author_name: 'Humas Ponpes Darussalam Blokagung',
     status: 'published',
     views_count: 630,
     tags: ['Prestasi', 'Bahtsul Masail', 'Unggulan'],
@@ -194,6 +245,7 @@ Setiap santri wajib menyetorkan bait demi bait dengan intonasi bahr yang tepat d
     title: 'Pelaksanaan Takror Siang Intensif Jelang Evaluasi Triwulan Pertama',
     slug: 'pelaksanaan-takror-siang-intensif-triwulan',
     topic: 'tingkat_ula',
+    topics: ['tingkat_ula'],
     display_type: 'regular',
     excerpt: 'Seluruh mustahiq mendampingi kelompok takror siang di serambi madrasah guna memantapkan pemahaman pelajaran Nahwu dan Shorof.',
     content: `Program takror siang yang dimulai pukul 14.00 WIB berlangsung tertib. Santri dibagi per kelompok kecil yang dibimbing oleh musyrif dan munawib untuk memastikan target kurikulum tercapai dengan baik.`,
@@ -210,6 +262,7 @@ Setiap santri wajib menyetorkan bait demi bait dengan intonasi bahr yang tepat d
     title: 'Bedah Kitab Alfiyyah Ibnu Malik: Pendalaman 1.002 Bait Nahwu Santri Wustho',
     slug: 'bedah-kitab-alfiyyah-ibnu-malik-wustho',
     topic: 'tingkat_wustho',
+    topics: ['tingkat_wustho'],
     display_type: 'regular',
     excerpt: 'Peringatan milad halaqoh nahwiyah menghadirkan syarah Ibnu Aqil dan Audhohul Masalik guna membedah keunikan gramatika kalam turots.',
     content: `Kajian tematik nadzom Alfiyyah Ibnu Malik membedah bab Kalam wa Ma Yata'allafu Minhu. Santri 3 Wustho diajak membedah i'rob bait demi bait dengan metode musyawarah aktif.`,
@@ -225,7 +278,8 @@ Setiap santri wajib menyetorkan bait demi bait dengan intonasi bahr yang tepat d
     id: 'warta-008',
     title: 'Orientasi Sanad Kitab Kuning & Ijazahan Rutin Ba\'da Subuh di Masjid Jami\'',
     slug: 'orientasi-sanad-kitab-kuning-ijazahan-subuh',
-    topic: 'tingkat_ulya',
+    topic: 'umum',
+    topics: ['umum', 'tingkat_ulya'],
     display_type: 'regular',
     excerpt: 'Masyayikh membacakan matan hadits Arbain An-Nawawiyyah sekaligus memberikan ijazah sanad muttashil kepada segenap santri tingkat Ulya.',
     content: `Kajian ba'da subuh di serambi Masjid Jami' Pesantren Darussalam Blokagung terasa istimewa dengan pengijazahan sanad keilmuan hadits. Sanad muttashil ini menjadi rantai emas keberkahan ilmu santri Blokagung.`,
@@ -242,11 +296,12 @@ Setiap santri wajib menyetorkan bait demi bait dengan intonasi bahr yang tepat d
     title: 'Simulasi Bahtsul Masail Kubro Internal: Mengasah Argumentasi Fiqhiyyah Santri Unggulan',
     slug: 'simulasi-bahtsul-masail-kubro-internal-unggulan',
     topic: 'kelas_unggulan',
+    topics: ['kelas_unggulan'],
     display_type: 'regular',
     excerpt: 'Rombel Unggulan menyelenggarakan simulasi syawir dengan format maraji\' lintas madzhab guna mematangkan kesiapan delegasi madrasah.',
     content: `Sebanyak 80 santri pilihan kelas unggulan mengikuti simulasi bahtsul masail dengan topik muamalah digital dan transaksi syariah. Diskusi berjalan hangat dan berbobot dengan rujukan kitab-kitab mutawwolat.`,
     cover_image_url: 'https://images.unsplash.com/photo-1513258496099-48168024aec0?auto=format&fit=crop&w=800&q=80',
-    author_name: 'Redaksi Media Madina',
+    author_name: 'Redaksi Madin Blokagung',
     status: 'published',
     views_count: 310,
     tags: ['Simulasi', 'Bahtsul Masail', 'Unggulan'],
@@ -257,12 +312,13 @@ Setiap santri wajib menyetorkan bait demi bait dengan intonasi bahr yang tepat d
     id: 'warta-010',
     title: 'Pembagian Raport Evaluasi KBM & Apresiasi Santri Teladan Caturwulan I',
     slug: 'pembagian-raport-evaluasi-kbm-apresiasi-santri-teladan',
-    topic: 'tingkat_ula',
+    topic: 'umum',
+    topics: ['umum', 'tingkat_ula'],
     display_type: 'regular',
     excerpt: 'Pemberian syahadah dan kitab penghargaan kepada santri dengan capaian nilai muhafadzoh dan ketertiban KBM terbaik di tingkat dasar.',
     content: `Rangkaian caturwulan pertama ditutup dengan penyerahan syahadah penghargaan bagi para santri teladan. Momentum ini menjadi dorongan semangat bagi seluruh santri untuk terus tekun dan istiqomah menuntut ilmu.`,
     cover_image_url: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=800&q=80',
-    author_name: 'Biro Akademik MADINA',
+    author_name: 'Biro Akademik Madin Blokagung',
     status: 'published',
     views_count: 420,
     tags: ['Raport', 'Prestasi', 'ULA'],

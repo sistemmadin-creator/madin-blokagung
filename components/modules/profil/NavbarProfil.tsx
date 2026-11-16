@@ -12,7 +12,7 @@ export default function NavbarProfil() {
 
   const navLinks = [
     { label: 'Beranda', href: '/#hero' },
-    { label: 'Warta Berita', href: '/#berita' },
+    { label: 'Media Madin', href: '/#berita' },
     { label: 'Statistik', href: '/#statistik' },
     { label: '3 Pilar Program', href: '/#program' },
     { label: 'Kurikulum Kitab', href: '/#kurikulum' },
@@ -25,7 +25,7 @@ export default function NavbarProfil() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-18 py-3">
           {/* Logo & Identitas Madrasah */}
-          <Link href="#hero" className="flex items-center gap-3 group">
+          <Link href="/#hero" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-xl bg-white shadow-xs border border-slate-200/90 flex items-center justify-center p-1 group-hover:scale-105 transition-transform">
               <img
                 src="/logo-madin.png"
@@ -36,14 +36,11 @@ export default function NavbarProfil() {
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-lg sm:text-xl tracking-tight text-emerald-950 dark:text-emerald-50 font-serif">
-                  MADINA
-                </span>
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/40">
-                  1951 M
+                  Madin Blokagung
                 </span>
               </div>
               <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 tracking-wide">
-                PP. Darussalam Blokagung
+                Ponpes Darussalam Blokagung
               </span>
             </div>
           </Link>

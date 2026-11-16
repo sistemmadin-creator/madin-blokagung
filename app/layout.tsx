@@ -14,8 +14,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Madin Al Amiriyyah Blokagung - Sistem Database & Presensi KBM",
-  description: "Sistem Informasi Terpadu Database Santri, Dewan Asatidz, Kurikulum, Formasi Kelas, Presensi KBM 4 Jam, dan Muhafadzoh Pondok Pesantren Darussalam Blokagung",
+  title: "Madin Blokagung",
+  description: "Sistem Informasi Terpadu Database Santri, Dewan Asatidz, Kurikulum, Formasi Kelas, Presensi KBM 4 Jam, dan Muhafadzoh Ponpes Darussalam Blokagung",
   icons: {
     icon: '/logo-madin.png',
     shortcut: '/logo-madin.png',

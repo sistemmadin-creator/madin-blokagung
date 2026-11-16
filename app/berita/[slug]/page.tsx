@@ -21,7 +21,7 @@ import {
 import { NavbarProfil, FooterProfil } from '@/components/modules/profil';
 import { useBeritaStore } from '@/stores/useBeritaStore';
 import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
-import { TOPIK_BERITA_MAP, SEED_BERITA } from '@/types/berita';
+import { TOPIK_BERITA_MAP, SEED_BERITA, getPostTopics } from '@/types/berita';
 import { sanitizeHttpUrl, sanitizeRelativeOrHttpUrl } from '@/lib/security/urlSanitizer';
 
 // Helper mengekstrak ID video TikTok dari berbagai format URL
@@ -60,9 +60,7 @@ export default function DetailBeritaPage() {
       .slice(0, 3);
   }, [posts, currentPost]);
 
-  const topikMeta = currentPost
-    ? TOPIK_BERITA_MAP[currentPost.topic] || TOPIK_BERITA_MAP.kelas_unggulan
-    : TOPIK_BERITA_MAP.kelas_unggulan;
+  const postTopics = currentPost ? getPostTopics(currentPost) : ['umum' as const];
 
   const handleShareLink = () => {
     if (typeof window !== 'undefined') {
@@ -123,7 +121,7 @@ export default function DetailBeritaPage() {
             </Link>
             <span>/</span>
             <Link href="/berita" className="hover:text-emerald-700">
-              Warta Berita
+              Media Madin
             </Link>
             <span>/</span>
             <span className="text-slate-700 dark:text-slate-200 font-medium truncate max-w-xs">
@@ -133,10 +131,18 @@ export default function DetailBeritaPage() {
 
           {/* Header Artikel */}
           <header className="space-y-4 max-w-4xl">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className={`px-3 py-1 rounded-full text-xs uppercase tracking-wider ${topikMeta.badgeBg} ${topikMeta.badgeText}`}>
-                {topikMeta.title}
-              </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              {postTopics.map((tKey) => {
+                const topikMeta = TOPIK_BERITA_MAP[tKey] || TOPIK_BERITA_MAP.umum;
+                return (
+                  <span
+                    key={tKey}
+                    className={`px-3 py-1 rounded-full text-xs uppercase tracking-wider ${topikMeta.badgeBg} ${topikMeta.badgeText}`}
+                  >
+                    {topikMeta.title}
+                  </span>
+                );
+              })}
               <span className="text-xs text-slate-500 flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-slate-400" />
                 {formattedDate}
@@ -408,7 +414,7 @@ export default function DetailBeritaPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                 {relatedPosts.map((post) => {
-                  const meta = TOPIK_BERITA_MAP[post.topic];
+                  const relTopics = getPostTopics(post);
                   return (
                     <Link
                       key={post.id}
@@ -421,9 +427,19 @@ export default function DetailBeritaPage() {
                           alt=""
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
-                        <span className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] ${meta.badgeBg} ${meta.badgeText}`}>
-                          {meta.shortTitle}
-                        </span>
+                        <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                          {relTopics.map((tKey) => {
+                            const meta = TOPIK_BERITA_MAP[tKey] || TOPIK_BERITA_MAP.umum;
+                            return (
+                              <span
+                                key={tKey}
+                                className={`px-2 py-0.5 rounded text-[9px] ${meta.badgeBg} ${meta.badgeText}`}
+                              >
+                                {meta.shortTitle}
+                              </span>
+                            );
+                          })}
+                        </div>
                       </div>
                       <div className="p-4 flex flex-col justify-between flex-1">
                         <h4 className="text-xs sm:text-sm font-bold font-serif text-slate-900 dark:text-white line-clamp-2 group-hover:text-emerald-700 transition-colors">

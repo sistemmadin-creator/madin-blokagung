@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Newspaper, Plus, ExternalLink } from 'lucide-react';
+import { Newspaper, Plus, ExternalLink, Film } from 'lucide-react';
 import TabelKelolaBerita from '@/components/modules/berita/TabelKelolaBerita';
 import ModalFormBerita from '@/components/modules/berita/ModalFormBerita';
 import { useBeritaStore } from '@/stores/useBeritaStore';
@@ -21,21 +21,29 @@ export default function BeritaAdminPage() {
             <Newspaper className="w-6 h-6 stroke-[1.75]" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white font-serif tracking-tight">
-                Manajemen Warta Berita Madina
+                Manajemen Kabar Madin Blokagung
               </h1>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300/40">
-                Editorial Pesantren
+                PKM. Media Madin
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-              Publikasikan kegiatan madrasah yang difokuskan pada 4 topik utama: <strong>Kelas Unggulan</strong>, <strong>Tingkat ULA</strong>, <strong>Tingkat WUSTHO</strong>, dan <strong>Tingkat ULYA</strong>.
+              Publikasikan kegiatan madrasah dengan dukungan multi-kategori: <strong>Umum</strong>, <strong>Kelas Unggulan</strong>, <strong>Tingkat ULA</strong>, <strong>Tingkat WUSTHO</strong>, dan <strong>Tingkat ULYA</strong>.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+          <Link
+            href="/kelola-galeri-sosmed"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100/80 text-xs font-bold transition shadow-2xs"
+          >
+            <Film className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+            <span>Kelola Galeri Sosmed</span>
+          </Link>
+
           <Link
             href="/#berita"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 text-xs font-bold transition shadow-2xs"

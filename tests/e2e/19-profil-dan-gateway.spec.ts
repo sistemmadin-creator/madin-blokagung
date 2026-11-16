@@ -6,11 +6,11 @@ test.describe('19 - SPA Profil Madrasah (Clean Public Profile)', () => {
     await page.waitForLoadState('domcontentloaded');
   });
 
-  test('1.0: Beranda Profil: Navbar Bersih, Brand MADINA 1951 M, Hadits, Dawuh Pendiri & CTA Kurikulum', async ({ page }) => {
+  test('1.0: Beranda Profil: Navbar Bersih, Brand Madin Blokagung, Hadits, Dawuh Pendiri & CTA Kurikulum', async ({ page }) => {
     // 1. Navbar brand & Logo Resmi Madin Blokagung
     await expect(page.locator('header').getByAltText('Logo Madin Blokagung')).toBeVisible();
-    await expect(page.locator('header').getByText('MADINA')).toBeVisible();
-    await expect(page.locator('header').getByText('1951 M')).toBeVisible();
+    await expect(page.locator('header').getByText('Madin Blokagung')).toBeVisible();
+    await expect(page.locator('header').getByText('Ponpes Darussalam Blokagung')).toBeVisible();
 
     // 2. Tombol Masuk Sistem KBM di navbar telah dihilangkan
     await expect(page.locator('header').getByRole('link', { name: /Masuk Sistem KBM/i })).toHaveCount(0);

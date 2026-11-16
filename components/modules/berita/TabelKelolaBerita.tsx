@@ -18,7 +18,7 @@ import {
 import { useBeritaStore } from '@/stores/useBeritaStore';
 import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
 import { usePagePermission } from '@/stores/useRbacStore';
-import { TopikBerita, StatusBerita, TOPIK_BERITA_MAP } from '@/types/berita';
+import { StatusBerita, TOPIK_BERITA_MAP, TOPIK_BERITA_ORDER, getPostTopics, hasPostTopic } from '@/types/berita';
 
 export default function TabelKelolaBerita() {
   const { 
@@ -48,18 +48,19 @@ export default function TabelKelolaBerita() {
     const total = posts.length;
     const published = posts.filter((p) => p.status === 'published').length;
     const draft = posts.filter((p) => p.status === 'draft').length;
-    const unggulan = posts.filter((p) => p.topic === 'kelas_unggulan').length;
-    const ula = posts.filter((p) => p.topic === 'tingkat_ula').length;
-    const wustho = posts.filter((p) => p.topic === 'tingkat_wustho').length;
-    const ulya = posts.filter((p) => p.topic === 'tingkat_ulya').length;
-    return { total, published, draft, unggulan, ula, wustho, ulya };
+    const umum = posts.filter((p) => hasPostTopic(p, 'umum')).length;
+    const unggulan = posts.filter((p) => hasPostTopic(p, 'kelas_unggulan')).length;
+    const ula = posts.filter((p) => hasPostTopic(p, 'tingkat_ula')).length;
+    const wustho = posts.filter((p) => hasPostTopic(p, 'tingkat_wustho')).length;
+    const ulya = posts.filter((p) => hasPostTopic(p, 'tingkat_ulya')).length;
+    return { total, published, draft, umum, unggulan, ula, wustho, ulya };
   }, [posts]);
 
   // Data Terfilter
   const filteredPosts = useMemo(() => {
     return posts.filter((post) => {
-      // Filter Topik
-      if (filterTopic !== 'all' && post.topic !== filterTopic) return false;
+      // Filter Topik (Mendukung Multi-Kategori)
+      if (filterTopic !== 'all' && !hasPostTopic(post, filterTopic)) return false;
       // Filter Status
       if (filterStatus !== 'all' && post.status !== filterStatus) return false;
       // Pencarian Kata Kunci
@@ -84,7 +85,7 @@ export default function TabelKelolaBerita() {
   return (
     <div className="space-y-6">
       {/* 1. Baris Statistik Ringkas Warta */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Warta</p>
           <p className="text-2xl font-extrabold text-slate-800 dark:text-white font-serif mt-1">{stats.total}</p>
@@ -96,6 +97,10 @@ export default function TabelKelolaBerita() {
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
           <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Draft</p>
           <p className="text-2xl font-extrabold text-amber-600 dark:text-amber-300 font-serif mt-1">{stats.draft}</p>
+        </div>
+        <div className="bg-teal-50/60 dark:bg-teal-950/20 p-4 rounded-2xl border border-teal-200/80 dark:border-teal-900/40 shadow-xs">
+          <p className="text-[11px] font-bold text-teal-800 dark:text-teal-300 uppercase tracking-wider">Umum</p>
+          <p className="text-2xl font-extrabold text-teal-900 dark:text-teal-200 font-serif mt-1">{stats.umum}</p>
         </div>
         <div className="bg-amber-50/60 dark:bg-amber-950/20 p-4 rounded-2xl border border-amber-200/80 dark:border-amber-900/40 shadow-xs">
           <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Unggulan</p>
@@ -184,10 +189,10 @@ export default function TabelKelolaBerita() {
             Semua Topik ({posts.length})
           </button>
 
-          {(Object.keys(TOPIK_BERITA_MAP) as TopikBerita[]).map((key) => {
+          {TOPIK_BERITA_ORDER.map((key) => {
             const meta = TOPIK_BERITA_MAP[key];
             const isSelected = filterTopic === key;
-            const count = posts.filter((p) => p.topic === key).length;
+            const count = posts.filter((p) => hasPostTopic(p, key)).length;
             return (
               <button
                 key={key}
@@ -297,7 +302,7 @@ export default function TabelKelolaBerita() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 text-xs text-slate-700 dark:text-slate-300">
                 {filteredPosts.map((post) => {
-                  const topikMeta = TOPIK_BERITA_MAP[post.topic] || TOPIK_BERITA_MAP.tingkat_ula;
+                  const postTopics = getPostTopics(post);
                   const isHero = post.display_type === 'hero_lead';
                   const isHighlight = post.display_type === 'highlight_grid';
 
@@ -353,11 +358,21 @@ export default function TabelKelolaBerita() {
                         </div>
                       </td>
 
-                      {/* Topik Badge */}
-                      <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                        <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] ${topikMeta.badgeBg} ${topikMeta.badgeText} shadow-2xs`}>
-                          {topikMeta.title}
-                        </span>
+                      {/* Topik Badge (Multi-Kategori) */}
+                      <td className="py-3.5 px-4 align-top">
+                        <div className="flex flex-wrap gap-1">
+                          {postTopics.map((tKey) => {
+                            const meta = TOPIK_BERITA_MAP[tKey] || TOPIK_BERITA_MAP.umum;
+                            return (
+                              <span
+                                key={tKey}
+                                className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] whitespace-nowrap ${meta.badgeBg} ${meta.badgeText} shadow-2xs`}
+                              >
+                                {meta.title}
+                              </span>
+                            );
+                          })}
+                        </div>
                       </td>
 
                       {/* Posisi Tampilan */}

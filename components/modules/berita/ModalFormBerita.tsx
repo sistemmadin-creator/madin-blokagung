@@ -19,7 +19,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useBeritaStore } from '@/stores/useBeritaStore';
-import { TopikBerita, DisplayTypeBerita, StatusBerita, TOPIK_BERITA_MAP } from '@/types/berita';
+import { TopikBerita, DisplayTypeBerita, StatusBerita, TOPIK_BERITA_MAP, TOPIK_BERITA_ORDER, getPostTopics } from '@/types/berita';
 import { compressImageFile } from '@/lib/utils/image';
 
 export default function ModalFormBerita() {
@@ -27,7 +27,7 @@ export default function ModalFormBerita() {
 
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
-  const [topic, setTopic] = useState<TopikBerita>('kelas_unggulan');
+  const [selectedTopics, setSelectedTopics] = useState<TopikBerita[]>(['umum']);
   const [displayType, setDisplayType] = useState<DisplayTypeBerita>('highlight_grid');
   const [coverUrl, setCoverUrl] = useState('');
   const [excerpt, setExcerpt] = useState('');
@@ -69,7 +69,7 @@ export default function ModalFormBerita() {
     if (editingPost) {
       setTitle(editingPost.title);
       setSlug(editingPost.slug);
-      setTopic(editingPost.topic);
+      setSelectedTopics(getPostTopics(editingPost));
       setDisplayType(editingPost.display_type);
       setCoverUrl(editingPost.cover_image_url);
       setExcerpt(editingPost.excerpt);
@@ -82,7 +82,7 @@ export default function ModalFormBerita() {
       // Default state form baru
       setTitle('');
       setSlug('');
-      setTopic('kelas_unggulan');
+      setSelectedTopics(['umum']);
       setDisplayType('highlight_grid');
       setCoverUrl('');
       setExcerpt('');
@@ -95,6 +95,15 @@ export default function ModalFormBerita() {
     setContextMenu(null);
     setErrorMessage('');
   }, [editingPost, isFormModalOpen]);
+
+  const handleToggleTopic = (targetTopic: TopikBerita) => {
+    setSelectedTopics((prev) => {
+      if (prev.includes(targetTopic)) {
+        return prev.filter((t) => t !== targetTopic);
+      }
+      return TOPIK_BERITA_ORDER.filter((t) => prev.includes(t) || t === targetTopic);
+    });
+  };
 
   // Handler auto-generate slug saat mengetik judul berita
   const handleTitleChange = (val: string) => {
@@ -191,6 +200,10 @@ export default function ModalFormBerita() {
       setErrorMessage('Judul berita wajib diisi.');
       return;
     }
+    if (selectedTopics.length === 0) {
+      setErrorMessage('Pilih minimal 1 kategori topik berita (misal: Umum, atau Umum + Tingkat ULA).');
+      return;
+    }
     if (!coverUrl.trim()) {
       setErrorMessage('Foto cover berita wajib diunggah atau diisi URL-nya.');
       return;
@@ -215,7 +228,8 @@ export default function ModalFormBerita() {
     const payload = {
       title: title.trim(),
       slug: slug.trim() || generateSlug(title),
-      topic,
+      topic: selectedTopics[0],
+      topics: selectedTopics,
       display_type: displayType,
       cover_image_url: coverUrl.trim(),
       excerpt: excerpt.trim(),
@@ -333,21 +347,30 @@ export default function ModalFormBerita() {
             </div>
           </div>
 
-          {/* 2. Pilihan 4 Topik Utama */}
+          {/* 2. Pilihan Multi-Kategori Topik Berita */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
-              Pilih 1 dari 4 Topik Strategis Madina <span className="text-rose-500">*</span>
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {(Object.keys(TOPIK_BERITA_MAP) as TopikBerita[]).map((key) => {
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Pilih Kategori Topik Berita (Dapat Dipilih Lebih dari Satu) <span className="text-rose-500">*</span>
+              </label>
+              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                Terpilih: {selectedTopics.map((t) => TOPIK_BERITA_MAP[t]?.shortTitle).join(', ') || 'Belum ada'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2.5">
+              Anda dapat memilih <strong>Umum</strong> saja, atau mengombinasikan beberapa kategori sekaligus (contoh: <strong>Umum</strong> + <strong>ULA</strong>).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+              {TOPIK_BERITA_ORDER.map((key) => {
                 const item = TOPIK_BERITA_MAP[key];
-                const isSelected = topic === key;
+                const isSelected = selectedTopics.includes(key);
                 return (
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setTopic(key)}
-                    className={`p-3.5 rounded-xl border text-left transition-all relative flex flex-col justify-between ${
+                    aria-pressed={isSelected}
+                    onClick={() => handleToggleTopic(key)}
+                    className={`p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
                       isSelected
                         ? `${item.lightBg} ${item.borderColor} ring-2 ring-emerald-600 shadow-sm`
                         : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-800'
@@ -358,12 +381,20 @@ export default function ModalFormBerita() {
                         <span className={`text-[10px] px-2 py-0.5 rounded-full ${item.badgeBg} ${item.badgeText}`}>
                           {item.shortTitle}
                         </span>
-                        {isSelected && <Check className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />}
+                        <span
+                          className={`w-4 h-4 rounded flex items-center justify-center border ${
+                            isSelected
+                              ? 'bg-emerald-600 border-emerald-600 text-white'
+                              : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                        </span>
                       </div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
                         {item.title}
                       </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
                         {item.description}
                       </p>
                     </div>

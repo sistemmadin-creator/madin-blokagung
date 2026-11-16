@@ -2,8 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sparkles, BookOpen, Layers, GraduationCap, ChevronRight } from 'lucide-react';
-import { TopikBerita, TOPIK_BERITA_MAP } from '@/types/berita';
+import { Globe, Sparkles, BookOpen, Layers, GraduationCap, ChevronRight } from 'lucide-react';
+import { TopikBerita, TOPIK_BERITA_MAP, TOPIK_BERITA_ORDER } from '@/types/berita';
 
 interface BeritaWidgetKategoriProps {
   postCounts: Record<TopikBerita, number>;
@@ -12,6 +12,7 @@ interface BeritaWidgetKategoriProps {
 }
 
 const TOPIK_ICONS: Record<TopikBerita, React.ReactNode> = {
+  umum: <Globe className="w-4 h-4 text-teal-600" />,
   kelas_unggulan: <Sparkles className="w-4 h-4 text-amber-500" />,
   tingkat_ula: <BookOpen className="w-4 h-4 text-emerald-600" />,
   tingkat_wustho: <Layers className="w-4 h-4 text-blue-600" />,
@@ -40,9 +41,9 @@ export default function BeritaWidgetKategori({
         </Link>
       </div>
 
-      {/* 4 Kotak Topik Khusus */}
+      {/* 5 Kotak Topik Khusus */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
-        {(Object.keys(TOPIK_BERITA_MAP) as TopikBerita[]).map((key) => {
+        {TOPIK_BERITA_ORDER.map((key) => {
           const item = TOPIK_BERITA_MAP[key];
           const count = postCounts[key] || 0;
           const isSelected = activeTopic === key;

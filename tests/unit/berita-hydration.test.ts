@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { formatBeritaDateWib, getCurrentYearWib } from '@/lib/utils/beritaDateHelper';
-import { SEED_BERITA, WartaBerita } from '@/types/berita';
+import { SEED_BERITA, WartaBerita, getPostTopics, hasPostTopic, TOPIK_BERITA_ORDER } from '@/types/berita';
+import { parseSosmedUrl, buildSosmedEmbedUrl } from '@/lib/utils/sosmedEmbedHelper';
 
 describe('Berita Hydration & Deterministic WIB Date Formatter', () => {
   afterEach(() => {
@@ -66,5 +67,59 @@ describe('Berita Hydration & Deterministic WIB Date Formatter', () => {
     expect(initialState.posts.some((p) => p.slug === 'artikel-khusus-supabase-saja')).toBe(
       false
     );
+  });
+
+  it('mendukung multi-kategori topik berita termasuk kategori Umum (umum + tingkat_ula)', () => {
+    expect(TOPIK_BERITA_ORDER).toEqual([
+      'umum',
+      'kelas_unggulan',
+      'tingkat_ula',
+      'tingkat_wustho',
+      'tingkat_ulya',
+    ]);
+
+    const multiPost: Pick<WartaBerita, 'topic' | 'topics'> = {
+      topic: 'umum',
+      topics: ['umum', 'tingkat_ula'],
+    };
+    expect(getPostTopics(multiPost)).toEqual(['umum', 'tingkat_ula']);
+    expect(hasPostTopic(multiPost, 'umum')).toBe(true);
+    expect(hasPostTopic(multiPost, 'tingkat_ula')).toBe(true);
+    expect(hasPostTopic(multiPost, 'tingkat_ulya')).toBe(false);
+    expect(hasPostTopic(multiPost, 'all')).toBe(true);
+  });
+
+  it('mem-parsing URL embed YouTube, Instagram, dan TikTok secara akurat untuk Galeri Sosmed', () => {
+    const yt = parseSosmedUrl('https://www.youtube.com/watch?v=jfKfPfyJRdk');
+    expect(yt.isValid).toBe(true);
+    expect(yt.platform).toBe('youtube');
+    expect(yt.embedId).toBe('jfKfPfyJRdk');
+    expect(yt.contentFormat).toBe('landscape');
+    expect(yt.autoThumbnailUrl).toContain('jfKfPfyJRdk');
+
+    const ytShorts = parseSosmedUrl('https://www.youtube.com/shorts/abc123XYZ');
+    expect(ytShorts.isValid).toBe(true);
+    expect(ytShorts.platform).toBe('youtube');
+    expect(ytShorts.contentFormat).toBe('vertical');
+
+    const igReel = parseSosmedUrl('https://www.instagram.com/reel/C8abc123xyz/');
+    expect(igReel.isValid).toBe(true);
+    expect(igReel.platform).toBe('instagram');
+    expect(igReel.embedId).toBe('C8abc123xyz');
+    expect(igReel.contentFormat).toBe('vertical');
+
+    const tt = parseSosmedUrl('https://www.tiktok.com/@madinblokagung/video/7350000000000000001');
+    expect(tt.isValid).toBe(true);
+    expect(tt.platform).toBe('tiktok');
+    expect(tt.embedId).toBe('7350000000000000001');
+    expect(tt.contentFormat).toBe('vertical');
+    expect(
+      buildSosmedEmbedUrl({
+        platform: 'tiktok',
+        embed_id: '7350000000000000001',
+        source_url: 'https://www.tiktok.com/@madinblokagung/video/7350000000000000001',
+        content_format: 'vertical',
+      })
+    ).toContain('tiktok.com/player/v1/7350000000000000001');
   });
 });
