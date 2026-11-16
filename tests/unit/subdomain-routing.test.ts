@@ -62,6 +62,8 @@ describe('Subdomain & Route Helper (MADINA Blokagung)', () => {
       expect(isPublicPathname('/berita/kegiatan-kbm-salaf')).toBe(true);
       expect(isPublicPathname('/galeri-sosmed')).toBe(true);
       expect(isPublicPathname('/kepengurusan')).toBe(true);
+      expect(isPublicPathname('/mutakhorijin')).toBe(true);
+      expect(isPublicPathname('/mutakhorijin/tsuroya-2026')).toBe(true);
       expect(isPublicPathname('/daftar-hafalan')).toBe(true);
       expect(isPublicPathname('/daftar-hafalan/ula')).toBe(true);
       expect(isPublicPathname('/daftar-hafalan/wustho')).toBe(true);

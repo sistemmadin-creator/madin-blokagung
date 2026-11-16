@@ -13,6 +13,7 @@ const PUBLIC_PREFIX_PATHS = [
   '/berita',
   '/galeri-sosmed',
   '/kepengurusan',
+  '/mutakhorijin',
   '/daftar-hafalan',
   '/api/og/rapor-hafalan',
 ];

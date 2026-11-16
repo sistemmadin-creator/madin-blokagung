@@ -98,6 +98,12 @@ export default function FooterProfil() {
                   <span>Daftar Hafalan</span>
                 </a>
               </li>
+              <li>
+                <a href="/mutakhorijin" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Mutakhorijin</span>
+                </a>
+              </li>
             </ul>
           </div>
 

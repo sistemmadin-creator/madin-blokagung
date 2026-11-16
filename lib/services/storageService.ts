@@ -36,7 +36,7 @@ export function base64ToBlob(base64Data: string): Blob {
   return new Blob([uInt8Array], { type: contentType });
 }
 
-export type StorageCategory = 'santri' | 'asatidz' | 'formasi' | 'kepengurusan';
+export type StorageCategory = 'santri' | 'asatidz' | 'formasi' | 'kepengurusan' | 'mutakhorijin';
 
 /**
  * Service terpadu untuk upload foto ke Supabase Storage.

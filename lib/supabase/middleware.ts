@@ -47,6 +47,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/berita') ||
     pathname.startsWith('/galeri-sosmed') ||
     pathname.startsWith('/kepengurusan') ||
+    pathname.startsWith('/mutakhorijin') ||
     pathname.startsWith('/daftar-hafalan')
   ) {
     const publicOrigin = getPublicPortalOrigin(request);

@@ -25,12 +25,13 @@ describe('useSidebarConfigStore Unit Tests (Fase 1 & Fase 2)', () => {
     const idxPublikasi = groupNames.indexOf('PKM. Media Madin');
     expect(idxPublikasi).toBeGreaterThan(idxSapras);
 
-    // Grup PKM. Media Madin memiliki 3 menu: Kelola Berita, Kelola Galeri Sosmed, & Kelola Kepengurusan
+    // Grup PKM. Media Madin memiliki 4 menu: Kelola Berita, Kelola Galeri Sosmed, Kelola Kepengurusan, & Kelola Mutakhorijin
     const mediaGroup = groups.find((g) => g.id === 'grp-publikasi');
     expect(mediaGroup?.items.map((it) => it.title)).toEqual([
       'Kelola Berita',
       'Kelola Galeri Sosmed',
       'Kelola Kepengurusan',
+      'Kelola Mutakhorijin',
     ]);
   });
 

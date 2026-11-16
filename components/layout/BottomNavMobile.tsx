@@ -218,6 +218,16 @@ export default function BottomNavMobile() {
             </div>
             <span>Kelola Kepengurusan</span>
           </Link>
+          <Link
+            href="/kelola-mutakhorijin"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 text-sm font-semibold text-amber-900"
+          >
+            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+              <GraduationCap className="w-4 h-4" />
+            </div>
+            <span>Kelola Mutakhorijin</span>
+          </Link>
           <div className="px-3 pt-2 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-t border-slate-100">
             PKM. Sapras
           </div>

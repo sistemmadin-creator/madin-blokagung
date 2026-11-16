@@ -20,13 +20,45 @@ test.describe('70 - Penyederhanaan Header, Kepengurusan, & Daftar Hafalan Muhafa
     const header = page.locator('header');
     const desktopNav = header.getByRole('navigation', { name: 'Navigasi Utama' });
 
-    // Menu level atas ringkas: Beranda, Tentang Kami, Kurikulum, Media Madin, Muhafadzoh, Kontak
+    // Menu level atas berurutan: Beranda, Tentang Kami, Kurikulum, Muhafadzoh, Media Madin, Mutakhorijin (tanpa Kontak di header)
     await expect(desktopNav.getByRole('link', { name: 'Beranda' })).toBeVisible();
     await expect(desktopNav.getByRole('button', { name: 'Tentang Kami' })).toBeVisible();
     await expect(desktopNav.getByRole('button', { name: 'Kurikulum' })).toBeVisible();
-    await expect(desktopNav.getByRole('button', { name: 'Media Madin' })).toBeVisible();
     await expect(desktopNav.getByRole('button', { name: 'Muhafadzoh' })).toBeVisible();
-    await expect(desktopNav.getByRole('link', { name: 'Kontak' })).toBeVisible();
+    await expect(desktopNav.getByRole('button', { name: 'Media Madin' })).toBeVisible();
+    await expect(desktopNav.getByRole('button', { name: 'Mutakhorijin' })).toBeVisible();
+    await expect(desktopNav.getByRole('link', { name: 'Kontak' })).toHaveCount(0);
+
+    const navOrderTexts = await desktopNav.locator('> a, > div > button').allInnerTexts();
+    expect(navOrderTexts.map((t) => t.trim())).toEqual([
+      'Beranda',
+      'Tentang Kami',
+      'Kurikulum',
+      'Muhafadzoh',
+      'Media Madin',
+      'Mutakhorijin',
+    ]);
+
+    // Uji dropdown Mutakhorijin -> Tsuroya (Angkatan 2026)
+    await desktopNav.getByRole('button', { name: 'Mutakhorijin' }).click();
+    await expect(desktopNav.getByRole('menuitem', { name: /Tsuroya/i })).toBeVisible();
+    await expect(desktopNav.getByText('Angkatan 2026')).toBeVisible();
+    await desktopNav.getByRole('menuitem', { name: /Tsuroya/i }).click();
+
+    await page.waitForURL('**/mutakhorijin/tsuroya-2026');
+    await expect(page.getByRole('heading', { name: 'TSUROYA', exact: true })).toBeVisible();
+
+    // Uji Kartu Pos Momen -> buka galeri layar penuh -> tombol kembali
+    await page.getByRole('button', { name: /Buka Galeri Momen/i }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByRole('dialog').getByRole('button', { name: /Kembali ke Album/i }).click();
+    await expect(page.getByRole('dialog')).toBeHidden();
+
+    // Uji Indeks Bab drawer & tutup Escape
+    await page.getByRole('button', { name: /Indeks Bab/i }).click();
+    await expect(page.getByRole('dialog', { name: /Indeks Bab Album Kenangan/i })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toBeHidden();
 
     // Uji dropdown Media Madin -> Kabar Berita & Galeri Sosmed
     await desktopNav.getByRole('button', { name: 'Media Madin' }).click();
@@ -177,6 +209,15 @@ test.describe('70 - Penyederhanaan Header, Kepengurusan, & Daftar Hafalan Muhafa
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.getByRole('dialog').getByRole('button', { name: 'Tutup dialog profil pengurus' }).click();
     await expect(page.getByRole('dialog')).toBeHidden();
+
+    // Cek halaman Mutakhorijin Tsuroya di mobile 375px tanpa horizontal overflow
+    await page.goto('http://localhost:3000/mutakhorijin/tsuroya-2026');
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.getByRole('heading', { name: 'TSUROYA', exact: true })).toBeVisible();
+    const mutakhorijinOverflow = await page.evaluate(() => {
+      return document.documentElement.scrollWidth > document.documentElement.clientWidth;
+    });
+    expect(mutakhorijinOverflow).toBe(false);
 
     await context.close();
   });

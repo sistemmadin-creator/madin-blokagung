@@ -17,6 +17,7 @@ import {
   Film,
   BookMarked,
   CalendarRange,
+  GraduationCap,
 } from 'lucide-react';
 import { useKepengurusanStore } from '@/stores/useKepengurusanStore';
 import {
@@ -24,6 +25,8 @@ import {
   getPeriodeSlug,
   getPublicNavbarPeriodes,
 } from '@/types/kepengurusan';
+import { useMutakhorijinStore } from '@/stores/useMutakhorijinStore';
+import { getAlbumSlug, getPublicNavbarAlbums } from '@/types/mutakhorijin';
 
 interface SubMenuItem {
   label: string;
@@ -43,6 +46,7 @@ interface TopNavEntry {
   href?: string;
   items?: SubMenuItem[];
   nestedGroup?: NestedMenuGroup;
+  isDynamicMutakhorijin?: boolean;
 }
 
 const TOP_NAV_ITEMS: TopNavEntry[] = [
@@ -88,24 +92,6 @@ const TOP_NAV_ITEMS: TopNavEntry[] = [
     ],
   },
   {
-    id: 'media-madin',
-    label: 'Media Madin',
-    items: [
-      {
-        label: 'Kabar Berita',
-        href: '/berita',
-        description: 'Warta & dokumentasi kegiatan madrasah',
-        icon: <Newspaper className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />,
-      },
-      {
-        label: 'Galeri Sosmed',
-        href: '/galeri-sosmed',
-        description: 'Portofolio YouTube, Instagram & TikTok',
-        icon: <Film className="w-4 h-4 text-amber-600 dark:text-amber-400" />,
-      },
-    ],
-  },
-  {
     id: 'muhafadzoh',
     label: 'Muhafadzoh',
     nestedGroup: {
@@ -133,9 +119,27 @@ const TOP_NAV_ITEMS: TopNavEntry[] = [
     },
   },
   {
-    id: 'kontak',
-    label: 'Kontak',
-    href: '/#kontak',
+    id: 'media-madin',
+    label: 'Media Madin',
+    items: [
+      {
+        label: 'Kabar Berita',
+        href: '/berita',
+        description: 'Warta & dokumentasi kegiatan madrasah',
+        icon: <Newspaper className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />,
+      },
+      {
+        label: 'Galeri Sosmed',
+        href: '/galeri-sosmed',
+        description: 'Portofolio YouTube, Instagram & TikTok',
+        icon: <Film className="w-4 h-4 text-amber-600 dark:text-amber-400" />,
+      },
+    ],
+  },
+  {
+    id: 'mutakhorijin',
+    label: 'Mutakhorijin',
+    isDynamicMutakhorijin: true,
   },
 ];
 
@@ -152,6 +156,11 @@ export default function NavbarProfil() {
   const subHoverOpenedAtRef = useRef<number | null>(null);
 
   const { periodes, hasFetched, fetchKepengurusan } = useKepengurusanStore();
+  const {
+    albums: mutakhorijinAlbums,
+    hasFetched: hasFetchedMutakhorijin,
+    fetchMutakhorijin,
+  } = useMutakhorijinStore();
 
   useEffect(() => {
     if (!hasFetched) {
@@ -159,9 +168,20 @@ export default function NavbarProfil() {
     }
   }, [hasFetched, fetchKepengurusan]);
 
+  useEffect(() => {
+    if (!hasFetchedMutakhorijin) {
+      void fetchMutakhorijin(false);
+    }
+  }, [hasFetchedMutakhorijin, fetchMutakhorijin]);
+
   const kepengurusanSubItems = useMemo(
     () => getPublicNavbarPeriodes(periodes, 3),
     [periodes]
+  );
+
+  const mutakhorijinNavItems = useMemo(
+    () => getPublicNavbarAlbums(mutakhorijinAlbums, 5),
+    [mutakhorijinAlbums]
   );
 
   useEffect(() => {
@@ -255,6 +275,7 @@ export default function NavbarProfil() {
       return pathname?.startsWith('/berita') || pathname?.startsWith('/galeri-sosmed');
     }
     if (entry.id === 'muhafadzoh') return pathname?.startsWith('/daftar-hafalan');
+    if (entry.id === 'mutakhorijin') return pathname?.startsWith('/mutakhorijin');
     return false;
   };
 
@@ -282,9 +303,11 @@ export default function NavbarProfil() {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav ref={navRef} className="hidden lg:flex items-center gap-1 xl:gap-1.5" aria-label="Navigasi Utama">
+          <nav ref={navRef} className="hidden lg:flex items-center gap-0.5 xl:gap-1" aria-label="Navigasi Utama">
             {TOP_NAV_ITEMS.map((entry) => {
-              const hasDropdown = Boolean(entry.items || entry.nestedGroup);
+              const hasDropdown = Boolean(
+                entry.items || entry.nestedGroup || entry.isDynamicMutakhorijin
+              );
               const isOpen = openDropdownId === entry.id;
               const active = isEntryActive(entry);
 
@@ -294,7 +317,7 @@ export default function NavbarProfil() {
                     key={entry.id}
                     href={entry.href}
                     onClick={() => handleAnchorLinkClick(entry.href!)}
-                    className="px-3.5 py-2 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50/80 dark:hover:bg-slate-800/60 transition-colors"
+                    className="px-3 xl:px-3.5 py-2 rounded-lg text-sm font-semibold whitespace-nowrap text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50/80 dark:hover:bg-slate-800/60 transition-colors"
                   >
                     {entry.label}
                   </a>
@@ -313,7 +336,7 @@ export default function NavbarProfil() {
                     aria-expanded={isOpen}
                     aria-haspopup="true"
                     onClick={() => handleToggleDropdownClick(entry.id)}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+                    className={`inline-flex items-center gap-1.5 px-3 xl:px-3.5 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                       isOpen || active
                         ? 'text-emerald-800 dark:text-emerald-300 bg-emerald-50/90 dark:bg-slate-800'
                         : 'text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50/80 dark:hover:bg-slate-800/60'
@@ -330,7 +353,9 @@ export default function NavbarProfil() {
                   {isOpen && (
                     <div
                       role="menu"
-                      className="absolute left-0 mt-1.5 w-72 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700 shadow-xl shadow-slate-900/10 p-2 z-50"
+                      className={`absolute ${
+                        entry.id === 'mutakhorijin' ? 'right-0' : 'left-0'
+                      } mt-1.5 w-72 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700 shadow-xl shadow-slate-900/10 p-2 z-50`}
                     >
                       {entry.items && (
                         <div className="space-y-1">
@@ -522,6 +547,59 @@ export default function NavbarProfil() {
                           </div>
                         </div>
                       )}
+                      {entry.isDynamicMutakhorijin && (
+                        <div className="space-y-1">
+                          <div className="px-3 pt-1 pb-1.5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+                            <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
+                              Album Mutakhorijin
+                            </span>
+                            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                              5 Angkatan Terakhir
+                            </span>
+                          </div>
+                          {mutakhorijinNavItems.map((album) => {
+                            const slug = getAlbumSlug(album);
+                            const href = `/mutakhorijin/${slug}`;
+                            const isCurrentRoute =
+                              pathname === href ||
+                              (pathname === '/mutakhorijin' && album.is_current);
+                            return (
+                              <Link
+                                key={album.id}
+                                href={href}
+                                role="menuitem"
+                                onClick={() => setOpenDropdownId(null)}
+                                className={`group/item min-h-[44px] flex items-start gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+                                  isCurrentRoute
+                                    ? 'bg-emerald-50 dark:bg-slate-800'
+                                    : 'hover:bg-emerald-50/80 dark:hover:bg-slate-800'
+                                }`}
+                              >
+                                <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-slate-800 flex items-center justify-center shrink-0 mt-0.5">
+                                  <GraduationCap className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover/item:text-emerald-800 dark:group-hover/item:text-emerald-300 truncate">
+                                      {album.nama_angkatan}
+                                    </span>
+                                    {album.is_current && (
+                                      <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold shrink-0">
+                                        Terbaru
+                                      </span>
+                                    )}
+                                  </div>
+                                  {album.caption_angkatan && (
+                                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug mt-0.5 truncate">
+                                      {album.caption_angkatan}
+                                    </p>
+                                  )}
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -548,7 +626,9 @@ export default function NavbarProfil() {
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 pt-3 pb-6 space-y-1.5 max-h-[80vh] overflow-y-auto">
           {TOP_NAV_ITEMS.map((entry) => {
-            const hasChildren = Boolean(entry.items || entry.nestedGroup);
+            const hasChildren = Boolean(
+              entry.items || entry.nestedGroup || entry.isDynamicMutakhorijin
+            );
             const isMobileOpen = mobileOpenGroupId === entry.id;
 
             if (!hasChildren && entry.href) {
@@ -674,6 +754,41 @@ export default function NavbarProfil() {
                             <span>{sub.label}</span>
                           </Link>
                         ))}
+                      </div>
+                    )}
+
+                    {entry.isDynamicMutakhorijin && (
+                      <div className="space-y-1">
+                        {mutakhorijinNavItems.map((album) => {
+                          const slug = getAlbumSlug(album);
+                          return (
+                            <Link
+                              key={album.id}
+                              href={`/mutakhorijin/${slug}`}
+                              onClick={() => setMobileMenuOpen(false)}
+                              className="flex items-center justify-between gap-2 min-h-[48px] px-3 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-slate-800"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <GraduationCap className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                                <div className="min-w-0">
+                                  <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
+                                    {album.nama_angkatan}
+                                  </div>
+                                  {album.caption_angkatan && (
+                                    <div className="text-[11px] text-slate-600 dark:text-slate-400 truncate">
+                                      {album.caption_angkatan}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              {album.is_current && (
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold shrink-0">
+                                  Terbaru
+                                </span>
+                              )}
+                            </Link>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
