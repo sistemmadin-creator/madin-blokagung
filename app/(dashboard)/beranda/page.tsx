@@ -131,7 +131,7 @@ const GROUP_DESCRIPTIONS: Record<string, string> = {
   'grp-muhafadzoh': 'Pencatatan setoran nadhom & Al-Qur’an, rekap hafalan, dan sertifikasi piagam.',
   'grp-kesiswaan': 'Presensi kehadiran pengajar, absen cepat gerbang, dan rekapitulasi KBM.',
   'grp-sapras': 'Pengelolaan sarana prasarana, inventaris kelas, dan perbaikan logistik.',
-  'grp-publikasi': 'Kabar madrasah, publikasi artikel berita, dan portofolio galeri sosmed Media Madin.',
+  'grp-publikasi': 'Kabar madrasah, publikasi berita, portofolio galeri sosmed, dan struktur kepengurusan.',
   'grp-ebtadin': 'Pusat kendali ujian akhir kelulusan (EBTADIN), rekap nilai, dan serah ijazah.',
   'grp-pengaturan': 'Konfigurasi tahun ajaran, manajemen otoritas akun, dan audit log sistem.',
 };

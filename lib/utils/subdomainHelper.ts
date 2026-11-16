@@ -12,6 +12,8 @@ const PUBLIC_EXACT_PATHS = new Set([
 const PUBLIC_PREFIX_PATHS = [
   '/berita',
   '/galeri-sosmed',
+  '/kepengurusan',
+  '/daftar-hafalan',
   '/api/og/rapor-hafalan',
 ];
 

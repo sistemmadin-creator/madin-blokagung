@@ -57,9 +57,15 @@ describe('Subdomain & Route Helper (MADINA Blokagung)', () => {
       expect(isPublicPathname('/')).toBe(true);
     });
 
-    it('identifies public news routes as public', () => {
+    it('identifies public news, sosmed, kepengurusan, and daftar hafalan routes as public', () => {
       expect(isPublicPathname('/berita')).toBe(true);
       expect(isPublicPathname('/berita/kegiatan-kbm-salaf')).toBe(true);
+      expect(isPublicPathname('/galeri-sosmed')).toBe(true);
+      expect(isPublicPathname('/kepengurusan')).toBe(true);
+      expect(isPublicPathname('/daftar-hafalan')).toBe(true);
+      expect(isPublicPathname('/daftar-hafalan/ula')).toBe(true);
+      expect(isPublicPathname('/daftar-hafalan/wustho')).toBe(true);
+      expect(isPublicPathname('/daftar-hafalan/ulya')).toBe(true);
     });
 
     it('identifies public static assets as public', () => {

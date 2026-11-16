@@ -51,9 +51,39 @@ export default function FooterProfil() {
                 </a>
               </li>
               <li>
-                <a href="/#berita" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                <a href="/#statistik" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
                   <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Media Madin</span>
+                  <span>Statistik Lembaga</span>
+                </a>
+              </li>
+              <li>
+                <a href="/#program" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>3 Pilar Program</span>
+                </a>
+              </li>
+              <li>
+                <a href="/kepengurusan" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Kepengurusan</span>
+                </a>
+              </li>
+              <li>
+                <a href="/#kurikulum" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Kurikulum Kitab</span>
+                </a>
+              </li>
+              <li>
+                <a href="/#waktu-kbm" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Waktu KBM</span>
+                </a>
+              </li>
+              <li>
+                <a href="/berita" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Kabar Berita</span>
                 </a>
               </li>
               <li>
@@ -63,27 +93,9 @@ export default function FooterProfil() {
                 </a>
               </li>
               <li>
-                <a href="#statistik" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                <a href="/daftar-hafalan/ula" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
                   <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Statistik Lembaga</span>
-                </a>
-              </li>
-              <li>
-                <a href="#program" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
-                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>3 Pilar Program</span>
-                </a>
-              </li>
-              <li>
-                <a href="#kurikulum" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
-                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Kurikulum Kitab</span>
-                </a>
-              </li>
-              <li>
-                <a href="#waktu-kbm" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
-                  <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Waktu Pembelajaran</span>
+                  <span>Daftar Hafalan</span>
                 </a>
               </li>
             </ul>

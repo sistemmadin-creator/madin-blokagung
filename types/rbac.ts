@@ -31,6 +31,7 @@ export type AppPageId =
   | 'sapras-rekap'
   | 'kelola-berita'
   | 'kelola-galeri-sosmed'
+  | 'kelola-kepengurusan'
   | 'ebtadin'
   | 'ebtadin-ujian'
   | 'ebtadin-ujian-rekap'
@@ -322,6 +323,14 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     label: 'Kelola Galeri Sosmed',
     group: 'PKM. Media Madin',
     routes: ['/kelola-galeri-sosmed'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: true,
+  },
+  {
+    id: 'kelola-kepengurusan',
+    label: 'Kelola Kepengurusan',
+    group: 'PKM. Media Madin',
+    routes: ['/kelola-kepengurusan'],
     supportsEditOverride: true,
     supportsDeleteOverride: true,
   },

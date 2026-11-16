@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   BookOpen, 
   Clock, 
@@ -32,6 +32,26 @@ interface JenjangData {
 export default function KurikulumKitabSection() {
   const [activeTab, setActiveTab] = useState<'Isti\'dad' | 'Ula' | 'Wustho' | 'Ulya'>('Ula');
   const [subView, setSubView] = useState<'kitab' | 'jadwal'>('kitab');
+
+  useEffect(() => {
+    const syncHashToSubView = () => {
+      if (typeof window === 'undefined') return;
+      if (window.location.hash === '#waktu-kbm') {
+        setSubView('jadwal');
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            document.getElementById('waktu-kbm')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 60);
+        });
+      } else if (window.location.hash === '#kurikulum') {
+        setSubView('kitab');
+      }
+    };
+
+    syncHashToSubView();
+    window.addEventListener('hashchange', syncHashToSubView);
+    return () => window.removeEventListener('hashchange', syncHashToSubView);
+  }, []);
 
   const kurikulumData: Record<'Isti\'dad' | 'Ula' | 'Wustho' | 'Ulya', JenjangData> = {
     'Isti\'dad': {

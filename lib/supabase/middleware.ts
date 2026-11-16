@@ -41,9 +41,14 @@ export async function updateSession(request: NextRequest) {
   // KASUS 2: SUBDOMAIN SISTEM (sistem.madinblokagung.com, sistem.localhost)
   // =========================================================================
 
-  // 1. Jika pengguna di subdomain sistem membuka halaman berita atau galeri sosmed publik,
+  // 1. Jika pengguna di subdomain sistem membuka halaman publik (berita, galeri sosmed, kepengurusan, daftar hafalan),
   // alihkan (308 Permanent) ke portal publik utama agar subdomain fokus untuk operasional.
-  if (pathname.startsWith('/berita') || pathname.startsWith('/galeri-sosmed')) {
+  if (
+    pathname.startsWith('/berita') ||
+    pathname.startsWith('/galeri-sosmed') ||
+    pathname.startsWith('/kepengurusan') ||
+    pathname.startsWith('/daftar-hafalan')
+  ) {
     const publicOrigin = getPublicPortalOrigin(request);
     const targetUrl = new URL(`${pathname}${search || ''}`, publicOrigin);
     return NextResponse.redirect(targetUrl, 308);

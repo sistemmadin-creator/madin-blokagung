@@ -253,6 +253,7 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
     items: [
       { id: 'item-berita', title: 'Kelola Berita', href: '/kelola-berita', iconName: 'Newspaper' },
       { id: 'item-galeri-sosmed', title: 'Kelola Galeri Sosmed', href: '/kelola-galeri-sosmed', iconName: 'Film' },
+      { id: 'item-kepengurusan', title: 'Kelola Kepengurusan', href: '/kelola-kepengurusan', iconName: 'Users' },
     ],
   },
 ];

@@ -32,8 +32,8 @@ test.describe('69 - Media Madin, Multi-Topik Berita (Umum + Jenjang), & Portofol
     await expect(header.getByText('Madin Blokagung', { exact: true })).toBeVisible();
     await expect(header.getByText('Ponpes Darussalam Blokagung', { exact: true })).toBeVisible();
 
-    // 3. Panah Ungu: Menu navigasi 'Media Madin'
-    await expect(header.getByRole('link', { name: 'Media Madin' }).first()).toBeVisible();
+    // 3. Panah Ungu: Menu grup navigasi 'Media Madin'
+    await expect(header.getByRole('button', { name: 'Media Madin' }).first()).toBeVisible();
 
     // 4. Panah Hijau (Opsi B): Badge 'Media Madin Blokagung' & Judul H2 'Kabar Madin Blokagung'
     const beritaSection = page.locator('#berita');
@@ -126,7 +126,7 @@ test.describe('69 - Media Madin, Multi-Topik Berita (Umum + Jenjang), & Portofol
 
     const mobileMenuBtn = page.getByRole('button', { name: 'Toggle Navigation Menu' });
     await mobileMenuBtn.click();
-    await expect(page.getByRole('link', { name: 'Media Madin' }).last()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Media Madin' }).last()).toBeVisible();
 
     expect(pageErrors).toEqual([]);
     expect(cspErrors).toEqual([]);
