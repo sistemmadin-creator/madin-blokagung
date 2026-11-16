@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -16,7 +16,14 @@ import {
   Newspaper,
   Film,
   BookMarked,
+  CalendarRange,
 } from 'lucide-react';
+import { useKepengurusanStore } from '@/stores/useKepengurusanStore';
+import {
+  getPeriodeMenuLabel,
+  getPeriodeSlug,
+  getPublicNavbarPeriodes,
+} from '@/types/kepengurusan';
 
 interface SubMenuItem {
   label: string;
@@ -59,12 +66,6 @@ const TOP_NAV_ITEMS: TopNavEntry[] = [
         href: '/#program',
         description: 'Reguler, Unggulan & Akselerasi IHFAD',
         icon: <Layers className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />,
-      },
-      {
-        label: 'Kepengurusan',
-        href: '/kepengurusan',
-        description: 'Struktur personalia Putra & Putri resmi',
-        icon: <Users className="w-4 h-4 text-amber-600 dark:text-amber-400" />,
       },
     ],
   },
@@ -142,20 +143,38 @@ export default function NavbarProfil() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [isKepengurusanSubOpen, setIsKepengurusanSubOpen] = useState(false);
   const [mobileOpenGroupId, setMobileOpenGroupId] = useState<string | null>('tentang-kami');
+  const [mobileKepengurusanOpen, setMobileKepengurusanOpen] = useState(true);
   const navRef = useRef<HTMLElement | null>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hoverOpenedAtRef = useRef<{ id: string; at: number } | null>(null);
+  const subHoverOpenedAtRef = useRef<number | null>(null);
+
+  const { periodes, hasFetched, fetchKepengurusan } = useKepengurusanStore();
+
+  useEffect(() => {
+    if (!hasFetched) {
+      void fetchKepengurusan(false);
+    }
+  }, [hasFetched, fetchKepengurusan]);
+
+  const kepengurusanSubItems = useMemo(
+    () => getPublicNavbarPeriodes(periodes, 3),
+    [periodes]
+  );
 
   useEffect(() => {
     const handleOutside = (e: MouseEvent) => {
       if (navRef.current && !navRef.current.contains(e.target as Node)) {
         setOpenDropdownId(null);
+        setIsKepengurusanSubOpen(false);
       }
     };
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpenDropdownId(null);
+        setIsKepengurusanSubOpen(false);
         setMobileMenuOpen(false);
       }
     };
@@ -175,6 +194,7 @@ export default function NavbarProfil() {
     }
     if (openDropdownId !== id) {
       hoverOpenedAtRef.current = { id, at: Date.now() };
+      setIsKepengurusanSubOpen(false);
     }
     setOpenDropdownId(id);
   };
@@ -187,13 +207,32 @@ export default function NavbarProfil() {
       return;
     }
     hoverOpenedAtRef.current = null;
+    setIsKepengurusanSubOpen(false);
     setOpenDropdownId((prev) => (prev === id ? null : id));
   };
 
   const handleCloseDropdownHover = () => {
     closeTimeoutRef.current = setTimeout(() => {
       setOpenDropdownId(null);
+      setIsKepengurusanSubOpen(false);
     }, 120);
+  };
+
+  const handleOpenKepengurusanSubHover = () => {
+    if (!isKepengurusanSubOpen) {
+      subHoverOpenedAtRef.current = Date.now();
+    }
+    setIsKepengurusanSubOpen(true);
+  };
+
+  const handleToggleKepengurusanSubClick = () => {
+    if (subHoverOpenedAtRef.current && Date.now() - subHoverOpenedAtRef.current < 350) {
+      subHoverOpenedAtRef.current = null;
+      setIsKepengurusanSubOpen(true);
+      return;
+    }
+    subHoverOpenedAtRef.current = null;
+    setIsKepengurusanSubOpen((prev) => !prev);
   };
 
   const handleAnchorLinkClick = (href: string) => {
@@ -341,6 +380,110 @@ export default function NavbarProfil() {
                               </a>
                             );
                           })}
+
+                          {entry.id === 'tentang-kami' && (
+                            <div
+                              className="relative"
+                              onMouseEnter={handleOpenKepengurusanSubHover}
+                              onMouseLeave={() => {
+                                subHoverOpenedAtRef.current = null;
+                                setIsKepengurusanSubOpen(false);
+                              }}
+                            >
+                              <button
+                                type="button"
+                                aria-expanded={isKepengurusanSubOpen}
+                                aria-haspopup="menu"
+                                onClick={handleToggleKepengurusanSubClick}
+                                className={`w-full group/item flex items-start gap-3 px-3 py-2.5 rounded-xl transition-colors text-left cursor-pointer ${
+                                  isKepengurusanSubOpen || pathname?.startsWith('/kepengurusan')
+                                    ? 'bg-emerald-50/90 dark:bg-slate-800'
+                                    : 'hover:bg-emerald-50/80 dark:hover:bg-slate-800'
+                                }`}
+                              >
+                                <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 mt-0.5">
+                                  <Users className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover/item:text-emerald-800 dark:group-hover/item:text-emerald-300">
+                                      Kepengurusan
+                                    </span>
+                                    <ChevronRight
+                                      className={`w-4 h-4 text-slate-500 transition-transform ${
+                                        isKepengurusanSubOpen ? 'translate-x-0.5 text-emerald-700' : ''
+                                      }`}
+                                      aria-hidden="true"
+                                    />
+                                  </div>
+                                  <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug mt-0.5">
+                                    Struktur personalia Putra &amp; Putri resmi
+                                  </p>
+                                </div>
+                              </button>
+
+                              {isKepengurusanSubOpen && (
+                                <div
+                                  role="menu"
+                                  aria-label="Sub-menu Periode Kepengurusan"
+                                  className="absolute left-full top-0 pl-2 z-50"
+                                >
+                                  <div className="w-64 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700 shadow-xl shadow-slate-900/10 p-2 space-y-1">
+                                    <div className="px-3 pt-1 pb-1.5 border-b border-slate-100 dark:border-slate-800 text-[11px] font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
+                                      Masa Khidmah
+                                    </div>
+                                    {kepengurusanSubItems.map((periode) => {
+                                      const slug = getPeriodeSlug(periode);
+                                      const href = `/kepengurusan/${slug}`;
+                                      const isCurrentRoute =
+                                        pathname === href ||
+                                        (pathname === '/kepengurusan' && periode.is_current);
+                                      return (
+                                        <Link
+                                          key={periode.id}
+                                          href={href}
+                                          role="menuitem"
+                                          onClick={() => {
+                                            setIsKepengurusanSubOpen(false);
+                                            setOpenDropdownId(null);
+                                          }}
+                                          className={`min-h-[44px] flex items-start gap-2.5 px-3 py-2.5 rounded-xl transition-colors ${
+                                            isCurrentRoute
+                                              ? 'bg-emerald-50 dark:bg-slate-800 text-emerald-900 dark:text-emerald-200'
+                                              : 'hover:bg-emerald-50/80 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100'
+                                          }`}
+                                        >
+                                          <CalendarRange
+                                            className={`w-4 h-4 mt-0.5 shrink-0 ${
+                                              periode.is_current
+                                                ? 'text-emerald-700 dark:text-emerald-400'
+                                                : 'text-slate-500 dark:text-slate-400'
+                                            }`}
+                                            aria-hidden="true"
+                                          />
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex items-center justify-between gap-1.5">
+                                              <span className="text-xs sm:text-sm font-bold truncate">
+                                                {getPeriodeMenuLabel(periode)}
+                                              </span>
+                                              {periode.is_current && (
+                                                <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold shrink-0">
+                                                  Aktif
+                                                </span>
+                                              )}
+                                            </div>
+                                            <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">
+                                              {periode.nama_periode}
+                                            </p>
+                                          </div>
+                                        </Link>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -466,6 +609,54 @@ export default function NavbarProfil() {
                         </a>
                       );
                     })}
+
+                    {entry.id === 'tentang-kami' && (
+                      <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                          type="button"
+                          aria-expanded={mobileKepengurusanOpen}
+                          onClick={() => setMobileKepengurusanOpen((prev) => !prev)}
+                          className="w-full flex items-center justify-between min-h-[44px] px-3 py-2 rounded-lg text-sm font-semibold text-slate-800 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-800"
+                        >
+                          <span className="flex items-center gap-3">
+                            <Users className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                            <span>Kepengurusan</span>
+                          </span>
+                          <ChevronDown
+                            className={`w-4 h-4 text-slate-500 transition-transform ${
+                              mobileKepengurusanOpen ? 'rotate-180 text-emerald-700' : ''
+                            }`}
+                          />
+                        </button>
+
+                        {mobileKepengurusanOpen && (
+                          <div className="mt-1 space-y-1 pl-4">
+                            {kepengurusanSubItems.map((periode) => {
+                              const slug = getPeriodeSlug(periode);
+                              const href = `/kepengurusan/${slug}`;
+                              return (
+                                <Link
+                                  key={periode.id}
+                                  href={href}
+                                  onClick={() => setMobileMenuOpen(false)}
+                                  className="flex items-center justify-between gap-2 min-h-[44px] px-3 py-2 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-800"
+                                >
+                                  <span className="flex items-center gap-2.5 min-w-0">
+                                    <CalendarRange className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                                    <span className="truncate">{getPeriodeMenuLabel(periode)}</span>
+                                  </span>
+                                  {periode.is_current && (
+                                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold shrink-0">
+                                      Aktif
+                                    </span>
+                                  )}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {entry.nestedGroup && (
                       <div className="space-y-1">

@@ -39,26 +39,56 @@ test.describe('70 - Penyederhanaan Header, Kepengurusan, & Daftar Hafalan Muhafa
     await desktopNav.getByRole('menuitem', { name: /Waktu KBM/i }).click();
     await expect(page.getByText('Takror Siang (Mudzakarah & Setoran Hafalan)')).toBeVisible();
 
-    // Uji dropdown Tentang Kami -> Kepengurusan menuju halaman tersendiri
+    // Uji dropdown Tentang Kami -> Kepengurusan -> Sub-menu Kepengurusan 2026-2027
     await desktopNav.getByRole('button', { name: 'Tentang Kami' }).click();
     await expect(desktopNav.getByRole('menuitem', { name: /Statistik/i })).toBeVisible();
     await expect(desktopNav.getByRole('menuitem', { name: /3 Pilar Program/i })).toBeVisible();
-    await desktopNav.getByRole('menuitem', { name: /Kepengurusan/i }).click();
+    await desktopNav.getByRole('button', { name: /Kepengurusan/i }).click();
+    await expect(
+      desktopNav.getByRole('menuitem', { name: /Kepengurusan 2026-2027/i })
+    ).toBeVisible();
+    await desktopNav.getByRole('menuitem', { name: /Kepengurusan 2026-2027/i }).click();
 
-    await page.waitForURL('**/kepengurusan');
+    await page.waitForURL('**/kepengurusan/2026-2027');
     await expect(
       page.getByRole('heading', { name: /Personalia Kepengurusan Putra/i })
     ).toBeVisible();
     await expect(page.getByText('KH. Ahmad Hisyam Syafaat')).toBeVisible();
     await expect(page.getByText('Ust. Cholid Asrori')).toBeVisible();
 
-    // Switch ke Kepengurusan Putri
+    // Klik kartu pengurus memunculkan pop-up profil & bisa ditutup dengan Escape
+    await page.getByRole('button', { name: /KH\. Ahmad Hisyam Syafaat/i }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(
+      page.getByRole('dialog').getByRole('heading', { name: 'PELINDUNG' })
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toBeHidden();
+
+    // Switch ke Kepengurusan Putri & klik personel di unit multi-anggota
     await page.getByRole('tab', { name: 'Kepengurusan Putri' }).click();
     await expect(
       page.getByRole('heading', { name: /Personalia Kepengurusan Putri/i })
     ).toBeVisible();
     await expect(page.getByText('Ustdz. Khoirotun Hisan')).toBeVisible();
     await expect(page.getByText('Ustdz. Zida Nurul Ilma')).toBeVisible();
+
+    await page.getByRole('button', { name: /Ustdz\. Khoirotun Hisan/i }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(
+      page.getByRole('dialog').getByRole('button', { name: /Berikutnya/i })
+    ).toBeVisible();
+    await page.getByRole('dialog').getByRole('button', { name: 'Tutup dialog profil pengurus' }).click();
+    await expect(page.getByRole('dialog')).toBeHidden();
+
+    // Cek periode sebelumnya (2025-2026) via pemilih periode
+    const periodeSelect = page.getByRole('combobox', { name: 'Pilih Masa Khidmah' });
+    await expect(periodeSelect).toBeVisible();
+    await periodeSelect.selectOption({ label: 'Kepengurusan 2025-2026' });
+    await page.waitForURL('**/kepengurusan/2025-2026');
+    await expect(page.getByText(/arsip kepengurusan periode sebelumnya/i)).toBeVisible();
+    await page.getByRole('link', { name: /Ke Kepengurusan 2026-2027/i }).click();
+    await page.waitForURL('**/kepengurusan/2026-2027');
 
     // Uji dropdown Muhafadzoh -> Daftar Hafalan -> ULA / WUSTHO / ULYA
     await desktopNav.getByRole('button', { name: 'Muhafadzoh' }).click();
@@ -114,5 +144,40 @@ test.describe('70 - Penyederhanaan Header, Kepengurusan, & Daftar Hafalan Muhafa
     await expect(
       page.getByRole('heading', { name: /Kelola Kepengurusan Putra & Putri/i })
     ).toBeVisible();
+  });
+
+  test('3. Mobile (375px): Drawer navigasi sub-menu Kepengurusan 2026-2027 & pop-up kartu tanpa overflow', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: 375, height: 812 },
+      extraHTTPHeaders: {
+        'x-forwarded-host': 'localhost:3000',
+      },
+    });
+    const page = await context.newPage();
+
+    await page.goto('http://localhost:3000/');
+    await page.waitForLoadState('domcontentloaded');
+
+    await page.getByRole('button', { name: 'Toggle Navigation Menu' }).click();
+    await page.getByRole('link', { name: /Kepengurusan 2026-2027/i }).click();
+    await page.waitForURL('**/kepengurusan/2026-2027');
+
+    await expect(
+      page.getByRole('heading', { name: /Personalia Kepengurusan Putra/i })
+    ).toBeVisible();
+
+    const hasHorizontalOverflow = await page.evaluate(() => {
+      return document.documentElement.scrollWidth > document.documentElement.clientWidth;
+    });
+    expect(hasHorizontalOverflow).toBe(false);
+
+    await page.getByRole('button', { name: /KH\. Ahmad Hisyam Syafaat/i }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByRole('dialog').getByRole('button', { name: 'Tutup dialog profil pengurus' }).click();
+    await expect(page.getByRole('dialog')).toBeHidden();
+
+    await context.close();
   });
 });

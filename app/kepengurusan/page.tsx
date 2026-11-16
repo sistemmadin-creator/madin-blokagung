@@ -38,7 +38,7 @@ export default function KepengurusanPublicPage() {
 
             <Link
               href="/"
-              className="min-h-[40px] inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0b5751] hover:bg-emerald-800 text-white text-xs font-bold transition self-start sm:self-auto"
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0b5751] hover:bg-emerald-800 text-white text-xs font-bold transition self-start sm:self-auto"
             >
               <ChevronLeft className="w-4 h-4" />
               <span>Kembali ke Beranda</span>

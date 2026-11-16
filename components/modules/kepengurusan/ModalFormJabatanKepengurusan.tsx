@@ -9,6 +9,9 @@ import {
   ArrowDown,
   Save,
   Users,
+  Upload,
+  User,
+  Loader2,
 } from 'lucide-react';
 import {
   AnggotaKepengurusan,
@@ -18,7 +21,9 @@ import {
   KELOMPOK_KEPENGURUSAN_ORDER,
   KelompokKepengurusan,
   KepengurusanJabatan,
+  sanitizeMemberPhotoUrl,
 } from '@/types/kepengurusan';
+import { compressImageFile } from '@/lib/utils/image';
 
 interface ModalFormJabatanProps {
   isOpen: boolean;
@@ -30,6 +35,13 @@ interface ModalFormJabatanProps {
     editingId?: string
   ) => Promise<boolean>;
 }
+
+const ALLOWED_INPUT_MIME = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+]);
 
 export default function ModalFormJabatanKepengurusan({
   isOpen,
@@ -44,14 +56,16 @@ export default function ModalFormJabatanKepengurusan({
   const [sortOrder, setSortOrder] = useState<number>(100);
   const [isActive, setIsActive] = useState(true);
   const [anggota, setAnggota] = useState<AnggotaKepengurusan[]>([
-    { id: 'ang-1', nama: '', sub_label: '' },
+    { id: 'ang-1', nama: '', sub_label: '', catatan: '', foto_url: '' },
   ]);
+  const [processingPhotoIdx, setProcessingPhotoIdx] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     setFormError(null);
+    setProcessingPhotoIdx(null);
     if (editingJabatan) {
       setNamaJabatan(editingJabatan.nama_jabatan);
       setKelompok(editingJabatan.kelompok);
@@ -60,8 +74,13 @@ export default function ModalFormJabatanKepengurusan({
       setIsActive(editingJabatan.is_active !== false);
       setAnggota(
         editingJabatan.anggota.length > 0
-          ? editingJabatan.anggota.map((a) => ({ ...a }))
-          : [{ id: `ang-${Date.now()}`, nama: '', sub_label: '' }]
+          ? editingJabatan.anggota.map((a) => ({
+              ...a,
+              sub_label: a.sub_label || '',
+              catatan: a.catatan || '',
+              foto_url: sanitizeMemberPhotoUrl(a.foto_url),
+            }))
+          : [{ id: `ang-${Date.now()}`, nama: '', sub_label: '', catatan: '', foto_url: '' }]
       );
     } else {
       setNamaJabatan('');
@@ -69,27 +88,72 @@ export default function ModalFormJabatanKepengurusan({
       setKategoriBagian('bersama');
       setSortOrder(100);
       setIsActive(true);
-      setAnggota([{ id: `ang-${Date.now()}`, nama: '', sub_label: '' }]);
+      setAnggota([
+        { id: `ang-${Date.now()}`, nama: '', sub_label: '', catatan: '', foto_url: '' },
+      ]);
     }
   }, [isOpen, editingJabatan]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmitting) onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, isSubmitting, onClose]);
 
   if (!isOpen) return null;
 
   const handleAddAnggota = () => {
     setAnggota((prev) => [
       ...prev,
-      { id: `ang-${Date.now()}-${prev.length + 1}`, nama: '', sub_label: '' },
+      {
+        id: `ang-${Date.now()}-${prev.length + 1}`,
+        nama: '',
+        sub_label: '',
+        catatan: '',
+        foto_url: '',
+      },
     ]);
   };
 
   const handleUpdateAnggota = (
     idx: number,
-    field: 'nama' | 'sub_label',
+    field: 'nama' | 'sub_label' | 'catatan' | 'foto_url',
     value: string
   ) => {
     setAnggota((prev) =>
       prev.map((item, i) => (i === idx ? { ...item, [field]: value } : item))
     );
+  };
+
+  const handleFotoUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    const mime = String(file.type || '').toLowerCase();
+    if (!ALLOWED_INPUT_MIME.has(mime)) {
+      setFormError('Format foto harus JPG, PNG, atau WEBP.');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setFormError('Ukuran file mentah terlalu besar (maksimal 10 MB sebelum kompresi).');
+      return;
+    }
+
+    try {
+      setFormError(null);
+      setProcessingPhotoIdx(idx);
+      const compressedDataUrl = await compressImageFile(file, 600, 0.8);
+      handleUpdateAnggota(idx, 'foto_url', compressedDataUrl);
+    } catch {
+      setFormError('Gagal memproses foto. Pastikan file gambar tidak rusak.');
+    } finally {
+      setProcessingPhotoIdx(null);
+    }
   };
 
   const handleRemoveAnggota = (idx: number) => {
@@ -119,6 +183,8 @@ export default function ModalFormJabatanKepengurusan({
         ...a,
         nama: a.nama.trim(),
         sub_label: a.sub_label?.trim() || '',
+        catatan: a.catatan?.trim() || '',
+        foto_url: sanitizeMemberPhotoUrl(a.foto_url),
       }))
       .filter((a) => a.nama.length > 0);
 
@@ -151,23 +217,33 @@ export default function ModalFormJabatanKepengurusan({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-jabatan-title"
+      onClick={() => !isSubmitting && onClose()}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#0b5751] to-[#137269] text-white">
           <div className="flex items-center gap-2.5">
-            <Users className="w-5 h-5 text-amber-300" />
-            <h2 className="text-base sm:text-lg font-extrabold font-serif">
+            <Users className="w-5 h-5 text-amber-300" aria-hidden="true" />
+            <h2 id="modal-jabatan-title" className="text-base sm:text-lg font-extrabold font-serif">
               {editingJabatan ? 'Ubah Unit & Personalia Jabatan' : 'Tambah Unit Jabatan Baru'}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
+            disabled={isSubmitting}
             aria-label="Tutup modal"
-            className="p-1.5 rounded-lg hover:bg-white/15 cursor-pointer"
+            className="min-w-[40px] min-h-[40px] inline-flex items-center justify-center rounded-lg hover:bg-white/15 cursor-pointer disabled:opacity-50"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -176,7 +252,7 @@ export default function ModalFormJabatanKepengurusan({
           {formError && (
             <div
               role="alert"
-              className="rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 px-4 py-3 text-xs sm:text-sm font-semibold text-rose-700 dark:text-rose-300"
+              className="rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 px-4 py-3 text-xs sm:text-sm font-semibold text-rose-800 dark:text-rose-200"
             >
               {formError}
             </div>
@@ -184,7 +260,7 @@ export default function ModalFormJabatanKepengurusan({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                 Nama Jabatan / Unit *
               </label>
               <input
@@ -198,7 +274,7 @@ export default function ModalFormJabatanKepengurusan({
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                 Tingkat / Kelompok Hierarki
               </label>
               <select
@@ -215,7 +291,7 @@ export default function ModalFormJabatanKepengurusan({
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                 Bagian (Tampil Pada Tab)
               </label>
               <select
@@ -234,7 +310,7 @@ export default function ModalFormJabatanKepengurusan({
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                 Nomor Urut Tampil
               </label>
               <input
@@ -260,82 +336,144 @@ export default function ModalFormJabatanKepengurusan({
             </div>
           </div>
 
-          {/* Daftar Anggota */}
+          {/* Daftar Anggota & Upload Foto */}
           <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white">
-                  Daftar Personalia / Anggota
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Daftar Personalia / Anggota &amp; Foto Profil
                 </h3>
-                <p className="text-[11px] text-slate-500">
-                  Isi <strong>Sub-Label</strong> jika punya keterangan khusus (mis.{' '}
-                  <code>Ebtadin</code>, <code>Blok 4</code>, <code>Ketua</code>). Kosongkan jika daftar biasa.
+                <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300">
+                  Unggah foto (JPG/PNG/WEBP, otomatis dikompresi) agar tampil saat kartu diklik di halaman publik.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleAddAnggota}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold hover:bg-emerald-100 cursor-pointer shrink-0"
+                className="min-h-[40px] inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 text-xs font-bold hover:bg-emerald-100 cursor-pointer shrink-0"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Tambah Anggota</span>
               </button>
             </div>
 
-            <div className="space-y-2.5">
-              {anggota.map((item, idx) => (
-                <div
-                  key={item.id}
-                  className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700"
-                >
-                  <span className="text-xs font-bold text-slate-400 w-6 text-center shrink-0 hidden sm:inline">
-                    {idx + 1}.
-                  </span>
-                  <input
-                    type="text"
-                    value={item.sub_label || ''}
-                    onChange={(e) => handleUpdateAnggota(idx, 'sub_label', e.target.value)}
-                    placeholder="Sub-Label (opsional)"
-                    className="sm:w-40 min-h-[38px] px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-800 dark:text-slate-100"
-                  />
-                  <input
-                    type="text"
-                    value={item.nama}
-                    onChange={(e) => handleUpdateAnggota(idx, 'nama', e.target.value)}
-                    placeholder="Nama Lengkap & Gelar (mis. Ust. ...)"
-                    className="flex-1 min-h-[38px] px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-900 dark:text-white font-medium"
-                  />
-                  <div className="flex items-center justify-end gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleMoveAnggota(idx, -1)}
-                      disabled={idx === 0}
-                      title="Geser ke atas"
-                      className="p-2 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 cursor-pointer"
-                    >
-                      <ArrowUp className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleMoveAnggota(idx, 1)}
-                      disabled={idx === anggota.length - 1}
-                      title="Geser ke bawah"
-                      className="p-2 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 cursor-pointer"
-                    >
-                      <ArrowDown className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAnggota(idx)}
-                      disabled={anggota.length <= 1}
-                      title="Hapus anggota"
-                      className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 disabled:opacity-30 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+            <div className="space-y-3">
+              {anggota.map((item, idx) => {
+                const safePhoto = sanitizeMemberPhotoUrl(item.foto_url);
+                const isProcessing = processingPhotoIdx === idx;
+                return (
+                  <div
+                    key={item.id}
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 space-y-2.5"
+                  >
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                      {/* Area Preview & Upload Foto */}
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300 w-5 text-center">
+                          {idx + 1}.
+                        </span>
+                        <div className="w-14 h-16 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 overflow-hidden flex items-center justify-center shrink-0">
+                          {isProcessing ? (
+                            <Loader2 className="w-5 h-5 text-emerald-700 animate-spin" />
+                          ) : safePhoto ? (
+                            <img
+                              src={safePhoto}
+                              alt={`Preview ${item.nama || 'pengurus'}`}
+                              className="w-full h-full object-cover object-top"
+                            />
+                          ) : (
+                            <User className="w-6 h-6 text-slate-400" aria-hidden="true" />
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="min-h-[34px] inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-[11px] font-bold text-emerald-900 dark:text-emerald-200 cursor-pointer">
+                            <Upload className="w-3 h-3" aria-hidden="true" />
+                            <span>{safePhoto ? 'Ganti Foto' : 'Upload Foto'}</span>
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/jpg,image/png,image/webp"
+                              onChange={(e) => handleFotoUpload(idx, e)}
+                              className="hidden"
+                            />
+                          </label>
+                          {safePhoto && (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateAnggota(idx, 'foto_url', '')}
+                              className="min-h-[28px] inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-lg border border-rose-200 dark:border-rose-800 text-[11px] font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" aria-hidden="true" />
+                              <span>Hapus Foto</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Input Nama & Sub-label */}
+                      <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <input
+                          type="text"
+                          value={item.sub_label || ''}
+                          onChange={(e) => handleUpdateAnggota(idx, 'sub_label', e.target.value)}
+                          placeholder="Sub-Label (opsional)"
+                          aria-label={`Sub-label anggota ${idx + 1}`}
+                          className="min-h-[40px] px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-900 dark:text-slate-100"
+                        />
+                        <input
+                          type="text"
+                          value={item.nama}
+                          onChange={(e) => handleUpdateAnggota(idx, 'nama', e.target.value)}
+                          placeholder="Nama Lengkap & Gelar (mis. Ust. ...)"
+                          aria-label={`Nama lengkap anggota ${idx + 1}`}
+                          className="sm:col-span-2 min-h-[40px] px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-900 dark:text-white font-medium"
+                        />
+                        <input
+                          type="text"
+                          value={item.catatan || ''}
+                          onChange={(e) => handleUpdateAnggota(idx, 'catatan', e.target.value)}
+                          placeholder="Catatan / keterangan singkat untuk pop-up (opsional)"
+                          aria-label={`Catatan anggota ${idx + 1}`}
+                          className="sm:col-span-3 min-h-[36px] px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+
+                      {/* Kontrol Urutan & Hapus */}
+                      <div className="flex items-center justify-end gap-1 shrink-0 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveAnggota(idx, -1)}
+                          disabled={idx === 0}
+                          aria-label="Geser anggota ke atas"
+                          title="Geser ke atas"
+                          className="min-w-[36px] min-h-[36px] inline-flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 cursor-pointer"
+                        >
+                          <ArrowUp className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveAnggota(idx, 1)}
+                          disabled={idx === anggota.length - 1}
+                          aria-label="Geser anggota ke bawah"
+                          title="Geser ke bawah"
+                          className="min-w-[36px] min-h-[36px] inline-flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 cursor-pointer"
+                        >
+                          <ArrowDown className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAnggota(idx)}
+                          disabled={anggota.length <= 1}
+                          aria-label="Hapus anggota"
+                          title="Hapus anggota"
+                          className="min-w-[36px] min-h-[36px] inline-flex items-center justify-center rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 disabled:opacity-30 cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -343,17 +481,18 @@ export default function ModalFormJabatanKepengurusan({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 cursor-pointer"
+              disabled={isSubmitting}
+              className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
             >
               Batal
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0b5751] hover:bg-emerald-800 text-white text-xs font-bold shadow-md disabled:opacity-60 cursor-pointer"
+              disabled={isSubmitting || processingPhotoIdx !== null}
+              className="min-h-[44px] inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-[#0b5751] hover:bg-emerald-800 text-white text-xs font-bold shadow-md disabled:opacity-60 cursor-pointer"
             >
-              <Save className="w-4 h-4" />
-              <span>{isSubmitting ? 'Menyimpan...' : 'Simpan Jabatan'}</span>
+              <Save className="w-4 h-4" aria-hidden="true" />
+              <span>{isSubmitting ? 'Menyimpan & Mengunggah...' : 'Simpan Jabatan'}</span>
             </button>
           </div>
         </form>

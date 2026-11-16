@@ -1,3 +1,5 @@
+import { sanitizeHttpUrl } from '@/lib/security/urlSanitizer';
+
 export type KelompokKepengurusan =
   | 'pimpinan'
   | 'kepala_madrasah'
@@ -11,16 +13,130 @@ export interface AnggotaKepengurusan {
   nama: string;
   sub_label?: string;
   catatan?: string;
+  foto_url?: string;
 }
 
 export interface KepengurusanPeriode {
   id: string;
   nama_periode: string;
+  menu_label?: string;
+  slug?: string;
   catatan: string;
+  sort_order?: number;
   is_current: boolean;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
+}
+
+const SAFE_DATA_IMAGE_RE = /^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/i;
+
+/**
+ * Menjaga URL foto pengurus hanya berasal dari URL http(s) yang valid
+ * atau Data URL image (JPEG/PNG/WEBP) hasil kompresi lokal.
+ */
+export function sanitizeMemberPhotoUrl(rawUrl?: string | null): string {
+  if (typeof rawUrl !== 'string') return '';
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('data:image/')) {
+    return SAFE_DATA_IMAGE_RE.test(trimmed) ? trimmed : '';
+  }
+  return sanitizeHttpUrl(trimmed) || '';
+}
+
+/**
+ * Menghasilkan slug URL yang rapi dari nama periode atau label menu.
+ * Jika mengandung pola rentang tahun Masehi (mis. 2026-2027), utamakan rentang tersebut.
+ */
+export function slugifyPeriode(input: string, fallbackId?: string): string {
+  const raw = String(input || '').trim();
+  const yearRangeMatch = raw.match(/\b(20\d{2}\s*[-/]\s*20\d{2})\b/);
+  const baseSource = yearRangeMatch ? yearRangeMatch[1].replace(/\s*\/\s*|\s+/g, '-') : raw;
+
+  const normalized = baseSource
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 72);
+
+  if (normalized) return normalized;
+  return fallbackId ? `periode-${fallbackId.slice(0, 8)}` : 'periode';
+}
+
+export function getPeriodeSlug(
+  periode: Pick<KepengurusanPeriode, 'id' | 'slug' | 'menu_label' | 'nama_periode'>
+): string {
+  const existing = String(periode.slug || '').trim();
+  if (existing) return existing;
+  return slugifyPeriode(periode.menu_label || periode.nama_periode, periode.id);
+}
+
+export function getPeriodeMenuLabel(
+  periode: Pick<KepengurusanPeriode, 'nama_periode' | 'menu_label'>
+): string {
+  const explicit = String(periode.menu_label || '').trim();
+  if (explicit) return explicit;
+  const raw = String(periode.nama_periode || '').trim();
+  const yearRangeMatch = raw.match(/\b(20\d{2}\s*[-/]\s*20\d{2})\b/);
+  if (yearRangeMatch) {
+    return `Kepengurusan ${yearRangeMatch[1].replace(/\s*\/\s*|\s+/g, '-')}`;
+  }
+  return raw ? `Kepengurusan ${raw}` : 'Kepengurusan';
+}
+
+function extractLeadingYear(text: string): number {
+  const match = String(text || '').match(/\b(20\d{2})\b/);
+  return match ? Number(match[1]) : 0;
+}
+
+/**
+ * Mengurutkan daftar periode: periode berjalan (is_current) selalu di urutan paling atas,
+ * diikuti periode lainnya berdasarkan sort_order naik lalu tahun/created_at terbaru.
+ */
+export function sortPeriodesForDisplay(
+  periodes: KepengurusanPeriode[]
+): KepengurusanPeriode[] {
+  return [...periodes].sort((a, b) => {
+    if (a.is_current !== b.is_current) {
+      return a.is_current ? -1 : 1;
+    }
+    const orderA = Number(a.sort_order ?? 0);
+    const orderB = Number(b.sort_order ?? 0);
+    if (orderA !== orderB && orderA > 0 && orderB > 0) {
+      return orderA - orderB;
+    }
+    const yearA = extractLeadingYear(a.slug || a.menu_label || a.nama_periode);
+    const yearB = extractLeadingYear(b.slug || b.menu_label || b.nama_periode);
+    if (yearA !== yearB) {
+      return yearB - yearA;
+    }
+    const timeA = a.created_at ? Date.parse(a.created_at) : 0;
+    const timeB = b.created_at ? Date.parse(b.created_at) : 0;
+    return timeB - timeA;
+  });
+}
+
+/**
+ * Mengambil maksimal N (default 3) periode aktif terakhir untuk sub-menu navbar publik,
+ * dengan periode sekarang (is_current) selalu di posisi paling atas.
+ */
+export function getPublicNavbarPeriodes(
+  periodes: KepengurusanPeriode[],
+  limit = 3
+): KepengurusanPeriode[] {
+  const activeOnly = periodes.filter((p) => p.is_active !== false);
+  return sortPeriodesForDisplay(activeOnly).slice(0, Math.max(1, limit));
+}
+
+export function getInitialsFromName(nama: string): string {
+  const cleaned = String(nama || '')
+    .replace(/^(KH|Dr\.?\s*KH|Ust|Ustdz|H|Hj)\.?\s+/gi, '')
+    .trim();
+  if (!cleaned) return 'MB';
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return `${words[0][0] || ''}${words[1][0] || ''}`.toUpperCase();
 }
 
 export interface KepengurusanJabatan {
@@ -78,15 +194,30 @@ export const BAGIAN_KEPENGURUSAN_META: Record<
   putri: { label: 'Kepengurusan Putri', shortLabel: 'Putri' },
 };
 
-export const SEED_PERIODE_ID = 'seed-periode-1446-1447';
+export const SEED_PERIODE_ID = 'seed-periode-1447-1448';
+export const SEED_PERIODE_2025_ID = 'seed-periode-1446-1447';
 
 export const SEED_KEPENGURUSAN_PERIODE: KepengurusanPeriode[] = [
   {
     id: SEED_PERIODE_ID,
-    nama_periode: '1446-1447 H / 2025-2026 M',
+    nama_periode: '1447-1448 H / 2026-2027 M',
+    menu_label: 'Kepengurusan 2026-2027',
+    slug: '2026-2027',
     catatan:
       'Personalia Kepengurusan Putra dan Putri Madrasah Diniyyah Al-Amiriyyah PP. Darussalam Blokagung Banyuwangi',
+    sort_order: 10,
     is_current: true,
+    is_active: true,
+  },
+  {
+    id: SEED_PERIODE_2025_ID,
+    nama_periode: '1446-1447 H / 2025-2026 M',
+    menu_label: 'Kepengurusan 2025-2026',
+    slug: '2025-2026',
+    catatan:
+      'Personalia Kepengurusan Putra dan Putri Madrasah Diniyyah Al-Amiriyyah PP. Darussalam Blokagung Banyuwangi',
+    sort_order: 20,
+    is_current: false,
     is_active: true,
   },
 ];
