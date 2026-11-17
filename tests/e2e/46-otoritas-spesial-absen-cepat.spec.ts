@@ -6,6 +6,10 @@ test.describe('Otoritas Spesial: Sesi Perangkat Tetap & Pintasan Langsung ke Abs
   test('Master Admin dapat mengaktifkan Saklar Otoritas Spesial pada modal Edit Akun, akun langsung diarahkan ke /absen-cepat saat login, otomatis masuk kembali tanpa login ulang di perangkat yang sama, dan baru terputus saat Logout sendiri', async ({
     page,
   }) => {
+    test.skip(
+      !process.env.E2E_SECURITY_PASSWORD,
+      'Memerlukan variabel lingkungan E2E_SECURITY_PASSWORD untuk memverifikasi Saklar Keamanan Aplikasi'
+    );
     await page.setViewportSize({ width: 1280, height: 800 });
 
     // 1. Login sebagai Master Admin

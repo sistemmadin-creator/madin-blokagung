@@ -106,9 +106,9 @@ test.describe('E2E: Pengujian Pemisahan Pop-up Kolom Kelas/Mustahiq (Gambar 3) &
     // Verifikasi Modal Pop-up Gambar 4 muncul
     const modalGambar4 = page.locator('div.fixed.inset-0.z-50');
     await expect(modalGambar4).toBeVisible({ timeout: 10000 });
-    await expect(modalGambar4.getByText('WAJIB + SUNNAH', { exact: false })).toBeVisible();
-    await expect(modalGambar4.getByText('WAJIB + SUNNAH + KITAB', { exact: false })).toBeVisible();
-    await expect(modalGambar4.getByText('DAFTAR CAPAIAN SANTRI', { exact: false })).toBeVisible();
+    await expect(modalGambar4.getByText('Wajib + Sunnah', { exact: true })).toBeVisible();
+    await expect(modalGambar4.getByText('Wajib + Sunnah + Kitab', { exact: true })).toBeVisible();
+    await expect(modalGambar4.getByText(/Daftar Capaian Santri/i)).toBeVisible();
 
     // Tutup modal via tombol 'Tutup Rincian'
     const btnTutup = modalGambar4.getByRole('button', { name: 'Tutup Rincian' });

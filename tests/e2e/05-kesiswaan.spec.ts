@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Modul 04: Kesiswaan & Presensi (Absensi Asatidz, Absen Cepat, Rekap Absensi)', () => {
   test('Absensi Asatidz page, KPI modal, 4-hour progressive blocks, holiday modal, and Riwayat tab', async ({ page }) => {
     test.setTimeout(120_000);
-    await page.goto('/absensi');
+    await gotoWithAuth(page, '/absensi');
 
     await expect(
       page.getByRole('heading', { name: /(Absensi Asatidz|Presensi KBM)/i }).first()
@@ -42,8 +43,9 @@ test.describe('Modul 04: Kesiswaan & Presensi (Absensi Asatidz, Absen Cepat, Rek
     await page.waitForTimeout(500);
 
     // Check Holiday settings modal
-    const holidayBtn = page.getByRole('button', { name: /Libur \/ Event/i });
-    await expect(holidayBtn).toBeVisible();
+    const holidayBtn = page.getByRole('button', { name: /Libur \/ Event/i }).first();
+    await expect(holidayBtn).toBeVisible({ timeout: 45_000 });
+    await holidayBtn.scrollIntoViewIfNeeded();
     await holidayBtn.click();
 
     await expect(
@@ -54,7 +56,6 @@ test.describe('Modul 04: Kesiswaan & Presensi (Absensi Asatidz, Absen Cepat, Rek
     await expect(
       page.getByRole('heading', { name: /Pengaturan Hari Libur/i })
     ).not.toBeVisible();
-    await modalLibur.waitFor({ state: 'detached' }).catch(() => {});
     await page.waitForTimeout(300);
 
     // Switch to Tab 2: Riwayat & Rekap Data
@@ -71,7 +72,7 @@ test.describe('Modul 04: Kesiswaan & Presensi (Absensi Asatidz, Absen Cepat, Rek
   });
 
   test('Absen Cepat page, round hour tabs, Notif monitoring modal, and action buttons', async ({ page }) => {
-    await page.goto('/absen-cepat');
+    await gotoWithAuth(page, '/absen-cepat');
 
     await expect(
       page.getByRole('heading', { name: /Absen Cepat/i }).first()
@@ -102,7 +103,7 @@ test.describe('Modul 04: Kesiswaan & Presensi (Absensi Asatidz, Absen Cepat, Rek
     ).toBeVisible();
 
     // Open Notif monitoring modal
-    const notifBtn = page.getByRole('button', { name: /Notif/i });
+    const notifBtn = page.getByRole('button', { name: 'Notif', exact: true });
     await expect(notifBtn).toBeVisible();
     await notifBtn.click();
 
@@ -116,7 +117,8 @@ test.describe('Modul 04: Kesiswaan & Presensi (Absensi Asatidz, Absen Cepat, Rek
   });
 
   test('Rekap Presensi page, filter panel, 4 KPI cards, 14-column table, Top 10 Alfa dropdown, and WhatsApp generator modal', async ({ page }) => {
-    await page.goto('/rekap-absensi');
+    test.setTimeout(120_000);
+    await gotoWithAuth(page, '/rekap-absensi');
 
     await expect(
       page.getByRole('heading', { name: /Rekapitulasi|Rekap Absensi/i }).first()
@@ -174,7 +176,7 @@ test.describe('Modul 04: Kesiswaan & Presensi (Absensi Asatidz, Absen Cepat, Rek
 
     // Check copy button
     await expect(
-      page.getByRole('button', { name: /Salin Teks WhatsApp/i })
+      page.getByRole('button', { name: 'Salin Teks', exact: true })
     ).toBeVisible();
 
     const closeBtn = page.getByRole('button', { name: 'Tutup', exact: true });

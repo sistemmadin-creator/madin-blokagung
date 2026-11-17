@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { expandSidebarGroup, expandSidebarSubmenu, gotoWithAuth } from './helpers/auth';
 
 test.describe('Fase 2: Ubah Sidebar Tingkat Lanjut (Sub-menu, Visibility, Pindah Grup, & Cloud Sync)', () => {
   test.beforeEach(async ({ page }) => {
@@ -9,10 +10,12 @@ test.describe('Fase 2: Ubah Sidebar Tingkat Lanjut (Sub-menu, Visibility, Pindah
   });
 
   test('1. Dapat mengubah nama sub-menu anak dan langsung tercermin di sidebar desktop', async ({ page }) => {
-    await page.goto('/pengaturan?tab=sidebar');
+    await gotoWithAuth(page, '/pengaturan?tab=sidebar');
     await expect(page.getByTestId('sidebar-editor-container')).toBeVisible();
 
     const sidebar = page.getByRole('complementary');
+    await expandSidebarGroup(page, /PKM\. Kurikulum/i);
+    await expandSidebarSubmenu(page, 'Jadwal KBM', /Jadwal KBM Per Kelas/i);
 
     // Buka accordion sub-menu pada item Jadwal KBM
     const expandBtn = page.getByTestId('btn-expand-sub-item-jadwal-kbm');
@@ -43,10 +46,11 @@ test.describe('Fase 2: Ubah Sidebar Tingkat Lanjut (Sub-menu, Visibility, Pindah
   });
 
   test('2. Dapat menyembunyikan dan menampilkan kembali item menu dari sidebar (Visibility Toggle)', async ({ page }) => {
-    await page.goto('/pengaturan?tab=sidebar');
+    await gotoWithAuth(page, '/pengaturan?tab=sidebar');
     await expect(page.getByTestId('sidebar-editor-container')).toBeVisible();
 
     const sidebar = page.getByRole('complementary');
+    await expandSidebarGroup(page, 'Utama');
 
     // Awalnya menu Data Asatidz terlihat di sidebar
     await expect(sidebar.getByText('Data Asatidz')).toBeVisible();
@@ -71,7 +75,7 @@ test.describe('Fase 2: Ubah Sidebar Tingkat Lanjut (Sub-menu, Visibility, Pindah
   });
 
   test('3. Dapat menyembunyikan seluruh grup menu dari sidebar desktop', async ({ page }) => {
-    await page.goto('/pengaturan?tab=sidebar');
+    await gotoWithAuth(page, '/pengaturan?tab=sidebar');
     await expect(page.getByTestId('sidebar-editor-container')).toBeVisible();
 
     const sidebar = page.getByRole('complementary');
@@ -95,7 +99,7 @@ test.describe('Fase 2: Ubah Sidebar Tingkat Lanjut (Sub-menu, Visibility, Pindah
   });
 
   test('4. Dapat memindahkan item menu ke kategori grup lain', async ({ page }) => {
-    await page.goto('/pengaturan?tab=sidebar');
+    await gotoWithAuth(page, '/pengaturan?tab=sidebar');
     await expect(page.getByTestId('sidebar-editor-container')).toBeVisible();
 
     // Buka panel pindah grup pada menu 'Data Asatidz' (awalnya di grup Utama)
@@ -120,7 +124,7 @@ test.describe('Fase 2: Ubah Sidebar Tingkat Lanjut (Sub-menu, Visibility, Pindah
   });
 
   test('5. Tombol Simpan ke Cloud memberikan indikator feedback dan mencatat konfigurasi', async ({ page }) => {
-    await page.goto('/pengaturan?tab=sidebar');
+    await gotoWithAuth(page, '/pengaturan?tab=sidebar');
     await expect(page.getByTestId('sidebar-editor-container')).toBeVisible();
 
     // Klik tombol Simpan ke Cloud

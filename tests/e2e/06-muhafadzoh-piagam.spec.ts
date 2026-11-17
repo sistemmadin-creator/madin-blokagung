@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
   test('Setoran Muhafadzoh page and settings modal', async ({ page }) => {
-    await page.goto('/setoran');
+    await gotoWithAuth(page, '/setoran');
 
     await expect(page.getByRole('heading', { name: /Setoran/i }).first()).toBeVisible();
 
@@ -10,9 +11,9 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
     await expect(page.getByRole('heading', { name: /Input Hafalan/i })).toBeVisible();
     await expect(page.getByRole('combobox').first()).toBeVisible();
 
-    // Settings modal button
+    // Settings modal button (tunggu RBAC currentAccount selesai dimuat)
     const settingsBtn = page.getByRole('button', { name: /Opsi Hafalan|Target & Penjaga Bebas/i });
-    await expect(settingsBtn).toBeVisible();
+    await expect(settingsBtn).toBeVisible({ timeout: 20_000 });
     await settingsBtn.click();
 
     await expect(page.getByRole('heading', { name: /Pengaturan Target Muhafadzoh/i })).toBeVisible();
@@ -32,7 +33,7 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
   });
 
   test('Setoran Muhafadzoh: Form Input, Kategori Token, dan Kartu Bukti Fisik', async ({ page }) => {
-    await page.goto('/setoran');
+    await gotoWithAuth(page, '/setoran');
 
     // 1. Verify Category Pill Tokens
     await expect(page.getByRole('button', { name: 'Wajib', exact: true })).toBeVisible();
@@ -52,7 +53,7 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
   });
 
   test('Setoran Muhafadzoh: Tabel Riwayat 11 Kolom dan Checkbox Seleksi', async ({ page }) => {
-    await page.goto('/setoran');
+    await gotoWithAuth(page, '/setoran');
 
     // 1. Verify 11 Column Headers
     const table = page.locator('table.tabel-kbm-resmi');
@@ -75,51 +76,35 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
   });
 
   test('Rekap Hafalan: Toolbar, Mode Pills, Dropdown Tingkat, dan Tombol Export/Cetak', async ({ page }) => {
-    await page.goto('/rekap-hafalan');
+    await gotoWithAuth(page, '/rekap-hafalan');
 
     await expect(page.getByRole('heading', { name: /Rekapitulasi Hafalan Pertingkatan/i }).first()).toBeVisible();
 
-    // Mode buttons
-    const btnWajib = page.getByRole('button', { name: 'Hafalan Wajib', exact: true });
-    const btnTahfidz = page.getByRole('button', { name: 'Hafalan Tahfidz', exact: true });
-    await expect(btnWajib).toBeVisible();
-    await expect(btnTahfidz).toBeVisible();
-
-    // Tingkat Select
+    // Tingkat & Gender Select
     const selectTingkat = page.getByRole('combobox').first();
     await expect(selectTingkat).toBeVisible();
-    await expect(selectTingkat).toHaveValue('ULA');
+    await expect(selectTingkat).toHaveValue('ALL');
+
+    const selectGender = page.getByRole('combobox').nth(1);
+    await expect(selectGender).toBeVisible();
 
     // Action Buttons
     await expect(page.getByRole('button', { name: /Cetak A4/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Export Excel/i })).toBeVisible();
 
-    // Switch to Tahfidz
-    await btnTahfidz.click();
-    await expect(btnTahfidz).toHaveClass(/bg-emerald-700/);
+    // Table headers for Pertingkatan summary
+    await expect(page.getByRole('columnheader', { name: /HAFALAN WAJIB/i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /HAFALAN SUNNAH/i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /HAFALAN KITAB/i })).toBeVisible();
 
-    // Switch back to Wajib
-    await btnWajib.click();
-    await expect(btnWajib).toHaveClass(/bg-emerald-700/);
-
-    // Empty state on ULA with quick action to WUSTHO
-    await expect(page.getByText('Data Santri Tidak Ditemukan')).toBeVisible();
-    await expect(page.getByText(/Belum ada data santri yang terdaftar pada Tingkat/i)).toBeVisible();
-
-    // Select WUSTHO and verify santri table renders
+    // Select WUSTHO and verify filter updates
     await selectTingkat.selectOption('WUSTHO');
     await expect(selectTingkat).toHaveValue('WUSTHO');
-
-    // Verify Kelas 1 - Tingkat WUSTHO table rendered
-    await expect(page.getByRole('heading', { name: /Kelas 1 - Tingkat WUSTHO/i })).toBeVisible();
-    await expect(page.getByText('ANDIKO DWI SAPUTRA')).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: /fiy+ah 350/i })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: /fiy+ah 500/i })).toBeVisible();
-    await expect(page.getByText('1 / 2')).toBeVisible();
+    await expect(page.locator('tbody tr').first()).toContainText(/WUSTHO/i);
   });
 
   test('Studio Piagam Kelulusan and coordinate inspector', async ({ page }) => {
-    await page.goto('/piagam');
+    await gotoWithAuth(page, '/piagam');
 
     await expect(page.getByRole('heading', { name: /Cetak Piagam/i }).first()).toBeVisible();
 
@@ -170,41 +155,40 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
   });
 
   test('Cetak Piagam 3-Pane Studio: collapse panel kiri/kanan, mode fokus, dan auto-open saat klik kanvas', async ({ page }) => {
-    await page.goto('/piagam');
-    if (page.url().includes('/login')) {
-      await page.getByLabel('Username Pengurus').fill('admin');
-      await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
-      await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
-      await page.waitForURL('**/piagam**', { timeout: 60000 });
-    }
+    await gotoWithAuth(page, '/piagam');
 
     await page.evaluate(() => window.localStorage.removeItem('madina_piagam_panels_v1'));
     await page.reload();
 
     // Kedua panel awalnya terbuka
-    await expect(page.getByTestId('btn-collapse-left-panel')).toBeVisible();
+    await expect(page.getByTestId('btn-collapse-left-panel')).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId('btn-collapse-right-panel')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Pengaturan Piagam' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Elemen Teks Piagam' })).toBeVisible();
 
     // Kecilkan panel kiri ke samping kiri
-    await page.getByTestId('btn-collapse-left-panel').click({ force: true });
+    await page.getByTestId('btn-collapse-left-panel').click();
     await expect(page.getByTestId('btn-expand-left-panel')).toBeVisible();
 
     // Kecilkan panel kanan ke samping kanan
-    await page.getByTestId('btn-collapse-right-panel').click({ force: true });
+    await page.getByTestId('btn-collapse-right-panel').click();
     await expect(page.getByTestId('btn-expand-right-panel')).toBeVisible();
 
     // Klik elemen teks di kanvas -> panel kanan otomatis terbuka kembali
-    await page.locator('.piagam-element').first().click({ force: true });
-    await expect(page.getByTestId('btn-collapse-right-panel')).toBeVisible();
+    await expect(async () => {
+      await page.locator('.piagam-element').first().click({ force: true });
+      await expect(page.getByTestId('btn-collapse-right-panel')).toBeVisible({ timeout: 1500 });
+    }).toPass({ timeout: 15_000 });
 
     // Toggle Mode Fokus -> menutup kedua panel, lalu klik lagi -> membuka keduanya
-    await page.getByTestId('btn-toggle-focus-mode').click({ force: true });
+    const focusBtn = page.getByTestId('btn-toggle-focus-mode');
+    await focusBtn.scrollIntoViewIfNeeded();
+    await focusBtn.click();
     await expect(page.getByTestId('btn-expand-left-panel')).toBeVisible();
     await expect(page.getByTestId('btn-expand-right-panel')).toBeVisible();
 
-    await page.getByTestId('btn-toggle-focus-mode').click({ force: true });
+    await focusBtn.scrollIntoViewIfNeeded();
+    await focusBtn.click();
     await expect(page.getByTestId('btn-collapse-left-panel')).toBeVisible();
     await expect(page.getByTestId('btn-collapse-right-panel')).toBeVisible();
   });

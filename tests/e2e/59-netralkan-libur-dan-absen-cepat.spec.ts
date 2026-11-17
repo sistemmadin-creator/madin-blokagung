@@ -6,6 +6,7 @@ async function performLogin(page: Page) {
   await page.getByLabel('Username Pengurus').fill('admin');
   await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
   await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
+  await page.waitForURL('**/dashboard**', { timeout: 30000 });
 }
 
 test.describe('E2E: Verifikasi Penetralan Hari Libur & Pemulihan Absen Cepat Mobile', () => {
@@ -15,7 +16,6 @@ test.describe('E2E: Verifikasi Penetralan Hari Libur & Pemulihan Absen Cepat Mob
     page,
   }) => {
     await performLogin(page);
-    await page.waitForURL('**/beranda**', { timeout: 30000 });
 
     await page.goto('/kalender-kegiatan');
     await page.waitForLoadState('domcontentloaded');
@@ -68,7 +68,6 @@ test.describe('E2E: Verifikasi Penetralan Hari Libur & Pemulihan Absen Cepat Mob
     await page.setViewportSize({ width: 390, height: 844 });
 
     await performLogin(page);
-    await page.waitForURL('**/beranda**', { timeout: 30000 });
 
     await page.goto('/absen-cepat');
     await page.waitForLoadState('domcontentloaded');
@@ -98,7 +97,6 @@ test.describe('E2E: Verifikasi Penetralan Hari Libur & Pemulihan Absen Cepat Mob
     page,
   }) => {
     await performLogin(page);
-    await page.waitForURL('**/beranda**', { timeout: 30000 });
 
     await page.goto('/absensi');
     await page.waitForLoadState('domcontentloaded');

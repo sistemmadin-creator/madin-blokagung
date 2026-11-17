@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () => {
   test('1.0 Jadwal KBM Per Kelas: Toolbar, Mode Switcher, & Filter', async ({ page }) => {
-    await page.goto('/jadwal-kbm');
+    await gotoWithAuth(page, '/jadwal-kbm');
 
     // Judul halaman & Subtitle
     await expect(page.getByRole('heading', { name: 'Jadwal KBM Per Kelas', exact: true })).toBeVisible();
@@ -41,7 +42,7 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
   });
 
   test('2.0 Jadwal KBM Per Kelas: Tabel Matriks Resmi, Header 12 Sub-Kolom Hari & Sorting ULA', async ({ page }) => {
-    await page.goto('/jadwal-kbm');
+    await gotoWithAuth(page, '/jadwal-kbm');
 
     // Header Dokumen Resmi
     await expect(page.getByText('JADWAL KBM MADRASAH DINIYYAH AL AMIRIYYAH')).toBeVisible();
@@ -76,7 +77,7 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
   });
 
   test('2.1 Urutan Default Baris Tabel: Kelas 1 Putra sebelum Kelas 1 Putri sebelum Kelas 2', async ({ page }) => {
-    await page.goto('/jadwal-kbm');
+    await gotoWithAuth(page, '/jadwal-kbm');
     const table = page.locator('#tableJadwalKBM');
     await expect(table).toBeVisible({ timeout: 15_000 });
     // Tunggu hingga baris data pertama selesai dirender
@@ -119,7 +120,7 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
   });
 
   test('3.0 Jadwal KBM Per Kelas: Modal Detail Kelas KBM', async ({ page }) => {
-    await page.goto('/jadwal-kbm');
+    await gotoWithAuth(page, '/jadwal-kbm');
 
     // Klik nomor kelas atau nama kelas pertama di tabel
     const cellKls = page.locator('tbody tr td.cell-klik-kelas').first();
@@ -144,7 +145,7 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
   });
 
   test('4.0 Jadwal KBM Per Kelas: Modal Input Jadwal Kelas & Editor Dual Kolom', async ({ page }) => {
-    await page.goto('/jadwal-kbm');
+    await gotoWithAuth(page, '/jadwal-kbm');
 
     // Klik tombol pensil di sel kelas
     const btnPencil = page.locator('tbody tr td button[title="Edit Jadwal Kelas Ini"]').first();
@@ -174,7 +175,7 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
   });
 
   test('5.0 Jadwal KBM Per Kelas: Context Menu KG & Mode Pindah (Cut & Paste)', async ({ page }) => {
-    await page.goto('/jadwal-kbm');
+    await gotoWithAuth(page, '/jadwal-kbm');
 
     // Temukan sel KG yang memiliki teks guru (bukan '-')
     let cellKg = page.locator('tbody tr td.cell-kg-clickable').filter({ hasNotText: '-' }).first();
@@ -212,7 +213,7 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
   });
 
   test('6.0 Hari KBM: 7 Kolom Resmi, Grouping Blok Kelas, & Switch Hari', async ({ page }) => {
-    await page.goto('/hari-kbm');
+    await gotoWithAuth(page, '/hari-kbm');
 
     // Judul Halaman
     await expect(page.getByRole('heading', { name: 'Hari KBM', exact: true })).toBeVisible();
@@ -262,7 +263,7 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
   });
 
   test('7.0 Hari KBM: Card View Mode Switch & Navigasi Interaktif', async ({ page }) => {
-    await page.goto('/hari-kbm');
+    await gotoWithAuth(page, '/hari-kbm');
 
     // Toggle ke Card View
     const btnCard = page.locator('button[title="Tampilan Kartu"]');
@@ -292,7 +293,7 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
   });
 
   test('8.0 Jadwal KBM Per Kelas: Isolasi Gender PA vs PI pada Matriks Kelas', async ({ page }) => {
-    await page.goto('/jadwal-kbm');
+    await gotoWithAuth(page, '/jadwal-kbm');
 
     const table = page.locator('#tableJadwalKBM');
     await expect(table).toBeVisible({ timeout: 15_000 });
@@ -326,7 +327,7 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
   });
 
   test('9.0 Jadwal KBM Per Kelas: Stabilo Khusus Kode Guru (KG) - Kode A (Biru) & Kode D (Ungu)', async ({ page }) => {
-    await page.goto('/jadwal-kbm');
+    await gotoWithAuth(page, '/jadwal-kbm');
 
     const table = page.locator('#tableJadwalKBM');
     await expect(table).toBeVisible({ timeout: 15_000 });
@@ -414,7 +415,7 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
 
   test('9.0 Mode Default HP (Fit-to-Screen) & Klik Judul untuk Layar Penuh Hanya Tabel', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/jadwal-kbm');
+    await gotoWithAuth(page, '/jadwal-kbm');
 
     const table = page.locator('#tableJadwalKBM');
     await expect(table).toBeVisible({ timeout: 15_000 });

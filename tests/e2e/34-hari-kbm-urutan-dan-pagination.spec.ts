@@ -1,8 +1,75 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
+
+const MOCK_HARI_KBM_JADWAL = {
+  'FIKRUL UMAM AL HANIF': {
+    nama_asatidz: 'FIKRUL UMAM AL HANIF',
+    mengajar: '1 A ULA (PA)',
+    sabtu: 'Jam 1 | Fiqih | 1 A ULA (PA) (Asr p bawah)',
+    ahad: 'Jam 1 | Fiqih | 1 A ULA (PA) (Asr p bawah)',
+    senin: 'Jam 1 | Fiqih | 1 A ULA (PA) (Asr p bawah)',
+    selasa: 'Jam 1 | Fiqih | 1 A ULA (PA) (Asr p bawah)',
+    rabu: 'Jam 1 | Fiqih | 1 A ULA (PA) (Asr p bawah)',
+    kamis: 'Jam 1 | Fiqih | 1 A ULA (PA) (Asr p bawah)',
+    totalJam: 6,
+  },
+};
 
 test.describe('Hari KBM: Urutan Grup Blok Resmi & Kontrol Pagination', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/rest/v1/jadwal_kbm_slots*', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          headers: {
+            'access-control-allow-origin': '*',
+          },
+          contentType: 'application/json; charset=utf-8',
+          body: JSON.stringify([
+            {
+              nama_asatidz: 'FIKRUL UMAM AL HANIF',
+              hari: 'Senin',
+              jam: 1,
+              fan: 'Fiqih',
+              lokasi: '1 A ULA (PA) (Asr p bawah)',
+              kelas_lengkap: '1 A ULA (PA)',
+              raw_slot: 'Jam 1 | Fiqih | 1 A ULA (PA) (Asr p bawah)',
+            },
+            {
+              nama_asatidz: 'FIKRUL UMAM AL HANIF',
+              hari: 'Selasa',
+              jam: 1,
+              fan: 'Fiqih',
+              lokasi: '1 A ULA (PA) (Asr p bawah)',
+              kelas_lengkap: '1 A ULA (PA)',
+              raw_slot: 'Jam 1 | Fiqih | 1 A ULA (PA) (Asr p bawah)',
+            },
+          ]),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.route('**/rest/v1/app_settings*', async (route) => {
+      const url = route.request().url();
+      if (url.includes('JADWAL_MENGAJAR_ASATIDZ') && route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          headers: {
+            'access-control-allow-origin': '*',
+          },
+          contentType: 'application/json; charset=utf-8',
+          body: JSON.stringify({ value: MOCK_HARI_KBM_JADWAL }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+  });
+
   test('1.0 Hari KBM (/hari-kbm): Urutan Grup Blok Resmi, Filter Blok & Pagination', async ({ page }) => {
-    await page.goto('/hari-kbm');
+    await gotoWithAuth(page, '/hari-kbm');
     await expect(page.getByRole('heading', { name: /Hari KBM/i })).toBeVisible({ timeout: 15_000 });
 
     // Pilih Hari Senin
@@ -53,7 +120,7 @@ test.describe('Hari KBM: Urutan Grup Blok Resmi & Kontrol Pagination', () => {
   });
 
   test('2.0 Hari KBM: Beralih ke Tampilan Mode Kartu dengan Pagination', async ({ page }) => {
-    await page.goto('/hari-kbm');
+    await gotoWithAuth(page, '/hari-kbm');
     await expect(page.getByRole('heading', { name: /Hari KBM/i })).toBeVisible({ timeout: 15_000 });
 
     // Klik tombol switch mode kartu

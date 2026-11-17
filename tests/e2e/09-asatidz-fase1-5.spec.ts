@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Modul Asatidz: Pengujian Komprehensif Fitur & Modal', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/asatidz');
+    await gotoWithAuth(page, '/asatidz');
     await expect(page.getByRole('heading', { name: /Database Asatidz/i })).toBeVisible();
     await expect(page.locator('table')).toBeVisible();
     await expect(page.getByText(/Menampilkan/i)).toBeVisible();
@@ -15,9 +16,11 @@ test.describe('Modul Asatidz: Pengujian Komprehensif Fitur & Modal', () => {
       await expect(pageSizeSelect).toBeVisible();
       await expect(pageSizeSelect).toHaveValue('25');
 
-      // Pilih 10 data
-      await pageSizeSelect.selectOption('10');
-      await expect(pageSizeSelect).toHaveValue('10');
+      // Pilih 10 data (tunggu hidrasi bila perlu)
+      await expect(async () => {
+        await pageSizeSelect.selectOption('10');
+        await expect(pageSizeSelect).toHaveValue('10', { timeout: 1000 });
+      }).toPass({ timeout: 10_000 });
 
       // Pilih 50 data
       await pageSizeSelect.selectOption('50');
@@ -142,8 +145,8 @@ test.describe('Modul Asatidz: Pengujian Komprehensif Fitur & Modal', () => {
       // Verifikasi tombol Kamera
       await expect(modalDialog.getByRole('button', { name: /Kamera/i })).toBeVisible();
 
-      // Verifikasi selector prefix NIA
-      const prefixSelect = modalDialog.locator('select[title="Pilih Prefix Huruf NIA"]');
+      // Verifikasi selector prefix Kode Guru (NIA)
+      const prefixSelect = modalDialog.locator('select[title="Pilih Prefix Huruf Kode Guru"]');
       await expect(prefixSelect).toBeVisible();
       await prefixSelect.selectOption('B');
 

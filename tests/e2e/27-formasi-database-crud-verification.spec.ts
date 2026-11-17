@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Verifikasi E2E: Database CRUD Formasi Kelas & Sinkronisasi Rombel Baru', () => {
   test('1.0 Formasi Master Page (/formasi): Data Rombel Baru & Penghapusan ULA 3 Q', async ({ page }) => {
-    await page.goto('/formasi');
+    await gotoWithAuth(page, '/formasi');
 
     // 1. Verifikasi Judul Utama
     await expect(page.getByRole('heading', { name: /Formasi Kelas Madin/i })).toBeVisible();
@@ -47,7 +48,7 @@ test.describe('Verifikasi E2E: Database CRUD Formasi Kelas & Sinkronisasi Rombel
   });
 
   test('2.0 Formasi Master Page (/formasi): Kolom Domisili & Lokasi Bersih Siap Input Ulang', async ({ page }) => {
-    await page.goto('/formasi');
+    await gotoWithAuth(page, '/formasi');
 
     const searchInput = page.getByPlaceholder(/Ketik pencarian/i);
     await searchInput.fill('1 A ULA PA');
@@ -70,7 +71,7 @@ test.describe('Verifikasi E2E: Database CRUD Formasi Kelas & Sinkronisasi Rombel
   });
 
   test('3.0 Modul Absensi (/absensi): Memuat Data Blok Tanpa Error Kolom Legacy', async ({ page }) => {
-    await page.goto('/absensi');
+    await gotoWithAuth(page, '/absensi');
     await expect(page.getByRole('heading', { name: 'Absensi Asatidz', exact: true })).toBeVisible();
 
     // Beralih ke tab Riwayat & Rekap Data
@@ -84,7 +85,7 @@ test.describe('Verifikasi E2E: Database CRUD Formasi Kelas & Sinkronisasi Rombel
   });
 
   test('4.0 Modul Rekap Absensi (/rekap-absensi): Memuat Filter Blok & Agregasi Normal', async ({ page }) => {
-    await page.goto('/rekap-absensi');
+    await gotoWithAuth(page, '/rekap-absensi');
     await expect(page.getByRole('heading', { name: 'Rekap Absensi Asatidz', exact: true })).toBeVisible();
 
     // Verifikasi opsi filter blok

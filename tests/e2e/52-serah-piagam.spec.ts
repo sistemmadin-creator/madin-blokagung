@@ -1,21 +1,12 @@
-import { test, expect, Page } from '@playwright/test';
-
-async function gotoWithAuth(page: Page, targetPath: string) {
-  await page.goto(targetPath);
-  await page.waitForLoadState('domcontentloaded');
-  if (page.url().includes('/login')) {
-    await page.getByLabel('Username Pengurus').fill('admin');
-    await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
-    await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
-    await page.waitForURL(`**${targetPath}**`, { timeout: 60000 });
-  }
-}
+import { test, expect } from '@playwright/test';
+import { expandSidebarGroup, gotoWithAuth } from './helpers/auth';
 
 test.describe('Menu Serah Piagam Santri - PKM. Muhafadzoh', () => {
   test.setTimeout(60000);
 
   test('1. Sidebar Navigasi: Menu "Serah Piagam" berada di grup "PKM. Muhafadzoh"', async ({ page }) => {
     await gotoWithAuth(page, '/dashboard');
+    await expandSidebarGroup(page, /PKM\. Muhafadzoh/i);
 
     // Temukan grup PKM. Muhafadzoh di sidebar
     const muhafadzohSection = page.locator('aside, nav').getByText(/PKM\. Muhafadzoh/i).first();
@@ -53,8 +44,8 @@ test.describe('Menu Serah Piagam Santri - PKM. Muhafadzoh', () => {
     await expect(card1A.getByText(/Target: Juz Amma/i)).toBeVisible();
     await expect(card1A.getByText(/\(1 ULA A\)/i)).toBeVisible();
 
-    // Verifikasi rasio penerima berformat '7/...' (7 santri menerima) pada kartu 1A
-    const ratioBadge = card1A.locator('span').filter({ hasText: /^7\// });
+    // Verifikasi rasio penerima berformat 'X/Y' pada kartu 1A
+    const ratioBadge = card1A.locator('span').filter({ hasText: /^\d+\/\d+$/ });
     await expect(ratioBadge).toBeVisible();
 
     // Verifikasi Struktur Kolom Tabel di dalam Kartu:

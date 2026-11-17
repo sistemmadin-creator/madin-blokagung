@@ -1,15 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
-
-async function gotoWithAuth(page: Page, targetPath: string) {
-  await page.goto(targetPath);
-  await page.waitForLoadState('domcontentloaded');
-  if (page.url().includes('/login')) {
-    await page.getByLabel('Username Pengurus').fill('admin');
-    await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
-    await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
-    await page.waitForURL(`**${targetPath}**`, { timeout: 60000 });
-  }
-}
+import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)', () => {
   test.setTimeout(90000);
@@ -25,7 +15,7 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
 
     // Toolbar aksi
     await expect(page.getByRole('button', { name: /Chat WA/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Libur \/ Event/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Libur \/ Event/i })).toBeVisible({ timeout: 45000 });
     await expect(page.getByRole('button', { name: /Segarkan/i })).toBeVisible();
 
     // 5 Kartu KPI
@@ -62,7 +52,7 @@ test.describe('E2E Absensi Asatidz & Absen Cepat (Waktu Pesantren & Alur Kerja)'
 
     // Buka Modal Libur / Event
     const btnLibur = page.getByRole('button', { name: /Libur \/ Event/i });
-    await expect(btnLibur).toBeVisible({ timeout: 25000 });
+    await expect(btnLibur).toBeVisible({ timeout: 45000 });
     await btnLibur.click();
     await expect(page.getByRole('heading', { name: /Pengaturan Hari Libur \/ Event/i })).toBeVisible();
 

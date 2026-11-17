@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BellRing, CheckCircle2, AlertCircle, RefreshCw, X, Send, Smartphone } from 'lucide-react';
 import { useAbsensiStore } from '@/stores/useAbsensiStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
@@ -41,11 +41,17 @@ export default function ModalKirimNotifCepat({
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const hasFetchedOnOpenRef = useRef(false);
   useEffect(() => {
-    if (isOpen) {
-      setJamPilihan(String(initialJam));
-      setStatusMsg(null);
-      setErrorMsg(null);
+    if (!isOpen) {
+      hasFetchedOnOpenRef.current = false;
+      return;
+    }
+    setJamPilihan(String(initialJam));
+    setStatusMsg(null);
+    setErrorMsg(null);
+    if (!hasFetchedOnOpenRef.current) {
+      hasFetchedOnOpenRef.current = true;
       if (asatidzList.length === 0) fetchAsatidz();
       if (Object.keys(jadwalMap).length === 0) fetchJadwal();
       if (formasiList.length === 0) fetchFormasi();

@@ -1,11 +1,14 @@
 import { test, expect } from '@playwright/test';
+import { expandSidebarGroup, gotoWithAuth } from './helpers/auth';
 
 test.describe('Fase 1: Executive Dashboard & Navigation Placement', () => {
   test('sidebar renders Dashboard menu above UTAMA group with Live badge', async ({ page }) => {
-    await page.goto('/santri');
+    await gotoWithAuth(page, '/santri');
     await expect(page.getByRole('complementary')).toBeVisible();
 
     const sidebar = page.getByRole('complementary');
+    await expandSidebarGroup(page, 'Beranda');
+    await expandSidebarGroup(page, 'Utama');
 
     // Verifikasi grup 'BERANDA' dan menu 'Dashboard'
     const dashboardLink = sidebar.getByRole('link', { name: /Dashboard/i });
@@ -27,7 +30,7 @@ test.describe('Fase 1: Executive Dashboard & Navigation Placement', () => {
   });
 
   test('dashboard page renders executive header, live KBM banner, and operational cards', async ({ page }) => {
-    await page.goto('/dashboard');
+    await gotoWithAuth(page, '/dashboard');
 
     // 1. Header & Identitas
     await expect(page.getByRole('heading', { name: /Dashboard MADINA Blokagung/i })).toBeVisible();
@@ -67,7 +70,7 @@ test.describe('Fase 1: Executive Dashboard & Navigation Placement', () => {
   });
 
   test('time-slice switcher toggles between 7 Hari, 30 Hari, and 1 Tahun cleanly', async ({ page }) => {
-    await page.goto('/dashboard');
+    await gotoWithAuth(page, '/dashboard');
 
     // Klik tab 7 Hari
     const tab7Hari = page.getByRole('button', { name: /7 Hari/i });
@@ -91,18 +94,18 @@ test.describe('Fase 1: Executive Dashboard & Navigation Placement', () => {
   });
 
   test('quick action buttons have valid links', async ({ page }) => {
-    await page.goto('/dashboard');
+    await gotoWithAuth(page, '/dashboard');
 
     const absenLink = page.getByRole('link', { name: /Presensi Cepat/i }).first();
     await expect(absenLink).toHaveAttribute('href', '/absen-cepat');
 
-    const setoranLink = page.getByRole('link', { name: /Setoran Muhafadzoh/i });
+    const setoranLink = page.getByRole('link', { name: /Input & Rekap Hafalan/i });
     await expect(setoranLink).toHaveAttribute('href', '/setoran');
 
     const jadwalLink = page.getByRole('link', { name: /Jadwal & Solver KBM/i });
     await expect(jadwalLink).toHaveAttribute('href', '/jadwal-kbm');
 
-    const wartaLink = page.getByRole('link', { name: /Publikasi Warta/i });
-    await expect(wartaLink).toHaveAttribute('href', '/kelola-berita');
+    const kirimWaLink = page.getByRole('link', { name: /Kirim WA Rapor Hafalan/i });
+    await expect(kirimWaLink).toHaveAttribute('href', '/kirim-wa');
   });
 });

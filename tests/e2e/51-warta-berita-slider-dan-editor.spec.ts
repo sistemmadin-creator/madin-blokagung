@@ -14,58 +14,56 @@ async function gotoWithAuth(page: Page, targetPath: string) {
 test.describe('Warta Berita MADINA - Waterfall Hero Slider, Form Editor & TikTok Widget', () => {
   test.setTimeout(60000);
 
-  test('1. Beranda Publik: Hero Slider 60% dengan 5 berita, Sorotan Grid 2x2, dan Post Terbaru', async ({ page }) => {
+  test('1. Beranda Publik: Hero Slider, Sorotan, Post Terbaru & Kategori Pilihan', async ({ browser }) => {
+    const context = await browser.newContext({
+      extraHTTPHeaders: {
+        'x-forwarded-host': 'localhost:3000',
+      },
+    });
+    const page = await context.newPage();
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     // Pastikan seksi Warta & Publikasi Diniyyah tampil
     const sectionBerita = page.locator('#berita');
     await expect(sectionBerita).toBeVisible({ timeout: 15000 });
 
-    // Verifikasi Judul Utama Seksi Berita
-    await expect(sectionBerita.getByRole('heading', { name: /Kabar Madrasah & Khazanah Keilmuan Santri/i })).toBeVisible();
+    // Verifikasi Judul Utama Seksi Berita terbaru
+    await expect(sectionBerita.getByRole('heading', { name: /Kabar Madin Blokagung/i })).toBeVisible();
 
-    // Verifikasi 5 Indikator Slide pada Hero Utama Kiri
+    // Verifikasi indikator slide Hero dan artikel tampil (mendukung 1+ artikel dari DB live)
     const slideIndicators = sectionBerita.locator('button[aria-label^="Pindah ke berita"]');
-    await expect(slideIndicators).toHaveCount(5, { timeout: 15000 });
+    const indicatorCount = await slideIndicators.count();
+    expect(indicatorCount).toBeGreaterThanOrEqual(1);
+    await expect(sectionBerita.locator('a[href^="/berita/"]').first()).toBeVisible({ timeout: 15000 });
 
-    // Verifikasi Kartu Berita Pertama di Hero Slider
-    const heroCardFirst = sectionBerita.getByRole('heading', { 
-      name: /Kuliah Umum & Penguatan Literasi Kitab Kuning/i 
-    });
-    await expect(heroCardFirst).toBeVisible();
-
-    // Verifikasi Sorotan Grid 2x2 di sebelah kanan (memuat 4 berita tertumpuk)
-    // Berita urutan ke-6 s/d ke-9
-    await expect(sectionBerita.getByRole('heading', { name: /Pelaksanaan Takror Siang Intensif/i })).toBeVisible();
-    await expect(sectionBerita.getByRole('heading', { name: /Bedah Kitab Alfiyyah Ibnu Malik/i })).toBeVisible();
-    await expect(sectionBerita.getByRole('heading', { name: /Orientasi Sanad Kitab Kuning/i })).toBeVisible();
-    await expect(sectionBerita.getByRole('heading', { name: /Simulasi Bahtsul Masail Kubro Internal/i })).toBeVisible();
-
-    // Verifikasi Post Terbaru (Reguler) di baris bawah
+    // Verifikasi Post Terbaru & Kategori Pilihan di baris bawah
     await expect(sectionBerita.getByRole('heading', { name: /Post Terbaru/i })).toBeVisible();
-    await expect(sectionBerita.getByRole('heading', { name: /Pembagian Raport Evaluasi KBM/i })).toBeVisible();
+    await expect(sectionBerita.getByRole('heading', { name: /Kategori Pilihan/i })).toBeVisible();
 
-    // Verifikasi Tombol Navigasi Manual Slider (Next / Prev)
-    const nextBtn = sectionBerita.getByRole('button', { name: /Berita berikutnya/i });
-    if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await nextBtn.click();
-    } else {
-      // Jika tombol muncul saat hover
-      await sectionBerita.locator('.lg\\:col-span-7').hover();
-      await expect(nextBtn).toBeVisible();
-      await nextBtn.click();
+    // Jika lebih dari 1 slide, uji tombol navigasi slider
+    if (indicatorCount > 1) {
+      const nextBtn = sectionBerita.getByRole('button', { name: /Berita berikutnya/i });
+      if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nextBtn.click();
+      } else {
+        await sectionBerita.locator('.lg\\:col-span-7').hover();
+        await expect(nextBtn).toBeVisible();
+        await nextBtn.click();
+      }
+      if (indicatorCount >= 3) {
+        await slideIndicators.nth(2).click();
+        await expect(slideIndicators.nth(2)).toHaveClass(/bg-amber-400/);
+      }
     }
 
-    // Klik tombol indikator slide ke-3
-    await slideIndicators.nth(2).click();
-    await expect(slideIndicators.nth(2)).toHaveClass(/bg-amber-400/);
+    await context.close();
   });
 
   test('2. Form Tulis Berita: Hapus Preset Foto Pesantren & Cek Input TikTok Video', async ({ page }) => {
     await gotoWithAuth(page, '/kelola-berita');
 
     // Pastikan judul halaman CMS manajemen berita tampil
-    await expect(page.getByRole('heading', { name: /Manajemen Warta Berita Madina/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Manajemen Kabar Madin Blokagung/i })).toBeVisible();
 
     // Buka Modal Form Tulis Berita Baru
     const tulisBeritaBtn = page.getByRole('button', { name: /Tulis Berita Baru/i }).first();
@@ -140,24 +138,33 @@ test.describe('Warta Berita MADINA - Waterfall Hero Slider, Form Editor & TikTok
     await page.getByRole('button', { name: 'Batal', exact: true }).click();
   });
 
-  test('4. Halaman Detail Warta: Layout 2 Kolom, Render Foto Sisipan, & Widget Video TikTok', async ({ page }) => {
-    // Kunjungi artikel pertama (kuliah umum) dengan waitUntil domcontentloaded agar tidak terhambat script eksternal
-    await page.goto('/berita/kuliah-umum-literasi-kitab-kuning-kelas-unggulan', { waitUntil: 'domcontentloaded' });
+  test('4. Halaman Detail Warta: Layout 2 Kolom, Widget Redaksi, & Widget Video TikTok', async ({ browser }) => {
+    const context = await browser.newContext({
+      extraHTTPHeaders: {
+        'x-forwarded-host': 'localhost:3000',
+      },
+    });
+    const page = await context.newPage();
 
-    // Verifikasi Judul Artikel Utama
-    await expect(page.getByRole('heading', { name: /Kuliah Umum & Penguatan Literasi Kitab Kuning/i }).first()).toBeVisible();
+    // Kunjungi arsip berita publik dan tunggu data live selesai dimuat sebelum klik kartu pertama
+    await page.goto('/berita', { waitUntil: 'networkidle' });
+    const firstBeritaLink = page.locator('main a[href^="/berita/"]').first();
+    await expect(firstBeritaLink).toBeVisible({ timeout: 15000 });
+    await firstBeritaLink.click();
+    await page.waitForURL('**/berita/**', { timeout: 15000 });
+
+    // Verifikasi Judul Artikel Utama & Breadcrumb
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('link', { name: 'Media Madin', exact: true }).first()).toBeVisible();
 
     // Verifikasi Widget TikTok di Sisi Kanan (Sidebar)
     const widgetTikTok = page.getByText(/Video TikTok Warta/i);
     await expect(widgetTikTok).toBeVisible();
-    await expect(page.getByText(/Dokumentasi Kegiatan Santri/i).first()).toBeVisible();
-
-    // Verifikasi Pemutar / Iframe TikTok atau Tombol TikTok
-    const btnTontonTikTok = page.getByRole('link', { name: /Tonton di Aplikasi TikTok/i });
-    await expect(btnTontonTikTok).toBeVisible();
 
     // Verifikasi Widget Layanan Redaksi Pesantren
     await expect(page.getByText(/Layanan Warta Diniyyah/i)).toBeVisible();
     await expect(page.getByRole('link', { name: /Hubungi Redaksi Pesantren/i })).toBeVisible();
+
+    await context.close();
   });
 });

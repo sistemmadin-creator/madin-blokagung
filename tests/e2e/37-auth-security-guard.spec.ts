@@ -1,15 +1,18 @@
 import { test, expect } from '@playwright/test';
+import { openPublicContext } from './helpers/auth';
 
 test.describe('Keamanan Zona Publik & Privat (Supabase Auth + Middleware)', () => {
-  test('1. Halaman publik (/) dan (/berita) dapat diakses tanpa login', async ({ page }) => {
-    await page.goto('/');
+  test('1. Halaman publik (/) dan (/berita) dapat diakses tanpa login', async ({ browser }) => {
+    const { context, page } = await openPublicContext(browser);
+    await page.goto('http://localhost:3000/');
     await expect(page).toHaveURL(/\/$/);
     await expect(
       page.getByRole('heading', { name: /Madrasah Diniyyah Al-Amiriyyah/i })
     ).toBeVisible();
 
-    await page.goto('/berita');
+    await page.goto('http://localhost:3000/berita');
     await expect(page).toHaveURL(/\/berita/);
+    await context.close();
   });
 
   test('2. Akses tanpa sesi ke rute (dashboard) diarahkan ke /login?next=...', async ({ page }) => {
@@ -89,11 +92,14 @@ test.describe('Keamanan Zona Publik & Privat (Supabase Auth + Middleware)', () =
 
     await page.waitForURL('**/dashboard', { timeout: 25_000 });
 
-    const profileBtn = page.getByRole('button', { name: /PKM\. Kurikulum/i });
+    const profileBtn = page.getByRole('banner').getByRole('button', { name: /PKM\. Kurikulum/i });
     await expect(profileBtn).toBeVisible();
-    await profileBtn.click();
-
-    await expect(page.getByText('@kurikulum')).toBeVisible();
+    await expect(async () => {
+      if ((await profileBtn.getAttribute('aria-expanded')) !== 'true') {
+        await profileBtn.click();
+      }
+      await expect(page.getByText('@kurikulum')).toBeVisible({ timeout: 1500 });
+    }).toPass({ timeout: 15_000 });
 
     // Tutup dropdown dengan Escape
     await page.keyboard.press('Escape');

@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Grup Menu PKM. Sapras - Inventaris, Perbaikan, Logistik & Rekap', () => {
   test('Menampilkan 4 menu PKM. Sapras, default 1 Papan Tulis & 1 Meja Guru (Baik), sinkronisasi 2 arah tiket perbaikan, logistik ATK, dan responsif mobile', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
 
     // 1. Buka halaman Inventaris Kelas
-    await page.goto('/sapras/inventaris-kelas', { waitUntil: 'domcontentloaded' });
+    await gotoWithAuth(page, '/sapras/inventaris-kelas');
 
     // 2. Pastikan halaman Inventaris Kelas tampil dengan judul utama
     const heading = page.getByRole('heading', { name: 'Inventaris Sarana Kelas (Papan Tulis & Meja Guru)' });

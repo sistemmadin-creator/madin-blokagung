@@ -1,15 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
-
-async function gotoWithAuth(page: Page, targetPath: string) {
-  await page.goto(targetPath);
-  await page.waitForLoadState('domcontentloaded');
-  if (page.url().includes('/login')) {
-    await page.getByLabel('Username Pengurus').fill('admin');
-    await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
-    await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
-    await page.waitForURL(`**${targetPath}**`, { timeout: 60000 });
-  }
-}
+import { test, expect } from '@playwright/test';
+import { expandSidebarGroup, gotoWithAuth } from './helpers/auth';
 
 test.describe('Menu Baru Setor Cepat, Split Layout, dan Multi-Select Kalimat', () => {
   test.setTimeout(90000);
@@ -18,6 +8,7 @@ test.describe('Menu Baru Setor Cepat, Split Layout, dan Multi-Select Kalimat', (
     page,
   }) => {
     await gotoWithAuth(page, '/dashboard');
+    await expandSidebarGroup(page, /PKM\. Muhafadzoh/i);
 
     // Temukan link Setor Cepat di sidebar
     const linkSetorCepat = page.locator('aside').getByRole('link', { name: 'Setor Cepat' });
@@ -91,6 +82,16 @@ test.describe('Menu Baru Setor Cepat, Split Layout, dan Multi-Select Kalimat', (
     // Tunggu data santri termuat di panel kiri
     await expect(page.getByRole('heading', { name: 'Proses Setoran' })).toBeVisible({ timeout: 25000 });
 
+    // Jika santri pertama sudah 100% tuntas, pilih santri dari tabel kanan yang belum tuntas
+    const rightRows = page.locator('.lg\\:col-span-5 table tbody tr');
+    const maxTry = Math.min(await rightRows.count(), 8);
+    for (let r = 0; r < maxTry; r++) {
+      const doneBanner = page.getByText('Target Hafalan Ini Telah Tuntas (100%)!');
+      if (!(await doneBanner.isVisible().catch(() => false))) break;
+      await rightRows.nth(r).click();
+      await page.waitForTimeout(200);
+    }
+
     // Cek apakah target santri berupa kalimat atau numerik
     const btnDropdown = page.locator('button').filter({ hasText: /Pilih (Kalimat|Bait|Item|Halaman|\d+)/i }).first();
     const inputAngka = page.getByTestId('input-tambah-angka');
@@ -105,8 +106,8 @@ test.describe('Menu Baru Setor Cepat, Split Layout, dan Multi-Select Kalimat', (
       // Klik shortcut +3 Berikutnya
       await helperNext3.click();
 
-      // Verifikasi tag/badge pilihan muncul
-      const pilihanText = page.getByText('Pilihan:').first();
+      // Verifikasi tag/badge pilihan muncul ("Pilihan (3):" pada Wajib atau "Pilihan:" pada Sunnah/Kitab)
+      const pilihanText = page.getByText(/Pilihan(\s*\(\d+\))?:/).first();
       await expect(pilihanText).toBeVisible();
 
       // Tombol simpan setoran menampilkan indikasi jumlah kalimat

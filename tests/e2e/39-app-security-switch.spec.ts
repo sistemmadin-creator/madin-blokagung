@@ -10,6 +10,10 @@ test.describe('Phase 3: Saklar Keamanan Aplikasi MADINA Blokagung (Konfirmasi 3x
     page,
     request,
   }) => {
+    test.skip(
+      !SECURITY_PASSWORD,
+      'Memerlukan variabel lingkungan E2E_SECURITY_PASSWORD untuk mengubah Saklar Keamanan Aplikasi'
+    );
     // 1. Login sebagai Master Admin
     await page.goto('/login');
     await page.getByLabel('Username Pengurus').fill('admin');

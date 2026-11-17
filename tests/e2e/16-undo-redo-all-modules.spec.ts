@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Absensi, Santri, Asatidz, Muhafadzoh', () => {
   test.beforeEach(async ({ page }) => {
@@ -50,8 +51,9 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Absensi, Santri, A
 
   test('1.0 Modul Absensi Asatidz: Undo & Redo mutasi status absensi', async ({ page }) => {
     test.slow();
-    await page.goto('/absensi');
+    await gotoWithAuth(page, '/absensi');
     await expect(page.getByRole('heading', { name: 'Absensi Asatidz', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Segarkan/i })).toBeEnabled({ timeout: 30_000 });
 
     // Reset riwayat
     await page.evaluate(() => {
@@ -90,19 +92,19 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Absensi, Santri, A
 
     // Eksekusi Undo lewat tombol Navbar
     await btnUndo.click();
-    await expect(btnRedo).toBeEnabled({ timeout: 15_000 });
+    await expect(btnRedo).toBeEnabled({ timeout: 40_000 });
     await expect(btnRedo).toContainText('1');
     await expect(btnUndo).toBeDisabled();
 
-    // Eksekusi Redo lewat tombol Navbar
+    // Eksekusi Redo lewat tombol Navbar (tunggu auth/logActivity + re-render /absensi selesai)
     await btnRedo.click();
-    await expect(btnRedo).toBeDisabled({ timeout: 15_000 });
-    await expect(btnUndo).toBeEnabled({ timeout: 15_000 });
+    await expect(btnRedo).toBeDisabled({ timeout: 40_000 });
+    await expect(btnUndo).toBeEnabled({ timeout: 40_000 });
     await expect(btnUndo).toContainText('1');
   });
 
   test('2.0 Modul Data Santri: Shortcut Ctrl+Z dan Ctrl+Y untuk mutasi data santri', async ({ page }) => {
-    await page.goto('/santri');
+    await gotoWithAuth(page, '/santri');
     await expect(page.getByRole('heading', { name: 'Database Santri', exact: true })).toBeVisible();
 
     await page.evaluate(() => {
@@ -145,7 +147,7 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Absensi, Santri, A
   });
 
   test('3.0 Modul Data Asatidz: Undo & Redo mutasi data asatidz', async ({ page }) => {
-    await page.goto('/asatidz');
+    await gotoWithAuth(page, '/asatidz');
     await expect(page.getByRole('heading', { name: 'Database Asatidz', exact: true })).toBeVisible();
 
     await page.evaluate(() => {
@@ -181,7 +183,7 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Absensi, Santri, A
   });
 
   test('4.0 Modul Setoran Muhafadzoh: Floating Toast Undo Button', async ({ page }) => {
-    await page.goto('/setoran');
+    await gotoWithAuth(page, '/setoran');
     await expect(page.getByRole('heading', { name: 'Muhafadzoh Madin (Setoran)', exact: true })).toBeVisible();
 
     await page.evaluate(() => {
@@ -216,16 +218,16 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Absensi, Santri, A
     // Klik tombol Undo langsung di dalam Floating Toast
     await btnUndoInToast.click();
 
-    await expect(toast).toContainText('Undo berhasil: Tambah Setoran: SANTRI MUHAFADZOH TEST (Surah Al-Mulk)');
+    await expect(toast).toContainText('Undo berhasil: Tambah Setoran: SANTRI MUHAFADZOH TEST (Surah Al-Mulk)', { timeout: 20_000 });
 
     // Redo di Navbar sekarang aktif
     const btnRedo = page.getByRole('button', { name: /Ulangi perubahan \(Redo\)/i });
-    await expect(btnRedo).toBeEnabled();
+    await expect(btnRedo).toBeEnabled({ timeout: 20_000 });
     await expect(btnRedo).toContainText('1');
   });
 
   test('5.0 Batasan Ring Buffer 5 Langkah: Maksimal badge tetap 5 meskipun aksi melebihi 5', async ({ page }) => {
-    await page.goto('/setoran');
+    await gotoWithAuth(page, '/setoran');
     await expect(page.getByRole('heading', { name: 'Muhafadzoh Madin (Setoran)', exact: true })).toBeVisible();
 
     await page.evaluate(() => {
@@ -270,7 +272,7 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Absensi, Santri, A
   });
 
   test('6.0 Modal Dialog Resolusi Konflik Multi-Pengguna (OCC Fase 2)', async ({ page }) => {
-    await page.goto('/santri');
+    await gotoWithAuth(page, '/santri');
     await expect(page.getByRole('heading', { name: 'Database Santri', exact: true })).toBeVisible();
 
     // Trigger simulasi prompt konflik via useUndoRedoStore

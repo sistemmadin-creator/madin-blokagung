@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Modul Santri: Pengujian Komprehensif Fase 1 - 5', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/santri');
+    await gotoWithAuth(page, '/santri');
     // Pastikan halaman dan tabel santri telah termuat serta client component terhidrasi penuh
     await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
     await expect(page.getByRole('heading', { name: /Database Santri/i })).toBeVisible();
@@ -128,8 +129,8 @@ test.describe('Modul Santri: Pengujian Komprehensif Fase 1 - 5', () => {
       await expect(paginationFooter).toBeVisible();
 
       // Tombol navigasi Sebelumnya dan Berikutnya
-      const prevBtn = page.getByRole('button', { name: /Sebelumnya/i });
-      const nextBtn = page.getByRole('button', { name: /Berikutnya/i });
+      const prevBtn = page.getByRole('button', { name: 'Sebelumnya', exact: true });
+      const nextBtn = page.getByRole('button', { name: 'Berikutnya', exact: true });
       await expect(prevBtn).toBeVisible();
       await expect(nextBtn).toBeVisible();
 

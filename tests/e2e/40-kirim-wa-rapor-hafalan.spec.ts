@@ -1,19 +1,20 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Modul Kirim WhatsApp & Kartu Rapor Digital Hafalan (Gabungan Gambar 1-5)', () => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
 
   test('Integrasi penuh Setor Mustahiq -> 3 Riwayat Setor Terakhir -> Kartu Rapor Digital Hafalan & Nomor WA Santri', async ({
     page,
+    request,
   }) => {
-    // 0. Pastikan endpoint /api/og/rapor-hafalan dapat diakses tanpa sesi login (tidak terkena 401)
-    const unauthOgRes = await page.request.get(
-      '/api/og/rapor-hafalan?nama=ARYA%20PRATAMA&nis=12345'
+    // 0. Pastikan endpoint /api/og/rapor-hafalan menolak akses tanpa sesi login (401)
+    const unauthOgRes = await request.get(
+      '/api/og/rapor-hafalan?nama=ARYA%20PRATAMA&nis=12345',
+      { headers: { 'x-forwarded-host': 'sistem.localhost:3000' } }
     );
-    expect(unauthOgRes.status()).toBe(200);
-    expect(unauthOgRes.headers()['content-type']).toContain('image/png');
+    expect(unauthOgRes.status()).toBe(401);
 
-    // 1. Buka halaman Setor Mustahiq (Gambar 5)
+    // 1. Buka halaman Setor Mustahiq (Gambar 5) & login admin
     await page.goto('/setor-mustahiq');
     await page.waitForLoadState('domcontentloaded');
     if (page.url().includes('/login')) {
@@ -23,6 +24,13 @@ test.describe('Modul Kirim WhatsApp & Kartu Rapor Digital Hafalan (Gabungan Gamb
       await page.waitForURL('**/setor-mustahiq**', { timeout: 60000 });
     }
 
+    // Setelah terautentikasi, /api/og/rapor-hafalan mengembalikan gambar PNG 200 OK
+    const authOgRes = await page.request.get(
+      '/api/og/rapor-hafalan?nama=ARYA%20PRATAMA&nis=12345'
+    );
+    expect(authOgRes.status()).toBe(200);
+    expect(authOgRes.headers()['content-type']).toContain('image/png');
+
     await expect(
       page.getByRole('heading', { name: 'Setoran Mingguan Santri (Mustahiq)' })
     ).toBeVisible({ timeout: 45000 });
@@ -30,11 +38,21 @@ test.describe('Modul Kirim WhatsApp & Kartu Rapor Digital Hafalan (Gabungan Gamb
     // Pastikan tombol pintasan Kirim WA Rapor ada di toolbar
     await expect(page.getByTestId('btn-shortcut-kirim-wa')).toBeVisible();
 
-    // Beralih ke tampilan Tabel dan buka modal santri ARYA PRATAMA (sesuai Gambar 1 & 2)
+    // Beralih ke tampilan Tabel dan pilih santri dengan hafalan belum tuntas (minimal 4 item tersisa)
     await page.getByRole('button', { name: 'Tabel' }).click();
-    const targetSantriBtn = page
-      .getByRole('button', { name: /ARYA PRATAMA|ANDIKO DWI SAPUTRA/ })
+    const unfinishedRow = page
+      .locator('table tbody tr')
+      .filter({ hasText: /0\s*\/\s*([4-9]|\d{2,})/ })
       .first();
+    const fallbackRow = page
+      .locator('table tbody tr')
+      .filter({ hasNotText: '100%' })
+      .first();
+    const chosenRow = (await unfinishedRow.count()) > 0 ? unfinishedRow : fallbackRow;
+    const targetSantriBtn =
+      (await chosenRow.count()) > 0
+        ? chosenRow.locator('td').nth(2).getByRole('button').first()
+        : page.getByRole('button', { name: /BUDI SANTOSO|CITRA LESTARI|ARYA PRATAMA/ }).first();
     await expect(targetSantriBtn).toBeVisible({ timeout: 20000 });
     await targetSantriBtn.click();
 
@@ -53,7 +71,37 @@ test.describe('Modul Kirim WhatsApp & Kartu Rapor Digital Hafalan (Gabungan Gamb
       if (isNumericInput) {
         await page.getByTestId('input-tambah-angka').fill('10');
       } else {
-        await page.getByTestId('select-kalimat-setor').selectOption({ index: i - 1 });
+        const legacySelect = page.getByTestId('select-kalimat-setor');
+        if (await legacySelect.isVisible().catch(() => false)) {
+          await legacySelect.selectOption({ index: i - 1 });
+        } else {
+          // Buka dropdown multi-select Pilihan Kalimat/Bait/Surah/Halaman lalu pilih item pertama yang belum tuntas
+          const kalimatContainer = modal.locator('label', { hasText: /^Pilih /i }).locator('..');
+          const dropdownTrigger = kalimatContainer.locator('button').first();
+          await expect(dropdownTrigger).toBeVisible({ timeout: 5000 });
+          await dropdownTrigger.click();
+          const dropdownPopover = kalimatContainer.locator('div.overflow-y-auto').first();
+          await expect(dropdownPopover).toBeVisible({ timeout: 5000 });
+          const availRow = dropdownPopover
+            .locator('> div')
+            .filter({ has: page.locator('input[type="checkbox"]:not(:disabled)') })
+            .first();
+          if ((await availRow.count()) > 0) {
+            await availRow.click();
+            await dropdownTrigger.click();
+          } else {
+            await dropdownTrigger.click();
+            // Jika seluruh kalimat Wajib sudah tuntas, pindah ke tab Sunnah atau Kitab
+            const tabSunnah = modal.getByRole('button', { name: /Sunnah|Kitab/i }).first();
+            if (await tabSunnah.isVisible().catch(() => false)) {
+              await tabSunnah.click();
+              const numAfterSwitch = page.getByTestId('input-tambah-angka');
+              if (await numAfterSwitch.isVisible().catch(() => false)) {
+                await numAfterSwitch.fill('5');
+              }
+            }
+          }
+        }
       }
       await page.getByTestId('input-catatan-setor').fill(`Setoran Uji Ke-${i}`);
       await submitBtn.click();
@@ -66,10 +114,10 @@ test.describe('Modul Kirim WhatsApp & Kartu Rapor Digital Hafalan (Gabungan Gamb
     await expect(btnJumpWa).toBeVisible();
     await btnJumpWa.click();
 
-    await page.waitForURL('**/kirim-wa**', { timeout: 20000 });
+    await page.waitForURL('**/kirim-wa**', { timeout: 60000, waitUntil: 'commit' });
     await expect(
       page.getByRole('heading', { name: 'Kirim WhatsApp Rapor Hafalan' })
-    ).toBeVisible({ timeout: 20000 });
+    ).toBeVisible({ timeout: 45000 });
 
     // 4. Verifikasi elemen-elemen Header Gateway (Gambar 1)
     await expect(page.getByTestId('btn-status-waha')).toBeVisible();
@@ -121,7 +169,7 @@ test.describe('Modul Kirim WhatsApp & Kartu Rapor Digital Hafalan (Gabungan Gamb
     let simulateSendSuccess = false;
     let capturedImagePayloadUrl = '';
 
-    await page.route('**/api/sessions/**', async (route) => {
+    await page.route('**/sessions/**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -133,7 +181,7 @@ test.describe('Modul Kirim WhatsApp & Kartu Rapor Digital Hafalan (Gabungan Gamb
       });
     });
 
-    await page.route('**/api/sendImage', async (route) => {
+    await page.route('**/sendImage', async (route) => {
       const postBody = route.request().postDataJSON();
       capturedImagePayloadUrl = postBody?.file?.url || '';
       if (!simulateSendSuccess) {

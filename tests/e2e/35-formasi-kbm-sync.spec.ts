@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Sinkronisasi Formasi Kelas dengan Jadwal KBM per Kelas (Fase Presisi Gender)', () => {
   test('1.0 Verifikasi Sinkronisasi 2 A ULYA PA (Reguler) vs 2 A ULYA PI (Unggulan)', async ({ page }) => {
-    await page.goto('/jadwal-kbm');
+    await gotoWithAuth(page, '/jadwal-kbm');
 
     // Pastikan halaman termuat
     await expect(page.getByRole('heading', { name: 'Jadwal KBM Per Kelas', exact: true })).toBeVisible();
@@ -34,7 +35,7 @@ test.describe('Sinkronisasi Formasi Kelas dengan Jadwal KBM per Kelas (Fase Pres
   });
 
   test('2.0 Mode Switcher Reguler vs Unggulan mengelompokkan 2 A PA dan 2 A PI dengan benar', async ({ page }) => {
-    await page.goto('/jadwal-kbm');
+    await gotoWithAuth(page, '/jadwal-kbm');
 
     // Filter ke Tingkat ULYA
     const filterTingkat = page.locator('select').first();

@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Modul Setor Mustahiq: Setor Kelas & Rekap Setor', () => {
   test('Navigasi sub-menu Setor Kelas & Rekap Setor, uji input Proses Setoran, Ganti Hafalan Selanjutnya, dan Kartu Rekap Setor', async ({ page }) => {
-    await page.goto('/setor-mustahiq');
+    await gotoWithAuth(page, '/setor-mustahiq');
 
     // 1. Verifikasi Sub-Menu Sidebar di bawah Setor Mustahiq (Setor Kelas & Rekap Setor)
     await expect(
@@ -44,7 +45,7 @@ test.describe('Modul Setor Mustahiq: Setor Kelas & Rekap Setor', () => {
     await expect(gantiDialog).not.toBeVisible();
 
     // 5. Navigasi ke sub-menu Rekap Setor (/setor-mustahiq/rekap)
-    await page.goto('/setor-mustahiq/rekap');
+    await gotoWithAuth(page, '/setor-mustahiq/rekap');
     await expect(
       page.getByRole('heading', { name: /Rekap Setor Mustahiq/i })
     ).toBeVisible();

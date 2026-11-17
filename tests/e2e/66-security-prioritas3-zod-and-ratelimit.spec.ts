@@ -107,7 +107,7 @@ test.describe('Prioritas 3: Validasi Skema Zod & Proteksi DoS Rate Limiting', ()
 
       expect(res.status()).toBe(400);
       const json = await res.json();
-      expect(json.error).toContain('Endpoint harus berupa URL');
+      expect(json.error).toMatch(/endpoint harus berupa URL/i);
     });
 
     test('2.2. Menolak DELETE /api/push/subscribe jika endpoint bukan URL yang sah', async ({ page }) => {
@@ -195,11 +195,11 @@ test.describe('Prioritas 3: Validasi Skema Zod & Proteksi DoS Rate Limiting', ()
         await page.waitForURL('**/dashboard**', { timeout: 30000 });
       }
 
-      // Tembak WAHA proxy hingga rate limit terpancing
+      // WAHA_STATUS memiliki batas 60 request per menit per user; kirim hingga 63 request
       const uniqueWahaIp = '10.99.77.66';
       let hit429 = false;
 
-      for (let i = 1; i <= 32; i++) {
+      for (let i = 1; i <= 63; i++) {
         const res = await page.request.get('/api/waha/sessions/default', {
           headers: {
             'x-forwarded-host': 'sistem.localhost:3000',

@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Modul 42: Import Excel Santri dengan Unduh Template', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/santri');
+    await gotoWithAuth(page, '/santri');
   });
 
   test('menampilkan tombol Impor Excel dan membuka dialog panduan import', async ({ page }) => {
@@ -15,7 +16,7 @@ test.describe('Modul 42: Import Excel Santri dengan Unduh Template', () => {
     await expect(heading).toBeVisible();
 
     // Banner panduan
-    await expect(page.getByText(/Unggah File Spreadsheet \(\.xlsx \/ \.xls \/ \.csv\)/i)).toBeVisible();
+    await expect(page.getByText(/Unggah File Spreadsheet \(\.xlsx \/ \.csv\)/i)).toBeVisible();
     await expect(page.getByText(/Format Kolom Wajib Baris Pertama:/i)).toBeVisible();
 
     // Tombol Unduh Template
@@ -25,7 +26,7 @@ test.describe('Modul 42: Import Excel Santri dengan Unduh Template', () => {
 
     // Dropzone info
     await expect(page.getByText(/Klik atau seret file Excel ke sini/i)).toBeVisible();
-    await expect(page.getByText(/Mendukung format berkas \.xlsx, \.xls, dan \.csv/i)).toBeVisible();
+    await expect(page.getByText(/Mendukung format berkas \.xlsx dan \.csv/i)).toBeVisible();
 
     // Tombol aksi footer
     const batalBtn = page.getByRole('button', { name: 'Batal', exact: true });

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Jadwal KBM', () => {
   test.beforeEach(async ({ page }) => {
@@ -6,6 +7,18 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Jadwal KBM', () =>
     await page.route('**/rest/v1/app_settings*', async (route) => {
       const method = route.request().method();
       if (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE') {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([{ success: true }]),
+        });
+      }
+      return route.continue();
+    });
+
+    await page.route('**/rest/v1/jadwal_kbm_slots*', async (route) => {
+      const method = route.request().method();
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
         return route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -23,7 +36,7 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Jadwal KBM', () =>
       });
     });
 
-    await page.goto('/jadwal-kbm');
+    await gotoWithAuth(page, '/jadwal-kbm');
     // Pastikan halaman dan tabel jadwal sudah dimuat
     await expect(page.getByRole('heading', { name: 'Jadwal KBM Per Kelas', exact: true })).toBeVisible();
     await expect(page.locator('#tableJadwalKBM')).toBeVisible();
@@ -50,6 +63,7 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Jadwal KBM', () =>
   });
 
   test('2.0 Mutasi Jadwal KBM merekam aksi, memunculkan Toast & mengaktifkan tombol Undo (Badge 1)', async ({ page }) => {
+    test.slow();
     const btnUndo = page.getByRole('button', { name: /Batalkan perubahan \(Undo\)/i });
     const btnRedo = page.getByRole('button', { name: /Ulangi perubahan \(Redo\)/i });
 
@@ -87,7 +101,7 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Jadwal KBM', () =>
     await btnUndo.click();
 
     // Toast status undo harus muncul
-    await expect(toast).toContainText('Undo berhasil: Uji Coba Pindah Jadwal GURU TEST');
+    await expect(toast).toContainText('Undo berhasil: Uji Coba Pindah Jadwal GURU TEST', { timeout: 25_000 });
 
     // Sekarang tombol Undo kembali disabled dan tombol Redo aktif dengan badge '1'
     await expect(btnUndo).toBeDisabled();
@@ -98,13 +112,14 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Jadwal KBM', () =>
     await btnRedo.click();
 
     // Toast status redo harus muncul
-    await expect(toast).toContainText('Redo berhasil: Uji Coba Pindah Jadwal GURU TEST', { timeout: 10_000 });
+    await expect(toast).toContainText('Redo berhasil: Uji Coba Pindah Jadwal GURU TEST', { timeout: 25_000 });
     await expect(btnUndo).toBeEnabled();
     await expect(btnUndo).toContainText('1');
     await expect(btnRedo).toBeDisabled();
   });
 
   test('3.0 Keyboard Shortcut Ctrl+Z dan Ctrl+Y untuk Undo dan Redo', async ({ page }) => {
+    test.slow();
     const btnUndo = page.getByRole('button', { name: /Batalkan perubahan \(Undo\)/i });
     const btnRedo = page.getByRole('button', { name: /Ulangi perubahan \(Redo\)/i });
 
@@ -133,7 +148,7 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Jadwal KBM', () =>
 
     // Tunggu hingga Undo selesai dan notifikasi muncul
     const toast = page.getByRole('status');
-    await expect(toast).toContainText('Undo berhasil: Aksi Shortcut Keyboard', { timeout: 10_000 });
+    await expect(toast).toContainText('Undo berhasil: Aksi Shortcut Keyboard', { timeout: 25_000 });
     await expect(btnUndo).toBeDisabled();
     await expect(btnRedo).toBeEnabled();
     await expect(btnRedo).toContainText('1');
@@ -142,13 +157,14 @@ test.describe('Fitur Undo & Redo (Maksimal 5 Langkah) - Modul Jadwal KBM', () =>
     await page.keyboard.press('Control+y');
 
     // Verifikasi aksi berhasil diulangi melalui shortcut
-    await expect(toast).toContainText('Redo berhasil: Aksi Shortcut Keyboard', { timeout: 10_000 });
+    await expect(toast).toContainText('Redo berhasil: Aksi Shortcut Keyboard', { timeout: 25_000 });
     await expect(btnUndo).toBeEnabled();
     await expect(btnUndo).toContainText('1');
     await expect(btnRedo).toBeDisabled();
   });
 
   test('4.0 Batas maksimal Undo adalah tepat 5 langkah (Ring Buffer 5 Steps Limit)', async ({ page }) => {
+    test.slow();
     const btnUndo = page.getByRole('button', { name: /Batalkan perubahan \(Undo\)/i });
 
     // Jalankan 7 mutasi berturut-turut

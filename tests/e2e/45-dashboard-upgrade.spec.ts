@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Pengembangan & Pembaharuan Dashboard MADINA Blokagung (/dashboard)', () => {
   test('Menghapus ikon bintang pada judul, menampilkan lencana Masehi/Pasaran/Hijriyah, indikator tanggal 7 Hari & 30 Hari (Pekan 1-4), serta widget Kalender, Sapras, Catatan To-Do, dan 8 Aksi Cepat', async ({
@@ -7,7 +8,7 @@ test.describe('Pengembangan & Pembaharuan Dashboard MADINA Blokagung (/dashboard
     await page.setViewportSize({ width: 1280, height: 800 });
 
     // 1. Buka halaman Dashboard MADINA Blokagung dan tunggu hingga terhidrasi penuh
-    await page.goto('/dashboard', { waitUntil: 'networkidle' });
+    await gotoWithAuth(page, '/dashboard');
 
     const mainHeading = page.getByTestId('dashboard-main-heading');
     await expect(mainHeading).toBeVisible({ timeout: 35000 });

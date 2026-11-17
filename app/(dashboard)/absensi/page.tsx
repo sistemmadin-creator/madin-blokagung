@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { exportToExcel } from '@/lib/utils/excel';
 import {
   UserCheck,
@@ -180,8 +180,11 @@ export default function AbsensiAsatidzPage() {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  // Load initial master & absensi data
+  // Load initial master & absensi data once on mount (mencegah loop bila jadwalMap/fanConfig kosong di DB)
+  const hasFetchedInitialRef = useRef(false);
   useEffect(() => {
+    if (hasFetchedInitialRef.current) return;
+    hasFetchedInitialRef.current = true;
     fetchAbsensi();
     if (asatidzList.length === 0) fetchAsatidz();
     if (Object.keys(jadwalMap).length === 0) fetchJadwal();

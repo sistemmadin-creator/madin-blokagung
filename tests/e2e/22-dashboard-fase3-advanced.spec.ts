@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Fase 3: Advanced KBM Matrix, Leaderboard & Demographics', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/dashboard');
+    await gotoWithAuth(page, '/dashboard');
     await expect(page.getByRole('heading', { name: /Dashboard MADINA Blokagung/i })).toBeVisible();
   });
 

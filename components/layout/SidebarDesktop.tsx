@@ -159,10 +159,8 @@ export default function SidebarDesktop() {
   // Pertahankan grup & submenu yang sudah dibuka, serta otomatis buka induk rute aktif
   useEffect(() => {
     if (!mounted) return;
-    let groupChanged = false;
-    let subChanged = false;
-    const nextGroups: Record<string, boolean> = { ...openGroups };
-    const nextSubs: Record<string, boolean> = { ...openSubmenus };
+    const neededGroups: string[] = [];
+    const neededSubs: string[] = [];
 
     activeGroups.forEach((grp: ConfigMenuGroup) => {
       const grpKey = grp.id || grp.group;
@@ -172,31 +170,43 @@ export default function SidebarDesktop() {
           item.children && item.children.some((sub: ConfigSubMenuItem) => sub.href === pathname);
 
         if (isDirectMatch || isChildMatch) {
-          if (!nextGroups[grpKey]) {
-            nextGroups[grpKey] = true;
-            groupChanged = true;
-          }
-          if (isChildMatch && !nextSubs[item.title]) {
-            nextSubs[item.title] = true;
-            subChanged = true;
+          neededGroups.push(grpKey);
+          if (isChildMatch) {
+            neededSubs.push(item.title);
           }
         }
       });
     });
 
-    if (groupChanged) {
-      setOpenGroups(nextGroups);
-      try {
-        window.localStorage.setItem(OPEN_GROUPS_KEY, JSON.stringify(nextGroups));
-      } catch {}
+    if (neededGroups.length > 0) {
+      setOpenGroups((prev) => {
+        const missing = neededGroups.filter((k) => !prev[k]);
+        if (missing.length === 0) return prev;
+        const nextGroups = { ...prev };
+        missing.forEach((k) => {
+          nextGroups[k] = true;
+        });
+        try {
+          window.localStorage.setItem(OPEN_GROUPS_KEY, JSON.stringify(nextGroups));
+        } catch {}
+        return nextGroups;
+      });
     }
-    if (subChanged) {
-      setOpenSubmenus(nextSubs);
-      try {
-        window.localStorage.setItem(OPEN_SUBMENUS_KEY, JSON.stringify(nextSubs));
-      } catch {}
+
+    if (neededSubs.length > 0) {
+      setOpenSubmenus((prev) => {
+        const missing = neededSubs.filter((k) => !prev[k]);
+        if (missing.length === 0) return prev;
+        const nextSubs = { ...prev };
+        missing.forEach((k) => {
+          nextSubs[k] = true;
+        });
+        try {
+          window.localStorage.setItem(OPEN_SUBMENUS_KEY, JSON.stringify(nextSubs));
+        } catch {}
+        return nextSubs;
+      });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, mounted, activeGroups]);
 
   const toggleGroup = (grpKey: string) => {

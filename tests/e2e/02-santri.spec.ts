@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Modul 01: Master Data Santri', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/santri');
+    await gotoWithAuth(page, '/santri');
   });
 
   test('renders page header and action toolbar', async ({ page }) => {

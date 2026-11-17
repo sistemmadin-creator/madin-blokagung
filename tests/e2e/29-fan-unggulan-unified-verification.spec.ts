@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Verifikasi Lengkap Penyederhanaan Item Fan Unggulan Level (Tingkat, Din. Kls)', () => {
-  test('1.0 Modal Pengaturan Item Fan: Tab Unggulan Terpadu Menampilkan 5 Kelas Tanpa Huruf Rombel', async ({ page }) => {
-    await page.goto('/fan/pelajaran');
+  test('1.0 Modal Pengaturan Item Fan: Tab Unggulan Terpadu Menampilkan 6 Kelas Tanpa Huruf Rombel', async ({ page }) => {
+    await gotoWithAuth(page, '/fan/pelajaran');
 
     // Buka modal Pengaturan Item Fan
     const btnAturFan = page.getByRole('button', { name: /Atur Item Fan/i });
@@ -12,17 +13,18 @@ test.describe('Verifikasi Lengkap Penyederhanaan Item Fan Unggulan Level (Tingka
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('heading', { name: /Pengaturan Item Fan \(Mata Pelajaran\)/i })).toBeVisible();
 
-    // Verifikasi Tab Unggulan menampilkan jumlah 5 kelas
-    const tabUnggulan = dialog.getByRole('button', { name: /Unggulan \(5\)/i });
+    // Verifikasi Tab Unggulan menampilkan jumlah 6 kelas
+    const tabUnggulan = dialog.getByRole('button', { name: /Unggulan \(6\)/i });
     await expect(tabUnggulan).toBeVisible();
     await tabUnggulan.click();
 
-    // Verifikasi 5 kartu kelas unggulan level (Tingkat, Din. Kls)
+    // Verifikasi 6 kartu kelas unggulan level (Tingkat, Din. Kls)
     await expect(dialog.getByRole('heading', { name: '3 ULA (Ug)', exact: true })).toBeVisible();
     await expect(dialog.getByRole('heading', { name: '4 ULA (Ug)', exact: true })).toBeVisible();
     await expect(dialog.getByRole('heading', { name: '1 WUSTHO (Ug)', exact: true })).toBeVisible();
     await expect(dialog.getByRole('heading', { name: '2 WUSTHO (Ug)', exact: true })).toBeVisible();
     await expect(dialog.getByRole('heading', { name: '1 ULYA (Ug)', exact: true })).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: '2 ULYA (Ug)', exact: true })).toBeVisible();
 
     // Pastikan kartu spesifik per rombel (A, B) SUDAH TIDAK ADA
     await expect(dialog.getByRole('heading', { name: '3 A ULA (Ug)', exact: true })).toHaveCount(0);
@@ -40,7 +42,7 @@ test.describe('Verifikasi Lengkap Penyederhanaan Item Fan Unggulan Level (Tingka
   });
 
   test('2.0 Matriks Fan Pelajaran: Filter Kategori Unggulan Merender Format Terpadu', async ({ page }) => {
-    await page.goto('/fan/pelajaran');
+    await gotoWithAuth(page, '/fan/pelajaran');
 
     // Klik tombol switch Fan Pelajaran Unggulan
     const btnUnggulan = page.getByRole('button', { name: /Fan Pelajaran Unggulan/i });
@@ -71,10 +73,11 @@ test.describe('Verifikasi Lengkap Penyederhanaan Item Fan Unggulan Level (Tingka
       const keys = Object.keys(data?.value || data || {});
       const ugKeys = keys.filter((k: string) => k.includes('(Ug)'));
 
-      // Harus berisi 5 kunci terpadu
+      // Harus berisi 6 kunci terpadu
       expect(ugKeys.sort()).toEqual([
         '1 ULYA (Ug)',
         '1 WUSTHO (Ug)',
+        '2 ULYA (Ug)',
         '2 WUSTHO (Ug)',
         '3 ULA (Ug)',
         '4 ULA (Ug)',

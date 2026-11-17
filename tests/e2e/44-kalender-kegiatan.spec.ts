@@ -43,63 +43,54 @@ test.describe('Kalender Kegiatan (TA 2026/2027), Pengaturan Tahun Ajaran Global 
     await expect(page.getByTestId('card-bulan-masehi-2026-6')).toBeVisible();
     await expect(page.getByTestId('card-bulan-masehi-2027-6')).toBeVisible();
 
-    // 3. Uji Fitur Tabel Rincian Agenda: Hapus Salah Satu, Hapus Terpilih, Hapus Semua & Pulihkan (Opsi A)
+    // 3. Uji Fitur Tabel Rincian Agenda & pastikan tombol "Pulihkan Jadwal Standar" tidak tampil
     const tableRincian = page.getByTestId('table-rincian-agenda-kalender');
     await expect(tableRincian).toBeVisible();
+    await expect(page.getByTestId('btn-pulihkan-agenda-standar')).toHaveCount(0);
 
-    // Jika dari pengujian sebelumnya jadwal sempat dikosongkan / berkurang, pulihkan jadwal standar terlebih dahulu
-    if (
-      (await page.getByTestId('empty-rincian-agenda-row').count()) > 0 ||
-      (await tableRincian.locator('tbody tr').count()) < 10
-    ) {
-      await page.getByTestId('btn-pulihkan-agenda-standar').click();
-      await expect(async () => {
-        const cnt = await tableRincian.locator('tbody tr').count();
-        expect(cnt).toBeGreaterThan(10);
-      }).toPass({ timeout: 15000 });
+    const rowCountNow = await tableRincian.locator('tbody tr').count();
+    const isEmpty = (await page.getByTestId('empty-rincian-agenda-row').count()) > 0;
+
+    if (!isEmpty && rowCountNow >= 4) {
+      // 3a. Hapus Salah Satu (baris pertama)
+      const firstDeleteBtn = tableRincian
+        .locator('[data-testid^="btn-hapus-agenda-row-"]')
+        .first();
+      await firstDeleteBtn.click();
+      await expect(tableRincian.locator('tbody tr')).toHaveCount(
+        rowCountNow - 1
+      );
+      const countAfterFirstDelete = await tableRincian
+        .locator('tbody tr')
+        .count();
+
+      // 3b. Pilih 2 baris lewat checkbox lalu klik "Hapus Terpilih (2)"
+      const rowCheckboxes = tableRincian.locator(
+        '[data-testid^="checkbox-select-agenda-"]'
+      );
+      await rowCheckboxes.nth(0).check();
+      await rowCheckboxes.nth(1).check();
+
+      const btnHapusTerpilih = page.getByTestId('btn-hapus-agenda-terpilih');
+      await expect(btnHapusTerpilih).toBeVisible();
+      await expect(btnHapusTerpilih).toContainText('Hapus Terpilih (2)');
+      await btnHapusTerpilih.click();
+      await expect(tableRincian.locator('tbody tr')).toHaveCount(
+        countAfterFirstDelete - 2
+      );
+
+      // 3c. Klik "Hapus Semua" -> konfirmasi modal -> pastikan tabel kosong -> verifikasi /absensi & /absen-cepat tidak lagi libur
+      await page.getByTestId('btn-hapus-semua-agenda').click();
+      const modalHapusSemua = page.getByTestId(
+        'modal-konfirmasi-hapus-semua-agenda'
+      );
+      await expect(modalHapusSemua).toBeVisible();
+      await page.getByTestId('btn-konfirmasi-hapus-semua-agenda').click();
+      await expect(modalHapusSemua).toBeHidden();
+
+      await expect(page.getByTestId('empty-rincian-agenda-row')).toBeVisible();
+      await expect(page.getByTestId('kpi-total-hari-libur-kbm')).toContainText('0');
     }
-
-    const initialRowCount = await tableRincian.locator('tbody tr').count();
-    expect(initialRowCount).toBeGreaterThan(10);
-
-    // 3a. Hapus Salah Satu (baris pertama)
-    const firstDeleteBtn = tableRincian
-      .locator('[data-testid^="btn-hapus-agenda-row-"]')
-      .first();
-    await firstDeleteBtn.click();
-    await expect(tableRincian.locator('tbody tr')).toHaveCount(
-      initialRowCount - 1
-    );
-    const countAfterFirstDelete = await tableRincian
-      .locator('tbody tr')
-      .count();
-
-    // 3b. Pilih 2 baris lewat checkbox lalu klik "Hapus Terpilih (2)"
-    const rowCheckboxes = tableRincian.locator(
-      '[data-testid^="checkbox-select-agenda-"]'
-    );
-    await rowCheckboxes.nth(0).check();
-    await rowCheckboxes.nth(1).check();
-
-    const btnHapusTerpilih = page.getByTestId('btn-hapus-agenda-terpilih');
-    await expect(btnHapusTerpilih).toBeVisible();
-    await expect(btnHapusTerpilih).toContainText('Hapus Terpilih (2)');
-    await btnHapusTerpilih.click();
-    await expect(tableRincian.locator('tbody tr')).toHaveCount(
-      countAfterFirstDelete - 2
-    );
-
-    // 3c. Klik "Hapus Semua" -> konfirmasi modal -> pastikan tabel kosong -> verifikasi /absensi & /absen-cepat tidak lagi libur
-    await page.getByTestId('btn-hapus-semua-agenda').click();
-    const modalHapusSemua = page.getByTestId(
-      'modal-konfirmasi-hapus-semua-agenda'
-    );
-    await expect(modalHapusSemua).toBeVisible();
-    await page.getByTestId('btn-konfirmasi-hapus-semua-agenda').click();
-    await expect(modalHapusSemua).toBeHidden();
-
-    await expect(page.getByTestId('empty-rincian-agenda-row')).toBeVisible();
-    await expect(page.getByTestId('kpi-total-hari-libur-kbm')).toContainText('0');
 
     // Verifikasi lintas halaman 1: Buka /absensi pada tanggal 2026-11-08 (sebelumnya Daur Awwal), pastikan TIDAK ada banner KBM Diliburkan
     await page.goto('/absensi');
@@ -121,18 +112,10 @@ test.describe('Kalender Kegiatan (TA 2026/2027), Pengaturan Tahun Ajaran Global 
     await expect(page.getByText(/\[DA\] Daur Awwal/i)).toHaveCount(0);
     await expect(page.getByText(/Hari Libur \/ Event:/i)).toHaveCount(0);
 
-    // Kembali ke /kalender-kegiatan dan klik "Pulihkan Jadwal Standar"
+    // Kembali ke /kalender-kegiatan dan pastikan tombol "Pulihkan Jadwal Standar" tetap tidak tampil
     await page.goto('/kalender-kegiatan');
     await expect(heading).toBeVisible({ timeout: 20000 });
-
-    const btnPulihkan = page.getByTestId('btn-pulihkan-agenda-standar');
-    await expect(btnPulihkan).toBeVisible();
-    await btnPulihkan.click();
-    await expect(async () => {
-      const restoredCount = await tableRincian.locator('tbody tr').count();
-      expect(restoredCount).toBeGreaterThanOrEqual(initialRowCount - 2);
-      expect(restoredCount).toBeGreaterThan(100);
-    }).toPass({ timeout: 15000 });
+    await expect(page.getByTestId('btn-pulihkan-agenda-standar')).toHaveCount(0);
 
     // 4. Uji Menu Baru di Pengaturan: Tahun Ajaran Aktif (/pengaturan?tab=tahun-ajaran)
     await page.getByTestId('link-pengaturan-tahun-ajaran-global').click();

@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Tahap 1, 4 & 5: Verifikasi Hierarki Blok KBM (Diniyyah & Takror)', () => {
   test('1.0 Master Formasi (/formasi): Kolom Berpasangan Hierarki Tampil Sempurna', async ({ page }) => {
-    await page.goto('/formasi');
+    await gotoWithAuth(page, '/formasi');
 
     // Pastikan judul halaman master tampil
     await expect(page.getByRole('heading', { name: /Formasi Kelas Madin/i })).toBeVisible();
@@ -24,7 +25,7 @@ test.describe('Tahap 1, 4 & 5: Verifikasi Hierarki Blok KBM (Diniyyah & Takror)'
   });
 
   test('2.0 Modal Input / Edit Formasi: Dual Card Hierarki (Takror & Diniyyah)', async ({ page }) => {
-    await page.goto('/formasi');
+    await gotoWithAuth(page, '/formasi');
 
     // Cari tombol Tambah Kelas (+) di toolbar atas
     const btnTambah = page.locator('button[title*="Tambah Formasi Kelas Baru"]').first();
@@ -53,14 +54,14 @@ test.describe('Tahap 1, 4 & 5: Verifikasi Hierarki Blok KBM (Diniyyah & Takror)'
 
   test('3.0 Formasi PA & PI: Header 2-Tingkat Hierarki TAKROR & DINIYYAH', async ({ page }) => {
     // Formasi PA
-    await page.goto('/formasi/pa');
+    await gotoWithAuth(page, '/formasi/pa');
     await expect(page.getByRole('heading', { name: /Formasi Kelas Putra/i })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'TAKROR' })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'DINIYYAH' })).toBeVisible();
     await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: 15_000 });
 
     // Formasi PI
-    await page.goto('/formasi/pi');
+    await gotoWithAuth(page, '/formasi/pi');
     await expect(page.getByRole('heading', { name: /Formasi Kelas Putri/i })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'TAKROR' })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'DINIYYAH' })).toBeVisible();
@@ -68,7 +69,7 @@ test.describe('Tahap 1, 4 & 5: Verifikasi Hierarki Blok KBM (Diniyyah & Takror)'
   });
 
   test('4.0 Halaman Hari KBM (/hari-kbm): Memuat Data Pengelompokan Blok Diniyyah Normal', async ({ page }) => {
-    await page.goto('/hari-kbm');
+    await gotoWithAuth(page, '/hari-kbm');
     await expect(page.getByRole('heading', { name: /Hari KBM/i })).toBeVisible();
     // Tunggu tabel KBM atau kelompok blok termuat
     await page.waitForTimeout(2000);

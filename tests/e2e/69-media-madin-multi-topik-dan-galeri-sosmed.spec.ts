@@ -188,7 +188,42 @@ test.describe('69 - Media Madin, Multi-Topik Berita (Umum + Jenjang), & Portofol
     const sidebar = page.getByRole('complementary');
     const groupBtn = sidebar.getByRole('button', { name: /PKM\. Media Madin/i });
     await expect(groupBtn).toBeVisible();
-    await expect(sidebar.getByRole('link', { name: 'Kelola Berita' })).toBeVisible();
-    await expect(sidebar.getByRole('link', { name: 'Kelola Galeri Sosmed' })).toBeVisible();
+    await expect(sidebar.getByRole('link', { name: 'Skala & Metrik Lembaga' })).toBeVisible();
+
+    // Verifikasi urutan menu grup PKM. Media Madin: 3 menu CMS baru di atas Kelola Berita
+    const sidebarLinks = await sidebar.locator('a').allInnerTexts();
+    const idxMetrik = sidebarLinks.findIndex((t) => t.includes('Skala & Metrik Lembaga'));
+    const idxModel = sidebarLinks.findIndex((t) => t.includes('Model Pembelajaran'));
+    const idxKhazanah = sidebarLinks.findIndex((t) => t.includes('Khazanah Turats Salafiyah'));
+    const idxBerita = sidebarLinks.findIndex((t) => t.includes('Kelola Berita'));
+    const idxGaleri = sidebarLinks.findIndex((t) => t.includes('Kelola Galeri Sosmed'));
+
+    expect(idxMetrik).toBeGreaterThan(-1);
+    expect(idxModel).toBe(idxMetrik + 1);
+    expect(idxKhazanah).toBe(idxModel + 1);
+    expect(idxBerita).toBe(idxKhazanah + 1);
+    expect(idxGaleri).toBe(idxBerita + 1);
+
+    // Uji modal Atur Sub-Kategori di Kelola Berita
+    await page.getByRole('button', { name: /Atur Sub-Kategori/i }).click();
+    await expect(
+      page.getByRole('heading', { name: /Pengaturan Sub-Kategori Media Madin/i })
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Tutup pengaturan sub-kategori' }).click();
+
+    // Uji akses ke 3 halaman CMS baru
+    await sidebar.getByRole('link', { name: 'Skala & Metrik Lembaga' }).click();
+    await page.waitForURL('**/kelola-metrik-lembaga');
+    await expect(page.getByRole('heading', { name: /Kelola Skala & Metrik Lembaga/i })).toBeVisible();
+
+    await sidebar.getByRole('link', { name: 'Model Pembelajaran' }).click();
+    await page.waitForURL('**/kelola-model-pembelajaran');
+    await expect(page.getByRole('heading', { name: /Kelola Model Pembelajaran/i })).toBeVisible();
+
+    await sidebar.getByRole('link', { name: 'Khazanah Turats Salafiyah' }).click();
+    await page.waitForURL('**/kelola-khazanah-turats');
+    await expect(page.getByRole('heading', { name: /Kelola Khazanah Turats Salafiyah/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Daftar Kitab Kuning/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Waktu KBM Pesantren/i })).toBeVisible();
   });
 });

@@ -1,15 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
-
-async function gotoWithAuth(page: Page, targetPath: string) {
-  await page.goto(targetPath);
-  await page.waitForLoadState('domcontentloaded');
-  if (page.url().includes('/login')) {
-    await page.getByLabel('Username Pengurus').fill('admin');
-    await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
-    await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
-    await page.waitForURL(`**${targetPath}**`, { timeout: 60000 });
-  }
-}
+import { test, expect } from '@playwright/test';
+import { expandSidebarGroup, gotoWithAuth } from './helpers/auth';
 
 test.describe('E2E: Sunday Date Picker & Modul Linimasa Setor Santri', () => {
   test.setTimeout(90000);
@@ -36,6 +26,7 @@ test.describe('E2E: Sunday Date Picker & Modul Linimasa Setor Santri', () => {
 
   test('2. Sidebar memuat menu Linimasa Setor Santri dan dapat dinavigasikan', async ({ page }) => {
     await gotoWithAuth(page, '/dashboard');
+    await expandSidebarGroup(page, /PKM\. Muhafadzoh/i);
 
     // Temukan link Linimasa Setor Santri di sidebar
     const linkLinimasa = page.locator('aside').getByRole('link', { name: 'Linimasa Setor Santri' });
@@ -145,8 +136,8 @@ test.describe('E2E: Sunday Date Picker & Modul Linimasa Setor Santri', () => {
     // Verifikasi tombol Simpan Setoran
     await expect(page.getByRole('button', { name: /Simpan Setoran/i }).first()).toBeVisible();
 
-    // Pastikan tombol Tutup berfungsi
-    const btnTutup = page.getByRole('button', { name: 'Tutup' });
+    // Pastikan tombol Tutup berfungsi (exact: true agar tidak bentrok dengan tombol collapse sidebar)
+    const btnTutup = page.getByRole('button', { name: 'Tutup', exact: true });
     await expect(btnTutup).toBeVisible();
     await btnTutup.click();
 

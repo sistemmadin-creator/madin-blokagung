@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Fase 3: Hub Aturan Terpadu (Aturan KBM, Target Muhafadzoh, & Template Piagam)', () => {
   test('1. Pengaturan Aturan KBM & Manajemen Kalender Libur Madin', async ({ page }) => {
-    await page.goto('/pengaturan?tab=akademik');
+    await gotoWithAuth(page, '/pengaturan?tab=akademik');
     await expect(page.getByTestId('card-aturan-akademik')).toBeVisible();
 
     // 1. Verifikasi header aturan KBM
@@ -58,7 +59,7 @@ test.describe('Fase 3: Hub Aturan Terpadu (Aturan KBM, Target Muhafadzoh, & Temp
   });
 
   test('2. Pengaturan Target Muhafadzoh Nadzom & Otorisasi Mustahiq Penjaga', async ({ page }) => {
-    await page.goto('/pengaturan?tab=muhafadzoh');
+    await gotoWithAuth(page, '/pengaturan?tab=muhafadzoh');
     await expect(page.getByTestId('card-aturan-muhafadzoh')).toBeVisible();
 
     // 1. Verifikasi header aturan muhafadzoh
@@ -95,7 +96,7 @@ test.describe('Fase 3: Hub Aturan Terpadu (Aturan KBM, Target Muhafadzoh, & Temp
   });
 
   test('3. Pengaturan Tipografi, Orientasi, & Penandatangan Piagam', async ({ page }) => {
-    await page.goto('/pengaturan?tab=piagam');
+    await gotoWithAuth(page, '/pengaturan?tab=piagam');
     await expect(page.getByTestId('card-aturan-piagam')).toBeVisible();
 
     // 1. Verifikasi header
@@ -130,7 +131,7 @@ test.describe('Fase 3: Hub Aturan Terpadu (Aturan KBM, Target Muhafadzoh, & Temp
   });
 
   test('4. Navigasi Pintasan dari Tab Tinjauan (Overview) ke Setiap Pilar Pengaturan', async ({ page }) => {
-    await page.goto('/pengaturan?tab=overview');
+    await gotoWithAuth(page, '/pengaturan?tab=overview');
 
     // Klik Kelola KBM & Libur dari overview card
     const linkKbm = page.getByRole('button', { name: /Kelola KBM & Libur/i });

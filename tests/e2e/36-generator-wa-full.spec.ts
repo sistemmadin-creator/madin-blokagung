@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('E2E Generator Laporan Absensi WhatsApp (Migrasi Sesuai Referensi)', () => {
   test('1.0 Absen Cepat: Verifikasi Lengkap Modal Generator Laporan WA', async ({ page }) => {
-    await page.goto('/absen-cepat');
+    await gotoWithAuth(page, '/absen-cepat');
     await expect(page.getByRole('heading', { name: 'Absen Cepat', exact: true })).toBeVisible();
 
     // Tunggu data sesi termuat
@@ -94,7 +95,7 @@ test.describe('E2E Generator Laporan Absensi WhatsApp (Migrasi Sesuai Referensi)
   });
 
   test('2.0 Absensi Asatidz: Modal Generator Laporan WA Terintegrasi', async ({ page }) => {
-    await page.goto('/absensi');
+    await gotoWithAuth(page, '/absensi');
     await expect(page.getByRole('heading', { name: 'Absensi Asatidz', exact: true })).toBeVisible({ timeout: 15000 });
 
     // Buka modal Generator WA

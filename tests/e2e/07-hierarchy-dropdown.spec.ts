@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Modul 07: Pengaturan Hierarki Dropdown Blok > Asrama > Kode > Kamar', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/santri');
+    await gotoWithAuth(page, '/santri');
   });
 
   test('TC-01: renders Hierarki Kamar button and opens modal with dark header and badge', async ({ page }) => {

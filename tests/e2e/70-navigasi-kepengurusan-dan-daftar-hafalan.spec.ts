@@ -165,6 +165,16 @@ test.describe('70 - Penyederhanaan Header, Kepengurusan, & Daftar Hafalan Muhafa
     await page.waitForURL('**/dashboard**', { timeout: 25_000 });
 
     const sidebar = page.getByRole('complementary');
+    const pkmMediaBtn = sidebar.getByRole('button', { name: /PKM\. Media Madin/i });
+    await expect(pkmMediaBtn).toBeVisible();
+    await expect(sidebar.getByRole('button', { name: 'Beranda' })).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    );
+    if ((await pkmMediaBtn.getAttribute('aria-expanded')) !== 'true') {
+      await pkmMediaBtn.click();
+    }
+    await expect(sidebar.getByRole('link', { name: 'Kelola Galeri Sosmed' })).toBeVisible();
     const links = await sidebar.locator('a').allInnerTexts();
     const idxGaleri = links.findIndex((t) => t.includes('Kelola Galeri Sosmed'));
     const idxKepengurusan = links.findIndex((t) => t.includes('Kelola Kepengurusan'));

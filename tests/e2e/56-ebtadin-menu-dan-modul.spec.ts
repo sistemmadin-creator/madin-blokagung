@@ -1,15 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
-
-async function gotoWithAuth(page: Page, targetPath: string) {
-  await page.goto(targetPath);
-  await page.waitForLoadState('domcontentloaded');
-  if (page.url().includes('/login')) {
-    await page.getByLabel('Username Pengurus').fill('admin');
-    await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
-    await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
-    await page.waitForURL(`**${targetPath}**`, { timeout: 60000 });
-  }
-}
+import { test, expect } from '@playwright/test';
+import { expandSidebarGroup, expandSidebarSubmenu, gotoWithAuth } from './helpers/auth';
 
 test.describe('E2E: Pengujian Komprehensif Grup Menu EBTADIN dan Seluruh Sub-Modulnya', () => {
   test.setTimeout(120000);
@@ -18,6 +8,7 @@ test.describe('E2E: Pengujian Komprehensif Grup Menu EBTADIN dan Seluruh Sub-Mod
     page,
   }) => {
     await gotoWithAuth(page, '/ebtadin');
+    await expandSidebarGroup(page, /^EBTADIN$/i);
 
     // Pastikan sidebar memuat grup menu EBTADIN
     const sidebar = page.getByRole('complementary');
@@ -32,19 +23,20 @@ test.describe('E2E: Pengujian Komprehensif Grup Menu EBTADIN dan Seluruh Sub-Mod
     await expect(sidebar.getByRole('button', { name: /Tentang Lulus/i })).toBeVisible();
     await expect(sidebar.getByRole('button', { name: /Tentang Ijazah/i })).toBeVisible();
 
-    // Verifikasi sub-menu Ujian
+    // Buka masing-masing akordion lalu verifikasi sub-menunya
+    await expandSidebarSubmenu(page, /Tentang Ujian/i, 'Rekap Ujian');
     const linkRekapUjian = sidebar.getByRole('link', { name: 'Rekap Ujian', exact: true });
     const linkArsipUjian = sidebar.getByRole('link', { name: 'Rekap & Arsip Ujian Angkatan', exact: true });
     await expect(linkRekapUjian).toBeVisible();
     await expect(linkArsipUjian).toBeVisible();
 
-    // Verifikasi sub-menu Lulus
+    await expandSidebarSubmenu(page, /Tentang Lulus/i, 'Rekap Lulus');
     const linkRekapLulus = sidebar.getByRole('link', { name: 'Rekap Lulus', exact: true });
     const linkArsipLulus = sidebar.getByRole('link', { name: 'Rekap & Arsip Lulus Angkatan', exact: true });
     await expect(linkRekapLulus).toBeVisible();
     await expect(linkArsipLulus).toBeVisible();
 
-    // Verifikasi sub-menu Ijazah
+    await expandSidebarSubmenu(page, /Tentang Ijazah/i, 'Serah Ijazah');
     const linkSerahIjazah = sidebar.getByRole('link', { name: 'Serah Ijazah', exact: true });
     const linkArsipIjazah = sidebar.getByRole('link', { name: 'Rekap & Arsip Ijazah Angkatan', exact: true });
     await expect(linkSerahIjazah).toBeVisible();

@@ -96,9 +96,9 @@ test.describe('E2E: Hafalan Tingkat Lain & Rombak Rekapitulasi Hafalan Pertingka
     await expect(btnRincian).toBeVisible();
     await btnRincian.click();
 
-    // Verifikasi Modal Rincian Persentase Gabungan terbuka
+    // Verifikasi Modal Rincian Rekap Hafalan Kelas terbuka
     const modalRincianTitle = page.getByRole('heading', {
-      name: 'Rincian Persentase Gabungan Hafalan',
+      name: /Rincian Rekap Hafalan Kelas/i,
     });
     await expect(modalRincianTitle).toBeVisible({ timeout: 10000 });
 

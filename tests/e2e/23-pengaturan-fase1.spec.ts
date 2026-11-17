@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
   test.beforeEach(async ({ page }) => {
@@ -9,19 +10,13 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
   });
 
   test('1. Sidebar Desktop menghapus grup Pengaturan dan menyisakan tombol footer Pengaturan', async ({ page }) => {
-    await page.goto('/santri');
-    if (page.url().includes('/login')) {
-      await page.getByLabel('Username Pengurus').fill('admin');
-      await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
-      await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
-      await page.waitForURL('**/santri**', { timeout: 60000 });
-    }
+    await gotoWithAuth(page, '/santri');
     const sidebar = page.getByRole('complementary');
     await expect(sidebar).toBeVisible();
 
-    // Verifikasi teks PUSAT SISTEM dan grup Publikasi & Warta
+    // Verifikasi teks PUSAT SISTEM dan grup PKM. Media Madin
     await expect(sidebar.getByText('PUSAT SISTEM')).toBeVisible();
-    await expect(sidebar.getByText(/Publikasi & Warta/i)).toBeVisible();
+    await expect(sidebar.getByRole('button', { name: /PKM\. Media Madin/i })).toBeVisible();
 
     const fullTextUpper = (await sidebar.innerText()).toUpperCase();
     // Grup Pengaturan (dengan sub-menu Tahun Ajaran Aktif dll.) sudah dihapus dari sidebar
@@ -98,8 +93,8 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
   });
 
   test('4. Sub-menu Ubah Sidebar dapat mengubah nama grup dan tercermin langsung pada sidebar', async ({ page }) => {
-    await page.goto('/pengaturan?tab=sidebar');
-    await expect(page.getByTestId('sidebar-editor-container')).toBeVisible();
+    await gotoWithAuth(page, '/pengaturan?tab=sidebar');
+    await expect(page.getByTestId('sidebar-editor-container')).toBeVisible({ timeout: 20000 });
 
     const sidebar = page.getByRole('complementary');
     await expect(sidebar.getByText(/Utama/i)).toBeVisible();
@@ -131,8 +126,8 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
   });
 
   test('5. Sub-menu Ubah Sidebar dapat memindahkan urutan grup (Reorder Naik/Turun)', async ({ page }) => {
-    await page.goto('/pengaturan?tab=sidebar');
-    await expect(page.getByTestId('sidebar-editor-container')).toBeVisible();
+    await gotoWithAuth(page, '/pengaturan?tab=sidebar');
+    await expect(page.getByTestId('sidebar-editor-container')).toBeVisible({ timeout: 20000 });
 
     const sidebar = page.getByRole('complementary');
 
@@ -241,8 +236,8 @@ test.describe('Fase 1: Restrukturisasi Navigasi & Hub Menu Pengaturan', () => {
       adminPage.once('dialog', (d) => d.accept());
       await kickBtn.click();
 
-      // Perangkat 2 harus otomatis keluar ke /login?reason=kicked
-      await secondPage.waitForURL(/\/login\?reason=kicked/, { timeout: 15000 });
+      // Perangkat 2 harus otomatis keluar ke /login?reason=kicked (SPA router.replace)
+      await expect(secondPage).toHaveURL(/\/login\?reason=kicked/, { timeout: 25000 });
       await expect(
         secondPage.getByText('Sesi Anda pada perangkat ini telah diakhiri oleh Master Administrator.')
       ).toBeVisible();

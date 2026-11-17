@@ -1,22 +1,17 @@
-import { test, expect, Page } from '@playwright/test';
-
-async function gotoWithAuth(page: Page, targetPath: string) {
-  await page.goto(targetPath);
-  await page.waitForLoadState('domcontentloaded');
-  if (page.url().includes('/login')) {
-    await page.getByLabel('Username Pengurus').fill('admin');
-    await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
-    await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
-    await page.waitForURL(`**${targetPath}**`, { timeout: 60000 });
-  }
-}
+import { test, expect } from '@playwright/test';
+import { expandSidebarGroup, gotoWithAuth, openPublicContext } from './helpers/auth';
 
 test.describe('Navigation & System Shell', () => {
-  test('root path / renders SPA Profil Madrasah cleanly', async ({ page }) => {
-    await page.goto('/');
-    await expect(page).toHaveURL('/');
-    await expect(page.getByRole('heading', { name: /Madrasah Diniyyah Al-Amiriyyah/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /Pelajari Kurikulum & Khazanah Kitab/i })).toBeVisible();
+  test('root path / renders SPA Profil Madrasah cleanly', async ({ browser }) => {
+    const { context, page } = await openPublicContext(browser);
+    try {
+      await page.goto('/');
+      await expect(page).toHaveURL('/');
+      await expect(page.getByRole('heading', { name: /Madrasah Diniyyah Al-Amiriyyah/i })).toBeVisible();
+      await expect(page.getByRole('link', { name: /Pelajari Kurikulum & Khazanah Kitab/i })).toBeVisible();
+    } finally {
+      await context.close();
+    }
   });
 
   test('sidebar displays brand identity and navigation menu items', async ({ page }) => {
@@ -28,6 +23,12 @@ test.describe('Navigation & System Shell', () => {
     await expect(sidebar.getByText('Madrasah Diniyyah')).toHaveCount(0);
     await expect(page.getByText(/Madin Blokagung/i).first()).toBeVisible();
 
+    // Expand grouped sidebar sections to verify grouped navigation links & submenus
+    await expandSidebarGroup(page, 'Utama');
+    await expandSidebarGroup(page, /PKM\. Kurikulum/i);
+    await expandSidebarGroup(page, /PKM\. Muhafadzoh/i);
+    await expandSidebarGroup(page, /PKM\. Kesiswaan/i);
+
     // Direct sidebar links
     const directLinks = [
       'Data Santri',
@@ -38,7 +39,6 @@ test.describe('Navigation & System Shell', () => {
       'Cetak Piagam',
       'Absensi Asatidz',
       'Absen Cepat',
-      'Rekap Absensi',
     ];
 
     for (const title of directLinks) {
@@ -46,7 +46,7 @@ test.describe('Navigation & System Shell', () => {
     }
 
     // Submenu accordion buttons
-    const submenuButtons = ['Jadwal KBM', 'Formasi Kelas', 'Fan Pelajaran'];
+    const submenuButtons = ['Jadwal KBM', 'Formasi Kelas', 'Fan Pelajaran', 'Rekap Absensi'];
     for (const title of submenuButtons) {
       await expect(page.getByRole('complementary').getByRole('button', { name: title })).toBeVisible();
     }
@@ -100,7 +100,7 @@ test.describe('Navigation & System Shell', () => {
     await expect(sidebar.getByRole('button', { name: /Jadwal KBM/i })).toHaveCount(0);
 
     // Buka grup PKM. Kurikulum & submenu Jadwal KBM
-    await kurikulumGroupBtn.click();
+    await expandSidebarGroup(page, /PKM\. Kurikulum/i);
     await expect(kurikulumGroupBtn).toHaveAttribute('aria-expanded', 'true');
     const jadwalBtn = sidebar.getByRole('button', { name: /Jadwal KBM/i });
     await expect(jadwalBtn).toBeVisible();
@@ -108,50 +108,34 @@ test.describe('Navigation & System Shell', () => {
     await expect(sidebar.getByRole('link', { name: /Jadwal KBM Per Kelas/i })).toBeVisible();
 
     // Pindah halaman ke /santri; grup PKM. Kurikulum & submenu Jadwal KBM harus tetap terbuka (diingat)
-    await page.goto('/santri');
+    await gotoWithAuth(page, '/santri');
     await expect(sidebar.getByRole('button', { name: /PKM\. Kurikulum/i })).toHaveAttribute('aria-expanded', 'true');
     await expect(sidebar.getByRole('link', { name: /Jadwal KBM Per Kelas/i })).toBeVisible();
   });
 
-  test('navbar hierarchy builder modal opens and closes cleanly', async ({ page }) => {
-    await page.goto('/santri');
+  test('navbar profile menu and hierarchy builder modal open and close cleanly', async ({ page }) => {
+    await gotoWithAuth(page, '/santri');
 
-    // Open profile menu pill
-    await page.getByText(/Menu Profil/i).click();
+    // Open navbar profile menu pill
+    const profileBtn = page.getByRole('banner').locator('button[aria-haspopup="menu"]');
+    await profileBtn.click();
+    await expect(page.getByText('@admin')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Keluar / Logout' })).toBeVisible();
+    await page.keyboard.press('Escape');
 
-    const hierarkiBtn = page.getByRole('button', { name: /Pusat Kendali Admin/i });
-    await expect(hierarkiBtn).toBeVisible();
-    await hierarkiBtn.click();
-
-    // Modal should appear
+    // Open Hierarki Kamar modal from Santri toolbar
+    await page.getByRole('button', { name: /Hierarki Kamar/i }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('heading', { name: /Pengaturan Hierarki Dropdown/i })).toBeVisible();
 
-    // Close button
     const closeBtn = dialog.getByRole('button', { name: /Tutup pengaturan hierarki|Batal/i }).or(dialog.locator('button:has-text("✕")')).first();
     await closeBtn.click();
     await expect(dialog).toBeHidden();
   });
 
-  test('navbar audit logs modal opens and closes cleanly', async ({ page }) => {
-    await page.goto('/santri');
-
-    // Open profile menu pill
-    await page.getByText(/Menu Profil/i).click();
-
-    const auditBtn = page.getByRole('button', { name: /Log Aktivitas Sistem/i });
-    await expect(auditBtn).toBeVisible();
-    await auditBtn.click();
-
-    // Modal should appear
-    await expect(page.getByText(/Audit Log Aktivitas Sistem/i)).toBeVisible();
-
-    // Close modal
-    const closeBtn = page.getByRole('dialog').getByRole('button', { name: /Tutup dialog/i }).or(page.locator('button:has-text("✕")')).first();
-    if (await closeBtn.isVisible()) {
-      await closeBtn.click();
-      await expect(page.getByText(/Audit Log Aktivitas Sistem/i)).toBeHidden();
-    }
+  test('pengaturan audit logs tab opens cleanly', async ({ page }) => {
+    await gotoWithAuth(page, '/pengaturan?tab=audit');
+    await expect(page.getByRole('heading', { name: /Log Aktivitas Sistem \(Audit Trail\)/i })).toBeVisible();
   });
 });

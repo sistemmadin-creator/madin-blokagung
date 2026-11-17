@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Uji Fitur Baru: Hak Input KBM Berdasarkan Jah & Hardening Undo/Redo Asatidz', () => {
   test.beforeEach(async ({ page }) => {
@@ -23,7 +24,7 @@ test.describe('Uji Fitur Baru: Hak Input KBM Berdasarkan Jah & Hardening Undo/Re
       });
     });
 
-    await page.goto('/asatidz');
+    await gotoWithAuth(page, '/asatidz');
     await expect(page.getByRole('heading', { name: /Database Asatidz/i })).toBeVisible();
   });
 

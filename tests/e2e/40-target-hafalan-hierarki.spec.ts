@@ -1,16 +1,17 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Modul 05: Target Muhafadzoh & Item Hafalan Hierarkis', () => {
   test('Buka Modal Pengaturan Target, navigasi tabs, filter, dan verifikasi fitur hierarki', async ({ page }) => {
-    await page.goto('/setoran');
+    await gotoWithAuth(page, '/setoran');
 
-    // 1. Klik tombol Opsi Hafalan untuk membuka modal pengaturan target
+    // 1. Klik tombol Opsi Hafalan untuk membuka modal pengaturan target (tunggu RBAC currentAccount dimuat)
     const settingsBtn = page.getByRole('button', { name: /Opsi Hafalan|Target & Penjaga Bebas/i });
-    await expect(settingsBtn).toBeVisible();
+    await expect(settingsBtn).toBeVisible({ timeout: 25_000 });
     await settingsBtn.click();
 
     // 2. Verifikasi Dialog dan Header
-    const dialog = page.getByRole('dialog');
+    const dialog = page.getByRole('dialog', { name: /Pengaturan Target Muhafadzoh/i });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('heading', { name: /Pengaturan Target Muhafadzoh & Item Hafalan/i })).toBeVisible();
 
@@ -37,10 +38,10 @@ test.describe('Modul 05: Target Muhafadzoh & Item Hafalan Hierarkis', () => {
     await expect(dialog.getByRole('button', { name: 'Hafalan Kitab' })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Akses Penjaga' })).toBeVisible();
 
-    // 6. Tutup Modal
+    // 6. Tutup Modal (dispatch via DOM agar tidak terhalang portal dev overlay Next.js)
     const cancelBtn = dialog.getByRole('button', { name: 'Batal' });
     await expect(cancelBtn).toBeVisible();
-    await cancelBtn.click();
+    await cancelBtn.evaluate((el: HTMLElement) => el.click());
     await expect(dialog).not.toBeVisible();
   });
 });

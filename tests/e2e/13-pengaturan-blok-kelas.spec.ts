@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Tahap 2 & 3: Pengaturan Hierarki Blok KBM (Diniyyah & Takror)', () => {
   test('1.0 Master Formasi (/formasi): Tombol Hierarki Blok KBM & Modal Terbuka', async ({
     page,
   }) => {
-    await page.goto('/formasi');
+    await gotoWithAuth(page, '/formasi');
 
     await expect(page.getByRole('heading', { name: /Formasi Kelas Madin/i })).toBeVisible();
 
@@ -27,7 +28,7 @@ test.describe('Tahap 2 & 3: Pengaturan Hierarki Blok KBM (Diniyyah & Takror)', (
     await expect(tabTakror).toBeVisible();
 
     // Verifikasi Blok default (Blok Induk) tampil di daftar blok
-    await expect(dialog.getByText('Blok Induk').first()).toBeVisible({ timeout: 15_000 });
+    await expect(dialog.getByText(/Blok Induk|Induk Putra/i).first()).toBeVisible({ timeout: 15_000 });
 
     // Uji klik tab Takror
     await tabTakror.click();
@@ -43,7 +44,7 @@ test.describe('Tahap 2 & 3: Pengaturan Hierarki Blok KBM (Diniyyah & Takror)', (
   });
 
   test('2.0 Siklus Tambah Blok & Ruang di dalam Modal Hierarki Blok KBM', async ({ page }) => {
-    await page.goto('/formasi');
+    await gotoWithAuth(page, '/formasi');
 
     const btnHierarki = page.getByRole('button', { name: /Hierarki Blok KBM/i });
     await btnHierarki.click();
@@ -52,7 +53,7 @@ test.describe('Tahap 2 & 3: Pengaturan Hierarki Blok KBM (Diniyyah & Takror)', (
     await expect(dialog).toBeVisible();
 
     // Pastikan data hierarki selesai dimuat
-    await expect(dialog.getByText('Blok Induk').first()).toBeVisible({ timeout: 15_000 });
+    await expect(dialog.getByText(/Blok Induk|Induk Putra/i).first()).toBeVisible({ timeout: 15_000 });
 
     // Tambah Blok Baru untuk pengujian (unik per run)
     const suffix = Date.now().toString().slice(-4);
@@ -94,7 +95,7 @@ test.describe('Tahap 2 & 3: Pengaturan Hierarki Blok KBM (Diniyyah & Takror)', (
   });
 
   test('3.0 Pengaturan Sistem (/pengaturan): Akses Modal Hierarki Blok KBM', async ({ page }) => {
-    await page.goto('/pengaturan');
+    await gotoWithAuth(page, '/pengaturan');
 
     await expect(page.getByRole('heading', { name: /Pengaturan Sistem Madina Blokagung/i })).toBeVisible();
 
@@ -126,7 +127,7 @@ test.describe('Tahap 2 & 3: Pengaturan Hierarki Blok KBM (Diniyyah & Takror)', (
 
   test('4.0 Formasi PA & PI: Tombol Hierarki Blok KBM Berfungsi Mulus', async ({ page }) => {
     // Formasi PA
-    await page.goto('/formasi/pa');
+    await gotoWithAuth(page, '/formasi/pa');
     const btnPa = page.getByRole('button', { name: /Hierarki Blok KBM/i });
     await expect(btnPa).toBeVisible();
     await btnPa.click();
@@ -136,7 +137,7 @@ test.describe('Tahap 2 & 3: Pengaturan Hierarki Blok KBM (Diniyyah & Takror)', (
     await dialog.getByRole('button', { name: 'Tutup', exact: true }).click();
 
     // Formasi PI
-    await page.goto('/formasi/pi');
+    await gotoWithAuth(page, '/formasi/pi');
     const btnPi = page.getByRole('button', { name: /Hierarki Blok/i });
     await expect(btnPi).toBeVisible();
     await btnPi.click();

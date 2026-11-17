@@ -1,11 +1,34 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 
+async function loginAsMasterAdmin(page: Page) {
+  await page.goto('/login');
+  await page.waitForLoadState('domcontentloaded');
+  if (page.url().includes('/login')) {
+    await page.getByLabel('Username Pengurus').fill('admin');
+    await page.getByLabel('Kata Sandi', { exact: true }).fill(process.env.E2E_ADMIN_PASSWORD || '');
+    await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
+    await page.waitForURL('**/dashboard**', { timeout: 30000 });
+  }
+}
+
 test.describe('Prioritas 4: Error Monitoring (Sentry), PII Sanitization & Cloud Budget Guard', () => {
   test.describe('1. Sanitasi Data Privasi Santri & Kredensial (Anti-PII Leak to Sentry)', () => {
-    test('1.1. Memfilter dan menyamarkan password, NIS, nomor HP, dan token dari error log', async ({ request }) => {
-      const res = await request.post('/api/monitoring/test-error', {
+    test('1.1. Memfilter dan menyamarkan password, NIS, nomor HP, dan token dari error log', async ({ page, request }) => {
+      // Pastikan request unauthenticated ditolak 401
+      const unauthRes = await request.post('/api/monitoring/test-error', {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-forwarded-host': 'sistem.localhost:3000',
+        },
+        data: { payload: { nama_santri: 'Anon' } },
+      });
+      expect(unauthRes.status()).toBe(401);
+
+      await loginAsMasterAdmin(page);
+
+      const res = await page.request.post('/api/monitoring/test-error', {
         headers: {
           'Content-Type': 'application/json',
           'x-forwarded-host': 'sistem.localhost:3000',
@@ -48,8 +71,10 @@ test.describe('Prioritas 4: Error Monitoring (Sentry), PII Sanitization & Cloud 
       expect(sanitized.service_role_key).toBe('[REDACTED]');
     });
 
-    test('1.2. Mampu mencatat event error dan pesan kustom tanpa kegagalan (crash-safe)', async ({ request }) => {
-      const res = await request.post('/api/monitoring/test-error', {
+    test('1.2. Mampu mencatat event error dan pesan kustom tanpa kegagalan (crash-safe)', async ({ page }) => {
+      await loginAsMasterAdmin(page);
+
+      const res = await page.request.post('/api/monitoring/test-error', {
         headers: {
           'Content-Type': 'application/json',
           'x-forwarded-host': 'sistem.localhost:3000',
@@ -73,7 +98,9 @@ test.describe('Prioritas 4: Error Monitoring (Sentry), PII Sanitization & Cloud 
       expect(json.sanitizedPayload.catatan).toContain('[PHONE_REDACTED]');
     });
 
-    test('1.3. Memproteksi endpoint monitoring dengan rate limiter saat menerima spam request', async ({ request }) => {
+    test('1.3. Memproteksi endpoint monitoring dengan rate limiter saat menerima spam request', async ({ page }) => {
+      await loginAsMasterAdmin(page);
+
       const spamPayload = {
         action: 'capture_message',
         message: 'Spam log loop attack simulation',
@@ -81,7 +108,7 @@ test.describe('Prioritas 4: Error Monitoring (Sentry), PII Sanitization & Cloud 
 
       let hitRateLimit = false;
       for (let i = 0; i < 18; i++) {
-        const res = await request.post('/api/monitoring/test-error', {
+        const res = await page.request.post('/api/monitoring/test-error', {
           headers: {
             'Content-Type': 'application/json',
             'x-forwarded-host': 'sistem.localhost:3000',
@@ -103,8 +130,10 @@ test.describe('Prioritas 4: Error Monitoring (Sentry), PII Sanitization & Cloud 
   });
 
   test.describe('2. Error Boundary & Graceful Degradation (Client Crash Handling)', () => {
-    test('2.1. Endpoint status monitoring merespons dengan status sehat', async ({ request }) => {
-      const res = await request.get('/api/monitoring/test-error', {
+    test('2.1. Endpoint status monitoring merespons dengan status sehat', async ({ page }) => {
+      await loginAsMasterAdmin(page);
+
+      const res = await page.request.get('/api/monitoring/test-error', {
         headers: {
           'x-forwarded-host': 'sistem.localhost:3000',
         },
@@ -119,6 +148,8 @@ test.describe('Prioritas 4: Error Monitoring (Sentry), PII Sanitization & Cloud 
     });
 
     test('2.2. Error boundary menangani unhandled client exception secara anggun', async ({ page }) => {
+      await loginAsMasterAdmin(page);
+
       // Buka halaman uji coba crash
       await page.goto('/test-crash');
       await page.waitForLoadState('domcontentloaded');

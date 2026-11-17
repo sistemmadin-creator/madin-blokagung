@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Clock,
   Users,
@@ -63,7 +63,12 @@ export default function ModalGeneratorWA({
   const [pushResult, setPushResult] = useState<string | null>(null);
   const [isSingkatNamaModalOpen, setIsSingkatNamaModalOpen] = useState(false);
 
+  const hasFetchedOnOpenRef = useRef(false);
   useEffect(() => {
+    if (!isOpen) {
+      hasFetchedOnOpenRef.current = false;
+      return;
+    }
     if (isOpen) {
       if (initialJam === 'ALL') {
         setSelectedJams([1, 2, 3, 4]);
@@ -75,11 +80,14 @@ export default function ModalGeneratorWA({
         setSelectedJams([1, 2]);
       }
       setFilterGender('SEMUA');
-      if (asatidzList.length === 0) fetchAsatidz();
-      if (Object.keys(jadwalMap).length === 0) fetchJadwal();
-      if (formasiList.length === 0) fetchFormasi();
-      if (Object.keys(fanConfig).length === 0) fetchFanData();
-      fetchSingkatanAsatidz();
+      if (!hasFetchedOnOpenRef.current) {
+        hasFetchedOnOpenRef.current = true;
+        if (asatidzList.length === 0) fetchAsatidz();
+        if (Object.keys(jadwalMap).length === 0) fetchJadwal();
+        if (formasiList.length === 0) fetchFormasi();
+        if (Object.keys(fanConfig).length === 0) fetchFanData();
+        fetchSingkatanAsatidz();
+      }
     }
   }, [
     isOpen,

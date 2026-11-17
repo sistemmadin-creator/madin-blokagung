@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   ClipboardCheck,
@@ -144,7 +144,10 @@ export default function RekapStatusAbsensiPage() {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
+  const hasFetchedInitialRef = useRef(false);
   useEffect(() => {
+    if (hasFetchedInitialRef.current) return;
+    hasFetchedInitialRef.current = true;
     fetchAbsensi();
     if (asatidzList.length === 0) fetchAsatidz();
     if (formasiList.length === 0) fetchFormasi();

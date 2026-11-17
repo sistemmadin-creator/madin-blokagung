@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useSantriStore } from '@/stores/useSantriStore';
@@ -50,8 +50,14 @@ export default function ModalDetailAsatidz() {
   const { jadwalMap, activeHari, fetchJadwal } = useJadwalStore();
   const { canEdit, canDelete } = usePagePermission('asatidz');
 
+  const hasFetchedOnOpenRef = useRef(false);
   useEffect(() => {
-    if (isDetailModalOpen) {
+    if (!isDetailModalOpen) {
+      hasFetchedOnOpenRef.current = false;
+      return;
+    }
+    if (!hasFetchedOnOpenRef.current) {
+      hasFetchedOnOpenRef.current = true;
       if (santriList.length === 0) fetchSantri();
       if (setoranList.length === 0) fetchSetoranData();
       if (Object.keys(jadwalMap).length === 0) fetchJadwal();

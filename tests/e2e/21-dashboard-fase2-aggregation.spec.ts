@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Fase 2: Multi-Time Slicing & Reactive Aggregation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/dashboard');
+    await gotoWithAuth(page, '/dashboard');
     await expect(page.getByRole('heading', { name: /Dashboard MADINA Blokagung/i })).toBeVisible();
   });
 

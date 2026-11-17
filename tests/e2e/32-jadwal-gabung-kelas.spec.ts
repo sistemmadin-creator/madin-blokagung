@@ -1,8 +1,44 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Fitur Gabung Kelas KBM (Pilihan Dropdown & Tanpa Sakelar)', () => {
   test('1.0 Alur Gabung Kelas Melalui Pilihan Dropdown Asatidz (Tanpa Sakelar)', async ({ page }) => {
-    await page.goto('/jadwal-kbm');
+    // Seed jadwal sementara melalui endpoint relasional jadwal_kbm_slots agar 2 A & 2 B WUSTHO (PI) Selasa Jam 2 dalam status Gabung Kelas
+    await page.route('**/rest/v1/jadwal_kbm_slots*', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          headers: {
+            'access-control-allow-origin': '*',
+          },
+          contentType: 'application/json; charset=utf-8',
+          body: JSON.stringify([
+            {
+              nama_asatidz: 'UST. AHMAD DIMYATI',
+              hari: 'Selasa',
+              jam: 2,
+              fan: 'Hadits',
+              lokasi: '2 A WUSTHO (PI) (Lokal)',
+              kelas_lengkap: '2 A WUSTHO (PI)',
+              raw_slot: 'Jam 2 | Hadits | 2 A WUSTHO (PI) (Lokal)',
+            },
+            {
+              nama_asatidz: 'UST. AHMAD DIMYATI',
+              hari: 'Selasa',
+              jam: 2,
+              fan: 'Hadits',
+              lokasi: '2 B WUSTHO (PI) (Lokal)',
+              kelas_lengkap: '2 B WUSTHO (PI)',
+              raw_slot: 'Jam 2 | Hadits | 2 B WUSTHO (PI) (Lokal)',
+            },
+          ]),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await gotoWithAuth(page, '/jadwal-kbm');
     await expect(page.getByRole('heading', { name: 'Jadwal KBM Per Kelas', exact: true })).toBeVisible({ timeout: 15_000 });
 
     const searchInput = page.getByPlaceholder(/Cari Kelas/i);
@@ -77,7 +113,7 @@ test.describe('Fitur Gabung Kelas KBM (Pilihan Dropdown & Tanpa Sakelar)', () =>
   });
 
   test('2.0 Guardrails: Tidak Muncul Sakelar Maupun Peringatan Pada Slot Kosong & Mencegah Silang Gender/Tingkat', async ({ page }) => {
-    await page.goto('/jadwal-kbm');
+    await gotoWithAuth(page, '/jadwal-kbm');
     await expect(page.getByRole('heading', { name: 'Jadwal KBM Per Kelas', exact: true })).toBeVisible({ timeout: 15_000 });
 
     const searchInput = page.getByPlaceholder(/Cari Kelas/i);

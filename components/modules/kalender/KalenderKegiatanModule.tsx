@@ -884,28 +884,6 @@ export function KalenderKegiatanModule() {
               </button>
             )}
 
-            {/* Tombol Pulihkan Jadwal Standar */}
-            {(canDelete || canEdit) && (
-              <button
-                type="button"
-                data-testid="btn-pulihkan-agenda-standar"
-                onClick={async () => {
-                  await regenerateTahunAjaranOtomatis(
-                    activeTahunAjaran,
-                    currentTAConfig.hijriOffsetDays,
-                    currentAccount?.full_name || 'PKM. Kurikulum'
-                  );
-                  showToast(
-                    `Jadwal standar Tahun Ajaran ${activeTahunAjaran} berhasil dipulihkan.`
-                  );
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold cursor-pointer transition"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Pulihkan Jadwal Standar</span>
-              </button>
-            )}
-
             <div className="inline-flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
               {(
                 [

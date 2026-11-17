@@ -137,7 +137,10 @@ export default function AbsenCepatPage() {
     [selectedJam, setSelectedJam]
   );
 
+  const hasFetchedInitialRef = useRef(false);
   useEffect(() => {
+    if (hasFetchedInitialRef.current) return;
+    hasFetchedInitialRef.current = true;
     fetchAbsensi();
     if (asatidzList.length === 0) fetchAsatidz();
     if (Object.keys(jadwalMap).length === 0) fetchJadwal();

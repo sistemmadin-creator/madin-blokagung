@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Formasi Kelas Phase 1-6 Full Verification', () => {
   test('1.0 Master Page: Navigasi dan Elemen Utama Formasi Kelas', async ({ page }) => {
-    await page.goto('/formasi');
+    await gotoWithAuth(page, '/formasi');
 
     // Judul halaman master
     await expect(page.getByRole('heading', { name: /Formasi Kelas Madin/i })).toBeVisible();
@@ -20,7 +21,7 @@ test.describe('Formasi Kelas Phase 1-6 Full Verification', () => {
   });
 
   test('2.0 Master Page: Modal Hide Columns & Filter Tokens', async ({ page }) => {
-    await page.goto('/formasi');
+    await gotoWithAuth(page, '/formasi');
 
     // Test Modal Sembunyikan
     const hideBtn = page.getByRole('button', { name: /Sembunyikan/i });
@@ -36,7 +37,7 @@ test.describe('Formasi Kelas Phase 1-6 Full Verification', () => {
   });
 
   test('3.0 Formasi PA: Tampilan Dokumen Resmi & 2-Level Header', async ({ page }) => {
-    await page.goto('/formasi/pa');
+    await gotoWithAuth(page, '/formasi/pa');
 
     // Header kartu dan dokumen
     await expect(page.getByRole('heading', { name: /Formasi Kelas Putra/i })).toBeVisible();
@@ -59,7 +60,7 @@ test.describe('Formasi Kelas Phase 1-6 Full Verification', () => {
   });
 
   test('4.0 Formasi PI: Tampilan Dokumen Putri', async ({ page }) => {
-    await page.goto('/formasi/pi');
+    await gotoWithAuth(page, '/formasi/pi');
 
     await expect(page.getByRole('heading', { name: /Formasi Kelas Putri/i })).toBeVisible();
     await expect(page.getByText('FORMASI RUANG DINIYYAH DAN TAKROR PUTRI')).toBeVisible();
@@ -70,7 +71,7 @@ test.describe('Formasi Kelas Phase 1-6 Full Verification', () => {
   });
 
   test('5.0 Modal Input Formasi: Field Lengkap, Isti\'dad & Dual Foto', async ({ page }) => {
-    await page.goto('/formasi');
+    await gotoWithAuth(page, '/formasi');
 
     // Buka modal input tambah
     const addBtn = page.getByTitle('Tambah Formasi Kelas Baru');
@@ -92,7 +93,7 @@ test.describe('Formasi Kelas Phase 1-6 Full Verification', () => {
   });
 
   test('6.0 Modal Detail Formasi: Membuka Daftar Santri Aktif', async ({ page }) => {
-    await page.goto('/formasi/pa');
+    await gotoWithAuth(page, '/formasi/pa');
 
     // Tunggu baris data riil muncul di tabel
     const targetRow = page.locator('tbody tr', { hasText: '1 A ULA' });
@@ -143,7 +144,7 @@ test.describe('Formasi Kelas Phase 1-6 Full Verification', () => {
       });
     });
 
-    await page.goto('/formasi/pa');
+    await gotoWithAuth(page, '/formasi/pa');
     await expect(page.getByRole('heading', { name: /Formasi Kelas Putra/i })).toBeVisible();
 
     // Buka detail baris pertama yang ada dengan mengklik sel nama kelas (agar tidak kena tombol aksi di sel foto/blok)
@@ -214,7 +215,7 @@ test.describe('Formasi Kelas Phase 1-6 Full Verification', () => {
       });
     });
 
-    await page.goto('/formasi/pa');
+    await gotoWithAuth(page, '/formasi/pa');
     const targetRow = page.locator('tbody tr').first();
     await expect(targetRow).toBeVisible({ timeout: 15_000 });
     await targetRow.locator('td').nth(1).click();

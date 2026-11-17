@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { gotoWithAuth } from './helpers/auth';
 
 test.describe('Fase 2 & Fase 3: Offline-First Resiliency & Smart Automation', () => {
   test('1. Layout: Integrasi Indikator Sinkronisasi dan Status Jaringan', async ({ page }) => {
-    await page.goto('/santri');
+    await gotoWithAuth(page, '/santri');
 
     // Pastikan halaman utama santri termuat dengan sempurna
     await expect(page.getByRole('heading', { name: /Database Santri/i })).toBeVisible();
@@ -16,7 +17,7 @@ test.describe('Fase 2 & Fase 3: Offline-First Resiliency & Smart Automation', ()
   });
 
   test('2. Absensi: Generator Pesan WhatsApp Otomatis (Fase 3)', async ({ page }) => {
-    await page.goto('/absensi');
+    await gotoWithAuth(page, '/absensi');
 
     // Buka modal Chat WA
     const btnWA = page.getByRole('button', { name: /Chat WA/i });
@@ -37,7 +38,7 @@ test.describe('Fase 2 & Fase 3: Offline-First Resiliency & Smart Automation', ()
   });
 
   test('3. Jadwal KBM: Matriks KBM Bebas Konflik & Auto Solver Ready (Fase 3)', async ({ page }) => {
-    await page.goto('/jadwal-kbm');
+    await gotoWithAuth(page, '/jadwal-kbm');
 
     await expect(page.getByRole('heading', { name: 'Jadwal KBM Per Kelas', exact: true })).toBeVisible();
 
@@ -51,7 +52,7 @@ test.describe('Fase 2 & Fase 3: Offline-First Resiliency & Smart Automation', ()
   });
 
   test('4. Muhafadzoh: Pencarian Cepat NIS / Barcode Santri (Fase 3)', async ({ page }) => {
-    await page.goto('/setoran');
+    await gotoWithAuth(page, '/setoran');
 
     await expect(page.getByRole('heading', { name: /Setoran/i }).first()).toBeVisible();
 
