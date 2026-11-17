@@ -13,7 +13,6 @@ export default function TestCrashPage() {
   const [shouldCrash, setShouldCrash] = useState(false);
   const { isMasterAdmin, isLoadingCurrent } = usePagePermission('pengaturan');
   const currentAccount = useRbacStore((s) => s.currentAccount);
-  const fetchAppSecurityStatus = useRbacStore((s) => s.fetchAppSecurityStatus);
   const fetchCurrentAccount = useRbacStore((s) => s.fetchCurrentAccount);
   const clearCurrentAccount = useRbacStore((s) => s.clearCurrentAccount);
 
@@ -32,7 +31,6 @@ export default function TestCrashPage() {
           data: { user },
         } = await supabase.auth.getUser();
 
-        await fetchAppSecurityStatus();
         if (user) {
           await fetchCurrentAccount();
         } else {
@@ -57,7 +55,7 @@ export default function TestCrashPage() {
     return () => {
       isMounted = false;
     };
-  }, [isProd, fetchAppSecurityStatus, fetchCurrentAccount, clearCurrentAccount]);
+  }, [isProd, fetchCurrentAccount, clearCurrentAccount]);
 
   if (shouldCrash) {
     throw new Error('SIMULATED_CLIENT_RENDER_CRASH: Komponen gagal melakukan render data.');

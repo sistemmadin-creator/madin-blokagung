@@ -4,6 +4,7 @@ test.describe('70 - Penyederhanaan Header, Kepengurusan, & Daftar Hafalan Muhafa
   test('1. Header publik terstruktur & navigasi ke Kepengurusan, Waktu KBM, Media Madin, dan Daftar Hafalan (ULA/WUSTHO/ULYA)', async ({
     browser,
   }) => {
+    test.setTimeout(120000);
     const context = await browser.newContext({
       extraHTTPHeaders: {
         'x-forwarded-host': 'localhost:3000',

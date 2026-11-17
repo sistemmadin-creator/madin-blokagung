@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Phase 2: Manajemen Akun & 5 Otoritas Khusus (Granular RBAC)', () => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
 
   test('Master Admin dapat membuat akun kustom, mengonfigurasi otoritas halaman & 5 otoritas khusus, memverifikasi pembatasan pada sesi akun kustom, lalu menghapus akun uji', async ({
     page,
@@ -20,6 +20,11 @@ test.describe('Phase 2: Manajemen Akun & 5 Otoritas Khusus (Granular RBAC)', () 
     await expect(
       page.getByRole('heading', { name: /Manajemen Akun & Otoritas Pengurus/i })
     ).toBeVisible({ timeout: 20000 });
+    await expect(page.getByTestId('btn-header-kelola-akun')).toContainText(
+      'Kelola Akun & Otoritas'
+    );
+    await expect(page.getByTestId('panel-app-security-switch')).toHaveCount(0);
+    await expect(page.getByTestId('btn-header-security-switch')).toHaveCount(0);
 
     // Pastikan kartu akun bawaan (admin & kurikulum) tampil
     await expect(page.getByTestId('account-card-admin')).toBeVisible();

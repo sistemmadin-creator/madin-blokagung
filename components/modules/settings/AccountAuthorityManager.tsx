@@ -39,12 +39,10 @@ import {
   extractHierarchyEnums,
   loadHierarchyRules,
 } from '@/lib/services/hierarchy-service';
-import AppSecuritySwitchPanel from '@/components/modules/settings/AppSecuritySwitchPanel';
 
 export default function AccountAuthorityManager() {
   const {
     currentAccount,
-    isAppSecurityEnabled,
     accountsList,
     isLoadingList,
     fetchAllAccounts,
@@ -290,13 +288,8 @@ export default function AccountAuthorityManager() {
 
   return (
     <div className="space-y-5">
-      {/* Panel Saklar Keamanan Aplikasi MADINA Blokagung (Konfirmasi 3x + Sandi Khusus) */}
-      <AppSecuritySwitchPanel />
-
-      {isAppSecurityEnabled && (
-        <>
-          {/* Header Panel Manajemen Akun */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header Panel Manajemen Akun */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5">
           <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-center shrink-0">
             <Shield className="w-5 h-5" />
@@ -1167,8 +1160,6 @@ export default function AccountAuthorityManager() {
             </form>
           </div>
         </div>
-      )}
-        </>
       )}
     </div>
   );

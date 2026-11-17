@@ -40,25 +40,15 @@ interface RbacStoreState {
   isLoadingCurrent: boolean;
   isLoadingList: boolean;
   errorMsg: string | null;
-  isAppSecurityEnabled: boolean;
-  securityUpdatedAt: string | null;
-  securityUpdatedBy: string | null;
 
   fetchCurrentAccount: () => Promise<UserAccountRecord | null>;
   fetchAllAccounts: () => Promise<void>;
   upsertAccount: (input: UpsertAccountInput) => Promise<{ ok: boolean; error?: string }>;
   deleteAccount: (id: string, username: string) => Promise<{ ok: boolean; error?: string }>;
   clearCurrentAccount: () => void;
-  fetchAppSecurityStatus: () => Promise<boolean>;
-  toggleAppSecurity: (
-    enable: boolean,
-    securityPassword: string
-  ) => Promise<{ ok: boolean; error?: string; is_security_enabled?: boolean }>;
-  updateSecurityPassword: (
-    currentPassword: string,
-    newPassword: string
-  ) => Promise<{ ok: boolean; error?: string }>;
 }
+
+let accountFetchGeneration = 0;
 
 export const useRbacStore = create<RbacStoreState>((set, get) => ({
   currentAccount: null,
@@ -66,16 +56,18 @@ export const useRbacStore = create<RbacStoreState>((set, get) => ({
   isLoadingCurrent: false,
   isLoadingList: false,
   errorMsg: null,
-  isAppSecurityEnabled: true,
-  securityUpdatedAt: null,
-  securityUpdatedBy: null,
 
   fetchCurrentAccount: async () => {
+    const fetchGen = ++accountFetchGeneration;
     set({ isLoadingCurrent: true });
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
+      if (fetchGen !== accountFetchGeneration) {
+        return null;
+      }
 
       if (!user) {
         set({ currentAccount: null, isLoadingCurrent: false });
@@ -91,6 +83,10 @@ export const useRbacStore = create<RbacStoreState>((set, get) => ({
         .select('*')
         .eq('id', user.id)
         .maybeSingle();
+
+      if (fetchGen !== accountFetchGeneration) {
+        return null;
+      }
 
       if (row) {
         const normalized = normalizeUserAccountRecord({
@@ -130,7 +126,9 @@ export const useRbacStore = create<RbacStoreState>((set, get) => ({
       set({ currentAccount: fallback, isLoadingCurrent: false });
       return fallback;
     } catch {
-      set({ isLoadingCurrent: false });
+      if (fetchGen === accountFetchGeneration) {
+        set({ isLoadingCurrent: false });
+      }
       return get().currentAccount;
     }
   },
@@ -248,101 +246,8 @@ export const useRbacStore = create<RbacStoreState>((set, get) => ({
   },
 
   clearCurrentAccount: () => {
-    set({ currentAccount: null, accountsList: [] });
-  },
-
-  fetchAppSecurityStatus: async () => {
-    try {
-      const { data, error } = await supabase.rpc('get_app_security_status');
-      if (error || !data) {
-        return get().isAppSecurityEnabled;
-      }
-      const statusObj = data as {
-        is_security_enabled?: boolean;
-        updated_at?: string;
-        updated_by?: string;
-      };
-      const enabled = statusObj.is_security_enabled !== false;
-      set({
-        isAppSecurityEnabled: enabled,
-        securityUpdatedAt: statusObj.updated_at || null,
-        securityUpdatedBy: statusObj.updated_by || null,
-      });
-      return enabled;
-    } catch {
-      return get().isAppSecurityEnabled;
-    }
-  },
-
-  toggleAppSecurity: async (enable: boolean, securityPassword: string) => {
-    set({ errorMsg: null });
-    try {
-      const { data, error } = await supabase.rpc('admin_toggle_app_security', {
-        p_enable: enable,
-        p_security_password: securityPassword,
-      });
-
-      if (error) {
-        set({ errorMsg: error.message });
-        return { ok: false, error: error.message };
-      }
-
-      const statusObj = (data || {}) as {
-        is_security_enabled?: boolean;
-        updated_at?: string;
-        updated_by?: string;
-      };
-      const nextState = statusObj.is_security_enabled ?? enable;
-
-      set({
-        isAppSecurityEnabled: nextState,
-        securityUpdatedAt: statusObj.updated_at || new Date().toISOString(),
-        securityUpdatedBy: statusObj.updated_by || 'admin',
-      });
-
-      await logActivity(
-        nextState ? 'AKTIFKAN KEAMANAN APLIKASI' : 'NONAKTIFKAN KEAMANAN APLIKASI',
-        nextState
-          ? 'Mengaktifkan kembali Keamanan Aplikasi MADINA Blokagung (Wajib Login)'
-          : 'Menonaktifkan Keamanan Aplikasi MADINA Blokagung (Mode Input Data Tanpa Login)'
-      );
-
-      return { ok: true, is_security_enabled: nextState };
-    } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : 'Gagal mengubah status keamanan aplikasi.';
-      set({ errorMsg: msg });
-      return { ok: false, error: msg };
-    }
-  },
-
-  updateSecurityPassword: async (currentPassword: string, newPassword: string) => {
-    set({ errorMsg: null });
-    try {
-      const { error } = await supabase.rpc('admin_update_security_password', {
-        p_current_security_password: currentPassword,
-        p_new_security_password: newPassword,
-      });
-
-      if (error) {
-        set({ errorMsg: error.message });
-        return { ok: false, error: error.message };
-      }
-
-      await logActivity(
-        'UBAH SANDI KHUSUS KEAMANAN',
-        'Memperbarui Kata Sandi Khusus Saklar Keamanan Aplikasi MADINA Blokagung'
-      );
-
-      return { ok: true };
-    } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : 'Gagal memperbarui Kata Sandi Khusus Keamanan.';
-      set({ errorMsg: msg });
-      return { ok: false, error: msg };
-    }
+    accountFetchGeneration += 1;
+    set({ currentAccount: null, accountsList: [], isLoadingCurrent: false });
   },
 }));
 
@@ -350,34 +255,20 @@ export const useRbacStore = create<RbacStoreState>((set, get) => ({
 export function usePagePermission(pageId: AppPageId) {
   const currentAccount = useRbacStore((s) => s.currentAccount);
   const isLoadingCurrent = useRbacStore((s) => s.isLoadingCurrent);
-  const isAppSecurityEnabled = useRbacStore((s) => s.isAppSecurityEnabled);
 
-  // Fail-closed ketika sistem keamanan aplikasi aktif dan profil akun belum termuat / null
-  const isBypassMode = !isAppSecurityEnabled && !currentAccount && !isLoadingCurrent;
+  const isMasterAdmin = Boolean(
+    currentAccount &&
+      currentAccount.is_active !== false &&
+      (currentAccount.role === 'master_admin' || currentAccount.username === 'admin')
+  );
 
-  const isMasterAdmin =
-    isBypassMode ||
-    Boolean(
-      currentAccount &&
-        currentAccount.is_active !== false &&
-        (currentAccount.role === 'master_admin' || currentAccount.username === 'admin')
-    );
-
-  const canView = currentAccount
-    ? canViewPage(currentAccount, pageId)
-    : isBypassMode;
-  const canCreate = currentAccount
-    ? canCreateOnPage(currentAccount, pageId)
-    : isBypassMode;
-  const canEdit = currentAccount
-    ? canEditOnPage(currentAccount, pageId)
-    : isBypassMode;
-  const canDelete = currentAccount
-    ? canDeleteOnPage(currentAccount, pageId)
-    : isBypassMode;
+  const canView = currentAccount ? canViewPage(currentAccount, pageId) : false;
+  const canCreate = currentAccount ? canCreateOnPage(currentAccount, pageId) : false;
+  const canEdit = currentAccount ? canEditOnPage(currentAccount, pageId) : false;
+  const canDelete = currentAccount ? canDeleteOnPage(currentAccount, pageId) : false;
   const canAccessSettings = currentAccount
     ? canAccessSettingsAuthority(currentAccount)
-    : isBypassMode;
+    : false;
 
   const blokScope = currentAccount?.special_authorities.blok_scope ?? 'SEMUA';
   const genderScope = currentAccount?.special_authorities.gender_scope ?? 'semua';
@@ -387,7 +278,7 @@ export function usePagePermission(pageId: AppPageId) {
     pa_pi?: string | null;
   }): boolean => {
     if (isMasterAdmin) return true;
-    if (!currentAccount) return isBypassMode;
+    if (!currentAccount) return false;
     if (!isGenderAllowed(item.pa_pi, genderScope)) return false;
     if (!isBlokAllowed(item.blok, blokScope)) return false;
     return true;
@@ -410,7 +301,7 @@ export function usePagePermission(pageId: AppPageId) {
       blok?: string;
     }>
   ): boolean => {
-    if (!currentAccount && !isBypassMode) return false;
+    if (!currentAccount) return false;
     return isClassAllowedByAuthority(kelas, currentAccount, santriList, asatidzList);
   };
 

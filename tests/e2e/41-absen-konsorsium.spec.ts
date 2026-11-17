@@ -8,7 +8,7 @@ test.describe('Modul: Absen Konsorsium', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const uniqueClassName = `Fiqih E2E ${Date.now().toString().slice(-4)}`;
 
-    // 1. Kunjungi halaman /absen-konsorsium (login otomatis jika security switch aktif)
+    // 1. Kunjungi halaman /absen-konsorsium (login otomatis sebagai Master Admin)
     await page.goto('/absen-konsorsium');
     if (page.url().includes('/login')) {
       await page.getByLabel('Username Pengurus').fill('admin');

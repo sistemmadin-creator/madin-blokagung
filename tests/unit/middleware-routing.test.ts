@@ -10,9 +10,6 @@ vi.mock('@supabase/ssr', () => ({
         data: { user: null },
       }),
     },
-    rpc: vi.fn().mockResolvedValue({
-      data: true, // is_app_security_enabled = true
-    }),
   })),
 }));
 

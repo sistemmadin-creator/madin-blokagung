@@ -111,18 +111,18 @@ export default function SidebarDesktop() {
   };
   const { groups } = useSidebarConfigStore();
   const currentAccount = useRbacStore((s) => s.currentAccount);
-  const isAppSecurityEnabled = useRbacStore((s) => s.isAppSecurityEnabled);
   const [mounted, setMounted] = useState(false);
 
-  const isMasterAdmin =
-    !currentAccount ||
-    currentAccount.role === 'master_admin' ||
-    currentAccount.username === 'admin';
+  const isMasterAdmin = Boolean(
+    currentAccount &&
+      currentAccount.is_active !== false &&
+      (currentAccount.role === 'master_admin' || currentAccount.username === 'admin')
+  );
 
   const isHrefPermitted = (href?: string, subId?: string): boolean => {
     if (!href) return true;
     if (subId === 'sub-akun' || href.includes('tab=akun')) {
-      return isMasterAdmin && isAppSecurityEnabled;
+      return isMasterAdmin;
     }
     const pageId = resolvePageIdFromPathname(href);
     if (!pageId) return true;

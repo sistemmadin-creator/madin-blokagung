@@ -8,7 +8,7 @@ test.describe('Kalender Kegiatan (TA 2026/2027), Pengaturan Tahun Ajaran Global 
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
 
-    // 1. Buka halaman Kalender Kegiatan (jika Saklar Keamanan Aktif, login terlebih dahulu sebagai Master Admin)
+    // 1. Buka halaman Kalender Kegiatan (login terlebih dahulu sebagai Master Admin)
     await page.goto('/kalender-kegiatan');
     if (page.url().includes('/login')) {
       await page.getByLabel('Username Pengurus').fill('admin');

@@ -38,7 +38,6 @@ export default function DashboardLayout({
   const {
     currentAccount,
     fetchCurrentAccount,
-    fetchAppSecurityStatus,
   } = useRbacStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -46,12 +45,9 @@ export default function DashboardLayout({
   useEffect(() => {
     let isMounted = true;
 
-    Promise.all([
-      supabase.auth.getUser(),
-      fetchAppSecurityStatus(),
-    ]).then(async ([{ data: { user } }, isSecurityEnabled]) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!isMounted) return;
-      if (!user && isSecurityEnabled) {
+      if (!user) {
         if (hasPersistentDeviceSession()) {
           const restored = await restorePersistentDeviceSession();
           if (!isMounted) return;
@@ -65,7 +61,7 @@ export default function DashboardLayout({
         }
         const nextQuery = pathname ? `?next=${encodeURIComponent(pathname)}` : '';
         router.replace(`/login${nextQuery}`);
-      } else if (user) {
+      } else {
         fetchCurrentAccount();
       }
     });
@@ -74,18 +70,18 @@ export default function DashboardLayout({
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT' || !session) {
-        const isSecurityEnabled = await fetchAppSecurityStatus();
-        if (isSecurityEnabled) {
-          if (event !== 'SIGNED_OUT' && hasPersistentDeviceSession()) {
-            const restored = await restorePersistentDeviceSession();
-            if (restored.restored) {
-              fetchCurrentAccount();
-              return;
-            }
+        if (event === 'SIGNED_OUT') {
+          clearPersistentDeviceSession();
+          useRbacStore.getState().clearCurrentAccount();
+        } else if (hasPersistentDeviceSession()) {
+          const restored = await restorePersistentDeviceSession();
+          if (restored.restored) {
+            fetchCurrentAccount();
+            return;
           }
-          router.replace('/login');
-          router.refresh();
         }
+        router.replace('/login');
+        router.refresh();
       } else if (session?.user) {
         fetchCurrentAccount();
       }
@@ -100,22 +96,6 @@ export default function DashboardLayout({
           fetchCurrentAccount();
         }
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'app_security_config' },
-        async () => {
-          const isSecurityEnabled = await fetchAppSecurityStatus();
-          if (isSecurityEnabled) {
-            const {
-              data: { user },
-            } = await supabase.auth.getUser();
-            if (!user) {
-              router.replace('/login');
-              router.refresh();
-            }
-          }
-        }
-      )
       .subscribe();
 
     return () => {
@@ -123,7 +103,7 @@ export default function DashboardLayout({
       subscription.unsubscribe();
       supabase.removeChannel(rbacChannel);
     };
-  }, [pathname, router, fetchCurrentAccount, fetchAppSecurityStatus]);
+  }, [pathname, router, fetchCurrentAccount]);
 
   // Sinkronisasi sesi perangkat tetap & redirect otomatis ke /absen-cepat ketika currentAccount termuat
   useEffect(() => {

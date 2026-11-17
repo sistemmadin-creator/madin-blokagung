@@ -25,7 +25,7 @@ import CardAturanMuhafadzoh from '@/components/modules/settings/CardAturanMuhafa
 import CardAturanPiagam from '@/components/modules/settings/CardAturanPiagam';
 import CardPengaturanNotifikasi from '@/components/modules/settings/CardPengaturanNotifikasi';
 import AccountAuthorityManager from '@/components/modules/settings/AccountAuthorityManager';
-import { usePagePermission, useRbacStore } from '@/stores/useRbacStore';
+import { usePagePermission } from '@/stores/useRbacStore';
 import { usePresenceStore } from '@/stores/usePresenceStore';
 import { BellRing, CalendarRange, Users } from 'lucide-react';
 
@@ -36,8 +36,6 @@ function PengaturanContent() {
   const router = useRouter();
   const tabParam = (searchParams.get('tab') as TabKey) || 'overview';
   const { isMasterAdmin } = usePagePermission('pengaturan');
-  const isAppSecurityEnabled = useRbacStore((s) => s.isAppSecurityEnabled);
-  const fetchAppSecurityStatus = useRbacStore((s) => s.fetchAppSecurityStatus);
 
   const [activeTab, setActiveTab] = useState<TabKey>(tabParam);
   const [showHierarchyModal, setShowHierarchyModal] = useState(false);
@@ -46,10 +44,6 @@ function PengaturanContent() {
   const [showActiveUsersModal, setShowActiveUsersModal] = useState(false);
   const activeSessions = usePresenceStore((s) => s.activeSessions);
   const activeUserCount = new Set(activeSessions.map((s) => s.username)).size;
-
-  useEffect(() => {
-    void fetchAppSecurityStatus();
-  }, [fetchAppSecurityStatus]);
 
   useEffect(() => {
     if (tabParam) {
@@ -62,7 +56,7 @@ function PengaturanContent() {
     router.push(`/pengaturan?tab=${tab}`);
   };
 
-  const canShowKelolaAkun = isMasterAdmin && isAppSecurityEnabled;
+  const canShowKelolaAkun = isMasterAdmin;
 
   const allTabs: { key: TabKey; label: string; icon: React.ReactNode; testId: string; masterOnly?: boolean }[] = [
     { key: 'overview', label: 'Tinjauan Pengaturan', icon: <Settings className="w-4 h-4" />, testId: 'tab-overview' },
@@ -103,12 +97,12 @@ function PengaturanContent() {
           {isMasterAdmin && (
             <button
               type="button"
-              data-testid="btn-header-security-switch"
+              data-testid="btn-header-kelola-akun"
               onClick={() => handleSelectTab('akun')}
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold shadow-xs transition active:scale-95"
             >
-              <ShieldCheck className="w-4 h-4 text-amber-700" />
-              <span>Saklar Keamanan &amp; Akun</span>
+              <UserCog className="w-4 h-4 text-amber-700" />
+              <span>Kelola Akun &amp; Otoritas</span>
             </button>
           )}
           <button
@@ -215,7 +209,7 @@ function PengaturanContent() {
               </div>
             </div>
 
-            {/* Pilar 0: Kelola Akun & Otoritas (Khusus Master Admin saat Keamanan Aktif) */}
+            {/* Pilar 0: Kelola Akun & Otoritas (Khusus Master Admin) */}
             {canShowKelolaAkun && (
               <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between group">
                 <div>

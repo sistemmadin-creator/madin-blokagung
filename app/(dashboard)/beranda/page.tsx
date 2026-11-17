@@ -140,7 +140,6 @@ const GROUP_DESCRIPTIONS: Record<string, string> = {
 export default function BerandaPage() {
   const { groups } = useSidebarConfigStore();
   const currentAccount = useRbacStore((s) => s.currentAccount);
-  const isAppSecurityEnabled = useRbacStore((s) => s.isAppSecurityEnabled);
   const activeTahunAjaran = useKalenderStore((s) => s.activeTahunAjaran);
 
   // Data stores untuk Fitur Pencarian Cerdas Universal (Omni-Search)
@@ -579,15 +578,16 @@ export default function BerandaPage() {
 
   const activeGroups = groups && groups.length > 0 ? groups : DEFAULT_SIDEBAR_GROUPS;
 
-  const isMasterAdmin =
-    !currentAccount ||
-    currentAccount.role === 'master_admin' ||
-    currentAccount.username === 'admin';
+  const isMasterAdmin = Boolean(
+    currentAccount &&
+      currentAccount.is_active !== false &&
+      (currentAccount.role === 'master_admin' || currentAccount.username === 'admin')
+  );
 
   const isItemPermitted = (item: ConfigMenuItem): boolean => {
     if (!item.href) return true;
     if (item.href.includes('tab=akun')) {
-      return isMasterAdmin && isAppSecurityEnabled;
+      return isMasterAdmin;
     }
     const pageId = resolvePageIdFromPathname(item.href);
     if (!pageId) return true;
@@ -597,7 +597,7 @@ export default function BerandaPage() {
   const isSubPermitted = (sub: ConfigSubMenuItem): boolean => {
     if (!sub.href) return true;
     if (sub.href.includes('tab=akun')) {
-      return isMasterAdmin && isAppSecurityEnabled;
+      return isMasterAdmin;
     }
     const pageId = resolvePageIdFromPathname(sub.href);
     if (!pageId) return true;

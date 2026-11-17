@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Menu, ChevronDown, LogOut, LogIn, ShieldCheck, ShieldOff, User, Undo2, Redo2, BookOpen, Sliders, LayoutList, UserCog, Search, Maximize2, X } from 'lucide-react';
+import { Menu, ChevronDown, LogOut, LogIn, ShieldCheck, User, Undo2, Redo2, BookOpen, Sliders, LayoutList, UserCog, Search, Maximize2, X } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import { useRbacStore } from '@/stores/useRbacStore';
@@ -21,7 +21,6 @@ export default function Navbar() {
   const { isSidebarCollapsed, toggleSidebar } = useAppStore();
   const { undoStack, redoStack, undo, redo, isExecuting } = useUndoRedoStore();
   const currentAccount = useRbacStore((s) => s.currentAccount);
-  const isAppSecurityEnabled = useRbacStore((s) => s.isAppSecurityEnabled);
   const clearCurrentAccount = useRbacStore((s) => s.clearCurrentAccount);
   const toggleFloatingTools = useTableViewerStore((s) => s.toggleFloatingTools);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -77,14 +76,18 @@ export default function Navbar() {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
     setDropdownOpen(false);
+    const actorUsername =
+      currentAccount?.username || activeProfile?.username || 'admin';
     try {
-      await logActivity(
-        'LOGOUT SISTEM',
-        `Mengakhiri sesi kerja internal (${currentAccount?.username || activeProfile?.username || 'admin'})`
-      );
       clearPersistentDeviceSession();
       clearCurrentAccount();
+      await logActivity(
+        'LOGOUT SISTEM',
+        `Mengakhiri sesi kerja internal (${actorUsername})`
+      );
+      clearPersistentDeviceSession();
       await supabase.auth.signOut();
+      clearPersistentDeviceSession();
     } finally {
       setIsLoggingOut(false);
       router.replace('/login');
@@ -96,20 +99,20 @@ export default function Navbar() {
   const displayFullName =
     currentAccount?.full_name ||
     activeProfile?.fullName ||
-    (!isAppSecurityEnabled ? 'Mode Input Terbuka' : 'Master Administrator');
+    'Pengurus Madin';
   const displayRoleLabel =
     currentAccount?.role_label ||
     activeProfile?.roleLabel ||
-    (!isAppSecurityEnabled ? 'Tanpa Login (Akses Penuh)' : 'Master Admin');
+    'Pengurus';
   const displayUsername =
     currentAccount?.username ||
     activeProfile?.username ||
-    (!isAppSecurityEnabled ? 'tanpa_login' : 'admin');
+    'pengurus';
   const isMasterAdmin =
-    !isLoggedIn ||
-    (currentAccount?.role || activeProfile?.role) === 'master_admin' ||
-    displayUsername === 'admin';
-  const isKurikulumRole = !isMasterAdmin;
+    isLoggedIn &&
+    ((currentAccount?.role || activeProfile?.role) === 'master_admin' ||
+      displayUsername === 'admin');
+  const isKurikulumRole = isLoggedIn && !isMasterAdmin;
   const allowSettings = canAccessSettingsAuthority(currentAccount);
 
   return (
@@ -235,17 +238,6 @@ export default function Navbar() {
                 Madin Blokagung
               </span>
             </Link>
-            {!isAppSecurityEnabled && (
-              <Link
-                href="/pengaturan?tab=akun"
-                data-testid="badge-open-security-mode"
-                className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-bold hover:bg-amber-200 transition"
-                title="Keamanan Aplikasi sedang Non-Aktif (Mode Input Data Tanpa Login)"
-              >
-                <ShieldOff className="w-3.5 h-3.5 text-amber-700" />
-                <span>Mode Input Terbuka</span>
-              </Link>
-            )}
           </div>
         </div>
 

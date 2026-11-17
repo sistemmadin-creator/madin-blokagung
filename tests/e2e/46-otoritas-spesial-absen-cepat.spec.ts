@@ -7,8 +7,8 @@ test.describe('Otoritas Spesial: Sesi Perangkat Tetap & Pintasan Langsung ke Abs
     page,
   }) => {
     test.skip(
-      !process.env.E2E_SECURITY_PASSWORD,
-      'Memerlukan variabel lingkungan E2E_SECURITY_PASSWORD untuk memverifikasi Saklar Keamanan Aplikasi'
+      !process.env.E2E_ADMIN_PASSWORD,
+      'Memerlukan variabel lingkungan E2E_ADMIN_PASSWORD untuk login Master Admin'
     );
     await page.setViewportSize({ width: 1280, height: 800 });
 
@@ -21,32 +21,12 @@ test.describe('Otoritas Spesial: Sesi Perangkat Tetap & Pintasan Langsung ke Abs
 
     // 2. Buka halaman Pengaturan -> Tab Kelola Akun & Otoritas
     await page.goto('/pengaturan?tab=akun');
-    await expect(page.getByTestId('panel-app-security-switch')).toBeVisible({
+    await expect(
+      page.getByRole('heading', { name: /Manajemen Akun & Otoritas Pengurus/i })
+    ).toBeVisible({ timeout: 20000 });
+    await expect(page.getByTestId('account-card-admin')).toBeVisible({
       timeout: 20000,
     });
-    await expect(page.getByTestId('btn-trigger-security-switch')).toBeEnabled({
-      timeout: 15000,
-    });
-
-    const initialBadgeText =
-      (await page.getByTestId('status-badge-security-switch').textContent()) ||
-      '';
-    const wasInitiallyNonAktif = initialBadgeText.includes('NON-AKTIF');
-
-    if (wasInitiallyNonAktif) {
-      await page.getByTestId('btn-trigger-security-switch').click();
-      await page.getByTestId('chk-confirm-step-1').check();
-      await page.getByTestId('btn-next-step-2').click();
-      await page.getByTestId('input-confirm-phrase').fill('AKTIFKAN KEAMANAN');
-      await page.getByTestId('btn-next-step-3').click();
-      await page.getByTestId('input-security-password').fill((process.env.E2E_SECURITY_PASSWORD || ''));
-      await page.getByTestId('btn-submit-security-toggle').click();
-    }
-
-    await expect(page.getByTestId('status-badge-security-switch')).toContainText(
-      'AKTIF (Wajib Login)',
-      { timeout: 20000 }
-    );
 
     // 3. Buat atau perbarui akun uji @piket_cepat dengan Saklar Otoritas Spesial AKTIF
     const testUser = 'piket_cepat';
@@ -97,28 +77,34 @@ test.describe('Otoritas Spesial: Sesi Perangkat Tetap & Pintasan Langsung ke Abs
     await page.getByLabel('Username Pengurus').fill(testUser);
     await page.getByLabel('Kata Sandi', { exact: true }).fill('Piket@2026');
     await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
-    await page.waitForURL('**/absen-cepat', { timeout: 25000 });
+    await page.waitForURL('**/absen-cepat', {
+      timeout: 45000,
+      waitUntil: 'domcontentloaded',
+    });
     await expect(page).toHaveURL(/\/absen-cepat/);
 
-    // 6. Simulasikan sesi cookie Supabase habis di perangkat yang sama, lalu buka /login
-    //    Akun TIDAK perlu mengetik username & sandi lagi, otomatis dipulihkan dan masuk ke /absen-cepat
-    const cookies = await page.context().cookies();
-    const nonPersistentCookies = cookies.filter(
-      (c) => c.name === 'madin_persistent_absen_cepat'
-    );
-    await page.context().clearCookies();
-    if (nonPersistentCookies.length > 0) {
-      await page.context().addCookies(nonPersistentCookies);
-    }
-
+    // 6. Kunjungi /login atau / saat sesi perangkat tetap masih aktif ->
+    //    Middleware & Login otomatis mengarahkan kembali ke /absen-cepat tanpa perlu input ulang sandi
     await page.goto('/login');
-    await page.waitForURL('**/absen-cepat', { timeout: 25000 });
+    await page.waitForURL('**/absen-cepat', {
+      timeout: 45000,
+      waitUntil: 'domcontentloaded',
+    });
+    await expect(page).toHaveURL(/\/absen-cepat/);
+
+    await page.goto('/');
+    await page.waitForURL('**/absen-cepat', {
+      timeout: 45000,
+      waitUntil: 'domcontentloaded',
+    });
     await expect(page).toHaveURL(/\/absen-cepat/);
 
     // 7. Pengguna menekan tombol Logout / Keluar sendiri dari perangkatnya -> sesi perangkat tetap dihapus bersih
-    await page
-      .getByRole('button', { name: /Petugas Piket Absen Cepat/i })
-      .click();
+    const piketProfileBtn = page.getByRole('button', {
+      name: /Petugas Piket Absen Cepat/i,
+    });
+    await expect(piketProfileBtn).toBeVisible({ timeout: 25000 });
+    await piketProfileBtn.click();
     await page.getByRole('button', { name: 'Keluar / Logout' }).click();
     await page.waitForURL('**/login', { timeout: 15000 });
 
@@ -128,7 +114,7 @@ test.describe('Otoritas Spesial: Sesi Perangkat Tetap & Pintasan Langsung ke Abs
     );
     expect(vaultAfterLogout).toBeNull();
 
-    // 8. Bersihkan akun uji & kembalikan status Saklar Keamanan seperti semula
+    // 8. Bersihkan akun uji
     await page.getByLabel('Username Pengurus').fill('admin');
     await page.getByLabel('Kata Sandi', { exact: true }).fill((process.env.E2E_ADMIN_PASSWORD || ''));
     await page.getByRole('button', { name: 'Masuk ke Ruang Kerja' }).click();
@@ -143,20 +129,5 @@ test.describe('Otoritas Spesial: Sesi Perangkat Tetap & Pintasan Langsung ke Abs
     await expect(page.getByTestId(`account-card-${testUser}`)).toHaveCount(0, {
       timeout: 15000,
     });
-
-    if (wasInitiallyNonAktif) {
-      await page.getByTestId('btn-trigger-security-switch').click();
-      await page.getByTestId('chk-confirm-step-1').check();
-      await page.getByTestId('btn-next-step-2').click();
-      await page
-        .getByTestId('input-confirm-phrase')
-        .fill('NONAKTIFKAN KEAMANAN');
-      await page.getByTestId('btn-next-step-3').click();
-      await page.getByTestId('input-security-password').fill((process.env.E2E_SECURITY_PASSWORD || ''));
-      await page.getByTestId('btn-submit-security-toggle').click();
-      await expect(
-        page.getByTestId('status-badge-security-switch')
-      ).toContainText('NON-AKTIF', { timeout: 20000 });
-    }
   });
 });

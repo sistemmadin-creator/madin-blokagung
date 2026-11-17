@@ -177,12 +177,6 @@ export async function updateSession(request: NextRequest) {
 
   // 4. SELURUH RUTE INTERNAL SISTEM ADMIN & API INTERNAL:
   if (!user) {
-    // Periksa apakah Saklar Keamanan Aplikasi MADINA sedang dinonaktifkan oleh Master Admin
-    const { data: isSecurityEnabled } = await supabase.rpc('is_app_security_enabled');
-    if (isSecurityEnabled === false) {
-      return supabaseResponse;
-    }
-
     if (pathname.startsWith('/api/')) {
       return withSupabaseCookies(
         NextResponse.json(
