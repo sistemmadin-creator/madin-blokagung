@@ -42,6 +42,8 @@ export default function BerandaScrollProvider({ children }: { children: React.Re
   useEffect(() => {
     if (typeof window === 'undefined' || prefersReducedMotion) return;
 
+    ScrollTrigger.config({ ignoreMobileResize: true });
+
     const lenis = new Lenis({
       lerp: 0.085,
       smoothWheel: true,

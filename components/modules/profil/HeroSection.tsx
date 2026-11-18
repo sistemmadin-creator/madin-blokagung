@@ -3,23 +3,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Compass, ChevronDown, Newspaper, FastForward } from 'lucide-react';
+import { Compass, ChevronDown, Newspaper } from 'lucide-react';
 import { useBerandaScroll } from './BerandaScrollProvider';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const TOTAL_FRAMES = 60;
-const MOBILE_KEYFRAMES = [
-  '/hero-frames/frame_001.webp',
-  '/hero-frames/frame_026.webp',
-  '/hero-frames/frame_051.webp',
-] as const;
-
-const CHAPTERS = [
-  { id: 0, code: '01', label: 'Tradisi', progress: 0.04 },
-  { id: 1, code: '02', label: 'Risalah', progress: 0.46 },
-  { id: 2, code: '03', label: 'Khazanah', progress: 0.86 },
-] as const;
+// 20 frame merata (~2 MB total) agar swipe di HP tetap halus tanpa membebani memori/kuota
+const MOBILE_FRAME_INDICES = Array.from({ length: 20 }, (_, i) =>
+  Math.min(TOTAL_FRAMES - 1, Math.round((i * (TOTAL_FRAMES - 1)) / 19))
+);
 
 function getFramePath(indexZeroBased: number): string {
   const num = Math.min(TOTAL_FRAMES, Math.max(1, indexZeroBased + 1));
@@ -38,7 +31,6 @@ export default function HeroSection() {
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(false);
   const [activeChapter, setActiveChapter] = useState<number>(0);
-  const [scrollProgress, setScrollProgress] = useState<number>(0);
   const [firstFrameReady, setFirstFrameReady] = useState<boolean>(false);
 
   useEffect(() => {
@@ -102,14 +94,21 @@ export default function HeroSection() {
   };
 
   useEffect(() => {
-    if (typeof window === 'undefined' || isMobile || prefersReducedMotion) return;
+    if (typeof window === 'undefined' || prefersReducedMotion) return;
 
     let cancelled = false;
-    const priorityIndices = [0, 25, 50, 12, 37];
+    const targetIndices = isMobile
+      ? MOBILE_FRAME_INDICES
+      : Array.from({ length: TOTAL_FRAMES }, (_, i) => i);
+    const priorityIndices = isMobile ? [0, 18, 37, 59] : [0, 25, 50, 12, 37];
 
     const loadSingle = (idx: number): Promise<void> =>
       new Promise((resolve) => {
         if (cancelled || framesRef.current[idx]) {
+          if (idx === 0 && framesRef.current[0]) {
+            setFirstFrameReady(true);
+            drawFrameToCanvas(0);
+          }
           resolve();
           return;
         }
@@ -120,8 +119,8 @@ export default function HeroSection() {
           framesRef.current[idx] = img;
           if (idx === 0) {
             setFirstFrameReady(true);
-            drawFrameToCanvas(0);
-          } else if (Math.abs(currentFrameIdxRef.current - idx) <= 2) {
+            drawFrameToCanvas(currentFrameIdxRef.current);
+          } else if (Math.abs(currentFrameIdxRef.current - idx) <= 3) {
             drawFrameToCanvas(currentFrameIdxRef.current);
           }
           resolve();
@@ -132,11 +131,8 @@ export default function HeroSection() {
 
     (async () => {
       await Promise.all(priorityIndices.map((idx) => loadSingle(idx)));
-      const remaining: number[] = [];
-      for (let i = 0; i < TOTAL_FRAMES; i++) {
-        if (!priorityIndices.includes(i)) remaining.push(i);
-      }
-      const batchSize = 6;
+      const remaining = targetIndices.filter((idx) => !priorityIndices.includes(idx));
+      const batchSize = isMobile ? 4 : 6;
       for (let i = 0; i < remaining.length && !cancelled; i += batchSize) {
         const chunk = remaining.slice(i, i + batchSize);
         await Promise.all(chunk.map((idx) => loadSingle(idx)));
@@ -149,14 +145,16 @@ export default function HeroSection() {
   }, [isMobile, prefersReducedMotion]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || isMobile || prefersReducedMotion) return;
+    if (typeof window === 'undefined' || prefersReducedMotion) return;
 
     const resizeCanvas = () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.floor(window.innerWidth * dpr);
-      canvas.height = Math.floor(Math.max(520, window.innerHeight - 65) * dpr);
+      const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2);
+      const rectW = canvas.clientWidth || window.innerWidth;
+      const rectH = canvas.clientHeight || Math.max(520, window.innerHeight - 65);
+      canvas.width = Math.floor(rectW * dpr);
+      canvas.height = Math.floor(rectH * dpr);
       drawFrameToCanvas(currentFrameIdxRef.current);
     };
 
@@ -170,14 +168,16 @@ export default function HeroSection() {
     const section = sectionRef.current;
     if (!section) return;
 
+    ScrollTrigger.config({ ignoreMobileResize: true });
+
     const st = ScrollTrigger.create({
       trigger: section,
       start: 'top top',
       end: 'bottom bottom',
-      scrub: 0.5,
+      scrub: isMobile ? 0.25 : 0.5,
+      invalidateOnRefresh: true,
       onUpdate: (self) => {
         const p = Math.min(1, Math.max(0, self.progress));
-        setScrollProgress(p);
 
         if (p < 0.34) {
           setActiveChapter(0);
@@ -187,12 +187,18 @@ export default function HeroSection() {
           setActiveChapter(2);
         }
 
-        if (!isMobile) {
-          const nextFrame = Math.min(TOTAL_FRAMES - 1, Math.round(p * (TOTAL_FRAMES - 1)));
-          if (currentFrameIdxRef.current !== nextFrame) {
-            currentFrameIdxRef.current = nextFrame;
-            drawFrameToCanvas(nextFrame);
-          }
+        const nextFrame = isMobile
+          ? MOBILE_FRAME_INDICES[
+              Math.min(
+                MOBILE_FRAME_INDICES.length - 1,
+                Math.round(p * (MOBILE_FRAME_INDICES.length - 1))
+              )
+            ]
+          : Math.min(TOTAL_FRAMES - 1, Math.round(p * (TOTAL_FRAMES - 1)));
+
+        if (currentFrameIdxRef.current !== nextFrame) {
+          currentFrameIdxRef.current = nextFrame;
+          drawFrameToCanvas(nextFrame);
         }
       },
     });
@@ -201,18 +207,6 @@ export default function HeroSection() {
       st.kill();
     };
   }, [isMobile, prefersReducedMotion]);
-
-  const jumpToChapter = (chapterProgress: number) => {
-    const section = sectionRef.current;
-    if (!section) return;
-    const maxScroll = section.offsetHeight - window.innerHeight;
-    const targetY = section.offsetTop + Math.max(0, maxScroll) * chapterProgress;
-    if (berandaScroll) {
-      berandaScroll.scrollToY(targetY, 1.0);
-    } else {
-      window.scrollTo({ top: targetY, behavior: 'smooth' });
-    }
-  };
 
   const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
     const el = document.getElementById(targetId);
@@ -246,7 +240,7 @@ export default function HeroSection() {
               Al&#8209;Amiriyyah
             </span>{' '}
             <span className="block text-lg sm:text-2xl font-sans font-semibold text-slate-700 dark:text-emerald-200 mt-2">
-              (MADINA) Blokagung
+              Madin Blokagung
             </span>
           </h1>
           <div className="max-w-3xl mx-auto px-5 py-4 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-emerald-900/15 dark:border-amber-400/25 shadow-lg">
@@ -298,42 +292,24 @@ export default function HeroSection() {
           src="/hero-frames/frame_001.webp"
           alt="Kerumunan santri Madrasah Diniyyah Al-Amiriyyah Blokagung"
           className={`absolute inset-0 w-full h-full object-cover object-[center_35%] scale-[1.07] transition-opacity duration-500 ${
-            !isMobile && firstFrameReady ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            firstFrameReady ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
         />
 
-        {/* Desktop Canvas Scrubbing (60 Frame WebP) */}
-        {!isMobile && (
-          <canvas
-            ref={canvasRef}
-            aria-hidden="true"
-            className="absolute inset-0 w-full h-full pointer-events-none"
-          />
-        )}
+        {/* Canvas Frame Scrubbing Aktif untuk Desktop (60 Frame) & Mobile (20 Frame Halus) */}
+        <canvas
+          ref={canvasRef}
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full pointer-events-none"
+        />
 
-        {/* Mobile Keyframe Crossfade (3 Frame Ringan) */}
-        {isMobile && (
-          <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-            {MOBILE_KEYFRAMES.map((src, idx) => (
-              <img
-                key={src}
-                src={src}
-                alt=""
-                className={`absolute inset-0 w-full h-full object-cover object-[center_35%] scale-[1.07] transition-opacity duration-700 ${
-                  activeChapter === idx ? 'opacity-100' : 'opacity-0'
-                }`}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Scrim Putih Lembut Transparan agar foto cerah & teks gelap tetap kontras WCAG AA */}
+        {/* Scrim Putih Lembut (+30% lebih transparan) agar foto santri lebih cerah tanpa mengurangi keterbacaan teks */}
         <div
-          className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/75 via-white/35 to-white/90 dark:from-slate-950/75 dark:via-slate-950/40 dark:to-slate-950/90"
+          className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/45 via-white/15 to-white/60 dark:from-slate-950/75 dark:via-slate-950/40 dark:to-slate-950/90"
           aria-hidden="true"
         />
         <div
-          className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.78)_0%,rgba(255,255,255,0.34)_60%,rgba(255,255,255,0.68)_100%)] dark:bg-[radial-gradient(circle_at_center,rgba(2,6,23,0.45)_0%,rgba(2,6,23,0.75)_100%)]"
+          className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.50)_0%,rgba(255,255,255,0.18)_58%,rgba(255,255,255,0.38)_100%)] dark:bg-[radial-gradient(circle_at_center,rgba(2,6,23,0.45)_0%,rgba(2,6,23,0.75)_100%)]"
           aria-hidden="true"
         />
 
@@ -348,17 +324,17 @@ export default function HeroSection() {
                 : 'opacity-0 -translate-y-6 scale-95 pointer-events-none'
             }`}
           >
-            <p className="text-[11px] sm:text-sm font-bold uppercase tracking-[0.2em] text-emerald-800 dark:text-amber-300 mb-3 sm:mb-4">
+            <p className="text-[11px] sm:text-sm font-bold uppercase tracking-[0.2em] text-emerald-900 dark:text-amber-300 mb-3 sm:mb-4 drop-shadow-[0_1px_8px_rgba(255,255,255,0.95)] dark:drop-shadow-none">
               Ponpes Darussalam Blokagung • Banyuwangi
             </p>
-            <h1 className="text-[28px] sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight font-serif text-emerald-950 dark:text-white max-w-6xl leading-[1.12] drop-shadow-xs">
+            <h1 className="text-[28px] sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight font-serif text-emerald-950 dark:text-white max-w-6xl leading-[1.12] drop-shadow-[0_2px_12px_rgba(255,255,255,0.92)] dark:drop-shadow-none">
               Madrasah Diniyyah{' '}
-              <span className="text-amber-700 dark:text-amber-300 whitespace-nowrap">
+              <span className="text-amber-800 dark:text-amber-300 whitespace-nowrap">
                 Al&#8209;Amiriyyah
               </span>
             </h1>
-            <p className="mt-3 sm:mt-4 text-lg sm:text-2xl md:text-3xl font-bold tracking-wide text-slate-800 dark:text-emerald-100">
-              (MADINA) Blokagung
+            <p className="mt-3 sm:mt-4 text-lg sm:text-2xl md:text-3xl font-bold tracking-wide text-slate-900 dark:text-emerald-100 drop-shadow-[0_1px_10px_rgba(255,255,255,0.95)] dark:drop-shadow-none">
+              Madin Blokagung
             </p>
           </div>
 
@@ -436,50 +412,13 @@ export default function HeroSection() {
           </div>
         </div>
 
-        {/* HUD Bawah Cerah Terstruktur */}
-        <div className="absolute inset-x-0 bottom-0 z-20 px-4 sm:px-8 pb-5 sm:pb-6">
-          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5 sm:gap-2" role="group" aria-label="Babak Pengenalan">
-              {CHAPTERS.map((ch) => {
-                const isActive = activeChapter === ch.id;
-                return (
-                  <button
-                    key={ch.id}
-                    type="button"
-                    onClick={() => jumpToChapter(ch.progress)}
-                    className={`min-h-[44px] px-3 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
-                      isActive
-                        ? 'bg-[#0b5751] text-white'
-                        : 'bg-white/90 dark:bg-slate-900/85 text-slate-800 dark:text-slate-100 hover:bg-white border border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <span className="font-mono mr-1 opacity-80">{ch.code}</span>
-                    <span>{ch.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/85 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-700 text-xs text-slate-800 dark:text-amber-200 font-semibold shadow-xs">
+        {/* Petunjuk Gulir Terpusat di Bawah Hero (Tanpa Tombol Babak & Tanpa Garis Progress) */}
+        <div className="absolute inset-x-0 bottom-0 z-20 px-4 sm:px-8 pb-5 sm:pb-7 pointer-events-none">
+          <div className="max-w-7xl mx-auto flex justify-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-700 text-xs text-slate-800 dark:text-amber-200 font-semibold shadow-sm backdrop-blur-xs">
               <span>{activeChapter < 2 ? 'Gulir ke bawah untuk melanjutkan' : 'Lanjut ke Jejak Madina'}</span>
               <ChevronDown className="w-4 h-4 animate-bounce text-emerald-700 dark:text-amber-300" />
             </div>
-
-            <a
-              href="#ekosistem"
-              onClick={(e) => scrollToSection(e, 'ekosistem')}
-              className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-white/90 dark:bg-slate-900/85 hover:bg-white text-emerald-950 dark:text-amber-200 border border-slate-200 dark:border-slate-700 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
-            >
-              <span>Lewati Intro</span>
-              <FastForward className="w-3.5 h-3.5 text-emerald-700 dark:text-amber-300" />
-            </a>
-          </div>
-
-          <div className="max-w-7xl mx-auto mt-2.5 h-1 rounded-full bg-slate-300/80 dark:bg-white/15 overflow-hidden">
-            <div
-              className="h-full bg-[#0b5751] dark:bg-amber-300 transition-[width] duration-75"
-              style={{ width: `${Math.round(scrollProgress * 100)}%` }}
-            />
           </div>
         </div>
       </div>
