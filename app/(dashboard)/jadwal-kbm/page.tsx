@@ -18,12 +18,14 @@ import {
   Pencil,
   Search,
   X,
+  Filter,
 } from 'lucide-react';
 import { exportAoaToExcel, ExcelMergeRange } from '@/lib/utils/excel';
 import {
   dapatkanTahunAjaranKBM,
   buildMasterStrukturKelasKBM,
   getKgHighlightClass,
+  hitungSlotKelasKBM,
 } from '@/lib/utils/jadwalHelper';
 import { isKelasUnggulan } from '@/lib/utils/fanHelper';
 import { KelasKbmItem, SesiSlot } from '@/types/jadwal';
@@ -58,6 +60,7 @@ export default function JadwalKbmPage() {
   const [fltGender, setFltGender] = useState<string>('');
   const [fltSearch, setFltSearch] = useState<string>('');
   const [switchMode, setSwitchMode] = useState<'semua' | 'reguler' | 'unggulan'>('semua');
+  const [fltBelumLengkap, setFltBelumLengkap] = useState<boolean>(false);
 
   const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStateRef = useRef<{
@@ -89,8 +92,8 @@ export default function JadwalKbmPage() {
     rebuildMasterStrukturKelas(formasiList, asatidzList, fanConfig);
   }, [formasiList, asatidzList, jadwalMap, fanConfig, rebuildMasterStrukturKelas]);
 
-  // Filtered List
-  const listTampil = useMemo(() => {
+  // Base Filtered List (sebelum filter kelengkapan slot agar statSlot tetap akurat sebagai patokan)
+  const baseFilteredList = useMemo(() => {
     return masterStrukturKelasKBM.filter((k) => {
       if (
         !isClassAllowed(
@@ -150,20 +153,25 @@ export default function JadwalKbmPage() {
     });
   }, [masterStrukturKelasKBM, isClassAllowed, santriList, asatidzList, fltTingkat, fltGender, fltSearch, switchMode, formasiList]);
 
-  // Total terisi statistics
+  // Total terisi & jumlah kelas belum lengkap dari baseFilteredList
   const statSlot = useMemo(() => {
     let totalSlot = 0;
     let terisi = 0;
-    listTampil.forEach((k) => {
-      LIST_HARI.forEach((h) => {
-        [1, 2].forEach((j) => {
-          totalSlot++;
-          if ((k.jadwal[h]?.[j as 1 | 2] || []).length > 0) terisi++;
-        });
-      });
+    let incompleteKelasCount = 0;
+    baseFilteredList.forEach((k) => {
+      const info = hitungSlotKelasKBM(k);
+      totalSlot += info.total;
+      terisi += info.terisi;
+      if (info.isIncomplete) incompleteKelasCount += 1;
     });
-    return { totalSlot, terisi };
-  }, [listTampil]);
+    return { totalSlot, terisi, incompleteKelasCount };
+  }, [baseFilteredList]);
+
+  // Daftar final yang tampil di tabel (termasuk filter slot belum penuh bila aktif)
+  const listTampil = useMemo(() => {
+    if (!fltBelumLengkap) return baseFilteredList;
+    return baseFilteredList.filter((k) => hitungSlotKelasKBM(k).isIncomplete);
+  }, [baseFilteredList, fltBelumLengkap]);
 
   // Mode Layar Penuh Tabel & Auto-Fit Skala Default pada HP
   const [isTableFullscreen, setIsTableFullscreen] = useState<boolean>(false);
@@ -452,10 +460,10 @@ export default function JadwalKbmPage() {
     }
   };
 
-  // Export Excel
+  // Export Excel (mengikuti filter aktif di tabel)
   const handleExportExcel = async () => {
-    if (masterStrukturKelasKBM.length === 0) {
-      alert('Data jadwal KBM masih kosong atau belum dimuat.');
+    if (listTampil.length === 0) {
+      alert('Tidak ada data jadwal KBM yang cocok untuk diekspor.');
       return;
     }
 
@@ -473,7 +481,7 @@ export default function JadwalKbmPage() {
 
     const aoaData: (string | number)[][] = [header1, header2];
 
-    masterStrukturKelasKBM.forEach((k, idx) => {
+    listTampil.forEach((k, idx) => {
       const noStr = idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`;
       const isUg = Boolean(
         k.isUnggulan !== undefined
@@ -528,7 +536,9 @@ export default function JadwalKbmPage() {
     );
 
     await exportAoaToExcel({
-      filename: 'Jadwal_KBM_Madrasah_Diniyyah.xlsx',
+      filename: fltBelumLengkap
+        ? 'Jadwal_KBM_Slot_Belum_Lengkap.xlsx'
+        : 'Jadwal_KBM_Madrasah_Diniyyah.xlsx',
       sheets: [
         {
           name: 'Jadwal_KBM',
@@ -721,9 +731,39 @@ export default function JadwalKbmPage() {
             <span className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 font-semibold text-emerald-800">
               {listTampil.length} Kelas
             </span>
-            <span className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 font-medium text-slate-700">
-              {statSlot.terisi} / {statSlot.totalSlot} Slot Terisi
-            </span>
+            <button
+              type="button"
+              data-testid="btn-filter-slot-belum-lengkap"
+              aria-pressed={fltBelumLengkap}
+              onClick={() => setFltBelumLengkap((prev) => !prev)}
+              title={
+                fltBelumLengkap
+                  ? 'Klik untuk menampilkan kembali semua kelas'
+                  : statSlot.incompleteKelasCount > 0
+                  ? `Klik untuk memfilter ${statSlot.incompleteKelasCount} kelas yang slotnya belum terisi penuh`
+                  : 'Semua kelas sudah terisi penuh (12/12 slot)'
+              }
+              className={`px-3 py-1.5 rounded-lg border font-semibold inline-flex items-center gap-1.5 transition cursor-pointer ${
+                fltBelumLengkap
+                  ? 'bg-amber-100 border-amber-400 text-amber-950 shadow-2xs'
+                  : statSlot.totalSlot > 0 && statSlot.terisi === statSlot.totalSlot
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100/70'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-900'
+              }`}
+            >
+              <Filter className="w-3.5 h-3.5 shrink-0" />
+              <span>
+                {statSlot.terisi} / {statSlot.totalSlot} Slot Terisi
+              </span>
+              {fltBelumLengkap && (
+                <>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-200/80 text-amber-950 font-bold">
+                    Belum Penuh
+                  </span>
+                  <X className="w-3.5 h-3.5 shrink-0 text-amber-800" />
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
@@ -848,12 +888,28 @@ export default function JadwalKbmPage() {
             <tbody id="tbodyJadwalKBM">
               {listTampil.length === 0 ? (
                 <tr>
-                  <td colSpan={21} className="text-center py-6 text-slate-400">
-                    Tidak ada data jadwal kelas yang cocok dengan filter.
+                  <td colSpan={21} className="text-center py-6 text-slate-500">
+                    {fltBelumLengkap && baseFilteredList.length > 0 ? (
+                      <div className="inline-flex flex-col items-center gap-2">
+                        <span className="font-medium text-emerald-700">
+                          Seluruh {baseFilteredList.length} kelas pada filter ini sudah terisi penuh (12/12 slot).
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setFltBelumLengkap(false)}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                        >
+                          Tampilkan Semua Kelas
+                        </button>
+                      </div>
+                    ) : (
+                      'Tidak ada data jadwal kelas yang cocok dengan filter.'
+                    )}
                   </td>
                 </tr>
               ) : (
                 listTampil.map((k, idx) => {
+                  const slotInfo = hitungSlotKelasKBM(k);
                   const noStr = idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`;
                   const isUg = Boolean(
                     k.isUnggulan !== undefined
@@ -901,25 +957,32 @@ export default function JadwalKbmPage() {
                           onDoubleClick={() => handleKlsDoubleClick(k)}
                           title="Klik: Detail Kelas | Dobel-klik / Pensil: Edit Jadwal"
                         >
-                          <div className="flex items-center justify-center gap-1">
-                            <span>{k.kls} {k.bag}</span>
-                            {isUg && (
-                              <span className="px-1 py-0.2 bg-amber-100 text-amber-800 border border-amber-300 text-[9px] rounded font-bold">
-                                Ug
+                          <div className="flex flex-col items-center justify-center gap-0.5">
+                            <div className="flex items-center justify-center gap-1">
+                              <span>{k.kls} {k.bag}</span>
+                              {isUg && (
+                                <span className="px-1 py-0.2 bg-amber-100 text-amber-800 border border-amber-300 text-[9px] rounded font-bold">
+                                  Ug
+                                </span>
+                              )}
+                              {canEdit && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openModalInputJadwal(k.key);
+                                  }}
+                                  title="Edit Jadwal Kelas Ini"
+                                  className="p-0.5 rounded hover:bg-emerald-100 text-slate-400 hover:text-emerald-700 transition"
+                                >
+                                  <Pencil className="w-3 h-3 inline" />
+                                </button>
+                              )}
+                            </div>
+                            {fltBelumLengkap && (
+                              <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-bold">
+                                {slotInfo.terisi}/{slotInfo.total}
                               </span>
-                            )}
-                            {canEdit && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openModalInputJadwal(k.key);
-                                }}
-                                title="Edit Jadwal Kelas Ini"
-                                className="p-0.5 rounded hover:bg-emerald-100 text-slate-400 hover:text-emerald-700 transition"
-                              >
-                                <Pencil className="w-3 h-3 inline" />
-                              </button>
                             )}
                           </div>
                         </td>
@@ -945,11 +1008,21 @@ export default function JadwalKbmPage() {
                             ? 'cell-kg-cut-active bg-amber-100 border-2 border-dashed border-amber-500 animate-pulse text-amber-900 font-bold'
                             : '';
                           const kgHighlight = getKgHighlightClass(sesi?.kg);
+                          const emptyHighlightKg =
+                            !sesi && fltBelumLengkap && !isCutCell
+                              ? 'bg-amber-50/90 text-amber-700 font-bold'
+                              : '';
+                          const emptyHighlightFan =
+                            !sesi && fltBelumLengkap
+                              ? 'bg-amber-50/70 text-amber-700 font-bold'
+                              : sesi
+                              ? 'text-slate-800'
+                              : 'text-slate-300';
 
                           return (
                             <React.Fragment key={`${hari}-1`}>
                               <td
-                                className={`cell-kg cell-kg-clickable cursor-context-menu select-none transition-colors ${cutClass} ${kgHighlight}`}
+                                className={`cell-kg cell-kg-clickable cursor-context-menu select-none transition-colors ${cutClass} ${kgHighlight} ${emptyHighlightKg}`}
                                 onContextMenu={(e) => handleCellContextMenu(e, k, hari, 1, sesi)}
                                 onDoubleClick={(e) => handleCellContextMenu(e, k, hari, 1, sesi)}
                                 onTouchStart={(e) => handleTouchStartKG(e, k, hari, 1, sesi)}
@@ -964,9 +1037,7 @@ export default function JadwalKbmPage() {
                                 {sesi ? sesi.kg : '-'}
                               </td>
                               <td
-                                className={`text-center font-semibold uppercase text-[11px] ${
-                                  sesi ? 'text-slate-800' : 'text-slate-300'
-                                }`}
+                                className={`text-center font-semibold uppercase text-[11px] ${emptyHighlightFan}`}
                                 title={sesi ? `Kitab/Fan: ${sesi.fan}` : '-'}
                               >
                                 {sesi ? sesi.fan : '-'}
@@ -1008,11 +1079,21 @@ export default function JadwalKbmPage() {
                             ? 'cell-kg-cut-active bg-amber-100 border-2 border-dashed border-amber-500 animate-pulse text-amber-900 font-bold'
                             : '';
                           const kgHighlight = getKgHighlightClass(sesi?.kg);
+                          const emptyHighlightKg =
+                            !sesi && fltBelumLengkap && !isCutCell
+                              ? 'bg-amber-50/90 text-amber-700 font-bold'
+                              : '';
+                          const emptyHighlightFan =
+                            !sesi && fltBelumLengkap
+                              ? 'bg-amber-50/70 text-amber-700 font-bold'
+                              : sesi
+                              ? 'text-slate-800'
+                              : 'text-slate-300';
 
                           return (
                             <React.Fragment key={`${hari}-2`}>
                               <td
-                                className={`cell-kg cell-kg-clickable cursor-context-menu select-none transition-colors ${cutClass} ${kgHighlight}`}
+                                className={`cell-kg cell-kg-clickable cursor-context-menu select-none transition-colors ${cutClass} ${kgHighlight} ${emptyHighlightKg}`}
                                 onContextMenu={(e) => handleCellContextMenu(e, k, hari, 2, sesi)}
                                 onDoubleClick={(e) => handleCellContextMenu(e, k, hari, 2, sesi)}
                                 onTouchStart={(e) => handleTouchStartKG(e, k, hari, 2, sesi)}
@@ -1027,9 +1108,7 @@ export default function JadwalKbmPage() {
                                 {sesi ? sesi.kg : '-'}
                               </td>
                               <td
-                                className={`text-center font-semibold uppercase text-[11px] ${
-                                  sesi ? 'text-slate-800' : 'text-slate-300'
-                                }`}
+                                className={`text-center font-semibold uppercase text-[11px] ${emptyHighlightFan}`}
                                 title={sesi ? `Kitab/Fan: ${sesi.fan}` : '-'}
                               >
                                 {sesi ? sesi.fan : '-'}

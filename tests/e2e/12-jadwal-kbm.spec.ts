@@ -39,6 +39,15 @@ test.describe('Jadwal KBM Per Kelas & Hari KBM Full Migration Verification', () 
     await expect(page.getByText('Tingkat Diniyyah:')).toBeVisible();
     await expect(page.getByText('Putra / Putri (PA/PI):')).toBeVisible();
     await expect(page.getByPlaceholder(/Cari Kelas/i)).toBeVisible();
+
+    // Klik badge "X / Y Slot Terisi" untuk memfilter kelas belum lengkap lalu kembalikan
+    const btnSlotFilter = page.getByTestId('btn-filter-slot-belum-lengkap');
+    await expect(btnSlotFilter).toBeVisible();
+    await expect(btnSlotFilter).toHaveAttribute('aria-pressed', 'false');
+    await btnSlotFilter.click();
+    await expect(btnSlotFilter).toHaveAttribute('aria-pressed', 'true');
+    await btnSlotFilter.click();
+    await expect(btnSlotFilter).toHaveAttribute('aria-pressed', 'false');
   });
 
   test('2.0 Jadwal KBM Per Kelas: Tabel Matriks Resmi, Header 12 Sub-Kolom Hari & Sorting ULA', async ({ page }) => {

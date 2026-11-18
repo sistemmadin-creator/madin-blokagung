@@ -1759,3 +1759,30 @@ export function siapkanCacheRelasiFanJadwalKelas(
     mapBusyDetails,
   };
 }
+
+/**
+ * Menghitung kelengkapan 12 slot KBM (6 hari x 2 jam) untuk satu kelas.
+ */
+export function hitungSlotKelasKBM(kelas: Pick<KelasKbmItem, 'jadwal'>): {
+  terisi: number;
+  total: number;
+  kosong: number;
+  isIncomplete: boolean;
+} {
+  let total = 0;
+  let terisi = 0;
+  LIST_HARI.forEach((hari) => {
+    ([1, 2] as const).forEach((jam) => {
+      total += 1;
+      if ((kelas.jadwal?.[hari]?.[jam] || []).length > 0) {
+        terisi += 1;
+      }
+    });
+  });
+  return {
+    terisi,
+    total,
+    kosong: Math.max(0, total - terisi),
+    isIncomplete: terisi < total,
+  };
+}
