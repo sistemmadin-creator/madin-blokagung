@@ -6,6 +6,8 @@ import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import { calculateFieldDelta } from '@/lib/utils/deltaHelper';
 import { StorageService } from '@/lib/services/storageService';
 import { OfflineSyncService } from '@/lib/services/offlineSyncService';
+import { CascadeFormasiService, CascadeFormasiSnapshot } from '@/lib/services/cascadeFormasiService';
+import { DeleteHistoryMode } from '@/lib/services/relationDeleteTypes';
 
 interface FotoModalData {
   id: string;
@@ -131,8 +133,16 @@ interface FormasiState {
     skipHistory?: boolean
   ) => Promise<boolean>;
   toggleUnggulan: (id: string, currentStatus: boolean, skipHistory?: boolean) => Promise<boolean>;
-  deleteFormasi: (id: string, skipHistory?: boolean) => Promise<boolean>;
-  bulkDeleteFormasi: (ids: string[], skipHistory?: boolean) => Promise<boolean>;
+  deleteFormasi: (
+    id: string,
+    skipHistory?: boolean,
+    opts?: { skipConfirm?: boolean; historyMode?: DeleteHistoryMode }
+  ) => Promise<boolean>;
+  bulkDeleteFormasi: (
+    ids: string[],
+    skipHistory?: boolean,
+    opts?: { skipConfirm?: boolean; historyMode?: DeleteHistoryMode }
+  ) => Promise<boolean>;
   quickUploadFoto: (id: string, jenis: 'takror' | 'diniyyah', base64: string) => Promise<boolean>;
   deleteFoto: (id: string, jenis: 'takror' | 'diniyyah') => Promise<boolean>;
   saveBlokKelasGroup: (
@@ -537,19 +547,34 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
     }
   },
 
-  deleteFormasi: async (id, skipHistory) => {
-    if (!confirm('Yakin ingin menghapus formasi kelas ini? Menghapus formasi tidak akan menghapus data santri di dalamnya.')) {
+  deleteFormasi: async (id, skipHistory, opts) => {
+    if (
+      !opts?.skipConfirm &&
+      !confirm(
+        'Yakin ingin menghapus formasi kelas ini? Menghapus formasi tidak akan menghapus data santri di dalamnya.'
+      )
+    ) {
       return false;
     }
+    const historyMode: DeleteHistoryMode = opts?.historyMode || 'keep_history';
     try {
       const targetFormasi = get().formasiList.find((f) => f.id === id);
+      let cascadeSnapshot: CascadeFormasiSnapshot | null = null;
+      if (targetFormasi) {
+        cascadeSnapshot = await CascadeFormasiService.cascadeDeleteFormasi([targetFormasi], {
+          historyMode,
+        });
+      }
 
       const { error } = await supabase
         .from('formasi_kelas')
         .delete()
         .eq('id', id);
       if (error) throw error;
-      await logActivity('HAPUS FORMASI KELAS', `Menghapus formasi kelas ID: ${id}`);
+      await logActivity(
+        'HAPUS FORMASI KELAS',
+        `Menghapus formasi kelas ID: ${id} (mode jadwal: ${historyMode})`
+      );
 
       if (!skipHistory && targetFormasi) {
         useUndoRedoStore.getState().recordAction({
@@ -561,11 +586,17 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
               .from('formasi_kelas')
               .insert([restoredPayload]);
             if (undoErr) throw undoErr;
+            if (cascadeSnapshot) {
+              await CascadeFormasiService.restoreSnapshot(cascadeSnapshot);
+            }
             await logActivity('UNDO HAPUS FORMASI', `Memulihkan formasi kelas ID: ${id}`);
             await get().fetchFormasi();
             return true;
           },
           redo: async () => {
+            if (targetFormasi) {
+              await CascadeFormasiService.cascadeDeleteFormasi([targetFormasi], { historyMode });
+            }
             const { error: redoErr } = await supabase
               .from('formasi_kelas')
               .delete()
@@ -587,20 +618,33 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
     }
   },
 
-  bulkDeleteFormasi: async (ids: string[], skipHistory) => {
+  bulkDeleteFormasi: async (ids: string[], skipHistory, opts) => {
     if (!ids || ids.length === 0) return false;
-    if (!confirm(`Yakin ingin menghapus ${ids.length} formasi kelas terpilih? Data akan dihapus permanen.`)) {
+    if (
+      !opts?.skipConfirm &&
+      !confirm(`Yakin ingin menghapus ${ids.length} formasi kelas terpilih? Data akan dihapus permanen.`)
+    ) {
       return false;
     }
+    const historyMode: DeleteHistoryMode = opts?.historyMode || 'keep_history';
     try {
       const deletedRows = get().formasiList.filter((f) => f.id && ids.includes(f.id));
+      let cascadeSnapshot: CascadeFormasiSnapshot | null = null;
+      if (deletedRows.length > 0) {
+        cascadeSnapshot = await CascadeFormasiService.cascadeDeleteFormasi(deletedRows, {
+          historyMode,
+        });
+      }
 
       const { error } = await supabase
         .from('formasi_kelas')
         .delete()
         .in('id', ids);
       if (error) throw error;
-      await logActivity('HAPUS BANYAK FORMASI', `Menghapus ${ids.length} formasi kelas`);
+      await logActivity(
+        'HAPUS BANYAK FORMASI',
+        `Menghapus ${ids.length} formasi kelas (mode jadwal: ${historyMode})`
+      );
 
       if (!skipHistory && deletedRows.length > 0) {
         useUndoRedoStore.getState().recordAction({
@@ -611,11 +655,17 @@ export const useFormasiStore = create<FormasiState>((set, get) => ({
               .from('formasi_kelas')
               .insert(deletedRows);
             if (undoErr) throw undoErr;
+            if (cascadeSnapshot) {
+              await CascadeFormasiService.restoreSnapshot(cascadeSnapshot);
+            }
             await logActivity('UNDO HAPUS BANYAK FORMASI', `Memulihkan ${deletedRows.length} formasi kelas`);
             await get().fetchFormasi();
             return true;
           },
           redo: async () => {
+            if (deletedRows.length > 0) {
+              await CascadeFormasiService.cascadeDeleteFormasi(deletedRows, { historyMode });
+            }
             const { error: redoErr } = await supabase
               .from('formasi_kelas')
               .delete()

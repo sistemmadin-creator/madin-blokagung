@@ -22,6 +22,8 @@ import {
 import ModalSettingsHafalan from '@/components/modules/setoran/ModalSettingsHafalan';
 import ModalDetailRiwayatSetoran from '@/components/modules/setoran/ModalDetailRiwayatSetoran';
 import KartuBuktiSetoran, { KartuData } from '@/components/modules/setoran/KartuBuktiSetoran';
+import KonfirmasiHapusRelasiModal from '@/components/ui/KonfirmasiHapusRelasiModal';
+import { DeleteImpactAnalysis } from '@/lib/services/relationDeleteTypes';
 import {
   getNowLocalDateTimeString,
   formatDateTimeSetoran,
@@ -57,6 +59,9 @@ export default function SetoranPage() {
   const [filterGender, setFilterGender] = useState<'SEMUA' | 'PA' | 'PI'>('SEMUA');
   const [searchHistory, setSearchHistory] = useState('');
   const [selectedIndukList, setSelectedIndukList] = useState<string[]>([]);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletingBulk, setIsDeletingBulk] = useState(false);
+  const [deleteAnalysis, setDeleteAnalysis] = useState<DeleteImpactAnalysis | null>(null);
 
   // Form State
   const [tglSetor, setTglSetor] = useState(getNowLocalDateTimeString());
@@ -438,17 +443,51 @@ export default function SetoranPage() {
       alert('Centang minimal satu data riwayat setoran terlebih dahulu!');
       return;
     }
-    if (
-      !confirm(
-        `Yakin ingin menghapus seluruh riwayat setoran untuk ${selectedIndukList.length} santri yang dicentang?`
-      )
-    ) {
-      return;
-    }
+    const targetSet = new Set(selectedIndukList.map((n) => String(n).trim()));
+    const matchedRows = setoranList.filter((r) => targetSet.has(String(r.no_induk || '').trim()));
+    const summaryMap = new Map<string, { code: string; name: string; count: number }>();
+
+    selectedIndukList.forEach((nis) => {
+      const cleanNis = String(nis).trim();
+      const sample = matchedRows.find((r) => String(r.no_induk || '').trim() === cleanNis);
+      const count = matchedRows.filter((r) => String(r.no_induk || '').trim() === cleanNis).length;
+      summaryMap.set(cleanNis, {
+        code: cleanNis,
+        name: sample?.nama || `Santri NIS ${cleanNis}`,
+        count,
+      });
+    });
+
+    setDeleteAnalysis({
+      items: Array.from(summaryMap.values()).map((s) => ({
+        code: s.code,
+        name: s.name,
+        meta: `${s.count} catatan setoran`,
+      })),
+      impacts: [
+        `Sebanyak ${matchedRows.length} catatan riwayat setoran Muhafadzoh dari ${selectedIndukList.length} santri akan dihapus dari tabel riwayat.`,
+        'Sinkronisasi otomatis ke tabel relasional setoran_hafalan_records dan RIWAYAT_MUHAFADZOH_DATA.',
+      ],
+      activeWarnings: [
+        `Penghapusan ${matchedRows.length} riwayat hafalan ini dapat memengaruhi kalkulasi ketercapaian hafalan santri terpilih (dapat dipulihkan melalui fitur Undo).`,
+      ],
+      activeWarningTitle: 'Terdeteksi Riwayat Setoran Aktif',
+      activeRiskCheckboxLabel:
+        'Saya mengerti risikonya dan tetap ingin menghapus seluruh riwayat setoran santri terpilih di atas.',
+      safeArchiveNote:
+        'Data biodata induk santri di Database Santri tetap aman dan tidak ikut terhapus.',
+      hasHistoricalRecords: false,
+    });
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    setIsDeletingBulk(true);
     const success = await bulkDeleteSetoran(selectedIndukList);
+    setIsDeletingBulk(false);
     if (success) {
       setSelectedIndukList([]);
-      alert('Data riwayat terpilih berhasil dihapus!');
+      setIsDeleteModalOpen(false);
     }
   };
 
@@ -990,6 +1029,14 @@ export default function SetoranPage() {
       </div>
 
       {/* 4. Modals */}
+      <KonfirmasiHapusRelasiModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Konfirmasi Hapus Data Terpilih"
+        analysis={deleteAnalysis}
+        isDeleting={isDeletingBulk}
+        onConfirm={handleConfirmBulkDelete}
+      />
       <ModalSettingsHafalan />
 
       <ModalDetailRiwayatSetoran

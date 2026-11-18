@@ -30,6 +30,9 @@ import ModalHideColumns from '@/components/modules/santri/ModalHideColumns';
 import ModalImportExcelSantri from '@/components/modules/santri/ModalImportExcelSantri';
 import ModalHierarchyBuilder from '@/components/modules/settings/ModalHierarchyBuilder';
 import Dialog from '@/components/ui/Dialog';
+import KonfirmasiHapusRelasiModal from '@/components/ui/KonfirmasiHapusRelasiModal';
+import { CascadeSantriService } from '@/lib/services/cascadeSantriService';
+import { DeleteHistoryMode, DeleteImpactAnalysis } from '@/lib/services/relationDeleteTypes';
 import { usePagePermission } from '@/stores/useRbacStore';
 
 function getPaginationNumbers(currentPage: number, totalPages: number): (number | '...')[] {
@@ -90,6 +93,10 @@ export default function SantriPage() {
   const [isHierarchyOpen, setIsHierarchyOpen] = useState(false);
   const [isDeleteDropdownOpen, setIsDeleteDropdownOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isDeleteSelectedOpen, setIsDeleteSelectedOpen] = useState(false);
+  const [isAnalyzingDelete, setIsAnalyzingDelete] = useState(false);
+  const [isDeletingSelected, setIsDeletingSelected] = useState(false);
+  const [deleteAnalysis, setDeleteAnalysis] = useState<DeleteImpactAnalysis | null>(null);
 
   // 2-Step Modal State untuk Hapus Semua Data
   const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
@@ -200,9 +207,28 @@ export default function SantriPage() {
   const handleDeleteSelected = async () => {
     setIsDeleteDropdownOpen(false);
     if (selectedNoInduk.length === 0) return;
-    if (confirm(`Yakin ingin menghapus ${selectedNoInduk.length} data santri terpilih?`)) {
-      await deleteSelectedSantri();
+    const targetList = santriList.filter((s) => selectedNoInduk.includes(s.no_induk));
+    setDeleteAnalysis({
+      items: targetList.map((s) => ({ code: s.no_induk || '-', name: s.nama || '-' })),
+      impacts: [],
+      activeWarnings: [],
+      hasHistoricalRecords: false,
+    });
+    setIsDeleteSelectedOpen(true);
+    setIsAnalyzingDelete(true);
+    try {
+      const impact = await CascadeSantriService.analyzeDeleteImpact(targetList);
+      setDeleteAnalysis(impact);
+    } finally {
+      setIsAnalyzingDelete(false);
     }
+  };
+
+  const handleConfirmDeleteSelected = async (historyMode: DeleteHistoryMode) => {
+    setIsDeletingSelected(true);
+    await deleteSelectedSantri(false, historyMode);
+    setIsDeletingSelected(false);
+    setIsDeleteSelectedOpen(false);
   };
 
   const handleOpenDeleteAllModal = () => {
@@ -703,6 +729,24 @@ export default function SantriPage() {
       </Dialog>
 
       {/* Komponen Modal-Modal Santri */}
+      <KonfirmasiHapusRelasiModal
+        isOpen={isDeleteSelectedOpen}
+        onClose={() => setIsDeleteSelectedOpen(false)}
+        title="Konfirmasi Hapus Data Terpilih"
+        analysis={deleteAnalysis}
+        isAnalyzing={isAnalyzingDelete}
+        isDeleting={isDeletingSelected}
+        historyOptions={{
+          sectionTitle: 'PENANGANAN RIWAYAT HAFALAN & PIAGAM TERKAIT',
+          keepLabel: 'Pertahankan Arsip Histori Hafalan & Piagam (Rekomendasi Audit)',
+          keepDesc:
+            'Data santri dihapus dari daftar aktif, sementara riwayat setoran hafalan, Setor Mustahiq, dan Serah Piagam tetap disimpan dengan label [Dihapus].',
+          purgeLabel: 'Hapus Bersih Beserta Riwayat Terkait',
+          purgeDesc:
+            'Menghapus permanen data santri sekaligus seluruh riwayat setoran hafalan, log Setor Mustahiq, dan catatan Serah Piagam terkait.',
+        }}
+        onConfirm={handleConfirmDeleteSelected}
+      />
       <ModalInputSantri />
       <ModalDetailSantri />
       <ModalFilterSantri />

@@ -20,7 +20,6 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  AlertTriangle,
 } from 'lucide-react';
 import { exportToExcel } from '@/lib/utils/excel';
 import ModalInputAsatidz from '@/components/modules/asatidz/ModalInputAsatidz';
@@ -29,7 +28,9 @@ import ModalFilterAsatidz from '@/components/modules/asatidz/ModalFilterAsatidz'
 import ModalHideColumnsAsatidz from '@/components/modules/asatidz/ModalHideColumnsAsatidz';
 import ModalImportExcelAsatidz from '@/components/modules/asatidz/ModalImportExcelAsatidz';
 import ModalFotoZoomAsatidz from '@/components/modules/asatidz/ModalFotoZoomAsatidz';
-import Dialog from '@/components/ui/Dialog';
+import KonfirmasiHapusRelasiModal from '@/components/ui/KonfirmasiHapusRelasiModal';
+import { CascadeAsatidzService } from '@/lib/services/cascadeAsatidzService';
+import { DeleteHistoryMode, DeleteImpactAnalysis } from '@/lib/services/relationDeleteTypes';
 
 function getPaginationNumbers(currentPage: number, totalPages: number): (number | '...')[] {
   if (totalPages <= 7) {
@@ -75,6 +76,8 @@ export default function AsatidzPage() {
 
   const [isDeleteDropdownOpen, setIsDeleteDropdownOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isAnalyzingDelete, setIsAnalyzingDelete] = useState(false);
+  const [deleteAnalysis, setDeleteAnalysis] = useState<DeleteImpactAnalysis | null>(null);
   const [isDeletingBulk, setIsDeletingBulk] = useState(false);
 
   const deleteDropdownRef = useRef<HTMLDivElement>(null);
@@ -195,18 +198,35 @@ export default function AsatidzPage() {
     exportToExcel(exportRows, 'Database_Dewan_Asatidz_Madin_Blokagung');
   };
 
-  const handleTriggerBulkDelete = () => {
+  const handleTriggerBulkDelete = async () => {
     if (selectedKodeGuruList.length === 0) {
       alert('Centang minimal satu data Asatidz terlebih dahulu!');
       return;
     }
+    const targetList = asatidzList.filter((a) => selectedKodeGuruList.includes(a.kode_guru));
     setIsDeleteDropdownOpen(false);
+    setDeleteAnalysis({
+      items: targetList.map((a) => ({
+        code: a.kode_guru || a.nia || '-',
+        name: a.nama_asatidz || '-',
+      })),
+      impacts: [],
+      activeWarnings: [],
+      hasHistoricalRecords: false,
+    });
     setIsDeleteConfirmOpen(true);
+    setIsAnalyzingDelete(true);
+    try {
+      const impact = await CascadeAsatidzService.analyzeDeleteImpact(targetList);
+      setDeleteAnalysis(impact);
+    } finally {
+      setIsAnalyzingDelete(false);
+    }
   };
 
-  const handleConfirmBulkDelete = async () => {
+  const handleConfirmBulkDelete = async (historyMode: DeleteHistoryMode) => {
     setIsDeletingBulk(true);
-    await deleteSelectedAsatidz();
+    await deleteSelectedAsatidz(false, historyMode);
     setIsDeletingBulk(false);
     setIsDeleteConfirmOpen(false);
   };
@@ -851,47 +871,25 @@ export default function AsatidzPage() {
         </div>
       </div>
 
-      {/* 5. Dialog Konfirmasi Hapus Massal */}
-      <Dialog
+      {/* 5. Dialog Konfirmasi Hapus Relasi Data */}
+      <KonfirmasiHapusRelasiModal
         isOpen={isDeleteConfirmOpen}
-        onClose={() => !isDeletingBulk && setIsDeleteConfirmOpen(false)}
+        onClose={() => setIsDeleteConfirmOpen(false)}
         title="Konfirmasi Hapus Data Terpilih"
-        maxWidth="md"
-      >
-        <div className="space-y-4">
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <h4 className="text-xs font-bold text-rose-900">
-                Peringatan: Tindakan ini permanen
-              </h4>
-              <p className="text-xs text-rose-700 leading-relaxed">
-                Anda akan menghapus sebanyak <strong>{selectedKodeGuruList.length} data asatidz</strong> dari database. Data yang dihapus tidak dapat dikembalikan lagi.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex justify-end items-center gap-2 pt-2 border-t border-slate-100">
-            <button
-              type="button"
-              disabled={isDeletingBulk}
-              onClick={() => setIsDeleteConfirmOpen(false)}
-              className="px-4 py-2 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600"
-            >
-              Batal
-            </button>
-            <button
-              type="button"
-              disabled={isDeletingBulk}
-              onClick={handleConfirmBulkDelete}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition disabled:opacity-50"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>{isDeletingBulk ? 'Menghapus...' : 'Ya, Hapus Terpilih'}</span>
-            </button>
-          </div>
-        </div>
-      </Dialog>
+        analysis={deleteAnalysis}
+        isAnalyzing={isAnalyzingDelete}
+        isDeleting={isDeletingBulk}
+        historyOptions={{
+          sectionTitle: 'PENANGANAN RIWAYAT ABSENSI & KONSORSIUM TERKAIT',
+          keepLabel: 'Pertahankan Arsip Histori Presensi & Konsorsium (Rekomendasi Audit)',
+          keepDesc:
+            'Data asatidz dihapus dari daftar aktif dan tugas KBM/Formasi dilepas, sementara catatan riwayat absensi & konsorsium tetap disimpan dengan label [Dihapus].',
+          purgeLabel: 'Hapus Bersih Beserta Riwayat Terkait',
+          purgeDesc:
+            'Menghapus permanen data asatidz sekaligus seluruh catatan absensi KBM, konsorsium, dan singkatan WA terkait.',
+        }}
+        onConfirm={handleConfirmBulkDelete}
+      />
 
       {/* 6. Seluruh Modal Asatidz */}
       <ModalInputAsatidz />

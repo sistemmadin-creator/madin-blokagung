@@ -2,6 +2,9 @@
 
 import React, { useState, useMemo } from 'react';
 import Dialog from '@/components/ui/Dialog';
+import KonfirmasiHapusRelasiModal from '@/components/ui/KonfirmasiHapusRelasiModal';
+import { CascadeFormasiService } from '@/lib/services/cascadeFormasiService';
+import { DeleteHistoryMode, DeleteImpactAnalysis } from '@/lib/services/relationDeleteTypes';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { usePagePermission } from '@/stores/useRbacStore';
@@ -30,6 +33,10 @@ export default function ModalDetailFormasi() {
   const { santriList } = useSantriStore();
   const { canEdit, canDelete } = usePagePermission('formasi');
   const [santriSearch, setSantriSearch] = useState('');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isAnalyzingDelete, setIsAnalyzingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteAnalysis, setDeleteAnalysis] = useState<DeleteImpactAnalysis | null>(null);
 
   // Find real-time list of enrolled students in this formation
   const daftarSantri = useMemo(() => {
@@ -67,7 +74,35 @@ export default function ModalDetailFormasi() {
   };
 
   const handleDelete = async () => {
-    if (f.id && (await deleteFormasi(f.id))) {
+    if (!f.id) return;
+    setDeleteAnalysis({
+      items: [
+        {
+          code: `${f.din_kls || ''}${f.din_bag || ''} ${f.pa_pi || ''}`.trim() || '-',
+          name: namaKelasLengkap || 'Formasi Kelas',
+        },
+      ],
+      impacts: [],
+      activeWarnings: [],
+      hasHistoricalRecords: false,
+    });
+    setIsDeleteModalOpen(true);
+    setIsAnalyzingDelete(true);
+    try {
+      const impact = await CascadeFormasiService.analyzeDeleteImpact([f]);
+      setDeleteAnalysis(impact);
+    } finally {
+      setIsAnalyzingDelete(false);
+    }
+  };
+
+  const handleConfirmDelete = async (historyMode: DeleteHistoryMode) => {
+    if (!f.id) return;
+    setIsDeleting(true);
+    const ok = await deleteFormasi(f.id, false, { skipConfirm: true, historyMode });
+    setIsDeleting(false);
+    if (ok) {
+      setIsDeleteModalOpen(false);
       closeDetailModal();
     }
   };
@@ -91,8 +126,9 @@ export default function ModalDetailFormasi() {
   };
 
   return (
-    <Dialog
-      isOpen={isDetailModalOpen}
+    <>
+      <Dialog
+        isOpen={isDetailModalOpen}
       onClose={closeDetailModal}
       title={`Detail Formasi Kelas - ${namaKelasLengkap}`}
       maxWidth="xl"
@@ -357,5 +393,25 @@ export default function ModalDetailFormasi() {
         </div>
       </div>
     </Dialog>
+
+      <KonfirmasiHapusRelasiModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Konfirmasi Hapus Formasi Kelas"
+        analysis={deleteAnalysis}
+        isAnalyzing={isAnalyzingDelete}
+        isDeleting={isDeleting}
+        historyOptions={{
+          sectionTitle: 'PENANGANAN SLOT JADWAL KBM TERKAIT',
+          keepLabel: 'Pertahankan Slot Jadwal KBM Historis (Rekomendasi Audit)',
+          keepDesc:
+            'Formasi kelas dihapus dari daftar kelas aktif, sementara catatan jadwal mengajar KBM sebelumnya tetap dipertahankan.',
+          purgeLabel: 'Hapus Bersih Beserta Slot Jadwal KBM Kelas Ini',
+          purgeDesc:
+            'Menghapus formasi kelas sekaligus membersihkan seluruh slot Jadwal Mengajar Asatidz yang mengarah ke kelas tersebut.',
+        }}
+        onConfirm={handleConfirmDelete}
+      />
+    </>
   );
 }

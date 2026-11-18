@@ -1,7 +1,10 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
+import KonfirmasiHapusRelasiModal from '@/components/ui/KonfirmasiHapusRelasiModal';
+import { CascadeAsatidzService } from '@/lib/services/cascadeAsatidzService';
+import { DeleteHistoryMode, DeleteImpactAnalysis } from '@/lib/services/relationDeleteTypes';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
@@ -49,6 +52,10 @@ export default function ModalDetailAsatidz() {
   const { setoranList, fetchSetoranData } = useMuhafadzohStore();
   const { jadwalMap, activeHari, fetchJadwal } = useJadwalStore();
   const { canEdit, canDelete } = usePagePermission('asatidz');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isAnalyzingDelete, setIsAnalyzingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteAnalysis, setDeleteAnalysis] = useState<DeleteImpactAnalysis | null>(null);
 
   const hasFetchedOnOpenRef = useRef(false);
   useEffect(() => {
@@ -106,7 +113,33 @@ export default function ModalDetailAsatidz() {
   };
 
   const handleDelete = async () => {
-    if (await deleteAsatidz(selectedAsatidz.kode_guru)) {
+    setDeleteAnalysis({
+      items: [
+        {
+          code: selectedAsatidz.kode_guru || selectedAsatidz.nia || '-',
+          name: selectedAsatidz.nama_asatidz || '-',
+        },
+      ],
+      impacts: [],
+      activeWarnings: [],
+      hasHistoricalRecords: false,
+    });
+    setIsDeleteModalOpen(true);
+    setIsAnalyzingDelete(true);
+    try {
+      const impact = await CascadeAsatidzService.analyzeDeleteImpact([selectedAsatidz]);
+      setDeleteAnalysis(impact);
+    } finally {
+      setIsAnalyzingDelete(false);
+    }
+  };
+
+  const handleConfirmDelete = async (historyMode: DeleteHistoryMode) => {
+    setIsDeleting(true);
+    const ok = await deleteAsatidz(selectedAsatidz.kode_guru, false, historyMode);
+    setIsDeleting(false);
+    if (ok) {
+      setIsDeleteModalOpen(false);
       closeDetailModal();
     }
   };
@@ -121,12 +154,13 @@ export default function ModalDetailAsatidz() {
     : [];
 
   return (
-    <Dialog
-      isOpen={isDetailModalOpen}
-      onClose={closeDetailModal}
-      title="Detail Profil Asatidz & Santri Binaan"
-      maxWidth="4xl"
-    >
+    <>
+      <Dialog
+        isOpen={isDetailModalOpen}
+        onClose={closeDetailModal}
+        title="Detail Profil Asatidz & Santri Binaan"
+        maxWidth="4xl"
+      >
       <div className="space-y-5">
         {/* Header Profil Asatidz */}
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
@@ -560,5 +594,25 @@ export default function ModalDetailAsatidz() {
         </div>
       </div>
     </Dialog>
+
+      <KonfirmasiHapusRelasiModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Konfirmasi Hapus Data Asatidz"
+        analysis={deleteAnalysis}
+        isAnalyzing={isAnalyzingDelete}
+        isDeleting={isDeleting}
+        historyOptions={{
+          sectionTitle: 'PENANGANAN RIWAYAT ABSENSI & KONSORSIUM TERKAIT',
+          keepLabel: 'Pertahankan Arsip Histori Presensi & Konsorsium (Rekomendasi Audit)',
+          keepDesc:
+            'Data asatidz dihapus dari daftar aktif dan tugas KBM/Formasi dilepas, sementara catatan riwayat absensi & konsorsium tetap disimpan dengan label [Dihapus].',
+          purgeLabel: 'Hapus Bersih Beserta Riwayat Terkait',
+          purgeDesc:
+            'Menghapus permanen data asatidz sekaligus seluruh catatan absensi KBM, konsorsium, dan singkatan WA terkait.',
+        }}
+        onConfirm={handleConfirmDelete}
+      />
+    </>
   );
 }

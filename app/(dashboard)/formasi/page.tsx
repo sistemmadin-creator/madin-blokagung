@@ -28,6 +28,9 @@ import ModalFilterFormasi from '@/components/modules/formasi/ModalFilterFormasi'
 import ModalHideFormasi from '@/components/modules/formasi/ModalHideFormasi';
 import ModalFotoFormasi from '@/components/modules/formasi/ModalFotoFormasi';
 import ModalHierarkiBlokKBM from '@/components/modules/formasi/ModalHierarkiBlokKBM';
+import KonfirmasiHapusRelasiModal from '@/components/ui/KonfirmasiHapusRelasiModal';
+import { CascadeFormasiService } from '@/lib/services/cascadeFormasiService';
+import { DeleteHistoryMode, DeleteImpactAnalysis } from '@/lib/services/relationDeleteTypes';
 
 export default function FormasiMasterPage() {
   const {
@@ -63,6 +66,11 @@ export default function FormasiMasterPage() {
   const [pageSize, setPageSize] = useState<number>(25);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isBulkDropdownOpen, setIsBulkDropdownOpen] = useState(false);
+  const [deleteTargetIds, setDeleteTargetIds] = useState<string[]>([]);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isAnalyzingDelete, setIsAnalyzingDelete] = useState(false);
+  const [isDeletingFormasi, setIsDeletingFormasi] = useState(false);
+  const [deleteAnalysis, setDeleteAnalysis] = useState<DeleteImpactAnalysis | null>(null);
 
   useEffect(() => {
     fetchFormasi();
@@ -204,15 +212,50 @@ export default function FormasiMasterPage() {
     );
   };
 
+  const openDeleteImpactModal = async (targetIds: string[]) => {
+    const targets = formasiList.filter((f) => f.id && targetIds.includes(f.id));
+    if (targets.length === 0) return;
+    setDeleteTargetIds(targetIds);
+    setDeleteAnalysis({
+      items: targets.map((f) => ({
+        code: `${f.din_kls || ''}${f.din_bag || ''} ${f.pa_pi || ''}`.trim() || '-',
+        name: `${f.tingkat || ''} ${f.din_kls || ''}${f.din_bag || ''}`.trim() || 'Formasi Kelas',
+      })),
+      impacts: [],
+      activeWarnings: [],
+      hasHistoricalRecords: false,
+    });
+    setIsDeleteModalOpen(true);
+    setIsAnalyzingDelete(true);
+    try {
+      const impact = await CascadeFormasiService.analyzeDeleteImpact(targets);
+      setDeleteAnalysis(impact);
+    } finally {
+      setIsAnalyzingDelete(false);
+    }
+  };
+
   const handleBulkDelete = async () => {
     setIsBulkDropdownOpen(false);
     if (selectedIds.length === 0) {
       alert('Centang minimal satu data formasi!');
       return;
     }
-    const success = await bulkDeleteFormasi(selectedIds);
+    await openDeleteImpactModal(selectedIds);
+  };
+
+  const handleConfirmDeleteFormasi = async (historyMode: DeleteHistoryMode) => {
+    if (deleteTargetIds.length === 0) return;
+    setIsDeletingFormasi(true);
+    const success =
+      deleteTargetIds.length === 1
+        ? await deleteFormasi(deleteTargetIds[0], false, { skipConfirm: true, historyMode })
+        : await bulkDeleteFormasi(deleteTargetIds, false, { skipConfirm: true, historyMode });
+    setIsDeletingFormasi(false);
     if (success) {
-      setSelectedIds([]);
+      setSelectedIds((prev) => prev.filter((id) => !deleteTargetIds.includes(id)));
+      setIsDeleteModalOpen(false);
+      setDeleteTargetIds([]);
     }
   };
 
@@ -669,7 +712,7 @@ export default function FormasiMasterPage() {
                           {canDelete && (
                             <button
                               type="button"
-                              onClick={() => f.id && deleteFormasi(f.id)}
+                              onClick={() => f.id && openDeleteImpactModal([f.id])}
                               className="p-1 rounded text-rose-600 hover:bg-rose-50 transition"
                               title="Hapus Formasi"
                             >
@@ -720,6 +763,28 @@ export default function FormasiMasterPage() {
       </div>
 
       {/* Modals */}
+      <KonfirmasiHapusRelasiModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title={
+          deleteTargetIds.length > 1
+            ? 'Konfirmasi Hapus Data Terpilih'
+            : 'Konfirmasi Hapus Formasi Kelas'
+        }
+        analysis={deleteAnalysis}
+        isAnalyzing={isAnalyzingDelete}
+        isDeleting={isDeletingFormasi}
+        historyOptions={{
+          sectionTitle: 'PENANGANAN SLOT JADWAL KBM TERKAIT',
+          keepLabel: 'Pertahankan Slot Jadwal KBM Historis (Rekomendasi Audit)',
+          keepDesc:
+            'Formasi kelas dihapus dari daftar kelas aktif, sementara catatan jadwal mengajar KBM sebelumnya tetap dipertahankan.',
+          purgeLabel: 'Hapus Bersih Beserta Slot Jadwal KBM Kelas Ini',
+          purgeDesc:
+            'Menghapus formasi kelas sekaligus membersihkan seluruh slot Jadwal Mengajar Asatidz yang mengarah ke kelas tersebut.',
+        }}
+        onConfirm={handleConfirmDeleteFormasi}
+      />
       <ModalInputFormasi />
       <ModalDetailFormasi />
       <ModalGeneratorFormasi />

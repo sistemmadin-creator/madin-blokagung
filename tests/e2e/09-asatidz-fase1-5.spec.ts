@@ -85,6 +85,21 @@ test.describe('Modul Asatidz: Pengujian Komprehensif Fitur & Modal', () => {
         await dialog.accept();
       });
       await hapusTerpilihOption.click();
+
+      // Centang baris pertama jika data tersedia -> verifikasi modal Konfirmasi Hapus Relasi Data tampil
+      const firstRowCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+      if ((await firstRowCheckbox.count()) > 0) {
+        await firstRowCheckbox.check();
+        await hapusBtn.click();
+        await page.getByRole('button', { name: /Hapus Terpilih \(1\)/i }).click();
+
+        const modalDialog = page.getByRole('dialog');
+        await expect(modalDialog).toBeVisible();
+        await expect(modalDialog.getByText(/Konfirmasi Hapus Data Terpilih/i)).toBeVisible();
+        await expect(modalDialog.getByText(/DAMPAK RELASI DATA/i)).toBeVisible();
+        await modalDialog.getByRole('button', { name: /^Batal$/i }).click();
+        await firstRowCheckbox.uncheck();
+      }
     });
   });
 

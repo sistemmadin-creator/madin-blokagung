@@ -6,6 +6,9 @@ import { useSantriStore } from '@/stores/useSantriStore';
 import { usePagePermission } from '@/stores/useRbacStore';
 import { User, MapPin, Home, GraduationCap, Phone, Edit, Trash2, ZoomIn } from 'lucide-react';
 import ModalFotoZoom from './ModalFotoZoom';
+import KonfirmasiHapusRelasiModal from '@/components/ui/KonfirmasiHapusRelasiModal';
+import { CascadeSantriService } from '@/lib/services/cascadeSantriService';
+import { DeleteHistoryMode, DeleteImpactAnalysis } from '@/lib/services/relationDeleteTypes';
 
 export default function ModalDetailSantri() {
   const {
@@ -18,6 +21,10 @@ export default function ModalDetailSantri() {
   const { canEdit, canDelete } = usePagePermission('santri');
 
   const [isZoomOpen, setIsZoomOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isAnalyzingDelete, setIsAnalyzingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteAnalysis, setDeleteAnalysis] = useState<DeleteImpactAnalysis | null>(null);
 
   if (!selectedSantri) return null;
 
@@ -28,7 +35,31 @@ export default function ModalDetailSantri() {
   };
 
   const handleDelete = async () => {
-    if (await deleteSantri(selectedSantri.no_induk)) {
+    setDeleteAnalysis({
+      items: [{ code: selectedSantri.no_induk || '-', name: selectedSantri.nama || '-' }],
+      impacts: [],
+      activeWarnings: [],
+      hasHistoricalRecords: false,
+    });
+    setIsDeleteModalOpen(true);
+    setIsAnalyzingDelete(true);
+    try {
+      const impact = await CascadeSantriService.analyzeDeleteImpact([selectedSantri]);
+      setDeleteAnalysis(impact);
+    } finally {
+      setIsAnalyzingDelete(false);
+    }
+  };
+
+  const handleConfirmDelete = async (historyMode: DeleteHistoryMode) => {
+    setIsDeleting(true);
+    const ok = await deleteSantri(selectedSantri.no_induk, false, {
+      skipConfirm: true,
+      historyMode,
+    });
+    setIsDeleting(false);
+    if (ok) {
+      setIsDeleteModalOpen(false);
       closeDetailModal();
     }
   };
@@ -256,6 +287,25 @@ export default function ModalDetailSantri() {
         fotoUrl={selectedSantri.foto}
         nama={selectedSantri.nama}
         noInduk={selectedSantri.no_induk}
+      />
+
+      <KonfirmasiHapusRelasiModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Konfirmasi Hapus Data Santri"
+        analysis={deleteAnalysis}
+        isAnalyzing={isAnalyzingDelete}
+        isDeleting={isDeleting}
+        historyOptions={{
+          sectionTitle: 'PENANGANAN RIWAYAT HAFALAN & PIAGAM TERKAIT',
+          keepLabel: 'Pertahankan Arsip Histori Hafalan & Piagam (Rekomendasi Audit)',
+          keepDesc:
+            'Data santri dihapus dari daftar aktif, sementara riwayat setoran hafalan, Setor Mustahiq, dan Serah Piagam tetap disimpan dengan label [Dihapus].',
+          purgeLabel: 'Hapus Bersih Beserta Riwayat Terkait',
+          purgeDesc:
+            'Menghapus permanen data santri sekaligus seluruh riwayat setoran hafalan, log Setor Mustahiq, dan catatan Serah Piagam terkait.',
+        }}
+        onConfirm={handleConfirmDelete}
       />
     </>
   );

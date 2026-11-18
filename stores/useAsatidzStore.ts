@@ -6,6 +6,7 @@ import { logActivity } from '@/lib/utils/audit';
 import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import { calculateFieldDelta } from '@/lib/utils/deltaHelper';
 import { CascadeAsatidzService, CascadeDeleteSnapshot } from '@/lib/services/cascadeAsatidzService';
+import { DeleteHistoryMode } from '@/lib/services/relationDeleteTypes';
 import { StorageService } from '@/lib/services/storageService';
 import { OfflineSyncService } from '@/lib/services/offlineSyncService';
 
@@ -79,8 +80,15 @@ interface AsatidzState {
     oldKodeGuru?: string,
     skipHistory?: boolean
   ) => Promise<boolean>;
-  deleteAsatidz: (kodeGuru: string, skipHistory?: boolean) => Promise<boolean>;
-  deleteSelectedAsatidz: (skipHistory?: boolean) => Promise<boolean>;
+  deleteAsatidz: (
+    kodeGuru: string,
+    skipHistory?: boolean,
+    historyMode?: DeleteHistoryMode
+  ) => Promise<boolean>;
+  deleteSelectedAsatidz: (
+    skipHistory?: boolean,
+    historyMode?: DeleteHistoryMode
+  ) => Promise<boolean>;
   handleRealtimeAsatidz: (payload: { eventType: string; new?: any; old?: any }) => void;
 }
 
@@ -440,13 +448,15 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
     }
   },
 
-  deleteAsatidz: async (kodeGuru, skipHistory = false) => {
+  deleteAsatidz: async (kodeGuru, skipHistory = false, historyMode = 'keep_history') => {
     const targetAsatidz = get().asatidzList.find((a) => a.kode_guru === kodeGuru);
     try {
-      // 1. Eksekusi cascade deletion ke Fan Pelajaran, Jadwal KBM, dan Formasi Kelas
+      // 1. Eksekusi cascade deletion ke Fan Pelajaran, Jadwal KBM, Formasi Kelas, Konsorsium, dan Absensi
       let cascadeSnapshot: CascadeDeleteSnapshot | null = null;
       if (targetAsatidz) {
-        cascadeSnapshot = await CascadeAsatidzService.cascadeDeleteAsatidz([targetAsatidz]);
+        cascadeSnapshot = await CascadeAsatidzService.cascadeDeleteAsatidz([targetAsatidz], {
+          historyMode,
+        });
       }
 
       const { error } = await supabase
@@ -454,7 +464,10 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
         .delete()
         .eq('kode_guru', kodeGuru);
       if (error) throw error;
-      await logActivity('HAPUS DEWAN ASATIDZ', `Menghapus asatidz KG: ${kodeGuru}`);
+      await logActivity(
+        'HAPUS DEWAN ASATIDZ',
+        `Menghapus asatidz KG: ${kodeGuru} (mode riwayat: ${historyMode})`
+      );
 
       if (!skipHistory && targetAsatidz) {
         const restorePayload = { ...targetAsatidz };
@@ -485,7 +498,9 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
             const { error: delErr } = await supabase.from('asatidz').delete().eq('kode_guru', kodeGuru);
             if (delErr) throw delErr;
             if (targetAsatidz) {
-              await CascadeAsatidzService.cascadeDeleteAsatidz([targetAsatidz]);
+              await CascadeAsatidzService.cascadeDeleteAsatidz([targetAsatidz], {
+                historyMode,
+              });
             }
             await get().fetchAsatidz();
             return true;
@@ -505,16 +520,18 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
     }
   },
 
-  deleteSelectedAsatidz: async (skipHistory = false) => {
+  deleteSelectedAsatidz: async (skipHistory = false, historyMode = 'keep_history') => {
     const selected = get().selectedKodeGuruList;
     if (selected.length === 0) return false;
     const deletedList = get().asatidzList.filter((a) => selected.includes(a.kode_guru));
 
     try {
-      // 1. Eksekusi cascade deletion ke Fan Pelajaran, Jadwal KBM, dan Formasi Kelas
+      // 1. Eksekusi cascade deletion ke Fan Pelajaran, Jadwal KBM, Formasi Kelas, Konsorsium, dan Absensi
       let cascadeSnapshot: CascadeDeleteSnapshot | null = null;
       if (deletedList.length > 0) {
-        cascadeSnapshot = await CascadeAsatidzService.cascadeDeleteAsatidz(deletedList);
+        cascadeSnapshot = await CascadeAsatidzService.cascadeDeleteAsatidz(deletedList, {
+          historyMode,
+        });
       }
 
       const { error } = await supabase
@@ -522,7 +539,10 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
         .delete()
         .in('kode_guru', selected);
       if (error) throw error;
-      await logActivity('HAPUS BANYAK ASATIDZ', `Menghapus ${selected.length} asatidz terpilih`);
+      await logActivity(
+        'HAPUS BANYAK ASATIDZ',
+        `Menghapus ${selected.length} asatidz terpilih (mode riwayat: ${historyMode})`
+      );
 
       if (!skipHistory && deletedList.length > 0) {
         const restoreList = deletedList.map((item) => {
@@ -557,7 +577,9 @@ export const useAsatidzStore = create<AsatidzState>((set, get) => ({
             const { error: delErr } = await supabase.from('asatidz').delete().in('kode_guru', selected);
             if (delErr) throw delErr;
             if (deletedList.length > 0) {
-              await CascadeAsatidzService.cascadeDeleteAsatidz(deletedList);
+              await CascadeAsatidzService.cascadeDeleteAsatidz(deletedList, {
+                historyMode,
+              });
             }
             await get().fetchAsatidz();
             return true;

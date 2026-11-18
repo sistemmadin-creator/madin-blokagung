@@ -6,6 +6,8 @@ import { useUndoRedoStore } from '@/stores/useUndoRedoStore';
 import { calculateFieldDelta } from '@/lib/utils/deltaHelper';
 import { StorageService } from '@/lib/services/storageService';
 import { OfflineSyncService } from '@/lib/services/offlineSyncService';
+import { CascadeSantriService, CascadeSantriSnapshot } from '@/lib/services/cascadeSantriService';
+import { DeleteHistoryMode } from '@/lib/services/relationDeleteTypes';
 
 interface SantriState {
   santriList: Santri[];
@@ -64,8 +66,15 @@ interface SantriState {
     oldNoInduk?: string,
     skipHistory?: boolean
   ) => Promise<boolean>;
-  deleteSantri: (no_induk: string, skipHistory?: boolean) => Promise<boolean>;
-  deleteSelectedSantri: (skipHistory?: boolean) => Promise<boolean>;
+  deleteSantri: (
+    no_induk: string,
+    skipHistory?: boolean,
+    opts?: { skipConfirm?: boolean; historyMode?: DeleteHistoryMode }
+  ) => Promise<boolean>;
+  deleteSelectedSantri: (
+    skipHistory?: boolean,
+    historyMode?: DeleteHistoryMode
+  ) => Promise<boolean>;
   deleteAllSantri: () => Promise<boolean>;
   handleRealtimeSantri: (payload: { eventType: string; new?: any; old?: any }) => void;
 }
@@ -357,16 +366,29 @@ export const useSantriStore = create<SantriState>((set, get) => ({
     }
   },
 
-  deleteSantri: async (no_induk, skipHistory = false) => {
+  deleteSantri: async (no_induk, skipHistory = false, opts) => {
     const targetSantri = get().santriList.find((s) => s.no_induk === no_induk);
-    if (!confirm(`Yakin ingin menghapus santri dengan NIS: ${no_induk}?`)) return false;
+    if (!opts?.skipConfirm && !confirm(`Yakin ingin menghapus santri dengan NIS: ${no_induk}?`)) {
+      return false;
+    }
+    const historyMode: DeleteHistoryMode = opts?.historyMode || 'keep_history';
     try {
+      let cascadeSnapshot: CascadeSantriSnapshot | null = null;
+      if (targetSantri) {
+        cascadeSnapshot = await CascadeSantriService.cascadeDeleteSantri([targetSantri], {
+          historyMode,
+        });
+      }
+
       const { error } = await supabase
         .from('santri')
         .delete()
         .eq('no_induk', no_induk);
       if (error) throw error;
-      await logActivity('HAPUS DATA SANTRI', `Menghapus santri NIS: ${no_induk}`);
+      await logActivity(
+        'HAPUS DATA SANTRI',
+        `Menghapus santri NIS: ${no_induk} (mode riwayat: ${historyMode})`
+      );
 
       if (!skipHistory && targetSantri) {
         useUndoRedoStore.getState().recordAction({
@@ -382,10 +404,16 @@ export const useSantriStore = create<SantriState>((set, get) => ({
             if (!existRow) {
               await supabase.from('santri').insert([targetSantri]);
             }
+            if (cascadeSnapshot) {
+              await CascadeSantriService.restoreSnapshot(cascadeSnapshot);
+            }
             await get().fetchSantri();
             return true;
           },
           redo: async () => {
+            if (targetSantri) {
+              await CascadeSantriService.cascadeDeleteSantri([targetSantri], { historyMode });
+            }
             await supabase.from('santri').delete().eq('no_induk', no_induk);
             await get().fetchSantri();
             return true;
@@ -393,6 +421,9 @@ export const useSantriStore = create<SantriState>((set, get) => ({
         });
       }
 
+      set((state) => ({
+        selectedNoInduk: state.selectedNoInduk.filter((n) => n !== no_induk),
+      }));
       await get().fetchSantri();
       return true;
     } catch (err: any) {
@@ -402,17 +433,27 @@ export const useSantriStore = create<SantriState>((set, get) => ({
     }
   },
 
-  deleteSelectedSantri: async (skipHistory = false) => {
+  deleteSelectedSantri: async (skipHistory = false, historyMode = 'keep_history') => {
     const selected = get().selectedNoInduk;
     if (selected.length === 0) return false;
     const deletedList = get().santriList.filter((s) => selected.includes(s.no_induk));
     try {
+      let cascadeSnapshot: CascadeSantriSnapshot | null = null;
+      if (deletedList.length > 0) {
+        cascadeSnapshot = await CascadeSantriService.cascadeDeleteSantri(deletedList, {
+          historyMode,
+        });
+      }
+
       const { error } = await supabase
         .from('santri')
         .delete()
         .in('no_induk', selected);
       if (error) throw error;
-      await logActivity('HAPUS BANYAK SANTRI', `Menghapus ${selected.length} santri terpilih`);
+      await logActivity(
+        'HAPUS BANYAK SANTRI',
+        `Menghapus ${selected.length} santri terpilih (mode riwayat: ${historyMode})`
+      );
 
       if (!skipHistory && deletedList.length > 0) {
         useUndoRedoStore.getState().recordAction({
@@ -428,10 +469,16 @@ export const useSantriStore = create<SantriState>((set, get) => ({
             if (toInsert.length > 0) {
               await supabase.from('santri').insert(toInsert);
             }
+            if (cascadeSnapshot) {
+              await CascadeSantriService.restoreSnapshot(cascadeSnapshot);
+            }
             await get().fetchSantri();
             return true;
           },
           redo: async () => {
+            if (deletedList.length > 0) {
+              await CascadeSantriService.cascadeDeleteSantri(deletedList, { historyMode });
+            }
             await supabase.from('santri').delete().in('no_induk', selected);
             await get().fetchSantri();
             return true;

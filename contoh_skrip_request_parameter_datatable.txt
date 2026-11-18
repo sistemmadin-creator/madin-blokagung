@@ -1,0 +1,142 @@
+export interface DataTableColumn {
+  data: string;
+  name?: string;
+  searchable?: boolean;
+  orderable?: boolean;
+}
+
+export interface DataTableRequestParams {
+  page: number;          // Halaman aktif (mulai dari 1)
+  pageLength: number;    // Jumlah baris per halaman (misal 10)
+  searchValue: string;   // Kata kunci pencarian global
+  orderColumn: number;   // Index kolom yang diurutkan
+  orderDir: 'asc' | 'desc';
+  columns: DataTableColumn[];
+}
+
+export interface DataTableResponse<T> {
+  draw: number;
+  recordsTotal: number;
+  recordsFiltered: number;
+  data: T[];
+  fromCache: boolean;
+}
+
+export function createDataTablePipeline<T>(apiUrl: string, pagesToCache = 5) {
+  let cacheLower = -1;
+  let cacheUpper = -1;
+  let cacheData: T[] = [];
+  let cacheRecordsTotal = 0;
+  let cacheRecordsFiltered = 0;
+  let lastQuerySignature = '';
+  let drawCounter = 0;
+
+  // Fungsi untuk menghapus cache secara manual (misal setelah Edit/Hapus)
+  const clearCache = () => {
+    cacheLower = -1;
+    cacheUpper = -1;
+    cacheData = [];
+    lastQuerySignature = '';
+  };
+
+  // Fungsi utama pengirim request ke server PHP
+  const fetchPage = async (params: DataTableRequestParams): Promise<DataTableResponse<T>> => {
+    drawCounter += 1;
+    const requestStart = (params.page - 1) * params.pageLength;
+    const requestLength = params.pageLength;
+    const requestEnd = requestStart + requestLength;
+
+    // Buat tanda tangan unik untuk mendeteksi perubahan filter/sorting
+    const currentSignature = JSON.stringify({
+      search: params.searchValue,
+      orderCol: params.orderColumn,
+      orderDir: params.orderDir,
+      length: params.pageLength,
+    });
+
+    // 1. Cek apakah data sudah tersedia di dalam Cache Pipeline
+    const isHit =
+      cacheLower >= 0 &&
+      currentSignature === lastQuerySignature &&
+      requestStart >= cacheLower &&
+      requestEnd <= cacheUpper;
+
+    if (isHit) {
+      const sliceStart = requestStart - cacheLower;
+      return {
+        draw: drawCounter,
+        recordsTotal: cacheRecordsTotal,
+        recordsFiltered: cacheRecordsFiltered,
+        data: cacheData.slice(sliceStart, sliceStart + requestLength),
+        fromCache: true,
+      };
+    }
+
+    // 2. Hitung batas pengambilan baru untuk dikirim ke server PHP
+    let fetchStart = requestStart;
+    if (currentSignature === lastQuerySignature && requestStart < cacheLower) {
+      fetchStart = Math.max(0, requestStart - requestLength * (pagesToCache - 1));
+    }
+    const fetchLength = requestLength * pagesToCache;
+
+    // 3. Susun Parameter Lengkap Standar DataTables
+    const formData = new URLSearchParams();
+    formData.append('draw', String(drawCounter));
+    formData.append('start', String(fetchStart));
+    formData.append('length', String(fetchLength));
+
+    // Parameter Search Global
+    formData.append('search[value]', params.searchValue);
+    formData.append('search[regex]', 'false');
+
+    // Parameter Order (Sorting)
+    formData.append('order[0][column]', String(params.orderColumn));
+    formData.append('order[0][dir]', params.orderDir);
+
+    // Parameter Definisi Setiap Kolom (Standar DataTables)
+    params.columns.forEach((col, index) => {
+      formData.append(`columns[${index}][data]`, col.data);
+      formData.append(`columns[${index}][name]`, col.name || col.data);
+      formData.append(`columns[${index}][searchable]`, String(col.searchable ?? true));
+      formData.append(`columns[${index}][orderable]`, String(col.orderable ?? true));
+      formData.append(`columns[${index}][search][value]`, '');
+      formData.append(`columns[${index}][search][regex]`, 'false');
+    });
+
+    // 4. Eksekusi Request POST ke Server PHP
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      },
+      body: formData.toString(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP Error ${response.status}`);
+    }
+
+    const json = await response.json();
+    const fetchedRows: T[] = json.data || [];
+
+    // 5. Simpan hasil ke Cache Pipeline
+    cacheLower = fetchStart;
+    cacheUpper = fetchStart + fetchedRows.length;
+    cacheData = fetchedRows;
+    cacheRecordsTotal = Number(json.recordsTotal || 0);
+    cacheRecordsFiltered = Number(json.recordsFiltered || 0);
+    lastQuerySignature = currentSignature;
+
+    // Potong data sesuai halaman aktif yang diminta
+    const sliceStart = requestStart - fetchStart;
+    return {
+      draw: drawCounter,
+      recordsTotal: cacheRecordsTotal,
+      recordsFiltered: cacheRecordsFiltered,
+      data: fetchedRows.slice(sliceStart, sliceStart + requestLength),
+      fromCache: false,
+    };
+  };
+
+  return { fetchPage, clearCache };
+}
