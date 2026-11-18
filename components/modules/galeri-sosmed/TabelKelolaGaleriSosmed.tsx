@@ -30,7 +30,10 @@ import {
 } from '@/types/berita';
 import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
 import { usePagePermission } from '@/stores/useRbacStore';
-import { sanitizeHttpUrl } from '@/lib/security/urlSanitizer';
+import {
+  sanitizeHttpUrl,
+  sanitizeRenderableImageUrl,
+} from '@/lib/security/urlSanitizer';
 import ModalLightboxSosmed from './ModalLightboxSosmed';
 import SubKategoriFilterBar from '@/components/modules/media/SubKategoriFilterBar';
 import SubKategoriBadgeList from '@/components/modules/media/SubKategoriBadgeList';
@@ -343,11 +346,13 @@ export default function TabelKelolaGaleriSosmed() {
                           title="Klik untuk memutar pratinjau embed"
                           className="w-18 h-12 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-900 relative flex items-center justify-center cursor-pointer group/thumb"
                         >
-                          <img
-                            src={item.thumbnail_url}
-                            alt=""
-                            className="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform"
-                          />
+                          {sanitizeRenderableImageUrl(item.thumbnail_url) && (
+                            <img
+                              src={sanitizeRenderableImageUrl(item.thumbnail_url)!}
+                              alt=""
+                              className="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform"
+                            />
+                          )}
                           <span className="absolute inset-0 bg-black/35 flex items-center justify-center">
                             <Play className="w-4 h-4 text-amber-300 fill-amber-300" />
                           </span>

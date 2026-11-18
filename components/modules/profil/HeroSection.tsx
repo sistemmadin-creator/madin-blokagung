@@ -41,7 +41,6 @@ export default function HeroSection() {
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const [firstFrameReady, setFirstFrameReady] = useState<boolean>(false);
 
-  // Deteksi ukuran layar & preferensi reduced motion
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -62,14 +61,12 @@ export default function HeroSection() {
     };
   }, []);
 
-  // Fungsi gambar frame ke canvas dengan object-cover + overscan 1.07 (menutup watermark halus)
   const drawFrameToCanvas = (frameIndex: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Cari frame terdekat yang sudah selesai dimuat
     let img = framesRef.current[frameIndex];
     if (!img || !img.complete || img.naturalWidth === 0) {
       for (let offset = 1; offset < TOTAL_FRAMES; offset++) {
@@ -97,7 +94,6 @@ export default function HeroSection() {
     const scale = Math.max(cw / iw, ch / ih) * overscan;
     const drawW = iw * scale;
     const drawH = ih * scale;
-    // Geser sedikit ke atas agar area bawah (watermark) terpotong keluar viewport
     const dx = (cw - drawW) * 0.5;
     const dy = (ch - drawH) * 0.42;
 
@@ -105,7 +101,6 @@ export default function HeroSection() {
     ctx.drawImage(img, dx, dy, drawW, drawH);
   };
 
-  // Preload bertahap frame WebP di desktop
   useEffect(() => {
     if (typeof window === 'undefined' || isMobile || prefersReducedMotion) return;
 
@@ -153,7 +148,6 @@ export default function HeroSection() {
     };
   }, [isMobile, prefersReducedMotion]);
 
-  // Sinkronisasi ukuran canvas dengan DPR layar
   useEffect(() => {
     if (typeof window === 'undefined' || isMobile || prefersReducedMotion) return;
 
@@ -162,7 +156,7 @@ export default function HeroSection() {
       if (!canvas) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.floor(window.innerWidth * dpr);
-      canvas.height = Math.floor(window.innerHeight * dpr);
+      canvas.height = Math.floor(Math.max(520, window.innerHeight - 65) * dpr);
       drawFrameToCanvas(currentFrameIdxRef.current);
     };
 
@@ -171,7 +165,6 @@ export default function HeroSection() {
     return () => window.removeEventListener('resize', resizeCanvas);
   }, [isMobile, prefersReducedMotion]);
 
-  // Lenis + GSAP ScrollTrigger choreography
   useEffect(() => {
     if (typeof window === 'undefined' || prefersReducedMotion) return;
     const section = sectionRef.current;
@@ -192,7 +185,6 @@ export default function HeroSection() {
     gsap.ticker.add(onTick);
     gsap.ticker.lagSmoothing(0);
 
-    const state = { frame: 0 };
     const st = ScrollTrigger.create({
       trigger: section,
       start: 'top top',
@@ -212,7 +204,6 @@ export default function HeroSection() {
 
         if (!isMobile) {
           const nextFrame = Math.min(TOTAL_FRAMES - 1, Math.round(p * (TOTAL_FRAMES - 1)));
-          state.frame = nextFrame;
           if (currentFrameIdxRef.current !== nextFrame) {
             currentFrameIdxRef.current = nextFrame;
             drawFrameToCanvas(nextFrame);
@@ -242,51 +233,67 @@ export default function HeroSection() {
     }
   };
 
-  // Fallback statis untuk pengguna dengan prefers-reduced-motion: reduce
+  const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    e.preventDefault();
+    if (lenisRef.current) {
+      lenisRef.current.scrollTo(el, { offset: -64, duration: 0.9 });
+    } else {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    window.history.replaceState(null, '', `#${targetId}`);
+  };
+
   if (prefersReducedMotion) {
     return (
       <section
         id="hero"
-        className="relative overflow-hidden bg-[#041d14] text-white pt-24 pb-16 sm:pt-28 sm:pb-24"
+        className="relative overflow-hidden bg-white dark:bg-slate-950 text-slate-900 dark:text-white py-16 sm:py-24"
       >
         <img
           src="/hero-frames/frame_001.webp"
           alt="Santri Madrasah Diniyyah Al-Amiriyyah Blokagung"
-          className="absolute inset-0 w-full h-full object-cover scale-105 opacity-35"
+          className="absolute inset-0 w-full h-full object-cover scale-105 opacity-25 dark:opacity-30"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#041d14]/80 via-[#041d14]/75 to-[#041d14]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/85 via-white/75 to-white dark:from-slate-950/85 dark:via-slate-950/75 dark:to-slate-950" />
 
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          <p
-            className="text-xl sm:text-2xl text-amber-300 font-serif font-bold"
-            dir="rtl"
-            lang="ar"
-          >
-            إِنَّمَا بُعِثْتُ لِأُتَمِّمَ مَكَارِمَ الْأَخْلَاقِ
-          </p>
-          <p className="text-xs sm:text-sm text-emerald-100/90 italic">
-            &ldquo;Sesungguhnya aku diutus hanya untuk menyempurnakan kemuliaan akhlak.&rdquo; (HR. Imam Al-Baihaqi)
-          </p>
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight font-serif text-white">
-            Madrasah Diniyyah <span className="text-amber-300">Al-Amiriyyah</span> (MADINA) Blokagung
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight font-serif text-emerald-950 dark:text-white">
+            Madrasah Diniyyah{' '}
+            <span className="text-amber-700 dark:text-amber-300 whitespace-nowrap">
+              Al&#8209;Amiriyyah
+            </span>{' '}
+            <span className="block text-lg sm:text-2xl font-sans font-semibold text-slate-700 dark:text-emerald-200 mt-2">
+              (MADINA) Blokagung
+            </span>
           </h1>
-          <p className="text-sm sm:text-lg text-emerald-100/90 max-w-3xl mx-auto">
-            Pusat Tafaqquh Fiddin &amp; Kaderisasi Ulama Berakhlak Mulia yang Menjaga Khazanah Turats Salafiyah dengan Disiplin dan Mutu Pembelajaran Terstruktur.
-          </p>
-          <blockquote className="text-sm sm:text-base text-amber-200 font-serif italic max-w-2xl mx-auto border-y border-amber-400/30 py-3">
+          <div className="max-w-3xl mx-auto px-5 py-4 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-emerald-900/15 dark:border-amber-400/25 shadow-lg">
+            <p
+              className="text-xl sm:text-2xl text-emerald-900 dark:text-amber-300 font-serif font-bold"
+              dir="rtl"
+              lang="ar"
+            >
+              إِنَّمَا بُعِثْتُ لِأُتَمِّمَ مَكَارِمَ الْأَخْلَاقِ
+            </p>
+            <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 italic mt-1">
+              &ldquo;Sesungguhnya aku diutus hanya untuk menyempurnakan kemuliaan akhlak.&rdquo; (HR. Imam Al-Baihaqi)
+            </p>
+          </div>
+          <blockquote className="text-sm sm:text-base text-emerald-950 dark:text-amber-200 font-serif italic max-w-2xl mx-auto border-y border-amber-500/40 py-3 bg-white/85 dark:bg-slate-900/80 rounded-xl px-4">
             &ldquo;Openono perkoro seng ono, mongko bakal maujud perkoro seng ora ono.&rdquo;
           </blockquote>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <a
               href="#kurikulum"
-              className="min-h-[44px] inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm sm:text-base font-bold text-emerald-950 bg-amber-300 hover:bg-amber-200 transition-colors"
+              className="min-h-[44px] inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm sm:text-base font-bold text-white bg-[#0b5751] hover:bg-emerald-800 transition-colors"
             >
               <Compass className="w-5 h-5" />
               <span>Pelajari Kurikulum &amp; Khazanah Kitab</span>
             </a>
             <a
               href="#berita"
-              className="min-h-[44px] inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm sm:text-base font-semibold text-white border border-white/30 hover:bg-white/10 transition-colors"
+              className="min-h-[44px] inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm sm:text-base font-semibold text-emerald-950 dark:text-white bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 transition-colors"
             >
               <Newspaper className="w-5 h-5" />
               <span>Baca Warta Madina</span>
@@ -301,14 +308,14 @@ export default function HeroSection() {
     <section
       ref={sectionRef}
       id="hero"
-      className="relative w-full h-[230vh] md:h-[320vh] bg-[#041d14] text-white"
+      className="relative w-full h-[230vh] md:h-[310vh] bg-white dark:bg-slate-950 text-slate-900 dark:text-white"
     >
-      {/* Viewport Pinned Stage */}
-      <div className="sticky top-0 h-screen w-full overflow-hidden bg-[#041d14]">
-        {/* Poster instant frame 001 agar LCP cepat sebelum canvas siap */}
+      {/* Viewport Pinned Stage tepat di bawah Navbar Putih Sticky (~65px) */}
+      <div className="sticky top-[65px] h-[calc(100svh-65px)] min-h-[520px] w-full overflow-hidden bg-slate-100 dark:bg-slate-950">
+        {/* Poster instant frame 001 (langsung scene kerumunan santri) */}
         <img
           src="/hero-frames/frame_001.webp"
-          alt="Halaman Madrasah Diniyyah Al-Amiriyyah Blokagung"
+          alt="Kerumunan santri Madrasah Diniyyah Al-Amiriyyah Blokagung"
           className={`absolute inset-0 w-full h-full object-cover object-[center_35%] scale-[1.07] transition-opacity duration-500 ${
             !isMobile && firstFrameReady ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
@@ -339,19 +346,19 @@ export default function HeroSection() {
           </div>
         )}
 
-        {/* Scrim Kontras WCAG AA untuk Keterbacaan Teks di Atas Video */}
+        {/* Scrim Putih Lembut Transparan agar foto cerah & teks gelap tetap kontras WCAG AA */}
         <div
-          className="absolute inset-0 pointer-events-none bg-gradient-to-b from-[#041d14]/80 via-[#041d14]/45 to-[#041d14]/95"
+          className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/75 via-white/35 to-white/90 dark:from-slate-950/75 dark:via-slate-950/40 dark:to-slate-950/90"
           aria-hidden="true"
         />
         <div
-          className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(4,29,20,0.45)_0%,rgba(4,29,20,0.82)_100%)]"
+          className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.78)_0%,rgba(255,255,255,0.34)_60%,rgba(255,255,255,0.68)_100%)] dark:bg-[radial-gradient(circle_at_center,rgba(2,6,23,0.45)_0%,rgba(2,6,23,0.75)_100%)]"
           aria-hidden="true"
         />
 
         {/* Lapisan Konten 3 Babak */}
-        <div className="relative z-10 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center text-center pt-14 pb-24">
-          {/* BABAK 1: Identitas Monumental */}
+        <div className="relative z-10 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center text-center pb-20">
+          {/* BABAK 1: Identitas Monumental di atas Scrim Putih Transparan */}
           <div
             aria-hidden={activeChapter !== 0}
             className={`absolute inset-x-4 sm:inset-x-8 flex flex-col items-center justify-center transition-all duration-700 ${
@@ -360,18 +367,17 @@ export default function HeroSection() {
                 : 'opacity-0 -translate-y-6 scale-95 pointer-events-none'
             }`}
           >
-            <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.22em] text-amber-300 mb-3 sm:mb-4">
+            <p className="text-[11px] sm:text-sm font-bold uppercase tracking-[0.2em] text-emerald-800 dark:text-amber-300 mb-3 sm:mb-4">
               Ponpes Darussalam Blokagung • Banyuwangi
             </p>
-            <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight font-serif text-white max-w-5xl leading-[1.08] drop-shadow-md">
+            <h1 className="text-[28px] sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight font-serif text-emerald-950 dark:text-white max-w-6xl leading-[1.12] drop-shadow-xs">
               Madrasah Diniyyah{' '}
-              <span className="text-amber-300">Al-Amiriyyah</span>
+              <span className="text-amber-700 dark:text-amber-300 whitespace-nowrap">
+                Al&#8209;Amiriyyah
+              </span>
             </h1>
-            <p className="mt-3 sm:mt-4 text-lg sm:text-2xl md:text-3xl font-semibold tracking-wide text-emerald-100">
+            <p className="mt-3 sm:mt-4 text-lg sm:text-2xl md:text-3xl font-bold tracking-wide text-slate-800 dark:text-emerald-100">
               (MADINA) Blokagung
-            </p>
-            <p className="mt-4 sm:mt-5 max-w-2xl text-sm sm:text-base text-emerald-100/90 leading-relaxed">
-              Merawat tradisi keilmuan salafiyah dan kedisiplinan santri dalam satu kesatuan sistem pendidikan diniyyah.
             </p>
           </div>
 
@@ -386,24 +392,24 @@ export default function HeroSection() {
                   : 'opacity-0 -translate-y-8 scale-95 pointer-events-none'
             }`}
           >
-            <div className="max-w-3xl w-full px-5 py-6 sm:px-8 sm:py-7 rounded-2xl bg-[#041d14]/80 border border-amber-300/30 backdrop-blur-md shadow-2xl">
+            <div className="max-w-3xl w-full px-5 py-6 sm:px-8 sm:py-7 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-emerald-900/15 dark:border-amber-300/30 backdrop-blur-md shadow-2xl">
               <p
-                className="text-xl sm:text-3xl md:text-4xl text-amber-300 font-serif leading-relaxed mb-3 font-bold"
+                className="text-xl sm:text-3xl md:text-4xl text-emerald-900 dark:text-amber-300 font-serif leading-relaxed mb-3 font-bold"
                 dir="rtl"
                 lang="ar"
               >
                 إِنَّمَا بُعِثْتُ لِأُتَمِّمَ مَكَارِمَ الْأَخْلَاقِ
               </p>
-              <p className="text-sm sm:text-base text-white italic">
+              <p className="text-sm sm:text-base text-slate-700 dark:text-white italic">
                 &ldquo;Sesungguhnya aku diutus hanya untuk menyempurnakan kemuliaan akhlak.&rdquo;
-                <span className="text-amber-300 not-italic font-semibold ml-1.5">
+                <span className="text-amber-700 dark:text-amber-300 not-italic font-semibold ml-1.5">
                   (HR. Imam Al-Baihaqi)
                 </span>
               </p>
             </div>
 
-            <p className="mt-6 sm:mt-8 text-base sm:text-xl md:text-2xl text-white max-w-3xl leading-relaxed font-medium">
-              Pusat <span className="text-amber-300 font-bold">Tafaqquh Fiddin</span> &amp; Kaderisasi Ulama Berakhlak Mulia yang Menjaga Khazanah Turats Salafiyah dengan Mutu Pembelajaran Terstruktur.
+            <p className="mt-5 sm:mt-7 px-5 py-3 rounded-2xl bg-white/85 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-700 text-sm sm:text-lg md:text-xl text-slate-800 dark:text-white max-w-3xl leading-relaxed font-semibold shadow-sm">
+              Pusat <span className="text-emerald-800 dark:text-amber-300 font-bold">Tafaqquh Fiddin</span> &amp; Kaderisasi Ulama Berakhlak Mulia yang Menjaga Khazanah Turats Salafiyah dengan Mutu Pembelajaran Terstruktur.
             </p>
           </div>
 
@@ -416,14 +422,14 @@ export default function HeroSection() {
                 : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
             }`}
           >
-            <div className="max-w-3xl w-full px-5 py-5 sm:px-8 sm:py-6 rounded-2xl bg-[#041d14]/85 border-y border-amber-300/40 shadow-2xl">
-              <p className="text-xs sm:text-sm text-amber-300 uppercase tracking-[0.2em] font-bold mb-2">
+            <div className="max-w-3xl w-full px-5 py-5 sm:px-8 sm:py-6 rounded-2xl bg-white/92 dark:bg-slate-900/90 border-y border-amber-500/45 shadow-2xl">
+              <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300 uppercase tracking-[0.2em] font-bold mb-2">
                 Dawuh Pendiri • Almaghfurlah KH. Mukhtar Syafa&apos;at
               </p>
-              <blockquote className="text-lg sm:text-2xl md:text-3xl text-amber-200 font-serif italic leading-snug">
+              <blockquote className="text-lg sm:text-2xl md:text-3xl text-emerald-950 dark:text-amber-200 font-serif italic leading-snug">
                 &ldquo;Openono perkoro seng ono, mongko bakal maujud perkoro seng ora ono.&rdquo;
               </blockquote>
-              <p className="text-xs sm:text-sm text-emerald-100/90 mt-2">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-emerald-100/90 mt-2 font-medium">
                 (Rawatlah apa yang sudah ada, niscaya akan terwujud apa yang belum ada).
               </p>
             </div>
@@ -431,26 +437,27 @@ export default function HeroSection() {
             <div className="mt-7 sm:mt-9 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
               <a
                 href="#kurikulum"
-                className="min-h-[44px] inline-flex items-center justify-center gap-2.5 px-6 sm:px-7 py-3 rounded-xl text-sm sm:text-base font-bold text-emerald-950 bg-amber-300 hover:bg-amber-200 shadow-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200"
+                onClick={(e) => scrollToSection(e, 'kurikulum')}
+                className="min-h-[44px] inline-flex items-center justify-center gap-2.5 px-6 sm:px-7 py-3 rounded-xl text-sm sm:text-base font-bold text-white bg-[#0b5751] hover:bg-emerald-800 shadow-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
               >
-                <Compass className="w-5 h-5 text-emerald-950" />
+                <Compass className="w-5 h-5 text-amber-300" />
                 <span>Pelajari Kurikulum &amp; Khazanah Kitab</span>
               </a>
               <a
                 href="#berita"
-                className="min-h-[44px] inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 rounded-xl text-sm sm:text-base font-semibold text-white bg-[#062c1e]/90 hover:bg-emerald-900 border border-amber-300/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200"
+                onClick={(e) => scrollToSection(e, 'berita')}
+                className="min-h-[44px] inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 rounded-xl text-sm sm:text-base font-semibold text-emerald-950 dark:text-white bg-white/95 dark:bg-slate-900 hover:bg-slate-100 border border-slate-300 dark:border-slate-700 shadow-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
               >
-                <Newspaper className="w-4 h-4 text-amber-300" />
+                <Newspaper className="w-4 h-4 text-emerald-700 dark:text-amber-300" />
                 <span>Baca Warta Madina</span>
               </a>
             </div>
           </div>
         </div>
 
-        {/* HUD Bawah: Indikator Babak, Petunjuk Gulir, & Lewati Intro */}
+        {/* HUD Bawah Cerah Terstruktur */}
         <div className="absolute inset-x-0 bottom-0 z-20 px-4 sm:px-8 pb-5 sm:pb-6">
           <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-            {/* Kontrol Lompat Babak */}
             <div className="flex items-center gap-1.5 sm:gap-2" role="group" aria-label="Babak Pengenalan">
               {CHAPTERS.map((ch) => {
                 const isActive = activeChapter === ch.id;
@@ -459,10 +466,10 @@ export default function HeroSection() {
                     key={ch.id}
                     type="button"
                     onClick={() => jumpToChapter(ch.progress)}
-                    className={`min-h-[44px] px-3 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${
+                    className={`min-h-[44px] px-3 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
                       isActive
-                        ? 'bg-amber-300 text-emerald-950'
-                        : 'bg-[#041d14]/75 text-emerald-100 hover:bg-[#062c1e] border border-white/15'
+                        ? 'bg-[#0b5751] text-white'
+                        : 'bg-white/90 dark:bg-slate-900/85 text-slate-800 dark:text-slate-100 hover:bg-white border border-slate-200 dark:border-slate-700'
                     }`}
                   >
                     <span className="font-mono mr-1 opacity-80">{ch.code}</span>
@@ -472,26 +479,24 @@ export default function HeroSection() {
               })}
             </div>
 
-            {/* Petunjuk Scroll Tengah (Desktop) */}
-            <div className="hidden md:flex items-center gap-2 text-xs text-amber-200/90 font-medium">
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/85 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-700 text-xs text-slate-800 dark:text-amber-200 font-semibold shadow-xs">
               <span>{activeChapter < 2 ? 'Gulir ke bawah untuk melanjutkan' : 'Lanjut ke Warta Madina'}</span>
-              <ChevronDown className="w-4 h-4 animate-bounce" />
+              <ChevronDown className="w-4 h-4 animate-bounce text-emerald-700 dark:text-amber-300" />
             </div>
 
-            {/* Tombol Akses Cepat Lewati Intro */}
             <a
               href="#berita"
-              className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-[#041d14]/80 hover:bg-emerald-900 text-amber-200 border border-amber-300/35 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+              onClick={(e) => scrollToSection(e, 'berita')}
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-white/90 dark:bg-slate-900/85 hover:bg-white text-emerald-950 dark:text-amber-200 border border-slate-200 dark:border-slate-700 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
             >
               <span>Lewati Intro</span>
-              <FastForward className="w-3.5 h-3.5" />
+              <FastForward className="w-3.5 h-3.5 text-emerald-700 dark:text-amber-300" />
             </a>
           </div>
 
-          {/* Progress Bar Timeline Scroll */}
-          <div className="max-w-7xl mx-auto mt-2.5 h-1 rounded-full bg-white/15 overflow-hidden">
+          <div className="max-w-7xl mx-auto mt-2.5 h-1 rounded-full bg-slate-300/80 dark:bg-white/15 overflow-hidden">
             <div
-              className="h-full bg-amber-300 transition-[width] duration-75"
+              className="h-full bg-[#0b5751] dark:bg-amber-300 transition-[width] duration-75"
               style={{ width: `${Math.round(scrollProgress * 100)}%` }}
             />
           </div>

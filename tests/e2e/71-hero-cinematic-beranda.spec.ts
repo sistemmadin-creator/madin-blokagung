@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { openPublicContext } from './helpers/auth';
 
 test.describe('71 - Beranda Publik Cinematic Scroll-Driven Hero', () => {
-  test('1. Desktop: 3 babak hero interaktif, canvas scrubbing, navbar transparan -> solid, tanpa console error', async ({ browser }) => {
+  test('1. Desktop: Navbar putih solid, Al-Amiriyyah 1 baris, 3 babak hero interaktif, tanpa console error', async ({ browser }) => {
     const { context, page } = await openPublicContext(browser);
     await page.setViewportSize({ width: 1280, height: 800 });
 
@@ -14,18 +14,24 @@ test.describe('71 - Beranda Publik Cinematic Scroll-Driven Hero', () => {
 
     await page.goto('/');
 
-    // Babak 1 tampil saat awal
+    // Babak 1 tampil saat awal, tanpa subjudul lama yang dihapus
     await expect(page.getByRole('heading', { name: /Madrasah Diniyyah/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/Merawat tradisi keilmuan salafiyah/i)).toHaveCount(0);
     await expect(page.locator('#hero canvas')).toBeVisible();
 
-    // Navbar di atas hero transparan
-    const header = page.locator('header').first();
-    await expect(header).toHaveClass(/from-\[#041d14\]\/85/);
+    // Tulisan Al-Amiriyyah berada dalam 1 baris utuh (single line rect)
+    const alAmiriyyahRects = await page
+      .locator('#hero h1 span')
+      .evaluate((el) => el.getClientRects().length);
+    expect(alAmiriyyahRects).toBe(1);
 
-    // Klik Babak 02 Risalah -> Hadits tampil & navbar berubah solid
+    // Navbar putih solid sejak awal (scrollY = 0)
+    const header = page.locator('header').first();
+    await expect(header).toHaveClass(/bg-white\/95/);
+
+    // Klik Babak 02 Risalah -> Hadits tampil
     await page.getByRole('button', { name: /02\s*Risalah/i }).click();
     await expect(page.getByText(/HR\. Imam Al-Baihaqi/i)).toBeVisible({ timeout: 10_000 });
-    await expect(header).toHaveClass(/bg-white\/95/, { timeout: 10_000 });
 
     // Klik Babak 03 Khazanah -> Dawuh Pendiri & CTA muncul
     await page.getByRole('button', { name: /03\s*Khazanah/i }).click();
@@ -49,12 +55,17 @@ test.describe('71 - Beranda Publik Cinematic Scroll-Driven Hero', () => {
     await context.close();
   });
 
-  test('2. Mobile (375px): Keyframe crossfade, tap target & tanpa overflow horizontal', async ({ browser }) => {
+  test('2. Mobile (375px): Keyframe crossfade, Al-Amiriyyah 1 baris, tap target >=44px & tanpa overflow', async ({ browser }) => {
     const { context, page } = await openPublicContext(browser);
     await page.setViewportSize({ width: 375, height: 812 });
 
     await page.goto('/');
     await expect(page.getByRole('heading', { name: /Madrasah Diniyyah/i })).toBeVisible({ timeout: 15_000 });
+
+    const alAmiriyyahRects = await page
+      .locator('#hero h1 span')
+      .evaluate((el) => el.getClientRects().length);
+    expect(alAmiriyyahRects).toBe(1);
 
     const btnBabak2 = page.getByRole('button', { name: /02\s*Risalah/i });
     const box = await btnBabak2.boundingBox();

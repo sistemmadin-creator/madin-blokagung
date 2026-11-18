@@ -69,6 +69,44 @@ export function sanitizeRelativeOrHttpUrl(
 }
 
 /**
+ * Mengembalikan URL gambar yang aman dirender dan diizinkan oleh CSP img-src,
+ * atau null jika URL berupa halaman web/host di luar daftar gambar yang diizinkan.
+ */
+export function sanitizeRenderableImageUrl(rawUrl: string | null | undefined): string | null {
+  if (typeof rawUrl !== 'string') return null;
+  const trimmed = rawUrl.trim();
+  if (!trimmed || /[\u0000-\u001F\u007F]/.test(trimmed)) return null;
+
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//') && !trimmed.startsWith('/\\')) {
+    return trimmed;
+  }
+
+  if (/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(trimmed) || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+
+  const safeHttp = sanitizeHttpUrl(trimmed);
+  if (!safeHttp) return null;
+
+  try {
+    const host = new URL(safeHttp).hostname.toLowerCase();
+    const isAllowedImageHost =
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host.endsWith('.supabase.co') ||
+      host === 'images.unsplash.com' ||
+      host.endsWith('.tiktokcdn.com') ||
+      host === 'i.ytimg.com' ||
+      host === 'img.youtube.com' ||
+      host.endsWith('.cdninstagram.com');
+
+    return isAllowedImageHost ? safeHttp : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Mencegah CSV / Spreadsheet Formula Injection (CWE-1236) pada sel teks yang diawali
  * karakter pemicu formula (=, +, -, @, Tab, CR) tanpa merusak tipe angka (number).
  */

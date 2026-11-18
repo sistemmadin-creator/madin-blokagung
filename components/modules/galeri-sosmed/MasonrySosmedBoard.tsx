@@ -14,7 +14,10 @@ import {
   GaleriSosmedItem,
   PLATFORM_SOSMED_MAP,
 } from '@/types/galeri-sosmed';
-import { sanitizeHttpUrl } from '@/lib/security/urlSanitizer';
+import {
+  sanitizeHttpUrl,
+  sanitizeRenderableImageUrl,
+} from '@/lib/security/urlSanitizer';
 
 interface MasonrySosmedBoardProps {
   items: GaleriSosmedItem[];
@@ -75,6 +78,7 @@ export default function MasonrySosmedBoard({
   const [columnCount, setColumnCount] = useState<number>(4);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const syncColumns = () => {
@@ -127,6 +131,7 @@ export default function MasonrySosmedBoard({
             const pMeta = PLATFORM_SOSMED_MAP[item.platform] || PLATFORM_SOSMED_MAP.youtube;
             const aspectClass = FORMAT_ASPECT_CLASS[item.content_format] || 'aspect-[4/5]';
             const safeUrl = sanitizeHttpUrl(item.source_url) || '#';
+            const safeThumbUrl = sanitizeRenderableImageUrl(item.thumbnail_url);
             const isMenuOpen = openMenuId === item.id;
 
             return (
@@ -139,12 +144,26 @@ export default function MasonrySosmedBoard({
                     aria-label={`Tonton karya ${pMeta.label}: ${item.title}`}
                     className={`relative block w-full ${aspectClass} overflow-hidden text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600`}
                   >
-                    <img
-                      src={item.thumbnail_url}
-                      alt={item.title}
-                      loading="lazy"
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                    />
+                    {!failedImages[item.id] && safeThumbUrl ? (
+                      <img
+                        src={safeThumbUrl}
+                        alt={item.title}
+                        loading="lazy"
+                        onError={() =>
+                          setFailedImages((prev) => ({ ...prev, [item.id]: true }))
+                        }
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-emerald-950 via-[#0b5751] to-slate-900 flex flex-col items-center justify-center p-4 text-center">
+                        <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center mb-2">
+                          <Play className="w-6 h-6 text-amber-300 fill-amber-300 ml-0.5" />
+                        </div>
+                        <span className="text-[11px] font-bold text-amber-200 uppercase tracking-wider">
+                          {pMeta.label}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Scrim hover halus seperti Pinterest */}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 group-focus-within:bg-black/30 transition-colors duration-200" />

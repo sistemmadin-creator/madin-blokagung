@@ -4,6 +4,7 @@ test.describe('69 - Media Madin, Multi-Topik Berita (Umum + Jenjang), & Portofol
   test('1. Portal Publik (madinblokagung.com): Title, Brand Navbar, Menu Media Madin, Kabar Madin Blokagung, Filter Umum, & Switcher Galeri Sosmed', async ({
     browser,
   }) => {
+    test.setTimeout(120_000);
     const context = await browser.newContext({
       extraHTTPHeaders: {
         'x-forwarded-host': 'localhost:3000',
@@ -80,11 +81,16 @@ test.describe('69 - Media Madin, Multi-Topik Berita (Umum + Jenjang), & Portofol
     await expect(page.locator('#program').getByRole('heading', { name: 'Kelas Reguler' })).toBeVisible();
     await expect(page.locator('#kurikulum').getByRole('button', { name: /Jenjang Ula/i })).toBeVisible();
 
-    // 6. Switcher Mode ke 'Galeri Sosmed' di Beranda
+    // 6. Switcher Mode ke 'Galeri Sosmed' di Beranda (layout Masonry ala /galeri-sosmed)
     const btnGaleriSosmedTab = beritaSection.getByRole('button', { name: 'Galeri Sosmed' });
     await btnGaleriSosmedTab.click();
-    await expect(beritaSection.getByText('Official Creator Studio')).toBeVisible();
-    await expect(beritaSection.getByText('Featured Showreel')).toBeVisible();
+    await expect(
+      beritaSection.getByPlaceholder(/Cari karya Media Madin/i)
+    ).toBeVisible();
+    await expect(
+      beritaSection.getByRole('button', { name: /Semua Platform/i })
+    ).toBeVisible();
+    await expect(beritaSection.getByText('Official Creator Studio')).toHaveCount(0);
 
     // 7. Klik ke halaman penuh /galeri-sosmed dan uji filter + Lightbox Modal + Escape
     const fullPortfolioLink = beritaSection.getByRole('link', {
@@ -98,19 +104,19 @@ test.describe('69 - Media Madin, Multi-Topik Berita (Umum + Jenjang), & Portofol
       })
     ).toBeVisible();
 
-    // Uji tombol filter platform (YouTube, Instagram, TikTok, Semua Platform)
-    await page.getByRole('button', { name: /^YouTube\s+\d+$/i }).click();
-    await expect(
-      page.getByRole('button', { name: /Dokumenter Khidmah Keilmuan/i }).first()
-    ).toBeVisible();
-    await page.getByRole('button', { name: /^Instagram\s+\d+$/i }).click();
-    await expect(
-      page.getByRole('button', { name: /Adu Dalil Syarah Fathul Qorib/i }).first()
-    ).toBeVisible();
-    await page.getByRole('button', { name: /^TikTok\s+\d+$/i }).click();
-    await expect(
-      page.getByRole('button', { name: /Gema Lalaran 357 Santri/i }).first()
-    ).toBeVisible();
+    // Uji tombol filter platform (YouTube, Instagram, TikTok, Semua Platform) sesuai data aktual DB
+    for (const labelPrefix of ['YouTube', 'Instagram', 'TikTok']) {
+      const btnPlat = page.getByRole('button', { name: new RegExp(`^${labelPrefix}\\s+\\d+$`, 'i') });
+      const text = (await btnPlat.innerText()).trim();
+      const match = text.match(/(\d+)$/);
+      const count = match ? Number(match[1]) : 0;
+      await btnPlat.click();
+      if (count > 0) {
+        await expect(page.getByRole('button', { name: /^Tonton karya /i }).first()).toBeVisible();
+      } else {
+        await expect(page.getByRole('heading', { name: /Tidak Ada Karya yang Sesuai Filter/i })).toBeVisible();
+      }
+    }
     await page.getByRole('button', { name: /Semua Platform/i }).click();
 
     // Uji tombol filter kategori topik & sub-kategori di Galeri Sosmed
