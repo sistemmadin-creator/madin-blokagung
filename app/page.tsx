@@ -1,8 +1,10 @@
 import React from 'react';
 import type { Metadata } from 'next';
 import {
+  BerandaScrollProvider,
   NavbarProfil,
   HeroSection,
+  ParallaxShowcaseSection,
   BeritaShowcaseSection,
   StatistikCounter,
   KurikulumKitabSection,
@@ -21,27 +23,32 @@ export const metadata: Metadata = {
 
 export default function RootPage() {
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col selection:bg-amber-300 selection:text-emerald-950">
-      {/* Sticky Public Header & Navigation */}
-      <NavbarProfil />
+    <BerandaScrollProvider>
+      <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col overflow-x-clip selection:bg-amber-300 selection:text-emerald-950">
+        {/* Sticky Public Header & Navigation */}
+        <NavbarProfil />
 
-      {/* Main Content Sections */}
-      <main className="flex-1">
-        {/* 1. Hero Section (Visi, Hadits, Identitas, Dawuh Masyayikh, CTAs) */}
-        <HeroSection />
+        {/* Main Content Sections */}
+        <main className="flex-1">
+          {/* 1. Hero Section (Visi, Hadits, Identitas, Dawuh Masyayikh, CTAs) */}
+          <HeroSection />
 
-        {/* 2. Berita Warta Madina Editorial ala Lirboyo.net (Di atas Selayang Pandang) */}
-        <BeritaShowcaseSection />
+          {/* 2. Parallax Web Jejak Ekosistem Pesantren (Hibrida Adaptif Desktop & Mobile) */}
+          <ParallaxShowcaseSection />
 
-        {/* 3. Statistik Lembaga & 3 Pilar Program Pendidikan (Selayang Pandang) */}
-        <StatistikCounter />
+          {/* 3. Berita Warta Madina Editorial & Galeri Sosmed Masonry */}
+          <BeritaShowcaseSection />
 
-        {/* 4. Khazanah Kitab Kuning Interaktif & Waktu KBM */}
-        <KurikulumKitabSection />
-      </main>
+          {/* 4. Statistik Lembaga & 3 Pilar Program Pendidikan (Selayang Pandang) */}
+          <StatistikCounter />
 
-      {/* Public Footer & Contacts */}
-      <FooterProfil />
-    </div>
+          {/* 5. Khazanah Kitab Kuning Interaktif & Waktu KBM */}
+          <KurikulumKitabSection />
+        </main>
+
+        {/* Public Footer & Contacts */}
+        <FooterProfil />
+      </div>
+    </BerandaScrollProvider>
   );
 }

@@ -27,6 +27,7 @@ import {
 } from '@/types/kepengurusan';
 import { useMutakhorijinStore } from '@/stores/useMutakhorijinStore';
 import { getAlbumSlug, getPublicNavbarAlbums } from '@/types/mutakhorijin';
+import { useBerandaScroll } from './BerandaScrollProvider';
 
 interface SubMenuItem {
   label: string;
@@ -145,6 +146,7 @@ const TOP_NAV_ITEMS: TopNavEntry[] = [
 
 export default function NavbarProfil() {
   const pathname = usePathname();
+  const berandaScroll = useBerandaScroll();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [isKepengurusanSubOpen, setIsKepengurusanSubOpen] = useState(false);
@@ -255,16 +257,26 @@ export default function NavbarProfil() {
     setIsKepengurusanSubOpen((prev) => !prev);
   };
 
-  const handleAnchorLinkClick = (href: string) => {
+  const handleAnchorLinkClick = (href: string, e?: React.MouseEvent<HTMLAnchorElement>) => {
     setOpenDropdownId(null);
     setMobileMenuOpen(false);
 
     if (pathname === '/' && href.startsWith('/#')) {
       const targetHash = href.slice(1);
+      const elId = targetHash.slice(1);
+      const targetEl = document.getElementById(elId);
+
+      if (targetEl && berandaScroll) {
+        e?.preventDefault();
+        window.history.replaceState(null, '', targetHash);
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+        berandaScroll.scrollToTarget(elId);
+        return;
+      }
+
       if (window.location.hash === targetHash) {
         window.dispatchEvent(new HashChangeEvent('hashchange'));
-        const elId = targetHash.slice(1);
-        document.getElementById(elId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        targetEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
   };
@@ -316,7 +328,7 @@ export default function NavbarProfil() {
                   <a
                     key={entry.id}
                     href={entry.href}
-                    onClick={() => handleAnchorLinkClick(entry.href!)}
+                    onClick={(e) => handleAnchorLinkClick(entry.href!, e)}
                     className="px-3 xl:px-3.5 py-2 rounded-lg text-sm font-semibold whitespace-nowrap text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50/80 dark:hover:bg-slate-800/60 transition-colors"
                   >
                     {entry.label}
@@ -398,7 +410,7 @@ export default function NavbarProfil() {
                                 key={sub.href}
                                 href={sub.href}
                                 role="menuitem"
-                                onClick={() => handleAnchorLinkClick(sub.href)}
+                                onClick={(e) => handleAnchorLinkClick(sub.href, e)}
                                 className="group/item flex items-start gap-3 px-3 py-2.5 rounded-xl hover:bg-emerald-50/80 dark:hover:bg-slate-800 transition-colors"
                               >
                                 {content}
@@ -636,7 +648,7 @@ export default function NavbarProfil() {
                 <a
                   key={entry.id}
                   href={entry.href}
-                  onClick={() => handleAnchorLinkClick(entry.href!)}
+                  onClick={(e) => handleAnchorLinkClick(entry.href!, e)}
                   className="flex items-center min-h-[44px] px-3 py-2.5 rounded-xl text-base font-semibold text-slate-800 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
                 >
                   {entry.label}
@@ -681,7 +693,7 @@ export default function NavbarProfil() {
                         <a
                           key={sub.href}
                           href={sub.href}
-                          onClick={() => handleAnchorLinkClick(sub.href)}
+                          onClick={(e) => handleAnchorLinkClick(sub.href, e)}
                           className="flex items-center gap-3 min-h-[44px] px-3 py-2 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-800"
                         >
                           {sub.icon}

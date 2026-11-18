@@ -1,5 +1,7 @@
+export { default as BerandaScrollProvider } from './BerandaScrollProvider';
 export { default as NavbarProfil } from './NavbarProfil';
 export { default as HeroSection } from './HeroSection';
+export { default as ParallaxShowcaseSection } from './ParallaxShowcaseSection';
 export { default as BeritaShowcaseSection } from './BeritaShowcaseSection';
 export { default as StatistikCounter } from './StatistikCounter';
 export { default as KurikulumKitabSection } from './KurikulumKitabSection';

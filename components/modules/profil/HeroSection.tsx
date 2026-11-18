@@ -3,8 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import Lenis from 'lenis';
 import { Compass, ChevronDown, Newspaper, FastForward } from 'lucide-react';
+import { useBerandaScroll } from './BerandaScrollProvider';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -27,9 +27,9 @@ function getFramePath(indexZeroBased: number): string {
 }
 
 export default function HeroSection() {
+  const berandaScroll = useBerandaScroll();
   const sectionRef = useRef<HTMLElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const lenisRef = useRef<Lenis | null>(null);
   const framesRef = useRef<(HTMLImageElement | null)[]>(
     Array.from({ length: TOTAL_FRAMES }, () => null)
   );
@@ -170,21 +170,6 @@ export default function HeroSection() {
     const section = sectionRef.current;
     if (!section) return;
 
-    const lenis = new Lenis({
-      lerp: 0.085,
-      smoothWheel: true,
-    });
-    lenisRef.current = lenis;
-
-    const onLenisScroll = () => ScrollTrigger.update();
-    lenis.on('scroll', onLenisScroll);
-
-    const onTick = (time: number) => {
-      lenis.raf(time * 1000);
-    };
-    gsap.ticker.add(onTick);
-    gsap.ticker.lagSmoothing(0);
-
     const st = ScrollTrigger.create({
       trigger: section,
       start: 'top top',
@@ -214,10 +199,6 @@ export default function HeroSection() {
 
     return () => {
       st.kill();
-      gsap.ticker.remove(onTick);
-      lenis.off('scroll', onLenisScroll);
-      lenis.destroy();
-      lenisRef.current = null;
     };
   }, [isMobile, prefersReducedMotion]);
 
@@ -226,8 +207,8 @@ export default function HeroSection() {
     if (!section) return;
     const maxScroll = section.offsetHeight - window.innerHeight;
     const targetY = section.offsetTop + Math.max(0, maxScroll) * chapterProgress;
-    if (lenisRef.current) {
-      lenisRef.current.scrollTo(targetY, { duration: 1.0 });
+    if (berandaScroll) {
+      berandaScroll.scrollToY(targetY, 1.0);
     } else {
       window.scrollTo({ top: targetY, behavior: 'smooth' });
     }
@@ -237,8 +218,8 @@ export default function HeroSection() {
     const el = document.getElementById(targetId);
     if (!el) return;
     e.preventDefault();
-    if (lenisRef.current) {
-      lenisRef.current.scrollTo(el, { offset: -64, duration: 0.9 });
+    if (berandaScroll) {
+      berandaScroll.scrollToTarget(targetId, { offset: -64, duration: 0.9 });
     } else {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -308,7 +289,7 @@ export default function HeroSection() {
     <section
       ref={sectionRef}
       id="hero"
-      className="relative w-full h-[230vh] md:h-[310vh] bg-white dark:bg-slate-950 text-slate-900 dark:text-white"
+      className="relative w-full h-[195vh] md:h-[235vh] bg-white dark:bg-slate-950 text-slate-900 dark:text-white"
     >
       {/* Viewport Pinned Stage tepat di bawah Navbar Putih Sticky (~65px) */}
       <div className="sticky top-[65px] h-[calc(100svh-65px)] min-h-[520px] w-full overflow-hidden bg-slate-100 dark:bg-slate-950">
@@ -480,13 +461,13 @@ export default function HeroSection() {
             </div>
 
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/85 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-700 text-xs text-slate-800 dark:text-amber-200 font-semibold shadow-xs">
-              <span>{activeChapter < 2 ? 'Gulir ke bawah untuk melanjutkan' : 'Lanjut ke Warta Madina'}</span>
+              <span>{activeChapter < 2 ? 'Gulir ke bawah untuk melanjutkan' : 'Lanjut ke Jejak Madina'}</span>
               <ChevronDown className="w-4 h-4 animate-bounce text-emerald-700 dark:text-amber-300" />
             </div>
 
             <a
-              href="#berita"
-              onClick={(e) => scrollToSection(e, 'berita')}
+              href="#ekosistem"
+              onClick={(e) => scrollToSection(e, 'ekosistem')}
               className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-white/90 dark:bg-slate-900/85 hover:bg-white text-emerald-950 dark:text-amber-200 border border-slate-200 dark:border-slate-700 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
             >
               <span>Lewati Intro</span>

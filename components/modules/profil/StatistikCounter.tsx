@@ -1,12 +1,42 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { CheckCircle2 } from 'lucide-react';
 import { useProfilKontenStore } from '@/stores/useProfilKontenStore';
 import { MODEL_THEME_META } from '@/types/profil-konten';
 import { renderProfilIcon } from '@/lib/utils/profilIconHelper';
 
+gsap.registerPlugin(ScrollTrigger);
+
+function animateCountUpElement(el: HTMLElement, rawValue: string) {
+  const match = rawValue.trim().match(/^([^0-9]*)([0-9][0-9.]*)(.*)$/);
+  if (!match) return;
+  const [, prefix, numText, suffix] = match;
+  const usesDotSeparator = numText.includes('.');
+  const target = Number(numText.replace(/\./g, ''));
+  if (!Number.isFinite(target) || target <= 0) return;
+
+  const counter = { val: 0 };
+  gsap.to(counter, {
+    val: target,
+    duration: 1.05,
+    ease: 'power2.out',
+    onUpdate: () => {
+      const rounded = Math.round(counter.val);
+      const formatted = usesDotSeparator ? rounded.toLocaleString('id-ID') : String(rounded);
+      el.textContent = `${prefix}${formatted}${suffix}`;
+    },
+    onComplete: () => {
+      el.textContent = rawValue;
+    },
+  });
+}
+
 export default function StatistikCounter() {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const hasAnimatedRef = useRef(false);
   const { sectionMeta, metrikList, modelList, fetchProfilKonten } = useProfilKontenStore();
 
   useEffect(() => {
@@ -18,8 +48,72 @@ export default function StatistikCounter() {
   const activeMetriks = metrikList.filter((m) => m.is_active !== false);
   const activeModels = modelList.filter((m) => m.is_active !== false);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || hasAnimatedRef.current) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const section = sectionRef.current;
+    if (!section || (activeMetriks.length === 0 && activeModels.length === 0)) return;
+
+    const ctx = gsap.context(() => {
+      ScrollTrigger.create({
+        trigger: section,
+        start: 'top 84%',
+        once: true,
+        onEnter: () => {
+          if (hasAnimatedRef.current) return;
+          hasAnimatedRef.current = true;
+
+          const statCards = section.querySelectorAll('.js-stat-card');
+          if (statCards.length > 0) {
+            gsap.fromTo(
+              statCards,
+              { y: 22, opacity: 0.2 },
+              {
+                y: 0,
+                opacity: 1,
+                duration: 0.5,
+                stagger: 0.07,
+                ease: 'power2.out',
+                clearProps: 'transform,opacity',
+              }
+            );
+          }
+
+          section.querySelectorAll<HTMLElement>('.js-stat-value').forEach((el) => {
+            const raw = el.dataset.rawValue;
+            if (raw) animateCountUpElement(el, raw);
+          });
+
+          const pilarCards = section.querySelectorAll('.js-pilar-card');
+          if (pilarCards.length > 0) {
+            gsap.fromTo(
+              pilarCards,
+              { y: 24, opacity: 0.2 },
+              {
+                y: 0,
+                opacity: 1,
+                duration: 0.55,
+                stagger: 0.09,
+                ease: 'power2.out',
+                clearProps: 'transform,opacity',
+                scrollTrigger: {
+                  trigger: '#program',
+                  start: 'top 86%',
+                  once: true,
+                },
+              }
+            );
+          }
+        },
+      });
+    }, section);
+
+    return () => ctx.revert();
+  }, [activeMetriks.length, activeModels.length]);
+
   return (
     <section
+      ref={sectionRef}
       id="statistik"
       className="py-16 sm:py-24 bg-slate-50 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 transition-colors"
     >
@@ -42,7 +136,7 @@ export default function StatistikCounter() {
           {activeMetriks.map((item) => (
             <div
               key={item.id}
-              className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm hover:shadow-md border border-slate-200/80 dark:border-slate-700/80 transition-all hover:-translate-y-1 group"
+              className="js-stat-card relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm hover:shadow-md border border-slate-200/80 dark:border-slate-700/80 transition-all hover:-translate-y-1 group"
             >
               <div className="flex items-center justify-between mb-4">
                 <div
@@ -56,7 +150,10 @@ export default function StatistikCounter() {
                   </span>
                 )}
               </div>
-              <h3 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight font-serif mb-1">
+              <h3
+                data-raw-value={item.value}
+                className="js-stat-value text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight font-serif mb-1"
+              >
                 {item.value}
               </h3>
               <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300 mb-1">
@@ -89,7 +186,7 @@ export default function StatistikCounter() {
               return (
                 <div
                   key={pilar.id}
-                  className={`rounded-2xl p-6 sm:p-7 border backdrop-blur-sm transition-all hover:shadow-md ${themeClass} flex flex-col justify-between`}
+                  className={`js-pilar-card rounded-2xl p-6 sm:p-7 border backdrop-blur-sm transition-all hover:shadow-md ${themeClass} flex flex-col justify-between`}
                 >
                   <div>
                     <div className="flex items-center justify-between mb-4">

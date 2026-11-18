@@ -43,8 +43,17 @@ test.describe('71 - Beranda Publik Cinematic Scroll-Driven Hero', () => {
     await page.getByRole('button', { name: /01\s*Tradisi/i }).click();
     await expect(page.getByRole('heading', { name: /Madrasah Diniyyah/i })).toBeVisible({ timeout: 10_000 });
 
-    // Klik Lewati Intro -> scroll ke #berita
+    // Klik Lewati Intro -> scroll ke awal section Parallax (#ekosistem)
     await page.getByRole('link', { name: /Lewati Intro/i }).click();
+    await expect(page.locator('#ekosistem')).toBeInViewport({ timeout: 10_000 });
+
+    // Uji interaksi HUD Parallax Desktop (02 Majelis & 03 Kompleks) + tombol Lanjut ke Warta Madina
+    await page.getByRole('button', { name: /02\s*Majelis/i }).click();
+    await expect(page.getByText(/Bimbingan Terpadu Asatidz/i)).toBeVisible({ timeout: 10_000 });
+    await page.getByRole('button', { name: /03\s*Kompleks/i }).click();
+    await expect(page.getByText(/Ribuan Santri dalam Satu Tata Kelola/i)).toBeVisible({ timeout: 10_000 });
+
+    await page.locator('#ekosistem').getByRole('link', { name: /Lanjut ke Warta Madina/i }).click();
     await expect(page.locator('#berita')).toBeInViewport({ timeout: 10_000 });
 
     // Tidak ada horizontal overflow
@@ -55,7 +64,7 @@ test.describe('71 - Beranda Publik Cinematic Scroll-Driven Hero', () => {
     await context.close();
   });
 
-  test('2. Mobile (375px): Keyframe crossfade, Al-Amiriyyah 1 baris, tap target >=44px & tanpa overflow', async ({ browser }) => {
+  test('2. Mobile (375px): Keyframe crossfade, Al-Amiriyyah 1 baris, Parallax adaptif bertingkat, tap target >=44px & tanpa overflow', async ({ browser }) => {
     const { context, page } = await openPublicContext(browser);
     await page.setViewportSize({ width: 375, height: 812 });
 
@@ -73,6 +82,12 @@ test.describe('71 - Beranda Publik Cinematic Scroll-Driven Hero', () => {
 
     await btnBabak2.click();
     await expect(page.getByText(/HR\. Imam Al-Baihaqi/i)).toBeVisible({ timeout: 10_000 });
+
+    // Verifikasi Parallax adaptif mobile (#ekosistem) tampil sebagai 3 kartu vertikal utuh
+    await expect(page.locator('#ekosistem article')).toHaveCount(3);
+    const parallaxCta = page.locator('#ekosistem').getByRole('link', { name: /Lanjut ke Warta Madina/i });
+    const ctaBox = await parallaxCta.boundingBox();
+    expect(ctaBox?.height || 0).toBeGreaterThanOrEqual(44);
 
     const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(hasOverflow).toBe(false);

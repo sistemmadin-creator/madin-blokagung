@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
   BookOpen,
   Clock,
@@ -10,8 +12,14 @@ import {
 } from 'lucide-react';
 import { useProfilKontenStore } from '@/stores/useProfilKontenStore';
 import { renderProfilIcon } from '@/lib/utils/profilIconHelper';
+import { useBerandaScroll } from './BerandaScrollProvider';
+
+gsap.registerPlugin(ScrollTrigger);
 
 export default function KurikulumKitabSection() {
+  const berandaScroll = useBerandaScroll();
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const hasAnimatedRef = useRef(false);
   const { sectionMeta, jenjangList, waktuKbmList, fetchProfilKonten } =
     useProfilKontenStore();
 
@@ -29,9 +37,13 @@ export default function KurikulumKitabSection() {
         setSubView('jadwal');
         requestAnimationFrame(() => {
           setTimeout(() => {
-            document
-              .getElementById('waktu-kbm')
-              ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (berandaScroll) {
+              berandaScroll.scrollToTarget('waktu-kbm', { offset: -64, duration: 0.9 });
+            } else {
+              document
+                .getElementById('waktu-kbm')
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
           }, 60);
         });
       } else if (window.location.hash === '#kurikulum') {
@@ -42,7 +54,43 @@ export default function KurikulumKitabSection() {
     syncHashToSubView();
     window.addEventListener('hashchange', syncHashToSubView);
     return () => window.removeEventListener('hashchange', syncHashToSubView);
-  }, []);
+  }, [berandaScroll]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || hasAnimatedRef.current) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const ctx = gsap.context(() => {
+      const revealEls = section.querySelectorAll('.js-kurikulum-reveal');
+      if (revealEls.length === 0) return;
+
+      ScrollTrigger.create({
+        trigger: section,
+        start: 'top 84%',
+        once: true,
+        onEnter: () => {
+          if (hasAnimatedRef.current) return;
+          hasAnimatedRef.current = true;
+          gsap.fromTo(
+            revealEls,
+            { y: 20, opacity: 0.2 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.55,
+              stagger: 0.08,
+              ease: 'power2.out',
+              clearProps: 'transform,opacity',
+            }
+          );
+        },
+      });
+    }, section);
+
+    return () => ctx.revert();
+  }, [jenjangList.length, waktuKbmList.length]);
 
   const activeJenjangs = useMemo(
     () => jenjangList.filter((j) => j.is_active !== false),
@@ -66,12 +114,13 @@ export default function KurikulumKitabSection() {
 
   return (
     <section
+      ref={sectionRef}
       id="kurikulum"
       className="py-16 sm:py-24 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 transition-colors"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header Section: Khazanah Turats Salafiyah */}
-        <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-12">
+        <div className="js-kurikulum-reveal text-center max-w-3xl mx-auto mb-10 sm:mb-12">
           <span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/40 mb-3">
             {khazanahMeta.badge_label}
           </span>
@@ -142,7 +191,7 @@ export default function KurikulumKitabSection() {
             {currentJenjang && (
               <>
                 {/* Banner Ringkasan Jenjang */}
-                <div className="mb-8 rounded-2xl bg-gradient-to-r from-[#073623] via-emerald-900 to-[#06291a] p-6 sm:p-8 text-white shadow-lg border border-emerald-500/20">
+                <div className="js-kurikulum-reveal mb-8 rounded-2xl bg-gradient-to-r from-[#073623] via-emerald-900 to-[#06291a] p-6 sm:p-8 text-white shadow-lg border border-emerald-500/20">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-emerald-800 pb-5 mb-5">
                     <div>
                       <div className="flex items-center gap-2.5 flex-wrap">

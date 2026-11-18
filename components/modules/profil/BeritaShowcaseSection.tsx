@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Newspaper, ChevronRight, ChevronLeft, Clock, Film } from 'lucide-react';
 import { useBeritaStore } from '@/stores/useBeritaStore';
 import { formatBeritaDateWib } from '@/lib/utils/beritaDateHelper';
@@ -19,7 +21,11 @@ import BeritaWidgetKategori from './BeritaWidgetKategori';
 import GaleriSosmedPortfolioView from '@/components/modules/galeri-sosmed/GaleriSosmedPortfolioView';
 import SubKategoriFilterBar from '@/components/modules/media/SubKategoriFilterBar';
 
+gsap.registerPlugin(ScrollTrigger);
+
 export default function BeritaShowcaseSection() {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const hasAnimatedRef = useRef(false);
   const { posts, fetchPosts, isLoading } = useBeritaStore();
   const [activeMediaView, setActiveMediaView] = useState<'berita' | 'galeri-sosmed'>('berita');
   const [selectedTopic, setSelectedTopic] = useState<TopikBerita | 'all'>('all');
@@ -106,18 +112,55 @@ export default function BeritaShowcaseSection() {
     setCurrentSlide(0);
   }, [selectedTopic]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || hasAnimatedRef.current) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const blocks = section.querySelectorAll('.js-berita-reveal');
+    if (blocks.length === 0) return;
+
+    const ctx = gsap.context(() => {
+      ScrollTrigger.create({
+        trigger: section,
+        start: 'top 85%',
+        once: true,
+        onEnter: () => {
+          if (hasAnimatedRef.current) return;
+          hasAnimatedRef.current = true;
+          gsap.fromTo(
+            blocks,
+            { y: 20, opacity: 0.2 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.55,
+              stagger: 0.08,
+              ease: 'power2.out',
+              clearProps: 'transform,opacity',
+            }
+          );
+        },
+      });
+    }, section);
+
+    return () => ctx.revert();
+  }, [publishedPosts.length, isLoading]);
+
   if (publishedPosts.length === 0 && !isLoading) {
     return null;
   }
 
   return (
     <section
+      ref={sectionRef}
       id="berita"
       className="py-16 sm:py-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         {/* Header Bagian Media Madin & Kabar Madin Blokagung */}
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-slate-200 dark:border-slate-800 pb-6">
+        <div className="js-berita-reveal flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-slate-200 dark:border-slate-800 pb-6">
           <div className="max-w-2xl space-y-3">
             <div className="flex items-center gap-2.5 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/40">
@@ -217,7 +260,7 @@ export default function BeritaShowcaseSection() {
         {activeMediaView === 'berita' ? (
           <>
             {/* 1. Baris Hero Editorial: Hero Slider (60%) & Sorotan Grid 2x2 (40%) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            <div className="js-berita-reveal grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
               {/* Kolom Kiri: Hero Slider 5 Berita Terbaru (Slide Kiri per 2 Detik) */}
               <div className="lg:col-span-7 flex">
                 {heroPosts.length > 0 ? (
