@@ -19,6 +19,7 @@ export type AppPageId =
   | 'linimasa-setor'
   | 'rekap-hafalan'
   | 'rekap-hafalan-pertingkatan'
+  | 'rekap-hafalan-rinci'
   | 'piagam'
   | 'serah-piagam'
   | 'kirim-wa'
@@ -235,6 +236,14 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     label: 'Rekap Hafalan Pertingkatan (Excel)',
     group: 'PKM. Muhafadzoh',
     routes: ['/rekap-hafalan/pertingkatan'],
+    supportsEditOverride: false,
+    supportsDeleteOverride: false,
+  },
+  {
+    id: 'rekap-hafalan-rinci',
+    label: 'Rekap Hafalan Rinci',
+    group: 'PKM. Muhafadzoh',
+    routes: ['/rekap-hafalan/rinci'],
     supportsEditOverride: false,
     supportsDeleteOverride: false,
   },

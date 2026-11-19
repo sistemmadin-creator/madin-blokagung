@@ -423,6 +423,14 @@ export default function BottomNavMobile() {
             <span>Rekap Pertingkatan (Excel)</span>
           </Link>
           <Link
+            href="/rekap-hafalan/rinci"
+            onClick={() => setActiveMenu(null)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-sm font-semibold text-emerald-800"
+          >
+            <ClipboardCheck className="w-4 h-4 text-emerald-600" />
+            <span>Rekap Hafalan Rinci</span>
+          </Link>
+          <Link
             href="/piagam"
             onClick={() => setActiveMenu(null)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-semibold text-slate-800"

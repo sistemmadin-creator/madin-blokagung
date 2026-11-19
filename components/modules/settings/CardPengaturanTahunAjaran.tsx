@@ -146,6 +146,11 @@ export default function CardPengaturanTahunAjaran() {
       href: '/rekap-hafalan/pertingkatan',
     },
     {
+      title: 'Rekap Hafalan Rinci',
+      desc: 'Daftar ketuntasan hafalan per santri & ekspor Excel menyaring sesuai Tahun Ajaran',
+      href: '/rekap-hafalan/rinci',
+    },
+    {
       title: 'Rekap Hafalan Ringkas',
       desc: 'Kop dan progres hafalan santri otomatis menyesuaikan Tahun Ajaran aktif',
       href: '/rekap-hafalan',

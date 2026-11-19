@@ -194,6 +194,12 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
             href: '/rekap-hafalan/pertingkatan',
             iconName: 'Layers',
           },
+          {
+            id: 'sub-rekap-hafalan-rinci',
+            title: 'Rekap Hafalan Rinci',
+            href: '/rekap-hafalan/rinci',
+            iconName: 'ClipboardCheck',
+          },
         ],
       },
       { id: 'item-piagam', title: 'Cetak Piagam', href: '/piagam', iconName: 'Award' },
