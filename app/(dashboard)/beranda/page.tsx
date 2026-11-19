@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useTahunAjaranStore } from '@/stores/useTahunAjaranStore';
 import {
   Search,
   ChevronDown,
@@ -89,6 +90,7 @@ const GROUP_ICON_REGISTRY: Record<string, React.ReactNode> = {
   'grp-muhafadzoh': <BookOpen className="w-6 h-6 text-emerald-800" />,
   'grp-kesiswaan': <ClipboardCheck className="w-6 h-6 text-amber-700" />,
   'grp-sapras': <Package className="w-6 h-6 text-cyan-800" />,
+  'grp-database-ta': <BarChart2 className="w-6 h-6 text-emerald-700" />,
   'grp-publikasi': <Newspaper className="w-6 h-6 text-blue-700" />,
   'grp-ebtadin': <GraduationCap className="w-6 h-6 text-emerald-900" />,
   'grp-pengaturan': <Settings className="w-6 h-6 text-slate-700" />,
@@ -132,6 +134,7 @@ const GROUP_DESCRIPTIONS: Record<string, string> = {
   'grp-muhafadzoh': 'Pencatatan setoran nadhom & Al-Qur’an, rekap hafalan, dan sertifikasi piagam.',
   'grp-kesiswaan': 'Presensi kehadiran pengajar, absen cepat gerbang, dan rekapitulasi KBM.',
   'grp-sapras': 'Pengelolaan sarana prasarana, inventaris kelas, dan perbaikan logistik.',
+  'grp-database-ta': 'Rekap progres madrasah lintas tahun ajaran (khusus kelas 1-4 ULA, 1-2 WUSTHO, 1-2 ULYA).',
   'grp-publikasi': 'Kabar madrasah, publikasi berita, portofolio galeri sosmed, dan struktur kepengurusan.',
   'grp-ebtadin': 'Pusat kendali ujian akhir kelulusan (EBTADIN), rekap nilai, dan serah ijazah.',
   'grp-pengaturan': 'Konfigurasi tahun ajaran, manajemen otoritas akun, dan audit log sistem.',
@@ -140,7 +143,11 @@ const GROUP_DESCRIPTIONS: Record<string, string> = {
 export default function BerandaPage() {
   const { groups } = useSidebarConfigStore();
   const currentAccount = useRbacStore((s) => s.currentAccount);
-  const activeTahunAjaran = useKalenderStore((s) => s.activeTahunAjaran);
+  const globalActiveTA = useTahunAjaranStore((s) => s.activeTahunAjaran);
+  const fetchGlobalTahunAjaran = useTahunAjaranStore((s) => s.fetchGlobalTahunAjaran);
+  const kalenderActiveTA = useKalenderStore((s) => s.activeTahunAjaran);
+  const fetchKalenderData = useKalenderStore((s) => s.fetchKalenderData);
+  const activeTahunAjaran = globalActiveTA || kalenderActiveTA;
 
   // Data stores untuk Fitur Pencarian Cerdas Universal (Omni-Search)
   const { santriList, fetchSantri } = useSantriStore();
@@ -168,6 +175,8 @@ export default function BerandaPage() {
   const [saprasSuccessNotice, setSaprasSuccessNotice] = useState<string | null>(null);
 
   useEffect(() => {
+    fetchGlobalTahunAjaran();
+    fetchKalenderData();
     fetchSantri();
     fetchAsatidz();
     fetchFormasi();
@@ -177,6 +186,8 @@ export default function BerandaPage() {
     fetchJadwal();
     fetchSaprasData();
   }, [
+    fetchGlobalTahunAjaran,
+    fetchKalenderData,
     fetchSantri,
     fetchAsatidz,
     fetchFormasi,

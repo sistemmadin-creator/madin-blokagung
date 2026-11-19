@@ -42,7 +42,7 @@ export default function FormasiPiPage() {
 
   const { santriList, fetchSantri } = useSantriStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
-  const { getFormattedHeaderBanner } = useTahunAjaranStore();
+  const { getFormattedHeaderBanner, fetchGlobalTahunAjaran } = useTahunAjaranStore();
   const { canEdit, canDelete, canAccessSettings, isClassAllowed } = usePagePermission('formasi');
 
   const [selectedTingkat, setSelectedTingkat] = useState<string>('');
@@ -69,10 +69,11 @@ export default function FormasiPiPage() {
   }, []);
 
   useEffect(() => {
+    fetchGlobalTahunAjaran();
     fetchFormasi();
     if (santriList.length === 0) fetchSantri();
     if (asatidzList.length === 0) fetchAsatidz();
-  }, [fetchFormasi, fetchSantri, fetchAsatidz, santriList.length, asatidzList.length]);
+  }, [fetchGlobalTahunAjaran, fetchFormasi, fetchSantri, fetchAsatidz, santriList.length, asatidzList.length]);
 
   // Enrich formasi PI with stats & Asatidz sync
   const enrichedList: FormasiWithStats[] = useMemo(() => {

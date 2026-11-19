@@ -69,10 +69,11 @@ export default function FormasiPaPage() {
   }, []);
 
   useEffect(() => {
+    fetchGlobalTahunAjaran();
     fetchFormasi();
     if (santriList.length === 0) fetchSantri();
     if (asatidzList.length === 0) fetchAsatidz();
-  }, [fetchFormasi, fetchSantri, fetchAsatidz, santriList.length, asatidzList.length]);
+  }, [fetchGlobalTahunAjaran, fetchFormasi, fetchSantri, fetchAsatidz, santriList.length, asatidzList.length]);
 
   // Enrich formasi PA with stats & Asatidz sync
   const enrichedList: FormasiWithStats[] = useMemo(() => {

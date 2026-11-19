@@ -22,6 +22,7 @@ import { useSantriStore } from '@/stores/useSantriStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { usePagePermission } from '@/stores/useRbacStore';
 import { useSerahPiagamStore } from '@/stores/useSerahPiagamStore';
+import { useTahunAjaranStore, parseStartYearFromTA } from '@/stores/useTahunAjaranStore';
 import {
   KelasSerahPiagamGroup,
   SantriSerahPiagamRow,
@@ -72,16 +73,25 @@ export default function SerahPiagamModule() {
     resetFilters,
   } = useSerahPiagamStore();
 
+  const { activeTahunAjaran, fetchGlobalTahunAjaran } = useTahunAjaranStore();
   const { canEdit, isPersonAllowed } = usePagePermission('serah-piagam');
   const [currentPage, setCurrentPage] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Inisialisasi data santri & catatan serah piagam
+  // Inisialisasi data santri, catatan serah piagam & tahun ajaran global
   useEffect(() => {
+    fetchGlobalTahunAjaran();
     fetchSantri();
     fetchFormasi();
     fetchRecords();
-  }, [fetchSantri, fetchFormasi, fetchRecords]);
+  }, [fetchGlobalTahunAjaran, fetchSantri, fetchFormasi, fetchRecords]);
+
+  useEffect(() => {
+    const syncedYear = parseStartYearFromTA(activeTahunAjaran);
+    if (syncedYear !== tahun) {
+      setTahun(syncedYear);
+    }
+  }, [activeTahunAjaran, tahun, setTahun]);
 
   // 1. Transformasi seluruh data santri ke baris serah piagam
   const allRows: SantriSerahPiagamRow[] = useMemo(() => {

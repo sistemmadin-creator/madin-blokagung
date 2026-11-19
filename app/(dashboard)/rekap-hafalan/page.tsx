@@ -6,6 +6,7 @@ import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { useSetorMustahiqStore } from '@/stores/useSetorMustahiqStore';
+import { useTahunAjaranStore, parseStartYearFromTA } from '@/stores/useTahunAjaranStore';
 import { useTableViewerStore } from '@/stores/useTableViewerStore';
 import FloatingTableTools from '@/components/common/FloatingTableTools';
 import {
@@ -27,7 +28,6 @@ import {
   getMateriOptionsWithStatusForSantri,
 } from '@/stores/useSetorMustahiqStore';
 import { ItemHafalanDetail } from '@/types/setoran';
-import { dapatkanTahunAjaranKBM } from '@/lib/utils/jadwalHelper';
 import { exportAoaToExcel } from '@/lib/utils/excel';
 
 type FilterTingkat = 'ALL' | 'ULA' | 'WUSTHO' | 'ULYA';
@@ -82,6 +82,12 @@ export default function RekapHafalanPage() {
   const { config, setoranList, fetchSetoranData, isLoading: loadingSetoran } = useMuhafadzohStore();
   const { logs: mustahiqLogs, activeStates, fetchMustahiqData, isLoading: loadingMustahiq } =
     useSetorMustahiqStore();
+  const {
+    activeTahunAjaran,
+    hijriOffsetDays,
+    fetchGlobalTahunAjaran,
+    getFormattedHeaderBanner,
+  } = useTahunAjaranStore();
 
   const [filterTingkat, setFilterTingkat] = useState<FilterTingkat>('ALL');
   const [filterGender, setFilterGender] = useState<FilterGender>('ALL');
@@ -197,7 +203,8 @@ export default function RekapHafalanPage() {
 
   // Fungsi untuk membuka Modal Rincian Materi Hafalan (Gambar 3)
   const openMateriModalForClass = (r: ClassRekapRow) => {
-    const tahunAjaran = dapatkanTahunAjaranKBM();
+    void hijriOffsetDays;
+    const tahunAjaran = getFormattedHeaderBanner();
     const configKey = `${r.tingkat}_${r.din_kls}`;
 
     // Ambil santri di kelas ini
@@ -232,7 +239,7 @@ export default function RekapHafalanPage() {
       }
     >();
 
-    const currentYear = new Date().getFullYear();
+    const currentYear = parseStartYearFromTA(activeTahunAjaran);
 
     santriInClass.forEach((santri) => {
       const noInduk = String(santri.no_induk || '').trim();
@@ -340,12 +347,13 @@ export default function RekapHafalanPage() {
   };
 
   useEffect(() => {
+    fetchGlobalTahunAjaran();
     fetchSantri();
     fetchAsatidz();
     fetchFormasi();
     fetchSetoranData();
     fetchMustahiqData();
-  }, [fetchSantri, fetchAsatidz, fetchFormasi, fetchSetoranData, fetchMustahiqData]);
+  }, [fetchGlobalTahunAjaran, fetchSantri, fetchAsatidz, fetchFormasi, fetchSetoranData, fetchMustahiqData]);
 
   // Map riwayat setoran per santri: Map<no_induk, Set<'WAJIB' | 'SUNNAH' | 'KITAB'>>
   const santriCategoryParticipationMap = useMemo(() => {
@@ -708,13 +716,16 @@ export default function RekapHafalanPage() {
       <div className="border border-slate-200 bg-white p-4 rounded-xl shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800">
                 <GraduationCap className="w-5 h-5 text-emerald-700" />
               </span>
               <h1 className="text-xl font-bold text-slate-800 m-0">
                 Rekapitulasi Hafalan Pertingkatan
               </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                TA {activeTahunAjaran}
+              </span>
             </div>
             <p className="text-xs text-slate-500 m-0 mt-1">
               Rekapitulasi capaian hafalan santri kategori Wajib, Sunnah, dan Kitab per kelas madrasah diniyyah.

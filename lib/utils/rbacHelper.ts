@@ -187,6 +187,9 @@ export function resolvePageIdFromPathname(pathname: string): AppPageId | null {
   if (clean.startsWith('/ebtadin/rekap-angkatan')) return 'ebtadin-rekap';
   if (clean.startsWith('/ebtadin/serah-ijazah')) return 'ebtadin-serah-ijazah';
   if (clean.startsWith('/ebtadin')) return 'ebtadin';
+  if (clean.startsWith('/database-ta/rekap')) return 'database-ta-rekap';
+  if (clean.startsWith('/database-ta/arsip')) return 'database-ta-arsip';
+  if (clean.startsWith('/database-ta')) return 'database-ta';
   if (clean.startsWith('/pengaturan')) return 'pengaturan';
   return null;
 }

@@ -126,7 +126,9 @@ test.describe('Kalender Kegiatan (TA 2026/2027), Pengaturan Tahun Ajaran Global 
       'TAHUN AJARAN 2026-2027 M / 1447-1448 H'
     );
 
-    // Ganti ke Tahun Ajaran 2027/2028 (1448/1449 H) dan terapkan
+    // Tambahkan Tahun Ajaran 2027/2028 (1448/1449 H) via form Tambah Tahun Ajaran Masa Depan dan terapkan
+    await page.getByTestId('input-new-ta-start-year').fill('2027');
+    await page.getByTestId('btn-add-new-tahun-ajaran').click();
     await page.getByTestId('option-global-ta-2027-2028').click();
     await page.getByTestId('btn-save-global-tahun-ajaran').click();
     await expect(page.getByTestId('active-global-ta-banner')).toContainText(

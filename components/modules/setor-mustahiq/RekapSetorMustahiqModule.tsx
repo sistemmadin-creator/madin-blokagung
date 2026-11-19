@@ -23,6 +23,7 @@ import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { usePagePermission } from '@/stores/useRbacStore';
+import { useTahunAjaranStore, parseStartYearFromTA } from '@/stores/useTahunAjaranStore';
 import {
   useSetorMustahiqStore,
   computeMateriProgressForSantri,
@@ -100,9 +101,11 @@ export default function RekapSetorMustahiqModule() {
     isClassAllowed,
   } = usePagePermission('setor-mustahiq');
 
+  const { activeTahunAjaran, fetchGlobalTahunAjaran } = useTahunAjaranStore();
+
   const [selectedTingkat, setSelectedTingkat] = useState<TingkatTab>('ULA');
   const [hasAutoSelectedTingkat, setHasAutoSelectedTingkat] = useState(false);
-  const [tahun, setTahun] = useState<number>(new Date().getFullYear());
+  const [tahun, setTahun] = useState<number>(() => parseStartYearFromTA(activeTahunAjaran));
   const [filterGender, setFilterGender] = useState<'ALL' | 'PA' | 'PI'>('ALL');
   const [search, setSearch] = useState('');
 
@@ -114,12 +117,17 @@ export default function RekapSetorMustahiqModule() {
   } | null>(null);
 
   useEffect(() => {
+    fetchGlobalTahunAjaran();
     fetchSantri();
     fetchAsatidz();
     fetchFormasi();
     fetchSetoranData();
     fetchMustahiqData();
-  }, [fetchSantri, fetchAsatidz, fetchFormasi, fetchSetoranData, fetchMustahiqData]);
+  }, [fetchGlobalTahunAjaran, fetchSantri, fetchAsatidz, fetchFormasi, fetchSetoranData, fetchMustahiqData]);
+
+  useEffect(() => {
+    setTahun(parseStartYearFromTA(activeTahunAjaran));
+  }, [activeTahunAjaran]);
 
   // Deteksi apakah akun yang login adalah Mustahiq spesifik untuk penguncian kelas otomatis
   const lockedMustahiqClass = useMemo(() => {

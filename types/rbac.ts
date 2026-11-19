@@ -44,6 +44,9 @@ export type AppPageId =
   | 'ebtadin-kelulusan-rekap'
   | 'ebtadin-serah-ijazah'
   | 'ebtadin-rekap'
+  | 'database-ta'
+  | 'database-ta-rekap'
+  | 'database-ta-arsip'
   | 'pengaturan';
 
 export type GenderScope = 'semua' | 'putra' | 'putri';
@@ -434,6 +437,30 @@ export const APP_PAGE_CATALOG: PageCatalogItem[] = [
     routes: ['/ebtadin/rekap-angkatan'],
     supportsEditOverride: true,
     supportsDeleteOverride: false,
+  },
+  {
+    id: 'database-ta',
+    label: 'Progres Lintas Tahun',
+    group: 'Database Tahun Ajaran',
+    routes: ['/database-ta'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: true,
+  },
+  {
+    id: 'database-ta-rekap',
+    label: 'Rekap Kelas & Akademik (TA)',
+    group: 'Database Tahun Ajaran',
+    routes: ['/database-ta/rekap'],
+    supportsEditOverride: false,
+    supportsDeleteOverride: false,
+  },
+  {
+    id: 'database-ta-arsip',
+    label: 'Arsip & Ekspor Tahunan',
+    group: 'Database Tahun Ajaran',
+    routes: ['/database-ta/arsip'],
+    supportsEditOverride: true,
+    supportsDeleteOverride: true,
   },
   {
     id: 'pengaturan',

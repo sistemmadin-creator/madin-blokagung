@@ -267,6 +267,30 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
     ],
   },
   {
+    id: 'grp-database-ta',
+    group: 'Database Tahun Ajaran',
+    items: [
+      {
+        id: 'item-db-ta-progres',
+        title: 'Progres Lintas Tahun',
+        href: '/database-ta',
+        iconName: 'BarChart2',
+      },
+      {
+        id: 'item-db-ta-rekap',
+        title: 'Rekap Kelas & Akademik',
+        href: '/database-ta/rekap',
+        iconName: 'Layers',
+      },
+      {
+        id: 'item-db-ta-arsip',
+        title: 'Arsip & Ekspor Tahunan',
+        href: '/database-ta/arsip',
+        iconName: 'FileText',
+      },
+    ],
+  },
+  {
     id: 'grp-publikasi',
     group: 'PKM. Media Madin',
     items: [

@@ -7,6 +7,9 @@ import { DAFTAR_TAHUN_AJARAN_KALENDER } from '@/lib/utils/kalenderHijriyahHelper
 export const KEY_DB_GLOBAL_TA = 'MADIN_GLOBAL_TAHUN_AJARAN_V1';
 export const LS_CACHE_GLOBAL_TA = 'MADIN_GLOBAL_TAHUN_AJARAN_CACHE_V1';
 
+const CURRENT_TA_CLEANUP_VERSION = 2;
+const LEGACY_PRUNED_TA_SET = new Set(['2027/2028', '2028/2029', '2029/2030', '2030/2031']);
+
 export type SemesterMadin =
   | 'Semester Ganjil (Daur Awwal)'
   | 'Semester Genap (Daur Tsani)';
@@ -16,8 +19,15 @@ export interface GlobalTahunAjaranPayload {
   semesterAktif: SemesterMadin;
   hijriOffsetDays: number;
   customTahunAjaranList: TahunAjaranKalenderConfig[];
+  cleanupVersion?: number;
   updatedAt?: string;
   updatedBy?: string;
+}
+
+export function parseStartYearFromTA(ta?: string): number {
+  const clean = String(ta || '').trim();
+  const parsed = parseInt(clean.split('/')[0] || '', 10);
+  return Number.isFinite(parsed) && parsed >= 2020 ? parsed : 2026;
 }
 
 interface TahunAjaranState {
@@ -40,6 +50,10 @@ interface TahunAjaranState {
     activateImmediately?: boolean,
     actorName?: string
   ) => Promise<TahunAjaranKalenderConfig>;
+  removeTahunAjaran: (
+    tahunAjaranMasehi: string,
+    actorName?: string
+  ) => Promise<boolean>;
   getActiveConfig: () => TahunAjaranKalenderConfig;
   getFormattedHeaderBanner: () => string;
 }
@@ -56,7 +70,8 @@ function normalizeActiveTA(
 }
 
 function mergeTahunAjaranList(
-  customList: TahunAjaranKalenderConfig[] = []
+  customList: TahunAjaranKalenderConfig[] = [],
+  shouldPruneLegacyFuture = false
 ): TahunAjaranKalenderConfig[] {
   const map = new Map<string, TahunAjaranKalenderConfig>();
   DAFTAR_TAHUN_AJARAN_KALENDER.forEach((item) => {
@@ -67,7 +82,8 @@ function mergeTahunAjaranList(
       item &&
       item.tahunAjaranMasehi &&
       item.tahunAjaranMasehi !== '2025/2026' &&
-      item.tahunAjaranMasehi !== '2024/2025'
+      item.tahunAjaranMasehi !== '2024/2025' &&
+      (!shouldPruneLegacyFuture || !LEGACY_PRUNED_TA_SET.has(item.tahunAjaranMasehi))
     ) {
       map.set(item.tahunAjaranMasehi, item);
     }
@@ -78,9 +94,13 @@ function mergeTahunAjaranList(
 }
 
 async function persistGlobalTahunAjaran(payload: GlobalTahunAjaranPayload) {
+  const finalPayload: GlobalTahunAjaranPayload = {
+    ...payload,
+    cleanupVersion: CURRENT_TA_CLEANUP_VERSION,
+  };
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(LS_CACHE_GLOBAL_TA, JSON.stringify(payload));
+      localStorage.setItem(LS_CACHE_GLOBAL_TA, JSON.stringify(finalPayload));
     } catch {
       // Abaikan kuota LocalStorage
     }
@@ -89,7 +109,7 @@ async function persistGlobalTahunAjaran(payload: GlobalTahunAjaranPayload) {
     await supabase
       .from('app_settings')
       .upsert(
-        { key: KEY_DB_GLOBAL_TA, value: payload },
+        { key: KEY_DB_GLOBAL_TA, value: finalPayload },
         { onConflict: 'key' }
       );
   } catch {
@@ -140,7 +160,8 @@ export const useTahunAjaranStore = create<TahunAjaranState>((set, get) => ({
       // Gunakan fallback cache / default
     }
 
-    const mergedList = mergeTahunAjaranList(loaded?.customTahunAjaranList);
+    const needsCleanup = !loaded?.cleanupVersion || loaded.cleanupVersion < CURRENT_TA_CLEANUP_VERSION;
+    const mergedList = mergeTahunAjaranList(loaded?.customTahunAjaranList, needsCleanup);
     const activeTA = normalizeActiveTA(loaded?.activeTahunAjaran, mergedList);
     const semester: SemesterMadin =
       loaded?.semesterAktif === 'Semester Genap (Daur Tsani)'
@@ -157,6 +178,18 @@ export const useTahunAjaranStore = create<TahunAjaranState>((set, get) => ({
       isLoading: false,
       lastSavedAt: loaded?.updatedAt,
     });
+
+    if (needsCleanup && loaded) {
+      await persistGlobalTahunAjaran({
+        activeTahunAjaran: activeTA,
+        semesterAktif: semester,
+        hijriOffsetDays: offset,
+        customTahunAjaranList: mergedList,
+        cleanupVersion: CURRENT_TA_CLEANUP_VERSION,
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'System Cleanup TA',
+      });
+    }
   },
 
   setGlobalTahunAjaran: async ({
@@ -187,6 +220,7 @@ export const useTahunAjaranStore = create<TahunAjaranState>((set, get) => ({
       semesterAktif: nextSemester,
       hijriOffsetDays: nextOffset,
       customTahunAjaranList: nextList,
+      cleanupVersion: CURRENT_TA_CLEANUP_VERSION,
       updatedAt: nowISO,
       updatedBy: actorName,
     });
@@ -234,6 +268,7 @@ export const useTahunAjaranStore = create<TahunAjaranState>((set, get) => ({
       semesterAktif: state.semesterAktif,
       hijriOffsetDays: state.hijriOffsetDays,
       customTahunAjaranList: mergedList,
+      cleanupVersion: CURRENT_TA_CLEANUP_VERSION,
       updatedAt: nowISO,
       updatedBy: actorName,
     });
@@ -244,6 +279,46 @@ export const useTahunAjaranStore = create<TahunAjaranState>((set, get) => ({
     );
 
     return newConfig;
+  },
+
+  removeTahunAjaran: async (
+    tahunAjaranMasehi,
+    actorName = 'Administrator Pengaturan'
+  ) => {
+    const state = get();
+    if (tahunAjaranMasehi === '2026/2027') return false;
+    if (state.daftarTahunAjaran.length <= 1) return false;
+
+    const nextList = state.daftarTahunAjaran.filter(
+      (c) => c.tahunAjaranMasehi !== tahunAjaranMasehi
+    );
+    const nextActive =
+      state.activeTahunAjaran === tahunAjaranMasehi
+        ? normalizeActiveTA('2026/2027', nextList)
+        : state.activeTahunAjaran;
+    const nowISO = new Date().toISOString();
+
+    set({
+      daftarTahunAjaran: nextList,
+      activeTahunAjaran: nextActive,
+      lastSavedAt: nowISO,
+    });
+
+    await persistGlobalTahunAjaran({
+      activeTahunAjaran: nextActive,
+      semesterAktif: state.semesterAktif,
+      hijriOffsetDays: state.hijriOffsetDays,
+      customTahunAjaranList: nextList,
+      cleanupVersion: CURRENT_TA_CLEANUP_VERSION,
+      updatedAt: nowISO,
+      updatedBy: actorName,
+    });
+
+    await logActivity(
+      'REMOVE_TAHUN_AJARAN',
+      `Menghapus opsi Tahun Ajaran ${tahunAjaranMasehi} oleh ${actorName}`
+    );
+    return true;
   },
 
   getActiveConfig: () => {

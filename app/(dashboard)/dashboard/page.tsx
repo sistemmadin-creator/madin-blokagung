@@ -23,6 +23,7 @@ import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useBeritaStore } from '@/stores/useBeritaStore';
 import { useKalenderStore } from '@/stores/useKalenderStore';
+import { useTahunAjaranStore } from '@/stores/useTahunAjaranStore';
 import { useSaprasStore } from '@/stores/useSaprasStore';
 import { useCatatanStore } from '@/stores/useCatatanStore';
 
@@ -48,11 +49,17 @@ export default function DashboardPage() {
   const { formasiList, fetchFormasi } = useFormasiStore();
   const { posts, fetchPosts } = useBeritaStore();
   const {
-    activeTahunAjaran,
+    activeTahunAjaran: kalenderActiveTA,
     hijriOffsetByTA,
     fetchKalenderData,
     getCurrentAgendaMap,
   } = useKalenderStore();
+  const {
+    activeTahunAjaran: globalActiveTA,
+    hijriOffsetDays: globalHijriOffsetDays,
+    fetchGlobalTahunAjaran,
+  } = useTahunAjaranStore();
+  const activeTahunAjaran = globalActiveTA || kalenderActiveTA;
   const { fetchSaprasData } = useSaprasStore();
   const { fetchCatatan } = useCatatanStore();
 
@@ -63,6 +70,7 @@ export default function DashboardPage() {
         ' WIB'
     );
 
+    fetchGlobalTahunAjaran();
     if (santriList.length === 0) fetchSantri();
     if (asatidzList.length === 0) fetchAsatidz();
     if (setoranList.length === 0) fetchSetoranData();
@@ -85,7 +93,7 @@ export default function DashboardPage() {
     });
   }, [santriList, asatidzList, savedRecords, setoranList, formasiList, posts]);
 
-  const hijriOffsetDays = hijriOffsetByTA[activeTahunAjaran] ?? 0;
+  const hijriOffsetDays = hijriOffsetByTA[activeTahunAjaran] ?? globalHijriOffsetDays ?? 0;
   const agendaMap = getCurrentAgendaMap();
 
   const todayAgenda = useMemo(() => {

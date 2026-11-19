@@ -12,6 +12,7 @@ import {
   Moon,
   Sun,
   Layers,
+  Trash2,
 } from 'lucide-react';
 import {
   SemesterMadin,
@@ -28,6 +29,7 @@ export default function CardPengaturanTahunAjaran() {
     fetchGlobalTahunAjaran,
     setGlobalTahunAjaran,
     addTahunAjaranBaru,
+    removeTahunAjaran,
     getFormattedHeaderBanner,
   } = useTahunAjaranStore();
 
@@ -41,7 +43,7 @@ export default function CardPengaturanTahunAjaran() {
   const [selectedSemester, setSelectedSemester] =
     useState<SemesterMadin>(semesterAktif);
   const [selectedOffset, setSelectedOffset] = useState<number>(hijriOffsetDays);
-  const [newStartYear, setNewStartYear] = useState<number>(2030);
+  const [newStartYear, setNewStartYear] = useState<number>(2027);
   const [notification, setNotification] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -143,7 +145,24 @@ export default function CardPengaturanTahunAjaran() {
       desc: 'Tabel & ekspor Excel rekap pertingkatan otomatis menyaring berdasarkan Tahun Ajaran',
       href: '/rekap-hafalan/pertingkatan',
     },
+    {
+      title: 'Rekap Hafalan Ringkas',
+      desc: 'Kop dan progres hafalan santri otomatis menyesuaikan Tahun Ajaran aktif',
+      href: '/rekap-hafalan',
+    },
+    {
+      title: 'Setor Mustahiq (Kelas & Rekap)',
+      desc: 'Tahun periode setor mustahiq otomatis mengikuti tahun awal Tahun Ajaran aktif',
+      href: '/setor-mustahiq',
+    },
+    {
+      title: 'Serah Piagam Muhafadzoh',
+      desc: 'Tahun pencatatan penerimaan piagam otomatis tersinkron ke Tahun Ajaran aktif',
+      href: '/serah-piagam',
+    },
   ];
+
+  const [activeStartStr, activeEndStr] = (activeTahunAjaran || '2026/2027').split('/');
 
   return (
     <div data-testid="card-pengaturan-tahun-ajaran" className="space-y-6">
@@ -173,7 +192,7 @@ export default function CardPengaturanTahunAjaran() {
           </h2>
           <p className="text-xs sm:text-sm text-emerald-100/90">
             Periode Aktif: <strong>{semesterAktif}</strong> • Rentang Kalender: Juni{' '}
-            {selectedTA.split('/')[0]} s/d Juni {selectedTA.split('/')[1]}
+            {activeStartStr} s/d Juni {activeEndStr}
           </p>
         </div>
 
@@ -210,44 +229,75 @@ export default function CardPengaturanTahunAjaran() {
           {daftarTahunAjaran.map((cfg) => {
             const isSelected = selectedTA === cfg.tahunAjaranMasehi;
             const isCurrentlySaved = activeTahunAjaran === cfg.tahunAjaranMasehi;
+            const isRemovable =
+              cfg.tahunAjaranMasehi !== '2026/2027' && !isCurrentlySaved;
             return (
-              <button
+              <div
                 key={cfg.tahunAjaranMasehi}
-                type="button"
-                data-testid={`option-global-ta-${cfg.tahunAjaranMasehi.replace(
-                  '/',
-                  '-'
-                )}`}
-                onClick={() => setSelectedTA(cfg.tahunAjaranMasehi)}
-                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative ${
+                className={`rounded-2xl border transition-all relative ${
                   isSelected
                     ? 'bg-emerald-50/80 border-emerald-700 ring-2 ring-emerald-600/25 shadow-xs'
                     : 'bg-slate-50/60 hover:bg-slate-100/70 border-slate-200'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900">
-                    <Sun className="w-3 h-3 text-amber-700" />
-                    Masehi
-                  </span>
-                  {isCurrentlySaved && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-700 text-white">
-                      Aktif Saat Ini
+                <button
+                  type="button"
+                  data-testid={`option-global-ta-${cfg.tahunAjaranMasehi.replace(
+                    '/',
+                    '-'
+                  )}`}
+                  onClick={() => setSelectedTA(cfg.tahunAjaranMasehi)}
+                  className="w-full p-4 text-left cursor-pointer rounded-2xl"
+                >
+                  <div className="flex items-center justify-between mb-2 pr-6">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900">
+                      <Sun className="w-3 h-3 text-amber-700" />
+                      Masehi
                     </span>
-                  )}
-                </div>
+                    {isCurrentlySaved && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-700 text-white">
+                        Aktif Saat Ini
+                      </span>
+                    )}
+                  </div>
 
-                <div className="text-lg font-extrabold text-slate-900">
-                  TA {cfg.tahunAjaranMasehi}
-                </div>
-                <div className="text-xs font-bold text-emerald-800 flex items-center gap-1 mt-0.5">
-                  <Moon className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>{cfg.tahunAjaranHijriyah} Hijriyah</span>
-                </div>
-                <div className="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-200/70">
-                  Juni {cfg.startYearMasehi} s/d Juni {cfg.startYearMasehi + 1}
-                </div>
-              </button>
+                  <div className="text-lg font-extrabold text-slate-900">
+                    TA {cfg.tahunAjaranMasehi}
+                  </div>
+                  <div className="text-xs font-bold text-emerald-800 flex items-center gap-1 mt-0.5">
+                    <Moon className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>{cfg.tahunAjaranHijriyah} Hijriyah</span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-200/70">
+                    Juni {cfg.startYearMasehi} s/d Juni {cfg.startYearMasehi + 1}
+                  </div>
+                </button>
+
+                {isRemovable && (
+                  <button
+                    type="button"
+                    data-testid={`btn-remove-ta-${cfg.tahunAjaranMasehi.replace('/', '-')}`}
+                    aria-label={`Hapus TA ${cfg.tahunAjaranMasehi}`}
+                    title={`Hapus TA ${cfg.tahunAjaranMasehi}`}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const ok = await removeTahunAjaran(
+                        cfg.tahunAjaranMasehi,
+                        'Master Administrator'
+                      );
+                      if (ok) {
+                        if (selectedTA === cfg.tahunAjaranMasehi) {
+                          setSelectedTA(activeTahunAjaran);
+                        }
+                        showNotice(`Tahun Ajaran ${cfg.tahunAjaranMasehi} berhasil dihapus.`);
+                      }
+                    }}
+                    className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>
@@ -346,7 +396,7 @@ export default function CardPengaturanTahunAjaran() {
 
             <div className="pt-2">
               <label className="text-xs font-bold text-slate-700 block mb-1">
-                Tahun Awal Masehi (contoh: 2030 untuk TA 2030/2031)
+                Tahun Awal Masehi (contoh: 2027 untuk TA 2027/2028)
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -385,7 +435,7 @@ export default function CardPengaturanTahunAjaran() {
               Halaman yang Tersinkronisasi Otomatis
             </h4>
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
-              6 Modul Terhubung
+              {syncedPages.length} Modul Terhubung
             </span>
           </div>
 

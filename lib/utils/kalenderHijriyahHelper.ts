@@ -67,27 +67,6 @@ export const DAFTAR_TAHUN_AJARAN_KALENDER: TahunAjaranKalenderConfig[] = [
     startYearHijriyah: 1447,
     hijriOffsetDays: 0,
   },
-  {
-    tahunAjaranMasehi: '2027/2028',
-    tahunAjaranHijriyah: '1448/1449',
-    startYearMasehi: 2027,
-    startYearHijriyah: 1448,
-    hijriOffsetDays: 0,
-  },
-  {
-    tahunAjaranMasehi: '2028/2029',
-    tahunAjaranHijriyah: '1449/1450',
-    startYearMasehi: 2028,
-    startYearHijriyah: 1449,
-    hijriOffsetDays: 0,
-  },
-  {
-    tahunAjaranMasehi: '2029/2030',
-    tahunAjaranHijriyah: '1450/1451',
-    startYearMasehi: 2029,
-    startYearHijriyah: 1450,
-    hijriOffsetDays: 0,
-  },
 ];
 
 /**

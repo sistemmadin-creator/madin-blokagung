@@ -7,6 +7,7 @@ import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useFanStore } from '@/stores/useFanStore';
 import { usePagePermission } from '@/stores/useRbacStore';
+import { useTahunAjaranStore } from '@/stores/useTahunAjaranStore';
 import {
   Calendar,
   RefreshCw,
@@ -22,7 +23,6 @@ import {
 } from 'lucide-react';
 import { exportAoaToExcel, ExcelMergeRange } from '@/lib/utils/excel';
 import {
-  dapatkanTahunAjaranKBM,
   buildMasterStrukturKelasKBM,
   getKgHighlightClass,
   hitungSlotKelasKBM,
@@ -53,6 +53,12 @@ export default function JadwalKbmPage() {
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
   const { santriList, fetchSantri } = useSantriStore();
   const { fanConfig, fetchFanData } = useFanStore();
+  const {
+    activeTahunAjaran,
+    hijriOffsetDays,
+    fetchGlobalTahunAjaran,
+    getFormattedHeaderBanner,
+  } = useTahunAjaranStore();
   const { canEdit, isClassAllowed } = usePagePermission('jadwal-kbm');
 
   // Filters
@@ -74,14 +80,29 @@ export default function JadwalKbmPage() {
   });
 
   useEffect(() => {
+    fetchGlobalTahunAjaran();
     fetchJadwal();
     if (formasiList.length === 0) fetchFormasi();
     if (asatidzList.length === 0) fetchAsatidz();
     if (santriList.length === 0) fetchSantri();
     fetchFanData();
-  }, [fetchJadwal, fetchFormasi, fetchAsatidz, fetchSantri, fetchFanData, formasiList.length, asatidzList.length, santriList.length]);
+  }, [
+    fetchGlobalTahunAjaran,
+    fetchJadwal,
+    fetchFormasi,
+    fetchAsatidz,
+    fetchSantri,
+    fetchFanData,
+    formasiList.length,
+    asatidzList.length,
+    santriList.length,
+  ]);
 
-  const tahunAjaran = useMemo(() => dapatkanTahunAjaranKBM(), []);
+  const tahunAjaran = useMemo(() => {
+    void activeTahunAjaran;
+    void hijriOffsetDays;
+    return getFormattedHeaderBanner();
+  }, [activeTahunAjaran, hijriOffsetDays, getFormattedHeaderBanner]);
 
   // Build Full Class Schedule Matrix & Sync to Global Store
   const masterStrukturKelasKBM = useMemo(() => {

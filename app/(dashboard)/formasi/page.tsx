@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
+import { useTahunAjaranStore } from '@/stores/useTahunAjaranStore';
 import { usePagePermission } from '@/stores/useRbacStore';
 import { FormasiWithStats } from '@/types/formasi';
 import { getWaliKelasSyncInfo, getSantriInFormasi } from '@/lib/utils/formasiSync';
@@ -59,6 +60,12 @@ export default function FormasiMasterPage() {
 
   const { santriList, fetchSantri } = useSantriStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
+  const {
+    activeTahunAjaran,
+    hijriOffsetDays,
+    fetchGlobalTahunAjaran,
+    getFormattedHeaderBanner,
+  } = useTahunAjaranStore();
   const { canCreate, canEdit, canDelete, canAccessSettings, isClassAllowed } = usePagePermission('formasi');
 
   const [search, setSearch] = useState('');
@@ -73,10 +80,17 @@ export default function FormasiMasterPage() {
   const [deleteAnalysis, setDeleteAnalysis] = useState<DeleteImpactAnalysis | null>(null);
 
   useEffect(() => {
+    fetchGlobalTahunAjaran();
     fetchFormasi();
     if (santriList.length === 0) fetchSantri();
     if (asatidzList.length === 0) fetchAsatidz();
-  }, [fetchFormasi, fetchSantri, fetchAsatidz, santriList.length, asatidzList.length]);
+  }, [fetchGlobalTahunAjaran, fetchFormasi, fetchSantri, fetchAsatidz, santriList.length, asatidzList.length]);
+
+  const headerTahunAjaranBanner = useMemo(() => {
+    void activeTahunAjaran;
+    void hijriOffsetDays;
+    return getFormattedHeaderBanner();
+  }, [activeTahunAjaran, hijriOffsetDays, getFormattedHeaderBanner]);
 
   // Enrich formasi with stats, Wali Kelas, and Santri count
   const enrichedList: FormasiWithStats[] = useMemo(() => {
@@ -272,6 +286,9 @@ export default function FormasiMasterPage() {
           <p className="text-slate-500 text-xs m-0 mt-1">
             Manajemen ruang kelas, wali kelas, dan kapasitas santri berdasarkan database ter-normalisasi.
           </p>
+          <span className="inline-flex items-center mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+            {headerTahunAjaranBanner}
+          </span>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">

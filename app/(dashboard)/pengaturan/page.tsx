@@ -192,7 +192,7 @@ function PengaturanContent() {
                 </div>
                 <h3 className="font-bold text-slate-900 text-base">Tahun Ajaran &amp; Siklus Akademik</h3>
                 <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                  Tetapkan Tahun Ajaran aktif (2026/2027 ke 2027/2028 dst.) yang otomatis disinkronkan ke Kalender Kegiatan, Jadwal KBM, Formasi, dan Absen Konsorsium.
+                  Tetapkan Tahun Ajaran aktif (2026/2027 dan tahun ajaran berikutnya) yang otomatis disinkronkan ke Kalender Kegiatan, Jadwal KBM, Formasi, Absen Konsorsium, dan Rekap Hafalan.
                 </p>
               </div>
               <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
