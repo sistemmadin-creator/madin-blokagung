@@ -69,6 +69,7 @@ export interface SetoranRecord {
   bin?: string;
   item_hafalan: string;
   kategori: string;
+  tahun_ajaran?: string;
   created_at?: string;
 }
 

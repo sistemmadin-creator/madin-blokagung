@@ -21,6 +21,7 @@ import {
   AlertCircle,
   Hash,
   AlignLeft,
+  Award,
 } from 'lucide-react';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
@@ -40,7 +41,7 @@ import {
   ModeAlurTahfidz,
 } from '@/types/setoran';
 
-type ActiveTabType = 'wajib' | 'sunnah' | 'kitab' | 'tahfidz' | 'penjaga';
+type ActiveTabType = 'wajib' | 'sunnah' | 'kitab' | 'wisuda' | 'tahfidz' | 'penjaga';
 
 export default function ModalSettingsHafalan() {
   const { isSettingsOpen, closeSettings, config, saveConfig } = useMuhafadzohStore();
@@ -58,6 +59,7 @@ export default function ModalSettingsHafalan() {
   const [localWajib, setLocalWajib] = useState<Record<string, ItemHafalanDetail[]>>({});
   const [localSunnah, setLocalSunnah] = useState<Record<string, ItemHafalanDetail[]>>({});
   const [localKitab, setLocalKitab] = useState<Record<string, ItemHafalanDetail[]>>({});
+  const [localWisuda, setLocalWisuda] = useState<Record<string, ItemHafalanDetail[]>>({});
 
   // Tahfidz Local State
   const [localStandarMaksimalJuz, setLocalStandarMaksimalJuz] = useState<number>(3);
@@ -124,10 +126,12 @@ export default function ModalSettingsHafalan() {
       const parsedWajib = parseSourceToDetailedMap(config.hafWajib);
       const parsedSunnah = parseSourceToDetailedMap(config.hafSunnah);
       const parsedKitab = parseSourceToDetailedMap(config.hafKitab);
+      const parsedWisuda = parseSourceToDetailedMap(config.hafWisuda || {});
 
       setLocalWajib(parsedWajib);
       setLocalSunnah(parsedSunnah);
       setLocalKitab(parsedKitab);
+      setLocalWisuda(parsedWisuda);
 
       setSelectedPenjagaBebas([...(config.penjagaBebas || [])]);
       setPenjagaSearch('');
@@ -161,14 +165,16 @@ export default function ModalSettingsHafalan() {
     if (activeTab === 'wajib') return localWajib;
     if (activeTab === 'sunnah') return localSunnah;
     if (activeTab === 'kitab') return localKitab;
+    if (activeTab === 'wisuda') return localWisuda;
     return {};
-  }, [activeTab, localWajib, localSunnah, localKitab]);
+  }, [activeTab, localWajib, localSunnah, localKitab, localWisuda]);
 
   // Update active map helper
   const updateActiveMap = (updater: (prev: Record<string, ItemHafalanDetail[]>) => Record<string, ItemHafalanDetail[]>) => {
     if (activeTab === 'wajib') setLocalWajib(updater);
     else if (activeTab === 'sunnah') setLocalSunnah(updater);
     else if (activeTab === 'kitab') setLocalKitab(updater);
+    else if (activeTab === 'wisuda') setLocalWisuda(updater);
   };
 
   const handleSwitchToMode = (mode: 'visual' | 'json') => {
@@ -520,6 +526,7 @@ export default function ModalSettingsHafalan() {
       hafWajib: cleanMap(localWajib),
       hafSunnah: cleanMap(localSunnah),
       hafKitab: cleanMap(localKitab),
+      hafWisuda: cleanMap(localWisuda),
       penjagaBebas: selectedPenjagaBebas,
       tahfidz: {
         standarMaksimalJuz: Number(localStandarMaksimalJuz) || 3,
@@ -557,7 +564,7 @@ export default function ModalSettingsHafalan() {
                 Pengaturan Target Muhafadzoh & Item Hafalan
               </h2>
               <p className="text-xs text-slate-400">
-                Atur materi hafalan (Wajib, Sunnah, Kitab) & batas capaian target (Angka / Kalimat) per tingkat
+                Atur materi hafalan (Wajib, Sunnah, Kitab, Wisuda) &amp; batas capaian target (Angka / Kalimat) per tingkat
               </p>
             </div>
           </div>
@@ -614,6 +621,20 @@ export default function ModalSettingsHafalan() {
 
           <button
             type="button"
+            data-testid="tab-pengaturan-wisuda"
+            onClick={() => setActiveTab('wisuda')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap transition ${
+              activeTab === 'wisuda'
+                ? 'border-rose-600 text-rose-800 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/30'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <Award className="w-4 h-4 text-rose-600" />
+            <span>Hafalan Wisuda</span>
+          </button>
+
+          <button
+            type="button"
             data-testid="tab-pengaturan-tahfidz"
             onClick={() => setActiveTab('tahfidz')}
             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap transition ${
@@ -642,7 +663,7 @@ export default function ModalSettingsHafalan() {
 
         {/* Content Area */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900/50 space-y-4">
-          {activeTab === 'wajib' || activeTab === 'sunnah' || activeTab === 'kitab' ? (
+          {activeTab === 'wajib' || activeTab === 'sunnah' || activeTab === 'kitab' || activeTab === 'wisuda' ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-800/60 space-y-3">
               {/* Toolbar Builder ala Gambar 2 */}
               <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -892,6 +913,11 @@ export default function ModalSettingsHafalan() {
                                               <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 border border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 truncate max-w-[180px]">
                                                 {targetPreview}
                                               </span>
+                                              {item.keterangan && (
+                                                <span className="rounded-md bg-purple-50 px-1.5 py-0.5 text-[10px] font-semibold text-purple-800 border border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-900 truncate max-w-[120px]">
+                                                  {item.keterangan}
+                                                </span>
+                                              )}
                                             </div>
                                           </div>
 
@@ -921,18 +947,38 @@ export default function ModalSettingsHafalan() {
                                         {/* Expanded Config Form Detail */}
                                         {isExpanded && (
                                           <div className="border-t border-slate-200 bg-slate-50/70 p-3 space-y-3 dark:border-slate-700 dark:bg-slate-900/60">
-                                            {/* Field: Nama Materi */}
-                                            <div>
-                                              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                                                Nama Materi Hafalan
-                                              </label>
-                                              <input
-                                                type="text"
-                                                value={item.nama}
-                                                onChange={(e) => handleUpdateItem(key, item.id, { nama: e.target.value })}
-                                                placeholder="Contoh: Nadhom Al-Imrithi, Juz Amma..."
-                                                className="w-full h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                                              />
+                                            {/* Field: Nama Materi & Keterangan */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                              <div className="sm:col-span-2">
+                                                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                                  Nama Materi Hafalan
+                                                </label>
+                                                <input
+                                                  type="text"
+                                                  value={item.nama}
+                                                  onChange={(e) => handleUpdateItem(key, item.id, { nama: e.target.value })}
+                                                  placeholder="Contoh: Nadhom Al-Imrithi, Juz Amma..."
+                                                  className="w-full h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                                                />
+                                              </div>
+                                              <div>
+                                                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                                  Keterangan / Target
+                                                </label>
+                                                <input
+                                                  type="text"
+                                                  list="dl_keterangan_hafalan"
+                                                  value={item.keterangan || ''}
+                                                  onChange={(e) => handleUpdateItem(key, item.id, { keterangan: e.target.value })}
+                                                  placeholder="Semua / Putra / Putri"
+                                                  className="w-full h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                                                />
+                                                <datalist id="dl_keterangan_hafalan">
+                                                  <option value="Semua" />
+                                                  <option value="Putra" />
+                                                  <option value="Putri" />
+                                                </datalist>
+                                              </div>
                                             </div>
 
                                             {/* Field: Pilihan Tipe Capaian Target */}

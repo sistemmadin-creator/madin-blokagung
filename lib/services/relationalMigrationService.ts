@@ -366,6 +366,7 @@ export const RelationalMigrationService = {
         bin: s.bin || '',
         item_hafalan: s.item_hafalan,
         kategori: s.kategori || 'Wajib',
+        tahun_ajaran: s.tahun_ajaran || '',
       });
     });
 
@@ -397,6 +398,7 @@ export const RelationalMigrationService = {
         bin: rec.bin,
         item_hafalan: rec.item_hafalan,
         kategori: rec.kategori,
+        tahun_ajaran: rec.tahun_ajaran,
       };
       return convertSetoranToRaw(s);
     });

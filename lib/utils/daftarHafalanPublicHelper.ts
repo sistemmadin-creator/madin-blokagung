@@ -11,12 +11,13 @@ import {
 
 export type JenjangHafalanSlug = 'ula' | 'wustho' | 'ulya';
 
-export type KategoriHafalanPublic = 'Wajib' | 'Sunnah' | 'Kitab';
+export type KategoriHafalanPublic = 'Wajib' | 'Sunnah' | 'Kitab' | 'Wisuda';
 
 export interface PublicHafalanPayload {
   hafWajib: Record<string, HafalanItemType[]>;
   hafSunnah: Record<string, HafalanItemType[]>;
   hafKitab: Record<string, HafalanItemType[]>;
+  hafWisuda?: Record<string, HafalanItemType[]>;
   silabus: SilabusConfigMap;
 }
 
@@ -76,6 +77,7 @@ export const FALLBACK_PUBLIC_HAFALAN_PAYLOAD: PublicHafalanPayload = {
   hafWajib: DEFAULT_HAFALAN_WAJIB,
   hafSunnah: {},
   hafKitab: {},
+  hafWisuda: {},
   silabus: {},
 };
 
@@ -121,7 +123,7 @@ export function buildDaftarHafalanGroups(
   const prefix = JENJANG_HAFALAN_META[jenjang].prefix;
 
   const keySet = new Set<string>();
-  [payload.hafWajib, payload.hafSunnah, payload.hafKitab].forEach((bucket) => {
+  [payload.hafWajib, payload.hafSunnah, payload.hafKitab, payload.hafWisuda].forEach((bucket) => {
     if (!bucket || typeof bucket !== 'object') return;
     Object.keys(bucket).forEach((k) => {
       const upper = k.trim().toUpperCase();
@@ -142,6 +144,7 @@ export function buildDaftarHafalanGroups(
     { data: payload.hafWajib || {}, kategori: 'Wajib' },
     { data: payload.hafSunnah || {}, kategori: 'Sunnah' },
     { data: payload.hafKitab || {}, kategori: 'Kitab' },
+    { data: payload.hafWisuda || {}, kategori: 'Wisuda' },
   ];
 
   return sortedKeys

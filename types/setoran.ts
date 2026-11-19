@@ -1,3 +1,5 @@
+export type HafalanKategori = 'Wajib' | 'Sunnah' | 'Tahfidz' | 'Kitab' | 'Wisuda';
+
 export interface SetoranHafalan {
   id?: string;
   no_induk: string;
@@ -17,7 +19,8 @@ export interface SetoranHafalan {
   provinsi?: string;
   bin?: string;
   item_hafalan: string;
-  kategori: string; // 'Wajib' | 'Sunnah' | 'Tahfidz' | 'Kitab'
+  kategori: string; // 'Wajib' | 'Sunnah' | 'Tahfidz' | 'Kitab' | 'Wisuda'
+  tahun_ajaran?: string; // Format '2026/2027'
   // Kompatibilitas modul lain
   kelas?: string;
   kamar?: string;
@@ -45,7 +48,8 @@ export type RiwayatSetoranRawRow = [
   string, // 15: provinsi
   string, // 16: bin
   string, // 17: hafalan
-  string  // 18: kategori
+  string, // 18: kategori
+  string? // 19: tahun_ajaran (opsional untuk backward-compatibility)
 ];
 
 export type TargetUnitNumeric = 'baris' | 'halaman' | 'bait' | 'skor' | 'custom';
@@ -94,6 +98,7 @@ export interface HafalanConfig {
   hafWajib: Record<string, HafalanItemType[]>;
   hafSunnah: Record<string, HafalanItemType[]>;
   hafKitab: Record<string, HafalanItemType[]>;
+  hafWisuda?: Record<string, HafalanItemType[]>;
   penjagaBebas: string[];
   tahfidz?: TahfidzConfig;
 }

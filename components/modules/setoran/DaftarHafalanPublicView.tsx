@@ -35,6 +35,8 @@ const KATEGORI_BADGE_CLASS: Record<KategoriHafalanPublic, string> = {
     'bg-sky-100 text-sky-900 border-sky-200 dark:bg-sky-950/70 dark:text-sky-300 dark:border-sky-800',
   Kitab:
     'bg-amber-100 text-amber-900 border-amber-200 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800',
+  Wisuda:
+    'bg-purple-100 text-purple-900 border-purple-200 dark:bg-purple-950/70 dark:text-purple-300 dark:border-purple-800',
 };
 
 export default function DaftarHafalanPublicView({ jenjang }: DaftarHafalanPublicViewProps) {
@@ -60,6 +62,7 @@ export default function DaftarHafalanPublicView({ jenjang }: DaftarHafalanPublic
             hafWajib: hasWajib ? obj.hafWajib! : FALLBACK_PUBLIC_HAFALAN_PAYLOAD.hafWajib,
             hafSunnah: obj.hafSunnah || {},
             hafKitab: obj.hafKitab || {},
+            hafWisuda: obj.hafWisuda || {},
             silabus: obj.silabus || {},
           });
         }
@@ -157,7 +160,7 @@ export default function DaftarHafalanPublicView({ jenjang }: DaftarHafalanPublic
       {/* Toolbar Filter Kategori & Pencarian */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-          {(['all', 'Wajib', 'Sunnah', 'Kitab'] as const).map((kat) => (
+          {(['all', 'Wajib', 'Sunnah', 'Kitab', 'Wisuda'] as const).map((kat) => (
             <button
               key={kat}
               type="button"

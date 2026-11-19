@@ -13,6 +13,10 @@ export interface ExcelAoaSheetConfig {
   rows: unknown[][];
   merges?: ExcelMergeRange[];
   colWidths?: number[];
+  /** Opsional: styling per sel berbasis key "r,c" (0-indexed) */
+  cellStyles?: Record<string, Partial<ExcelJS.Style>>;
+  /** Opsional: tinggi baris berbasis index baris (0-indexed) */
+  rowHeights?: Record<number, number>;
 }
 
 export interface ExportAoaOptions {
@@ -135,6 +139,31 @@ export async function exportAoaToExcel(options: ExportAoaOptions): Promise<void>
       sheet.colWidths.forEach((w, colIdx) => {
         if (typeof w === 'number' && w > 0) {
           worksheet.getColumn(colIdx + 1).width = w;
+        }
+      });
+    }
+
+    if (sheet.rowHeights) {
+      Object.entries(sheet.rowHeights).forEach(([rIdxStr, h]) => {
+        const rIdx = Number(rIdxStr);
+        if (Number.isFinite(rIdx) && rIdx >= 0 && typeof h === 'number' && h > 0) {
+          worksheet.getRow(rIdx + 1).height = h;
+        }
+      });
+    }
+
+    if (sheet.cellStyles) {
+      Object.entries(sheet.cellStyles).forEach(([coord, style]) => {
+        const [rStr, cStr] = coord.split(',');
+        const r = Number(rStr);
+        const c = Number(cStr);
+        if (Number.isFinite(r) && Number.isFinite(c) && r >= 0 && c >= 0) {
+          const cell = worksheet.getCell(r + 1, c + 1);
+          if (style.font) cell.font = { ...cell.font, ...style.font };
+          if (style.alignment) cell.alignment = { ...cell.alignment, ...style.alignment };
+          if (style.fill) cell.fill = style.fill;
+          if (style.border) cell.border = style.border;
+          if (style.numFmt) cell.numFmt = style.numFmt;
         }
       });
     }

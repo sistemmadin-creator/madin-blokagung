@@ -133,6 +133,16 @@ export default function CardPengaturanTahunAjaran() {
       desc: 'Daftar hari libur kalender otomatis terhubung dengan Tahun Ajaran berjalan',
       href: '/absensi',
     },
+    {
+      title: 'Setoran Muhafadzoh (Tampilan 1 & 2)',
+      desc: 'Input dan daftar hafalan aktif mengikuti Tahun Ajaran aktif',
+      href: '/setoran',
+    },
+    {
+      title: 'Rekap Hafalan Pertingkatan (Excel)',
+      desc: 'Tabel & ekspor Excel rekap pertingkatan otomatis menyaring berdasarkan Tahun Ajaran',
+      href: '/rekap-hafalan/pertingkatan',
+    },
   ];
 
   return (

@@ -89,7 +89,12 @@ export default function CardAturanMuhafadzoh() {
       hafWajib: hafWajibDraft,
       hafSunnah: config?.hafSunnah || {},
       hafKitab: config?.hafKitab || {},
+      hafWisuda: config?.hafWisuda || {},
       penjagaBebas: penjagaList,
+      tahfidz: config?.tahfidz || {
+        standarMaksimalJuz: 3,
+        santriTahfidzList: [],
+      },
     };
 
     const ok = await saveConfig(payload);

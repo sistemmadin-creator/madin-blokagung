@@ -6,6 +6,7 @@ import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { usePagePermission } from '@/stores/useRbacStore';
+import { useTahunAjaranStore } from '@/stores/useTahunAjaranStore';
 import {
   Grid,
   Save,
@@ -22,6 +23,7 @@ import {
 import ModalSettingsHafalan from '@/components/modules/setoran/ModalSettingsHafalan';
 import ModalDetailRiwayatSetoran from '@/components/modules/setoran/ModalDetailRiwayatSetoran';
 import KartuBuktiSetoran, { KartuData } from '@/components/modules/setoran/KartuBuktiSetoran';
+import SetoranTampilan1View from '@/components/modules/setoran/SetoranTampilan1View';
 import KonfirmasiHapusRelasiModal from '@/components/ui/KonfirmasiHapusRelasiModal';
 import { DeleteImpactAnalysis } from '@/lib/services/relationDeleteTypes';
 import {
@@ -31,9 +33,13 @@ import {
   formatTanggalResmi,
   cariMustahiqSantri,
   norm,
+  normalizeTahunAjaranSlash,
 } from '@/lib/utils/setoranHelper';
 import { SetoranHafalan } from '@/types/setoran';
 import html2canvas from 'html2canvas';
+
+const LS_SETORAN_VIEW_MODE = 'madin_setoran_view_mode_v1';
+type SetoranViewMode = 'tampilan1' | 'tampilan2';
 
 export default function SetoranPage() {
   const {
@@ -53,7 +59,37 @@ export default function SetoranPage() {
   const { santriList, fetchSantri } = useSantriStore();
   const { asatidzList, fetchAsatidz } = useAsatidzStore();
   const { formasiList, fetchFormasi } = useFormasiStore();
-  const { canDelete, canAccessSettings, isPersonAllowed } = usePagePermission('setoran');
+  const {
+    activeTahunAjaran,
+    daftarTahunAjaran,
+    fetchGlobalTahunAjaran,
+  } = useTahunAjaranStore();
+  const {
+    currentAccount,
+    canCreate,
+    canDelete,
+    canAccessSettings,
+    isPersonAllowed,
+  } = usePagePermission('setoran');
+
+  // Switch Tampilan 1 (default) vs Tampilan 2
+  const [viewMode, setViewMode] = useState<SetoranViewMode>('tampilan1');
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(LS_SETORAN_VIEW_MODE);
+      if (saved === 'tampilan1' || saved === 'tampilan2') {
+        setViewMode(saved);
+      }
+    } catch {}
+  }, []);
+
+  const handleChangeViewMode = (mode: SetoranViewMode) => {
+    setViewMode(mode);
+    try {
+      window.localStorage.setItem(LS_SETORAN_VIEW_MODE, mode);
+    } catch {}
+  };
 
   // Top Filter & Search
   const [filterGender, setFilterGender] = useState<'SEMUA' | 'PA' | 'PI'>('SEMUA');
@@ -86,7 +122,7 @@ export default function SetoranPage() {
   // Active Hafalan State
   const [penjaga, setPenjaga] = useState('');
   const [itemHafalan, setItemHafalan] = useState('');
-  const [kategori, setKategori] = useState<'Wajib' | 'Sunnah' | 'Tahfidz' | 'Kitab' | ''>('Wajib');
+  const [kategori, setKategori] = useState<'Wajib' | 'Sunnah' | 'Tahfidz' | 'Kitab' | 'Wisuda' | ''>('Wajib');
 
   // Modal Detail State
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -96,14 +132,16 @@ export default function SetoranPage() {
 
   useEffect(() => {
     fetchSetoranData();
+    fetchGlobalTahunAjaran();
     if (santriList.length === 0) fetchSantri();
     if (asatidzList.length === 0) fetchAsatidz();
     if (formasiList.length === 0) fetchFormasi();
-  }, [fetchSetoranData, fetchSantri, fetchAsatidz, fetchFormasi, santriList.length, asatidzList.length, formasiList.length]);
+  }, [fetchSetoranData, fetchGlobalTahunAjaran, fetchSantri, fetchAsatidz, fetchFormasi, santriList.length, asatidzList.length, formasiList.length]);
 
   // Load editing record into form if available
   useEffect(() => {
     if (editingRecord) {
+      setViewMode('tampilan2');
       setNoInduk(editingRecord.no_induk || '');
       setNamaSantri(editingRecord.nama || '');
       setTglSetor(toDateTimeLocalInput(editingRecord.tanggal));
@@ -232,6 +270,7 @@ export default function SetoranPage() {
     if (kategori === 'Wajib') source = config.hafWajib;
     else if (kategori === 'Sunnah') source = config.hafSunnah;
     else if (kategori === 'Kitab') source = config.hafKitab;
+    else if (kategori === 'Wisuda') source = config.hafWisuda || {};
 
     const list = source[key];
     if (Array.isArray(list)) {
@@ -364,6 +403,7 @@ export default function SetoranPage() {
       bin,
       item_hafalan: itemHafalan,
       kategori: kategori || 'Wajib',
+      tahun_ajaran: normalizeTahunAjaranSlash(editingRecord?.tahun_ajaran || activeTahunAjaran || '2026/2027'),
       kelas: kelasGabung,
       capaian: itemHafalan,
       nilai: 'Mumtaz (A)',
@@ -602,7 +642,41 @@ export default function SetoranPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-2xs">
+          <div className="flex flex-wrap items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-2xs">
+            {/* Switch Tampilan 1 vs Tampilan 2 */}
+            <div
+              role="group"
+              aria-label="Pilih mode tampilan setoran"
+              className="inline-flex items-center rounded-lg bg-slate-100 p-0.5 border border-slate-200"
+            >
+              <button
+                type="button"
+                data-testid="switch-tampilan1"
+                onClick={() => handleChangeViewMode('tampilan1')}
+                className={`min-h-[34px] px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
+                  viewMode === 'tampilan1'
+                    ? 'bg-emerald-700 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Tampilan 1
+              </button>
+              <button
+                type="button"
+                data-testid="switch-tampilan2"
+                onClick={() => handleChangeViewMode('tampilan2')}
+                className={`min-h-[34px] px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
+                  viewMode === 'tampilan2'
+                    ? 'bg-emerald-700 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Tampilan 2
+              </button>
+            </div>
+
+            <div className="w-px h-6 bg-slate-200 mx-0.5 hidden sm:block" />
+
             <div className="px-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5 leading-none">
                 Filter Gender
@@ -618,32 +692,36 @@ export default function SetoranPage() {
               </select>
             </div>
 
-            <div className="w-px h-6 bg-slate-200 mx-1" />
+            {viewMode === 'tampilan2' && (
+              <>
+                <div className="w-px h-6 bg-slate-200 mx-0.5" />
 
-            <button
-              type="button"
-              onClick={handlePrintKartu}
-              title="Print Kartu"
-              className="p-2 rounded-lg text-emerald-700 hover:bg-emerald-50 transition border border-transparent hover:border-emerald-200"
-            >
-              <Printer className="w-4 h-4" />
-            </button>
+                <button
+                  type="button"
+                  onClick={handlePrintKartu}
+                  title="Print Kartu"
+                  className="p-2 rounded-lg text-emerald-700 hover:bg-emerald-50 transition border border-transparent hover:border-emerald-200 cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                </button>
 
-            <button
-              type="button"
-              onClick={handleDownloadJpg}
-              title="Unduh JPG"
-              className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition border border-transparent hover:border-blue-200"
-            >
-              <ImageIcon className="w-4 h-4" />
-            </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadJpg}
+                  title="Unduh JPG"
+                  className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition border border-transparent hover:border-blue-200 cursor-pointer"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                </button>
+              </>
+            )}
 
             {canAccessSettings && (
               <button
                 type="button"
                 onClick={openSettings}
                 title="Pengaturan Target & Akses Hafalan"
-                className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition border border-transparent hover:border-slate-200"
+                className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition border border-transparent hover:border-slate-200 cursor-pointer"
               >
                 <Settings className="w-4 h-4" />
               </button>
@@ -652,6 +730,23 @@ export default function SetoranPage() {
         </div>
       </div>
 
+      {viewMode === 'tampilan1' ? (
+        <SetoranTampilan1View
+          santriList={filteredSantriList}
+          asatidzList={asatidzList}
+          formasiList={formasiList}
+          setoranList={setoranList}
+          config={config}
+          activeTahunAjaran={activeTahunAjaran}
+          daftarTahunAjaran={daftarTahunAjaran}
+          currentAccount={currentAccount}
+          canCreate={canCreate}
+          canDelete={canDelete}
+          onAddSetoran={(entry) => addSetoran(entry)}
+          onDeleteSetoran={(key) => deleteSetoran(key)}
+        />
+      ) : (
+        <>
       {/* 2. Grid 2 Kolom: Form Input Kiri & Live Preview Kartu Kanan */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         {/* Kotak Kiri: INPUT HAFALAN */}
@@ -814,10 +909,10 @@ export default function SetoranPage() {
                 </div>
               </div>
 
-              {/* Radio Pill Tokens: Wajib / Sunnah / Tahfidz / Kitab */}
+              {/* Radio Pill Tokens: Wajib / Sunnah / Tahfidz / Kitab / Wisuda */}
               <div className="pt-1">
                 <div className="flex flex-wrap gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
-                  {(['Wajib', 'Sunnah', 'Tahfidz', 'Kitab'] as const).map((kat) => {
+                  {(['Wajib', 'Sunnah', 'Tahfidz', 'Kitab', 'Wisuda'] as const).map((kat) => {
                     const isSelected = kategori === kat;
                     return (
                       <button
@@ -1027,6 +1122,8 @@ export default function SetoranPage() {
           </table>
         </div>
       </div>
+        </>
+      )}
 
       {/* 4. Modals */}
       <KonfirmasiHapusRelasiModal

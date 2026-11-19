@@ -198,7 +198,7 @@ export default function RekapHafalanPage() {
   // Fungsi untuk membuka Modal Rincian Materi Hafalan (Gambar 3)
   const openMateriModalForClass = (r: ClassRekapRow) => {
     const tahunAjaran = dapatkanTahunAjaranKBM();
-    const configKey = `${r.din_kls}_${r.tingkat}`;
+    const configKey = `${r.tingkat}_${r.din_kls}`;
 
     // Ambil santri di kelas ini
     const santriInClass = santriList.filter((s) => {

@@ -21,6 +21,7 @@ const DEFAULT_CONFIG: HafalanConfig = {
   hafWajib: DEFAULT_HAFALAN_WAJIB,
   hafSunnah: {},
   hafKitab: {},
+  hafWisuda: {},
   penjagaBebas: [],
   tahfidz: {
     standarMaksimalJuz: 3,
@@ -69,9 +70,15 @@ async function syncSetoranToRelational(rawPayload: RiwayatSetoranRawRow[]) {
     if (avail) {
       const records = RelationalMigrationService.parseSetoranRawToRecords(rawPayload);
       if (records.length > 0) {
-        await supabase
+        const { error } = await supabase
           .from('setoran_hafalan_records' as any)
           .upsert(records, { onConflict: 'id' });
+        if (error && (error.code === 'PGRST204' || error.message?.includes('tahun_ajaran'))) {
+          const legacyRecords = records.map(({ tahun_ajaran: _ta, ...rest }) => rest);
+          await supabase
+            .from('setoran_hafalan_records' as any)
+            .upsert(legacyRecords, { onConflict: 'id' });
+        }
       }
     }
   } catch (e) {
@@ -121,6 +128,7 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
                   : DEFAULT_HAFALAN_WAJIB,
                 hafSunnah: parsedCfg.hafSunnah || {},
                 hafKitab: parsedCfg.hafKitab || {},
+                hafWisuda: parsedCfg.hafWisuda || {},
                 penjagaBebas: pb,
                 tahfidz: parsedCfg.tahfidz || {
                   standarMaksimalJuz: 3,
@@ -208,6 +216,7 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
               hafWajib: val.hafWajib && Object.keys(val.hafWajib).length > 0 ? val.hafWajib : DEFAULT_HAFALAN_WAJIB,
               hafSunnah: val.hafSunnah || {},
               hafKitab: val.hafKitab || {},
+              hafWisuda: val.hafWisuda || {},
               penjagaBebas: pb,
               tahfidz: val.tahfidz || {
                 standarMaksimalJuz: 3,
@@ -461,6 +470,15 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
 
       syncSetoranToRelational(rawPayload);
 
+      if (targetItem?.id) {
+        try {
+          await supabase
+            .from('setoran_hafalan_records' as any)
+            .delete()
+            .eq('id', targetItem.id);
+        } catch {}
+      }
+
       await logActivity('HAPUS SETORAN', `Menghapus rekaman setoran`);
 
       if (!skipHistory && targetItem) {
@@ -542,6 +560,7 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
         hafWajib: newConfig.hafWajib,
         hafSunnah: newConfig.hafSunnah,
         hafKitab: newConfig.hafKitab,
+        hafWisuda: newConfig.hafWisuda || {},
         penjagaBebas: newConfig.penjagaBebas.join(', '),
         tahfidz: newConfig.tahfidz || {
           standarMaksimalJuz: 3,

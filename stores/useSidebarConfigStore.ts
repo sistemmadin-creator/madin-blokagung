@@ -176,7 +176,26 @@ export const DEFAULT_SIDEBAR_GROUPS: ConfigMenuGroup[] = [
         href: '/linimasa-setor',
         iconName: 'CalendarDays',
       },
-      { id: 'item-rekap-hafalan', title: 'Rekap Hafalan', href: '/rekap-hafalan', iconName: 'BarChart2' },
+      {
+        id: 'item-rekap-hafalan',
+        title: 'Rekap Hafalan',
+        href: '/rekap-hafalan',
+        iconName: 'BarChart2',
+        children: [
+          {
+            id: 'sub-rekap-hafalan-ringkas',
+            title: 'Rekap Hafalan Ringkas',
+            href: '/rekap-hafalan',
+            iconName: 'BarChart2',
+          },
+          {
+            id: 'sub-rekap-hafalan-pertingkatan',
+            title: 'Rekap Pertingkatan (Excel)',
+            href: '/rekap-hafalan/pertingkatan',
+            iconName: 'Layers',
+          },
+        ],
+      },
       { id: 'item-piagam', title: 'Cetak Piagam', href: '/piagam', iconName: 'Award' },
       { id: 'item-serah-piagam', title: 'Serah Piagam', href: '/serah-piagam', iconName: 'CheckSquare' },
       { id: 'item-kirim-wa', title: 'Kirim WhatsApp', href: '/kirim-wa', iconName: 'MessageSquare' },

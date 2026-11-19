@@ -23,6 +23,75 @@ export function norm(val: any): string {
   return String(val || '').trim().toUpperCase();
 }
 
+/**
+ * Normalisasi format Tahun Ajaran ke 'YYYY/YYYY' (contoh: '2026-2027' -> '2026/2027')
+ */
+export function normalizeTahunAjaranSlash(ta?: string | null): string {
+  const clean = String(ta || '').trim();
+  if (!clean) return '';
+  const m = clean.match(/^(\d{4})[-/](\d{4})$/);
+  return m ? `${m[1]}/${m[2]}` : clean;
+}
+
+/**
+ * Normalisasi format Tahun Ajaran ke 'YYYY-YYYY' (contoh: '2026/2027' -> '2026-2027')
+ */
+export function normalizeTahunAjaranDash(ta?: string | null): string {
+  const clean = String(ta || '').trim();
+  if (!clean) return '';
+  const m = clean.match(/^(\d{4})[-/](\d{4})$/);
+  return m ? `${m[1]}-${m[2]}` : clean;
+}
+
+/**
+ * Inferensi Tahun Ajaran ('YYYY/YYYY') dari string tanggal setor
+ * (DD/MM/YYYY HH:mm atau YYYY-MM-DD...) untuk kompatibilitas data lama.
+ */
+export function inferTahunAjaranFromTanggal(tanggal?: string | null): string {
+  const raw = String(tanggal || '').trim();
+  if (!raw) return '2026/2027';
+
+  let year = 0;
+  let month = 0;
+
+  const dmy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (dmy) {
+    month = parseInt(dmy[2], 10);
+    year = parseInt(dmy[3], 10);
+  } else {
+    const ymd = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (ymd) {
+      year = parseInt(ymd[1], 10);
+      month = parseInt(ymd[2], 10);
+    }
+  }
+
+  if (year >= 2000 && month >= 1 && month <= 12) {
+    const startYear = month >= 7 ? year : year - 1;
+    return `${startYear}/${startYear + 1}`;
+  }
+
+  return '2026/2027';
+}
+
+export function formatKelasTanpaSpasi(
+  dinKls?: string | null,
+  dinBag?: string | null,
+  tingkat?: string | null
+): string {
+  const kls = String(dinKls || '').trim();
+  const bag = String(dinBag || '').trim().toUpperCase();
+  const tk = String(tingkat || '').trim().toUpperCase();
+  const prefix = `${kls}${bag}`.trim();
+  return [prefix, tk].filter(Boolean).join(' ');
+}
+
+export function formatJenisKelaminLengkap(paPi?: string | null): 'Putra' | 'Putri' {
+  const clean = norm(paPi);
+  if (clean === 'PI' || clean === 'PUTRI' || clean === 'P') return 'Putri';
+  return 'Putra';
+}
+
 export function getNowLocalDateTimeString(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -177,6 +246,8 @@ export function convertRawToSetoran(row: any[]): SetoranHafalan {
   const bin = String(row[16] || '').trim();
   const hafalan = String(row[17] || '').trim();
   const kategori = String(row[18] || 'Wajib').trim();
+  const rawTa = String(row[19] || '').trim();
+  const tahunAjaran = rawTa ? normalizeTahunAjaranSlash(rawTa) : inferTahunAjaranFromTanggal(tglSetor);
 
   const kelasStr = `${dinKls} ${dinBag} ${tingkat}`.trim();
 
@@ -200,6 +271,7 @@ export function convertRawToSetoran(row: any[]): SetoranHafalan {
     bin,
     item_hafalan: hafalan,
     kategori,
+    tahun_ajaran: tahunAjaran,
     kelas: kelasStr,
     nilai: 'Mumtaz (A)',
     capaian: hafalan,
@@ -207,7 +279,7 @@ export function convertRawToSetoran(row: any[]): SetoranHafalan {
 }
 
 export function convertSetoranToRaw(s: SetoranHafalan): RiwayatSetoranRawRow {
-  return [
+  const row: RiwayatSetoranRawRow = [
     '',
     s.no_induk || '',
     s.tanggal || '',
@@ -226,8 +298,12 @@ export function convertSetoranToRaw(s: SetoranHafalan): RiwayatSetoranRawRow {
     s.provinsi || '',
     s.bin || '',
     s.item_hafalan || '',
-    s.kategori || 'Wajib'
+    s.kategori || 'Wajib',
   ];
+  if (s.tahun_ajaran) {
+    row.push(normalizeTahunAjaranSlash(s.tahun_ajaran));
+  }
+  return row;
 }
 
 export function getItemHafalanName(item: HafalanItemType): string {
@@ -245,6 +321,7 @@ export function normalizeToItemDetail(
       id: item.id || `haf_${Date.now()}_${fallbackIndex}`,
       nama: item.nama || '',
       targetType: item.targetType || 'numeric',
+      kategori: item.kategori,
       numericUnit: item.numericUnit || 'baris',
       customUnit: item.customUnit || '',
       numericStart: typeof item.numericStart === 'number' ? item.numericStart : 1,
