@@ -103,6 +103,8 @@ export interface HafalanConfig {
   tahfidz?: TahfidzConfig;
 }
 
+export type SilabusNumericMode = 'fixed_increment' | 'auto_even' | 'manual';
+
 export interface SilabusItemRule {
   materi_id?: string;
   materi_nama: string;
@@ -113,7 +115,24 @@ export interface SilabusItemRule {
   sampai_bulan_index: number; // 0 = Juli, 1 = Agustus, ..., 11 = Juni
   dari_bulan_nama?: string;
   sampai_bulan_nama?: string;
+  // Pengaturan target mingguan khusus materi bertipe numeric (Nadzom / Bait / Baris / Halaman)
+  numeric_mode?: SilabusNumericMode;
+  target_mulai?: number;
+  target_akhir?: number;
+  increment_per_minggu?: number;
+  lanjutkan_kumulatif?: boolean;
+  offset_tampilan_awal?: number;
+  minggu_targets?: Record<string, number>; // key: 'YYYY-MM-DD' -> target kumulatif relatif materi
 }
 
 export type SilabusConfigMap = Record<string, SilabusItemRule[]>;
+
+export interface SilabusHolidayEntry {
+  label: string;
+  source?: 'manual' | 'kalender';
+}
+
+/** Map<tahunAjaranSlash (mis. '2026/2027'), Map<isoSundayDate ('YYYY-MM-DD'), SilabusHolidayEntry>> */
+export type SilabusHolidayMapByTA = Record<string, Record<string, SilabusHolidayEntry>>;
+
 

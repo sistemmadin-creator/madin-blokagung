@@ -15,10 +15,11 @@ import {
   MessageSquare,
   AlertCircle,
   Calendar,
+  CalendarOff,
   Sparkles,
   Lock,
 } from 'lucide-react';
-import { SundayOption } from '@/lib/utils/sundayHelper';
+import { SundayOption, inferAcademicStartYearFromDate } from '@/lib/utils/sundayHelper';
 import SundayDatePicker from '@/components/ui/SundayDatePicker';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
@@ -47,6 +48,7 @@ interface ModalInputSetorMingguProps {
   };
   sunday: SundayOption;
   existingRecords?: any[];
+  holidayLabel?: string;
   onSuccess: () => void;
 }
 
@@ -55,6 +57,7 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
   onClose,
   santri,
   sunday,
+  holidayLabel,
   onSuccess,
 }) => {
   const { config, fetchSetoranData, addSetoran } = useMuhafadzohStore();
@@ -71,7 +74,7 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
     deduplicateSantriLogs,
   } = useSetorMustahiqStore();
 
-  const tahun = parseInt(sunday.tanggal.split('-')[0], 10) || new Date().getFullYear();
+  const tahun = inferAcademicStartYearFromDate(sunday.tanggal);
 
   // Load dependency stores if empty
   useEffect(() => {
@@ -466,6 +469,18 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
 
         {/* ================= MODAL BODY (Gambar 2) ================= */}
         <div className="p-6 overflow-y-auto space-y-5 flex-1">
+          {holidayLabel && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2.5 text-xs text-rose-900">
+              <CalendarOff className="w-4 h-4 text-rose-600 shrink-0" />
+              <div>
+                <span className="font-bold">Minggu Liburan Silabus ({holidayLabel}): </span>
+                <span>
+                  Tanggal {sunday.labelLengkap} ditandai libur pada pengaturan silabus. Anda tetap dapat mencatat setoran susulan/khusus jika diperlukan.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* 1. Kartu Ringkasan Santri & Target Aktif */}
           <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
             <div className="flex items-start justify-between gap-2">

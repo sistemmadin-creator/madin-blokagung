@@ -23,6 +23,16 @@ export function norm(val: any): string {
   return String(val || '').trim().toUpperCase();
 }
 
+export function normalizeTingkatKey(rawTingkat?: string | null): string {
+  const clean = norm(rawTingkat);
+  if (!clean) return '';
+  if (clean.includes('WUSTHO') || clean.includes('WUSTHA')) return 'WUSTHO';
+  if (clean.includes('ULYA')) return 'ULYA';
+  if (clean.includes('ULA')) return 'ULA';
+  if (clean.includes("ISTI'DAD") || clean.includes('ISTIDAD')) return "ISTI'DAD";
+  return clean;
+}
+
 /**
  * Normalisasi format Tahun Ajaran ke 'YYYY/YYYY' (contoh: '2026-2027' -> '2026/2027')
  */
@@ -344,7 +354,22 @@ export function normalizeToItemDetail(
     defaultEnd = 254;
   } else if (upperName.includes('FIYYAH 350')) {
     defaultUnit = 'bait';
+    defaultEnd = 350;
+  } else if (upperName.includes('FIYYAH 500')) {
+    defaultUnit = 'bait';
     defaultEnd = 500;
+  } else if (upperName.includes('FIYYAH 850')) {
+    defaultUnit = 'bait';
+    defaultEnd = 850;
+  } else if (upperName.includes('FIYYAH 1000')) {
+    defaultUnit = 'bait';
+    defaultEnd = 1000;
+  } else if (upperName.includes('JAUHARUL MAKNUN')) {
+    defaultUnit = 'bait';
+    defaultEnd = 291;
+  } else if (upperName.includes('TASHILUT THURUQOT')) {
+    defaultUnit = 'bait';
+    defaultEnd = 140;
   }
 
   return {

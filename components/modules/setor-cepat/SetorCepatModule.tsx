@@ -27,6 +27,8 @@ import { useAsatidzStore } from '@/stores/useAsatidzStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { usePagePermission } from '@/stores/useRbacStore';
+import { useTahunAjaranStore, parseStartYearFromTA } from '@/stores/useTahunAjaranStore';
+import { getLocalTodayYMD } from '@/lib/utils/sundayHelper';
 import {
   useSetorMustahiqStore,
   buildSantriSetorRow,
@@ -70,8 +72,10 @@ export default function SetorCepatModule() {
     isClassAllowed,
   } = usePagePermission('setor-cepat');
 
+  const { activeTahunAjaran, fetchGlobalTahunAjaran } = useTahunAjaranStore();
+
   // Filter & Search states
-  const [tahun, setTahun] = useState<number>(new Date().getFullYear());
+  const [tahun, setTahun] = useState<number>(() => parseStartYearFromTA(activeTahunAjaran));
   const [search, setSearch] = useState('');
   const [filterKelas, setFilterKelas] = useState('ALL');
   const [filterTingkat, setFilterTingkat] = useState('ALL');
@@ -84,7 +88,7 @@ export default function SetorCepatModule() {
   const [selectedSantriNoInduk, setSelectedSantriNoInduk] = useState<string | null>(null);
 
   // Form Input Setoran States
-  const [tglSetor, setTglSetor] = useState(() => new Date().toISOString().split('T')[0]);
+  const [tglSetor, setTglSetor] = useState(() => getLocalTodayYMD());
   const [selectedKalimatList, setSelectedKalimatList] = useState<string[]>([]);
   const [tambahAngka, setTambahAngka] = useState('');
   const [catatan, setCatatan] = useState('');
@@ -108,12 +112,19 @@ export default function SetorCepatModule() {
 
   // Load initial data
   useEffect(() => {
+    fetchGlobalTahunAjaran();
     fetchSantri();
     fetchAsatidz();
     fetchFormasi();
     fetchSetoranData();
     fetchMustahiqData();
-  }, [fetchSantri, fetchAsatidz, fetchFormasi, fetchSetoranData, fetchMustahiqData]);
+  }, [fetchGlobalTahunAjaran, fetchSantri, fetchAsatidz, fetchFormasi, fetchSetoranData, fetchMustahiqData]);
+
+  useEffect(() => {
+    if (activeTahunAjaran) {
+      setTahun(parseStartYearFromTA(activeTahunAjaran));
+    }
+  }, [activeTahunAjaran]);
 
   // Click outside listener for sentence dropdown
   useEffect(() => {

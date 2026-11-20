@@ -9,13 +9,15 @@ import {
   ChevronDown,
   SlidersHorizontal,
   Clock,
-  AlertTriangle,
-  CheckCircle2,
+  BookOpen,
+  Table2,
+  CalendarOff,
 } from 'lucide-react';
 import { exportAoaToExcel, ExcelMergeRange } from '@/lib/utils/excel';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
+import { useTahunAjaranStore, parseStartYearFromTA } from '@/stores/useTahunAjaranStore';
 import {
   getAcademicYearMonths,
   sortSantriByFormasiHierarchy,
@@ -26,14 +28,21 @@ import {
 import {
   useSetorMustahiqStore,
   getMateriListForTingkat,
-  computeMateriProgressForSantri,
 } from '@/stores/useSetorMustahiqStore';
-import { norm } from '@/lib/utils/setoranHelper';
+import {
+  getDaftarTingkatKelasDiniyyah,
+  norm,
+  normalizeTingkatKey,
+} from '@/lib/utils/setoranHelper';
+import { evaluateAllSantriSilabusStatus } from '@/lib/utils/silabusHelper';
 import { SetoranHafalan } from '@/types/setoran';
 import ModalInputSetorMinggu from './ModalInputSetorMinggu';
 import ModalAturSilabus, { ACADEMIC_MONTHS } from './ModalAturSilabus';
+import SilabusScheduleView, { exportSilabusToExcel } from './SilabusScheduleView';
 
 type TingkatTab = 'SEMUA' | 'ULA' | 'WUSTHO' | 'ULYA';
+type LinimasaViewMode = 'matriks' | 'silabus';
+const LS_LINIMASA_VIEW_MODE = 'madin_linimasa_view_mode_v1';
 
 // Helper untuk normalisasi string tanggal ke ISO 'YYYY-MM-DD'
 function normalizeToIsoDate(raw: string): string {
@@ -104,15 +113,42 @@ function parseSantri(s: any): ParsedSantri {
 
 export default function LinimasaSetorModule() {
   const { santriList, fetchSantri, isLoading: loadingSantri } = useSantriStore();
-  const { config, silabusConfig, setoranList, fetchSetoranData } = useMuhafadzohStore();
+  const { config, silabusConfig, silabusHolidays, setoranList, fetchSetoranData } =
+    useMuhafadzohStore();
   const { logs, activeStates, fetchMustahiqData } = useSetorMustahiqStore();
   const { formasiList, fetchFormasi } = useFormasiStore();
+  const { activeTahunAjaran, fetchGlobalTahunAjaran } = useTahunAjaranStore();
 
-  // Tahun awal ajaran (default: jika saat ini bulan Juli-Desember -> tahun ini, jika Jan-Jun -> tahun lalu)
-  const [startYear, setStartYear] = useState<number>(() => {
-    const now = new Date();
-    return now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
-  });
+  // Tahun awal ajaran (sinkron dengan Tahun Ajaran aktif global)
+  const [startYear, setStartYear] = useState<number>(() =>
+    parseStartYearFromTA(activeTahunAjaran)
+  );
+  const [hasCustomStartYear, setHasCustomStartYear] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!hasCustomStartYear && activeTahunAjaran) {
+      setStartYear(parseStartYearFromTA(activeTahunAjaran));
+    }
+  }, [activeTahunAjaran, hasCustomStartYear]);
+
+  // Switch 2 Mode: Matriks Setoran vs Silabus
+  const [viewMode, setViewMode] = useState<LinimasaViewMode>('matriks');
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(LS_LINIMASA_VIEW_MODE);
+      if (saved === 'matriks' || saved === 'silabus') {
+        setViewMode(saved);
+      }
+    } catch {}
+  }, []);
+
+  const handleChangeViewMode = (mode: LinimasaViewMode) => {
+    setViewMode(mode);
+    try {
+      window.localStorage.setItem(LS_LINIMASA_VIEW_MODE, mode);
+    } catch {}
+  };
 
   // Switch Tingkat (Semua, ULA, WUSTHO, ULYA)
   const [activeTingkat, setActiveTingkat] = useState<TingkatTab>('SEMUA');
@@ -128,9 +164,7 @@ export default function LinimasaSetorModule() {
   // Default: Seluruh 12 bulan (1 tahun penuh) aktif
   const academicMonths = useMemo(() => getAcademicYearMonths(startYear), [startYear]);
   const [visibleMonthKeys, setVisibleMonthKeys] = useState<Set<string>>(() => {
-    const initialMonths = getAcademicYearMonths(
-      new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1
-    );
+    const initialMonths = getAcademicYearMonths(parseStartYearFromTA(activeTahunAjaran));
     return new Set(initialMonths.map((m) => m.key));
   });
 
@@ -138,6 +172,24 @@ export default function LinimasaSetorModule() {
   useEffect(() => {
     setVisibleMonthKeys(new Set(academicMonths.map((m) => m.key)));
   }, [academicMonths]);
+
+  // Data liburan global untuk Tahun Ajaran aktif
+  const taKey = `${startYear}/${startYear + 1}`;
+  const holidaysForTA = useMemo(
+    () => silabusHolidays?.[taKey] || {},
+    [silabusHolidays, taKey]
+  );
+
+  // Daftar kelas-tingkat untuk tampilan mode Silabus
+  const allKelasPairs = useMemo(
+    () => getDaftarTingkatKelasDiniyyah(formasiList, santriList),
+    [formasiList, santriList]
+  );
+
+  const filteredSilabusPairs = useMemo(() => {
+    if (activeTingkat === 'SEMUA') return allKelasPairs;
+    return allKelasPairs.filter((p) => normalizeTingkatKey(p.tk) === activeTingkat);
+  }, [allKelasPairs, activeTingkat]);
 
   // Filter pencarian & gender
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -153,6 +205,7 @@ export default function LinimasaSetorModule() {
 
   // Load data awal lintas modul
   useEffect(() => {
+    fetchGlobalTahunAjaran();
     if (santriList.length === 0) fetchSantri();
     if (setoranList.length === 0) fetchSetoranData();
     if (formasiList.length === 0) fetchFormasi();
@@ -162,6 +215,7 @@ export default function LinimasaSetorModule() {
     setoranList.length,
     formasiList.length,
     logs.length,
+    fetchGlobalTahunAjaran,
     fetchSantri,
     fetchSetoranData,
     fetchFormasi,
@@ -200,117 +254,29 @@ export default function LinimasaSetorModule() {
 
   // Evaluasi Status Kepatuhan Silabus Target per Santri: Map<no_induk, { status: 'merah' | 'kuning' | 'putih'; reason: string; item: string }>
   const santriSilabusStatusMap = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        status: 'merah' | 'kuning' | 'putih';
-        reason: string;
-        item: string;
-      }
-    >();
-
-    const targetMonth = effectiveEvalMonthIndex;
-
-    parsedSantriList.forEach((santri) => {
-      const noInduk = santri.no_induk;
-      const cleanNoInduk = norm(noInduk);
-      const configKey = `${norm(santri.tingkat)}_${norm(santri.din_kls)}`;
-
-      // Ambil aturan silabus kelas/tingkat
-      const rules = silabusConfig[configKey] || silabusConfig[santri.displayKelas] || [];
-
-      if (!rules || rules.length === 0) {
-        map.set(noInduk, {
-          status: 'putih',
-          reason: 'Belum ada silabus target',
-          item: '',
-        });
-        return;
-      }
-
-      const manualDoneSet = new Set(
-        (activeStates[noInduk]?.completed_materi || []).map((m: string) => norm(m))
-      );
-      const santriLogs = logs.filter((l) => norm(l.no_induk) === cleanNoInduk);
-
-      let worstStatus: 'merah' | 'kuning' | 'putih' = 'putih';
-      let worstReason = '';
-      let worstItem = '';
-
-      for (const rule of rules) {
-        const itemNorm = norm(rule.materi_nama);
-        let isCompleted = manualDoneSet.has(itemNorm);
-
-        if (!isCompleted) {
-          const matchingConfigItem = getMateriListForTingkat(config, configKey).find(
-            (m) => norm(m.item.nama) === itemNorm
-          )?.item || {
-            id: `item_${itemNorm}`,
-            nama: rule.materi_nama,
-            targetType: rule.target_type || 'sentence',
-            sentences: ['Muqodimah', 'Mubtada', 'Khobar', 'Rofa', 'Jer'],
-          };
-
-          const prog = computeMateriProgressForSantri(
-            noInduk,
-            matchingConfigItem as any,
-            santriLogs,
-            startYear
-          );
-
-          if (prog.isCompleted) {
-            isCompleted = true;
-          } else {
-            const hasLegacy = setoranList.some(
-              (r) => norm(r.no_induk) === cleanNoInduk && norm(r.item_hafalan) === itemNorm
-            );
-            if (hasLegacy) {
-              isCompleted = true;
-            }
-          }
-        }
-
-        // Jika materi ini sudah selesai, lanjut ke materi berikutnya
-        if (isCompleted) continue;
-
-        // Jika belum selesai, cek posisi bulan acuan relatif terhadap batas silabus
-        const dariIdx = rule.dari_bulan_index;
-        const sampaiIdx = rule.sampai_bulan_index;
-
-        if (targetMonth > sampaiIdx) {
-          // Warna Merah: ketika sudah melewati bulan yang sudah ditentukan & belum tuntas
-          worstStatus = 'merah';
-          worstReason = `Melewati target bulan ${rule.sampai_bulan_nama || 'akhir'} untuk hafalan ${rule.materi_nama}`;
-          worstItem = rule.materi_nama;
-          break; // Merah adalah prioritas tertinggi, langsung break
-        } else if (targetMonth >= dariIdx && targetMonth <= sampaiIdx) {
-          // Warna Kuning: ketika tersisa bulan yang menjadi capaian & belum tuntas
-          worstStatus = 'kuning';
-          worstReason = `Sedang dalam periode capaian target hafalan ${rule.materi_nama} (s.d. ${rule.sampai_bulan_nama})`;
-          worstItem = rule.materi_nama;
-        } else {
-          // Warna Putih: ketika masih jauh dari bulan yang menjadi capaian (targetMonth < dariIdx)
-          // Tetap putih
-        }
-      }
-
-      map.set(noInduk, {
-        status: worstStatus,
-        reason: worstReason,
-        item: worstItem,
-      });
+    return evaluateAllSantriSilabusStatus({
+      santriList: parsedSantriList,
+      config,
+      silabusConfig,
+      holidaysMap: holidaysForTA,
+      activeStates,
+      logs,
+      setoranList,
+      startYear,
+      targetMonth: effectiveEvalMonthIndex,
+      isAutoEvalMonth: evalMonthOverride === 'auto',
     });
-
-    return map;
   }, [
     parsedSantriList,
     silabusConfig,
+    holidaysForTA,
     activeStates,
     logs,
     config,
     setoranList,
     startYear,
     effectiveEvalMonthIndex,
+    evalMonthOverride,
   ]);
 
   // Hitung jumlah santri untuk masing-masing tab tingkat
@@ -532,6 +498,13 @@ export default function LinimasaSetorModule() {
     );
   };
 
+  const handleSelectCurrentMonthOnly = () => {
+    const target = academicMonths[currentAcademicMonthIndex];
+    if (target) {
+      setVisibleMonthKeys(new Set([target.key]));
+    }
+  };
+
   // Handler Klik Sel Interaktif
   const handleCellClick = (santri: ParsedSantri, sunday: SundayOption) => {
     const records = setoranLookupMap.get(`${santri.no_induk}_${sunday.tanggal}`) || [];
@@ -542,8 +515,20 @@ export default function LinimasaSetorModule() {
     });
   };
 
-  // Ekspor ke Berkas Excel (.xlsx) dengan struktur persis seperti Gambar 2
+  // Ekspor ke Berkas Excel (.xlsx): Mode Matriks vs Mode Silabus
   const handleExportExcel = async () => {
+    if (viewMode === 'silabus') {
+      await exportSilabusToExcel({
+        pairs: filteredSilabusPairs,
+        config,
+        silabusConfig,
+        holidaysMap: holidaysForTA,
+        startYear,
+        visibleMonthKeys,
+        activeTingkat,
+      });
+      return;
+    }
     // 1. Baris 1: Header Bulan
     const headerRow1: any[] = ['NO', 'NAMA', 'KELAS'];
     // 2. Baris 2: Sub-header Minggu
@@ -627,15 +612,52 @@ export default function LinimasaSetorModule() {
           </p>
         </div>
 
-        {/* Toolbar Tahun Ajaran, Bulan Acuan, Atur Silabus & Ekspor */}
+        {/* Toolbar Switch 2 Mode, Tahun Ajaran, Bulan Acuan, Atur Silabus & Ekspor */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Switch 2 Mode: Matriks Setoran | Silabus */}
+          <div
+            role="group"
+            aria-label="Mode tampilan Linimasa Setor"
+            className="inline-flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200 gap-1"
+          >
+            <button
+              type="button"
+              onClick={() => handleChangeViewMode('matriks')}
+              aria-pressed={viewMode === 'matriks'}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                viewMode === 'matriks'
+                  ? 'bg-white text-emerald-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Table2 className="w-3.5 h-3.5" />
+              <span>Matriks Setoran</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleChangeViewMode('silabus')}
+              aria-pressed={viewMode === 'silabus'}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                viewMode === 'silabus'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Silabus</span>
+            </button>
+          </div>
+
           {/* Pemilih Tahun Ajaran */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700">
             <Calendar className="w-4 h-4 text-emerald-700" />
             <span>Tahun Ajaran:</span>
             <select
               value={startYear}
-              onChange={(e) => setStartYear(parseInt(e.target.value, 10))}
+              onChange={(e) => {
+                setHasCustomStartYear(true);
+                setStartYear(parseInt(e.target.value, 10));
+              }}
               className="bg-transparent font-bold text-emerald-800 outline-none cursor-pointer"
             >
               {[2024, 2025, 2026, 2027, 2028].map((y) => (
@@ -649,7 +671,7 @@ export default function LinimasaSetorModule() {
           {/* Pemilih Bulan Acuan Evaluasi Silabus */}
           <div
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700"
-            title="Bulan acuan untuk mengevaluasi apakah target hafalan santri sudah lewat (merah), sedang berjalan (kuning), atau belum masuk jadwal (putih)"
+            title="Bulan acuan untuk mengevaluasi apakah target hafalan santri sudah lewat atau tertinggal (merah), sesuai target di bulan capaian (kuning), atau belum masuk jadwal / selesai (putih)"
           >
             <Clock className="w-4 h-4 text-emerald-700" />
             <span>Bulan Acuan:</span>
@@ -673,12 +695,12 @@ export default function LinimasaSetorModule() {
             </select>
           </div>
 
-          {/* Tombol Atur Silabus Target (Permintaan User) */}
+          {/* Tombol Atur Silabus Target */}
           <button
             type="button"
             onClick={() => setIsModalSilabusOpen(true)}
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
-            title="Buka pop-up untuk mengatur silabus target hafalan (Wajib & Sunnah) serta rentang dari bulan s/d sampai bulan"
+            title="Buka pop-up untuk mengatur silabus target hafalan (Wajib & Sunnah), target mingguan angka, serta minggu liburan"
           >
             <SlidersHorizontal className="w-4 h-4" />
             <span>Atur Silabus</span>
@@ -689,19 +711,23 @@ export default function LinimasaSetorModule() {
             type="button"
             onClick={handleExportExcel}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-colors cursor-pointer"
-            title="Download Excel format matriks silabus"
+            title={
+              viewMode === 'silabus'
+                ? 'Download Excel jadwal silabus per kelas'
+                : 'Download Excel format matriks linimasa setoran'
+            }
           >
             <Download className="w-4 h-4" />
-            <span>Export Excel</span>
+            <span>{viewMode === 'silabus' ? 'Export Silabus' : 'Export Excel'}</span>
           </button>
         </div>
       </div>
 
       {/* Switch Tab Tingkat (Semua, ULA, WUSTHO, ULYA) & Kontrol Filter */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
           {/* Switch Tingkat */}
-          <div className="flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200 gap-1 overflow-x-auto">
+          <div className="flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200 gap-1 overflow-x-auto shrink-0">
             {(['SEMUA', 'ULA', 'WUSTHO', 'ULYA'] as TingkatTab[]).map((tab) => {
               const isActive = activeTingkat === tab;
               return (
@@ -730,76 +756,80 @@ export default function LinimasaSetorModule() {
 
           {/* Filter Pencarian & Filter Cepat */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Input Pencarian */}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari santri / NIS / kelas..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-48 sm:w-60 text-xs pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
-              />
-            </div>
+            {viewMode === 'matriks' && (
+              <>
+                {/* Input Pencarian */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari santri / NIS / kelas..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-48 sm:w-60 text-xs pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-600 font-medium"
+                  />
+                </div>
 
-            {/* Filter Gender */}
-            <div className="flex items-center p-0.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setFilterGender('SEMUA')}
-                className={`px-2 py-1 rounded-lg ${
-                  filterGender === 'SEMUA'
-                    ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                    : 'text-slate-500'
-                }`}
-              >
-                Semua
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterGender('PA')}
-                className={`px-2 py-1 rounded-lg ${
-                  filterGender === 'PA'
-                    ? 'bg-sky-600 text-white shadow-2xs font-bold'
-                    : 'text-slate-500'
-                }`}
-              >
-                PA
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterGender('PI')}
-                className={`px-2 py-1 rounded-lg ${
-                  filterGender === 'PI'
-                    ? 'bg-rose-600 text-white shadow-2xs font-bold'
-                    : 'text-slate-500'
-                }`}
-              >
-                PI
-              </button>
-            </div>
+                {/* Filter Gender */}
+                <div className="flex items-center p-0.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setFilterGender('SEMUA')}
+                    className={`px-2 py-1 rounded-lg ${
+                      filterGender === 'SEMUA'
+                        ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                        : 'text-slate-500'
+                    }`}
+                  >
+                    Semua
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterGender('PA')}
+                    className={`px-2 py-1 rounded-lg ${
+                      filterGender === 'PA'
+                        ? 'bg-sky-600 text-white shadow-2xs font-bold'
+                        : 'text-slate-500'
+                    }`}
+                  >
+                    PA
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterGender('PI')}
+                    className={`px-2 py-1 rounded-lg ${
+                      filterGender === 'PI'
+                        ? 'bg-rose-600 text-white shadow-2xs font-bold'
+                        : 'text-slate-500'
+                    }`}
+                  >
+                    PI
+                  </button>
+                </div>
 
-            {/* Filter Status Stabilo Silabus */}
-            <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-xl border border-slate-200 text-xs">
-              <span className="text-[11px] font-semibold text-slate-500">Stabilo:</span>
-              <select
-                value={filterSilabusStatus}
-                onChange={(e) => setFilterSilabusStatus(e.target.value as any)}
-                className="bg-transparent font-bold text-slate-800 outline-none cursor-pointer text-xs"
-                title="Filter baris santri berdasarkan status stabilo silabus"
-              >
-                <option value="SEMUA">Semua Santri</option>
-                <option value="MERAH">🔴 Melewati Target (Merah)</option>
-                <option value="KUNING">🟡 Bulan Capaian (Kuning)</option>
-                <option value="PUTIH">⚪ Aman / Selesai (Putih)</option>
-              </select>
-            </div>
+                {/* Filter Status Stabilo Silabus */}
+                <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-xl border border-slate-200 text-xs">
+                  <span className="text-[11px] font-semibold text-slate-500">Stabilo:</span>
+                  <select
+                    value={filterSilabusStatus}
+                    onChange={(e) => setFilterSilabusStatus(e.target.value as any)}
+                    className="bg-transparent font-bold text-slate-800 outline-none cursor-pointer text-xs"
+                    title="Filter baris santri berdasarkan status stabilo silabus"
+                  >
+                    <option value="SEMUA">Semua Santri</option>
+                    <option value="MERAH">Melewati Target / Tertinggal (Merah)</option>
+                    <option value="KUNING">Bulan Capaian (Kuning)</option>
+                    <option value="PUTIH">Aman / Selesai (Putih)</option>
+                  </select>
+                </div>
+              </>
+            )}
 
             {/* Tombol Buka Popover Multi-select Bulan */}
             <button
               type="button"
               onClick={() => setIsMonthFilterOpen((v) => !v)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
                 isMonthFilterOpen || visibleMonthKeys.size < 12
                   ? 'border-emerald-500 bg-emerald-50 text-emerald-800 font-bold'
                   : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
@@ -824,25 +854,32 @@ export default function LinimasaSetorModule() {
                   (Default: 1 Tahun Penuh. Centang bulan untuk menyaring)
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   type="button"
                   onClick={handleSelectAllMonths}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-slate-200 text-slate-700 border border-slate-200"
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-slate-200 text-slate-700 border border-slate-200 cursor-pointer"
                 >
                   Semua (12 Bulan)
                 </button>
                 <button
                   type="button"
+                  onClick={handleSelectCurrentMonthOnly}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-200 cursor-pointer"
+                >
+                  Bulan Ini ({ACADEMIC_MONTHS[currentAcademicMonthIndex]?.name})
+                </button>
+                <button
+                  type="button"
                   onClick={handleSelectGanjil}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 hover:bg-emerald-200 text-emerald-800"
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 hover:bg-emerald-200 text-emerald-800 cursor-pointer"
                 >
                   Sem. Ganjil (Jul-Des)
                 </button>
                 <button
                   type="button"
                   onClick={handleSelectGenap}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-teal-100 hover:bg-teal-200 text-teal-800"
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-teal-100 hover:bg-teal-200 text-teal-800 cursor-pointer"
                 >
                   Sem. Genap (Jan-Jun)
                 </button>
@@ -864,11 +901,11 @@ export default function LinimasaSetorModule() {
                         : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                     }`}
                   >
-                    <span>
+                    <span className="truncate">
                       {m.monthName} {m.year}
                     </span>
                     <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono whitespace-nowrap shrink-0 ${
                         isChecked
                           ? 'bg-emerald-800 text-emerald-100'
                           : 'bg-slate-100 text-slate-500'
@@ -884,7 +921,19 @@ export default function LinimasaSetorModule() {
         )}
       </div>
 
-      {/* Kontrol Pembatasan 3 Kelas */}
+      {viewMode === 'silabus' ? (
+        <SilabusScheduleView
+          pairs={filteredSilabusPairs}
+          config={config}
+          silabusConfig={silabusConfig}
+          holidaysMap={holidaysForTA}
+          startYear={startYear}
+          visibleMonthKeys={visibleMonthKeys}
+          onOpenAturSilabus={() => setIsModalSilabusOpen(true)}
+        />
+      ) : (
+        <>
+          {/* Kontrol Pembatasan 3 Kelas */}
       <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
@@ -958,8 +1007,8 @@ export default function LinimasaSetorModule() {
       {/* Tabel Linimasa Matriks */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         {/* Banner Status Tabel */}
-        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600">
-          <div className="flex items-center gap-2">
+        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-2 text-xs text-slate-600">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold text-slate-900">{paginatedSantri.length} Santri</span>
             <span>•</span>
             <span className="text-slate-600">
@@ -1015,6 +1064,10 @@ export default function LinimasaSetorModule() {
               <span className="w-2.5 h-2.5 rounded-full bg-white border border-slate-300 inline-block" />
               <span>Belum Setor (Putih)</span>
             </span>
+            <span className="flex items-center gap-1 font-medium text-rose-700">
+              <CalendarOff className="w-3 h-3 text-rose-600" />
+              <span>LBR (Liburan Silabus)</span>
+            </span>
             <span className="text-slate-300 hidden sm:inline">|</span>
             <span className="text-slate-400 italic">Klik sel untuk detail/input setoran</span>
           </div>
@@ -1069,20 +1122,36 @@ export default function LinimasaSetorModule() {
               {/* Tingkat 2: Sub-Header Hari Minggu (Minggu 1, Minggu 2, ...) */}
               <tr className="border-b border-slate-300 bg-slate-50 text-[11px] text-slate-700">
                 {displayedMonths.map((m) =>
-                  m.sundays.map((s) => (
-                    <th
-                      key={s.tanggal}
-                      className={`py-1.5 px-1.5 text-center min-w-[70px] border-r border-slate-200 ${
-                        s.isCurrentWeek ? 'bg-amber-100/60 font-bold text-amber-900' : ''
-                      }`}
-                      title={s.labelLengkap}
-                    >
-                      <div className="font-bold">M{s.mingguKe}</div>
-                      <div className="text-[10px] text-slate-500 font-mono font-normal">
-                        {s.dayNumber}/{m.monthIndex + 1}
-                      </div>
-                    </th>
-                  ))
+                  m.sundays.map((s) => {
+                    const holidayInfo = holidaysForTA[s.tanggal];
+                    return (
+                      <th
+                        key={s.tanggal}
+                        className={`py-1.5 px-1.5 text-center min-w-[70px] border-r border-slate-200 ${
+                          holidayInfo
+                            ? 'bg-rose-100/80 font-bold text-rose-900'
+                            : s.isCurrentWeek
+                            ? 'bg-amber-100/60 font-bold text-amber-900'
+                            : ''
+                        }`}
+                        title={
+                          holidayInfo
+                            ? `${s.labelLengkap} (${holidayInfo.label || 'LIBURAN'})`
+                            : s.labelLengkap
+                        }
+                      >
+                        <div className="font-bold">M{s.mingguKe}</div>
+                        <div className="text-[10px] text-slate-500 font-mono font-normal">
+                          {s.dayNumber}/{m.monthIndex + 1}
+                        </div>
+                        {holidayInfo && (
+                          <div className="text-[8px] font-bold uppercase text-rose-700 tracking-wider">
+                            {holidayInfo.label || 'LIBUR'}
+                          </div>
+                        )}
+                      </th>
+                    );
+                  })
                 )}
               </tr>
             </thead>
@@ -1165,7 +1234,7 @@ export default function LinimasaSetorModule() {
                               className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-200 text-rose-900 border border-rose-300 shadow-2xs"
                               title={silabusStatus.reason}
                             >
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
                               <span>Melewati Target</span>
                             </span>
                           )}
@@ -1232,6 +1301,7 @@ export default function LinimasaSetorModule() {
                           const levelStyle = getHafalanLevelStyle(maxLevel);
                           const isTahfidzOnly = Boolean(tahfidzRecord && nonTahfidzRecords.length === 0);
                           const isDual = Boolean(tahfidzRecord && nonTahfidzRecords.length > 0);
+                          const holidayInfo = holidaysForTA[sunday.tanggal];
 
                           return (
                             <td
@@ -1244,6 +1314,8 @@ export default function LinimasaSetorModule() {
                                   ? 'bg-cyan-50/80 hover:bg-cyan-100/70 hover:ring-cyan-500'
                                   : hasSetoran
                                   ? `${levelStyle.cellBg} ${levelStyle.ringColor}`
+                                  : holidayInfo
+                                  ? 'bg-rose-50/50 hover:bg-rose-100/60 hover:ring-rose-400'
                                   : isRed
                                   ? 'bg-rose-50/40 hover:bg-rose-100/60 hover:ring-rose-400'
                                   : isYellow
@@ -1255,6 +1327,8 @@ export default function LinimasaSetorModule() {
                                   ? `${sunday.labelLengkap}\nSetoran: ${records
                                       .map((r) => r.materi_nama || r.item_hafalan)
                                       .join(', ')} (Klik untuk detail)`
+                                  : holidayInfo
+                                  ? `${sunday.labelLengkap}\n${holidayInfo.label || 'LIBURAN'} (Klik jika ada setoran susulan)`
                                   : `${sunday.labelLengkap}\nBelum ada setoran (Klik untuk input)`
                               }
                             >
@@ -1294,6 +1368,10 @@ export default function LinimasaSetorModule() {
                                     </span>
                                   )}
                                 </div>
+                              ) : holidayInfo ? (
+                                <span className="inline-block px-1 py-0.5 rounded font-bold text-[9px] text-rose-600 bg-rose-100/80">
+                                  LBR
+                                </span>
                               ) : (
                                 <span className={`inline-block w-4 h-4 rounded font-bold text-xs ${
                                   isRed ? 'text-rose-400 group-hover:text-rose-600' : isYellow ? 'text-amber-400 group-hover:text-amber-600' : 'text-slate-300 group-hover:text-slate-400'
@@ -1314,6 +1392,8 @@ export default function LinimasaSetorModule() {
           </table>
         </div>
       </div>
+        </>
+      )}
 
       {/* Modal Interaktif Setoran Per-Minggu */}
       {selectedCell && (
@@ -1323,6 +1403,7 @@ export default function LinimasaSetorModule() {
           santri={selectedCell.santri}
           sunday={selectedCell.sunday}
           existingRecords={selectedCell.records}
+          holidayLabel={holidaysForTA[selectedCell.sunday.tanggal]?.label}
           onSuccess={() => {
             fetchMustahiqData();
             fetchSetoranData();

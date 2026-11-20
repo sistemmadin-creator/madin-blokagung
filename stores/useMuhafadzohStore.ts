@@ -1,5 +1,11 @@
 import { create } from 'zustand';
-import { SetoranHafalan, HafalanConfig, RiwayatSetoranRawRow, SilabusConfigMap } from '@/types/setoran';
+import {
+  SetoranHafalan,
+  HafalanConfig,
+  RiwayatSetoranRawRow,
+  SilabusConfigMap,
+  SilabusHolidayMapByTA,
+} from '@/types/setoran';
 import { supabase } from '@/lib/supabase/client';
 import { logActivity } from '@/lib/utils/audit';
 import { DEFAULT_HAFALAN_WAJIB, convertRawToSetoran, convertSetoranToRaw } from '@/lib/utils/setoranHelper';
@@ -9,9 +15,11 @@ import { RelationalMigrationService } from '@/lib/services/relationalMigrationSe
 export const KEY_DB_RIWAYAT_MUHAFADZOH = 'RIWAYAT_MUHAFADZOH_DATA';
 export const KEY_DB_HAFALAN_CONFIG = 'MUHAFADZOH_HAFALAN_CONFIG';
 export const KEY_DB_SILABUS_CONFIG = 'MUHAFADZOH_SILABUS_CONFIG';
+export const KEY_DB_SILABUS_HOLIDAYS = 'MUHAFADZOH_SILABUS_HOLIDAYS';
 export const LS_RIWAYAT_MUHAFADZOH = 'MADIN_RIWAYAT_MUHAFADZOH';
 export const LS_HAFALAN_CONFIG = 'MADIN_HAFALAN_CONFIG';
 export const LS_SILABUS_CONFIG = 'MADIN_SILABUS_CONFIG';
+export const LS_SILABUS_HOLIDAYS = 'MADIN_SILABUS_HOLIDAYS';
 
 // Fallback legacy keys
 export const KEY_DB_MUHAFADZOH_LEGACY = 'KEY_DB_MUHAFADZOH';
@@ -34,6 +42,7 @@ interface MuhafadzohState {
   rawRows: RiwayatSetoranRawRow[];
   config: HafalanConfig;
   silabusConfig: SilabusConfigMap;
+  silabusHolidays: SilabusHolidayMapByTA;
   isLoading: boolean;
   isSettingsOpen: boolean;
   editingRecord: SetoranHafalan | null;
@@ -54,6 +63,7 @@ interface MuhafadzohState {
   restoreSetoranList: (targetList: SetoranHafalan[], logDesc?: string) => Promise<boolean>;
   saveConfig: (cfg: HafalanConfig, skipHistory?: boolean) => Promise<boolean>;
   saveSilabusConfig: (cfg: SilabusConfigMap, skipHistory?: boolean) => Promise<boolean>;
+  saveSilabusHolidays: (holidays: SilabusHolidayMapByTA, skipHistory?: boolean) => Promise<boolean>;
 
   openSettings: () => void;
   closeSettings: () => void;
@@ -91,6 +101,7 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
   rawRows: [],
   config: DEFAULT_CONFIG,
   silabusConfig: {},
+  silabusHolidays: {},
   isLoading: false,
   isSettingsOpen: false,
   editingRecord: null,
@@ -146,6 +157,14 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
             set({ silabusConfig: parsedSilabus });
           }
         }
+
+        const rawSilabusHolidays = localStorage.getItem(LS_SILABUS_HOLIDAYS);
+        if (rawSilabusHolidays) {
+          const parsedHolidays = JSON.parse(rawSilabusHolidays);
+          if (parsedHolidays && typeof parsedHolidays === 'object') {
+            set({ silabusHolidays: parsedHolidays });
+          }
+        }
       }
     } catch (e) {
       console.warn('Gagal memuat cache local setoran:', e);
@@ -172,6 +191,7 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
           KEY_DB_RIWAYAT_MUHAFADZOH,
           KEY_DB_HAFALAN_CONFIG,
           KEY_DB_SILABUS_CONFIG,
+          KEY_DB_SILABUS_HOLIDAYS,
           KEY_DB_MUHAFADZOH_LEGACY,
           KEY_DB_HAFALAN_CONFIG_LEGACY,
         ]);
@@ -182,6 +202,7 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
         let loadedList: SetoranHafalan[] | null = null;
         let loadedConfig: HafalanConfig | null = null;
         let loadedSilabus: SilabusConfigMap | null = null;
+        let loadedHolidays: SilabusHolidayMapByTA | null = null;
 
         data.forEach((row) => {
           let val = row.value;
@@ -235,6 +256,13 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
                 localStorage.setItem(LS_SILABUS_CONFIG, JSON.stringify(val));
               }
             } catch (e) {}
+          } else if (row.key === KEY_DB_SILABUS_HOLIDAYS && val && typeof val === 'object') {
+            loadedHolidays = val;
+            try {
+              if (typeof window !== 'undefined') {
+                localStorage.setItem(LS_SILABUS_HOLIDAYS, JSON.stringify(val));
+              }
+            } catch (e) {}
           }
         });
 
@@ -246,6 +274,9 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
         }
         if (loadedSilabus) {
           set({ silabusConfig: loadedSilabus });
+        }
+        if (loadedHolidays) {
+          set({ silabusHolidays: loadedHolidays });
         }
       }
     } catch (err: any) {
@@ -639,6 +670,45 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
     } catch (err: any) {
       console.error('Gagal menyimpan silabus hafalan:', err);
       alert('Gagal menyimpan silabus hafalan: ' + err.message);
+      return false;
+    }
+  },
+
+  saveSilabusHolidays: async (newHolidays, skipHistory = false) => {
+    try {
+      const prevHolidays = { ...get().silabusHolidays };
+      set({ silabusHolidays: newHolidays });
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LS_SILABUS_HOLIDAYS, JSON.stringify(newHolidays));
+      }
+
+      await supabase
+        .from('app_settings')
+        .upsert(
+          [{ key: KEY_DB_SILABUS_HOLIDAYS, value: newHolidays }],
+          { onConflict: 'key' }
+        );
+
+      await logActivity('SIMPAN LIBURAN SILABUS', 'Memperbarui konfigurasi minggu liburan silabus hafalan');
+
+      if (!skipHistory) {
+        useUndoRedoStore.getState().recordAction({
+          module: 'muhafadzoh',
+          title: 'Ubah Liburan Silabus Hafalan',
+          undo: async () => {
+            await get().saveSilabusHolidays(prevHolidays, true);
+          },
+          redo: async () => {
+            await get().saveSilabusHolidays(newHolidays, true);
+          },
+        });
+      }
+
+      return true;
+    } catch (err: any) {
+      console.error('Gagal menyimpan liburan silabus:', err);
+      alert('Gagal menyimpan liburan silabus: ' + err.message);
       return false;
     }
   },

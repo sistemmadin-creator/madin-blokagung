@@ -55,13 +55,42 @@ export const MONTH_NAMES_SHORT = [
 ];
 
 /**
+ * Mengembalikan tanggal lokal hari ini dalam format 'YYYY-MM-DD'
+ * agar tidak bergeser mundur 1 hari pada dini hari WIB (00:00 - 06:59).
+ */
+export function getLocalTodayYMD(refDate: Date = new Date()): string {
+  const y = refDate.getFullYear();
+  const m = String(refDate.getMonth() + 1).padStart(2, '0');
+  const d = String(refDate.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Menginferensi startYear Tahun Ajaran (mis. 2026 untuk TA 2026/2027) dari tanggal 'YYYY-MM-DD'.
+ * Juli (7) - Desember (12) -> year; Januari (1) - Juni (6) -> year - 1.
+ */
+export function inferAcademicStartYearFromDate(isoDate?: string): number {
+  const raw = String(isoDate || '').trim();
+  const match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (match) {
+    const y = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    if (Number.isFinite(y) && Number.isFinite(m)) {
+      return m >= 7 ? y : y - 1;
+    }
+  }
+  const now = new Date();
+  return now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+}
+
+/**
  * Menghasilkan semua hari Minggu pada bulan dan tahun tertentu.
  * Otomatis mendeteksi apakah bulan tersebut memiliki 4 atau 5 hari Minggu.
  */
 export function getSundaysInMonth(year: number, monthIndex: number): SundayOption[] {
   const sundays: SundayOption[] = [];
   const date = new Date(year, monthIndex, 1);
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalTodayYMD();
   let mingguCounter = 1;
 
   while (date.getMonth() === monthIndex) {
@@ -133,7 +162,7 @@ export function getAcademicYearMonths(startYear: number): AcademicMonthInfo[] {
  */
 export function getClosestSunday(sundays: SundayOption[]): SundayOption | null {
   if (!sundays || sundays.length === 0) return null;
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalTodayYMD();
 
   // 1. Cek apakah ada yang persis hari ini
   const exact = sundays.find((s) => s.tanggal === todayStr);
