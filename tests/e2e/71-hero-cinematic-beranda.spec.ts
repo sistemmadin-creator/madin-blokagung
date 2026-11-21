@@ -56,19 +56,44 @@ test.describe('71 - Beranda Publik Cinematic Scroll-Driven Hero', () => {
     await expect(page.getByRole('link', { name: /Pelajari Kurikulum/i })).toBeVisible();
     await expect(page.getByRole('link', { name: /Baca Warta Madina/i })).toBeVisible();
 
-    // Scroll ke awal section Parallax (#ekosistem) dan uji HUD Parallax Desktop
+    // Scroll ke section Parallax (#ekosistem) dan verifikasi HUD/atribut dekoratif sudah dihapus serta pergantian babak
     await page.evaluate(() => {
       document.getElementById('ekosistem')?.scrollIntoView({ behavior: 'instant' });
     });
     await expect(page.locator('#ekosistem')).toBeInViewport({ timeout: 10_000 });
+    await expect(page.getByText(/DISIPLIN HARIAN SANTRI/i)).toBeVisible({ timeout: 10_000 });
 
-    await page.getByRole('button', { name: /02\s*Majelis/i }).click();
-    await expect(page.getByText(/Bimbingan Terpadu Asatidz/i)).toBeVisible({ timeout: 10_000 });
-    await page.getByRole('button', { name: /03\s*Kompleks/i }).click();
-    await expect(page.getByText(/Ribuan Santri dalam Satu Tata Kelola/i)).toBeVisible({ timeout: 10_000 });
+    // Pastikan tombol switcher bawah, Lanjut ke Warta Madina, label numeral kanan atas, dan counter 01/03 sudah dihapus
+    await expect(page.locator('#ekosistem').getByRole('button', { name: /02\s*Majelis/i })).toHaveCount(0);
+    await expect(page.locator('#ekosistem').getByRole('button', { name: /03\s*Kompleks/i })).toHaveCount(0);
+    await expect(page.locator('#ekosistem').getByRole('link', { name: /Lanjut ke Warta Madina/i })).toHaveCount(0);
+    await expect(page.locator('#ekosistem').getByText('01 / 03')).toHaveCount(0);
 
-    await page.locator('#ekosistem').getByRole('link', { name: /Lanjut ke Warta Madina/i }).click();
-    await expect(page.locator('#berita')).toBeInViewport({ timeout: 10_000 });
+    // Scroll ke tengah #ekosistem -> Babak 2 MUHAFADZOH tampil
+    await page.evaluate(() => {
+      const sec = document.getElementById('ekosistem');
+      if (!sec) return;
+      const max = Math.max(0, sec.offsetHeight - window.innerHeight);
+      window.scrollTo(0, sec.offsetTop + max * 0.5);
+    });
+    await expect(page.locator('#ekosistem').getByText('MUHAFADZOH', { exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('#ekosistem').getByRole('link', { name: /Lihat Daftar Hafalan/i })).toHaveAttribute(
+      'href',
+      '/daftar-hafalan/ula'
+    );
+
+    // Scroll ke akhir #ekosistem -> Babak 3 MUTAKHORIJIN tampil
+    await page.evaluate(() => {
+      const sec = document.getElementById('ekosistem');
+      if (!sec) return;
+      const max = Math.max(0, sec.offsetHeight - window.innerHeight);
+      window.scrollTo(0, sec.offsetTop + max * 0.88);
+    });
+    await expect(page.locator('#ekosistem').getByText('MUTAKHORIJIN', { exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('#ekosistem').getByRole('link', { name: /Buka Album Mutakhorijin/i })).toHaveAttribute(
+      'href',
+      '/mutakhorijin'
+    );
 
     // Tidak ada horizontal overflow
     const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
@@ -111,10 +136,14 @@ test.describe('71 - Beranda Publik Cinematic Scroll-Driven Hero', () => {
     const frameAfter = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL('image/jpeg', 0.4));
     expect(frameAfter).not.toBe(frameBefore);
 
-    // Verifikasi Parallax adaptif mobile (#ekosistem) tampil sebagai 3 kartu vertikal utuh
+    // Verifikasi Parallax adaptif mobile (#ekosistem) tampil sebagai 3 kartu vertikal utuh tanpa badge & tanpa Lanjut ke Warta Madina
     await expect(page.locator('#ekosistem article')).toHaveCount(3);
-    const parallaxCta = page.locator('#ekosistem').getByRole('link', { name: /Lanjut ke Warta Madina/i });
-    const ctaBox = await parallaxCta.boundingBox();
+    await expect(page.locator('#ekosistem').getByText('MUHAFADZOH', { exact: true })).toBeVisible();
+    await expect(page.locator('#ekosistem').getByText('MUTAKHORIJIN', { exact: true })).toBeVisible();
+    await expect(page.locator('#ekosistem').getByRole('link', { name: /Lanjut ke Warta Madina/i })).toHaveCount(0);
+    await expect(page.locator('#ekosistem').getByText('01')).toHaveCount(0);
+    const muhafadzohCta = page.locator('#ekosistem').getByRole('link', { name: /Lihat Daftar Hafalan/i });
+    const ctaBox = await muhafadzohCta.boundingBox();
     expect(ctaBox?.height || 0).toBeGreaterThanOrEqual(44);
 
     const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);

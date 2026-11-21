@@ -7,7 +7,9 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
 
     await expect(page.getByRole('heading', { name: /Setoran/i }).first()).toBeVisible();
 
-    // Verify form exists
+    // Verify Tampilan 1 & switch to Tampilan 2 form
+    await expect(page.getByTestId('btn-riwayat-setoran')).toBeVisible();
+    await page.getByTestId('switch-tampilan2').click();
     await expect(page.getByRole('heading', { name: /Input Hafalan/i })).toBeVisible();
     await expect(page.getByRole('combobox').first()).toBeVisible();
 
@@ -34,6 +36,7 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
 
   test('Setoran Muhafadzoh: Form Input, Kategori Token, dan Kartu Bukti Fisik', async ({ page }) => {
     await gotoWithAuth(page, '/setoran');
+    await page.getByTestId('switch-tampilan2').click();
 
     // 1. Verify Category Pill Tokens
     await expect(page.getByRole('button', { name: 'Wajib', exact: true })).toBeVisible();
@@ -52,8 +55,12 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
     await expect(page.getByTitle('Unduh JPG')).toBeVisible();
   });
 
-  test('Setoran Muhafadzoh: Tabel Riwayat 11 Kolom dan Checkbox Seleksi', async ({ page }) => {
+  test('Setoran Muhafadzoh: Tabel Riwayat 11 Kolom di Halaman Riwayat (/setoran/riwayat)', async ({ page }) => {
     await gotoWithAuth(page, '/setoran');
+
+    // Klik tombol Riwayat di sebelah kiri switch Tampilan 1
+    await page.getByTestId('btn-riwayat-setoran').click();
+    await page.waitForURL(/\/setoran\/riwayat/, { timeout: 15_000 });
 
     // 1. Verify 11 Column Headers
     const table = page.locator('table.tabel-kbm-resmi');
@@ -92,8 +99,10 @@ test.describe('Modul 05: Muhafadzoh & Piagam Studio', () => {
     await expect(page.getByRole('button', { name: /Cetak A4/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Export Excel/i })).toBeVisible();
 
-    // Table headers for Pertingkatan summary
-    await expect(page.getByRole('columnheader', { name: /HAFALAN WAJIB/i })).toBeVisible();
+    // Table headers for Pertingkatan summary (tunggu loading selesai dari Supabase)
+    await expect(page.getByRole('columnheader', { name: /HAFALAN WAJIB/i })).toBeVisible({
+      timeout: 25_000,
+    });
     await expect(page.getByRole('columnheader', { name: /HAFALAN SUNNAH/i })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: /HAFALAN KITAB/i })).toBeVisible();
 

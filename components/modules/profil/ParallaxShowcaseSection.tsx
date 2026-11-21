@@ -1,18 +1,18 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ArrowRight, BookOpenCheck, Building2, Compass, FastForward, Users } from 'lucide-react';
+import { ArrowRight, BookOpenCheck, Compass, GraduationCap, ScrollText } from 'lucide-react';
+import { useMutakhorijinStore } from '@/stores/useMutakhorijinStore';
+import { getPublicNavbarAlbums, sanitizeMutakhorijinPhotoUrl } from '@/types/mutakhorijin';
 import { useBerandaScroll } from './BerandaScrollProvider';
 
 gsap.registerPlugin(ScrollTrigger);
 
 interface ParallaxScene {
   id: number;
-  code: string;
-  navLabel: string;
   eyebrow: string;
   title: string;
   description: string;
@@ -21,81 +21,89 @@ interface ParallaxScene {
   ctaLabel: string;
   ctaHref: string;
   isRoute?: boolean;
-  progressJump: number;
-  icon: 'santri' | 'majelis' | 'kompleks';
+  icon: 'santri' | 'muhafadzoh' | 'mutakhorijin';
 }
 
-const SCENES: readonly ParallaxScene[] = [
-  {
-    id: 0,
-    code: '01',
-    navLabel: 'Pelataran',
-    eyebrow: 'DISIPLIN HARIAN SANTRI',
-    title: 'Menjaga Tradisi Keilmuan di Setiap Saf Pelataran',
-    description:
-      'Kegiatan musyawarah, mutholaah, dan pembiasaan adab sebelum masuk kelas membentuk karakter santri yang tekun menjaga sanad bacaan salafiyah.',
-    image: '/images/parallax/scene-santri-pelataran.webp',
-    imageAlt: 'Santri Madrasah Diniyyah Al-Amiriyyah duduk rapi membaca kitab di pelataran',
-    ctaLabel: 'Lihat Model Pembelajaran',
-    ctaHref: '#program',
-    progressJump: 0.06,
-    icon: 'santri',
-  },
-  {
-    id: 1,
-    code: '02',
-    navLabel: 'Majelis',
-    eyebrow: 'PEMBINAAN & KEPENGURUSAN',
-    title: 'Bimbingan Terpadu Asatidz dan Pengurus Madrasah',
-    description:
-      'Komando akademik dan pengawasan ketertiban berjalan serempak antara dewan guru, wali kelas, dan kepengurusan santri dalam satu barisan khidmah.',
-    image: '/images/parallax/scene-panggung-balkon.webp',
-    imageAlt: 'Barisan santri menghadap podium pembinaan Madrasah Diniyyah Al-Amiriyyah Blokagung',
-    ctaLabel: 'Profil Kepengurusan',
-    ctaHref: '/kepengurusan',
-    isRoute: true,
-    progressJump: 0.48,
-    icon: 'majelis',
-  },
-  {
-    id: 2,
-    code: '03',
-    navLabel: 'Kompleks',
-    eyebrow: 'EKOSISTEM TERSTRUKTUR',
-    title: 'Ribuan Santri dalam Satu Tata Kelola Pesantren',
-    description:
-      'Dari tingkat Ula, Wustho, hingga Ulya dan kelas unggulan, seluruh jadwal KBM, hafalan, dan capaian belajar dikelola terstruktur dari pusat madrasah.',
-    image: '/images/parallax/scene-drone-kompleks.webp',
-    imageAlt: 'Pemandangan udara kompleks gedung dan pelataran Madrasah Diniyyah Blokagung',
-    ctaLabel: 'Lihat Skala Lembaga',
-    ctaHref: '#statistik',
-    progressJump: 0.88,
-    icon: 'kompleks',
-  },
-] as const;
+const DEFAULT_MUTAKHORIJIN_IMAGE = '/images/parallax/scene-drone-kompleks.webp';
+
+function buildScenes(mutakhorijinImage: string): readonly ParallaxScene[] {
+  return [
+    {
+      id: 0,
+      eyebrow: 'DISIPLIN HARIAN SANTRI',
+      title: 'Menjaga Tradisi Keilmuan di Setiap Saf Pelataran',
+      description:
+        'Kegiatan musyawarah, mutholaah, dan pembiasaan adab sebelum masuk kelas membentuk karakter santri yang tekun menjaga sanad bacaan salafiyah.',
+      image: '/images/parallax/scene-santri-pelataran.webp',
+      imageAlt: 'Santri Madrasah Diniyyah Al-Amiriyyah duduk rapi membaca kitab di pelataran',
+      ctaLabel: 'Lihat Model Pembelajaran',
+      ctaHref: '#program',
+      icon: 'santri',
+    },
+    {
+      id: 1,
+      eyebrow: 'MUHAFADZOH',
+      title: 'Daftar Target Hafalan Santri Jenjang Ula hingga Ulya',
+      description:
+        'Telusuri target hafalan wajib, sunnah, kitab, dan wisuda di setiap kelas pada jenjang Ula, Wustho, dan Ulya Madrasah Diniyyah Al-Amiriyyah.',
+      image: '/images/parallax/scene-panggung-balkon.webp',
+      imageAlt: 'Pembinaan hafalan dan kegiatan santri Madrasah Diniyyah Al-Amiriyyah Blokagung',
+      ctaLabel: 'Lihat Daftar Hafalan',
+      ctaHref: '/daftar-hafalan/ula',
+      isRoute: true,
+      icon: 'muhafadzoh',
+    },
+    {
+      id: 2,
+      eyebrow: 'MUTAKHORIJIN',
+      title: 'Album Kenangan & Jejak Khidmah Mutakhorijin',
+      description:
+        'Mendokumentasikan perjalanan takror, syawir, hingga tasyakuran kelulusan purna Ulya yang merawat sanad keilmuan dan persaudaraan santri.',
+      image: mutakhorijinImage,
+      imageAlt: 'Album kenangan Mutakhorijin Madrasah Diniyyah Al-Amiriyyah Blokagung',
+      ctaLabel: 'Buka Album Mutakhorijin',
+      ctaHref: '/mutakhorijin',
+      isRoute: true,
+      icon: 'mutakhorijin',
+    },
+  ];
+}
 
 function renderSceneIcon(icon: ParallaxScene['icon']) {
   switch (icon) {
     case 'santri':
       return <BookOpenCheck className="w-4 h-4 text-emerald-700 dark:text-amber-300" />;
-    case 'majelis':
-      return <Users className="w-4 h-4 text-emerald-700 dark:text-amber-300" />;
-    case 'kompleks':
-      return <Building2 className="w-4 h-4 text-emerald-700 dark:text-amber-300" />;
+    case 'muhafadzoh':
+      return <ScrollText className="w-4 h-4 text-emerald-700 dark:text-amber-300" />;
+    case 'mutakhorijin':
+      return <GraduationCap className="w-4 h-4 text-emerald-700 dark:text-amber-300" />;
   }
 }
 
 export default function ParallaxShowcaseSection() {
   const berandaScroll = useBerandaScroll();
+  const { albums, hasFetched: hasFetchedMutakhorijin, fetchMutakhorijin } = useMutakhorijinStore();
   const desktopSectionRef = useRef<HTMLElement | null>(null);
   const desktopImageRefs = useRef<(HTMLImageElement | null)[]>([]);
-  const desktopNumeralRef = useRef<HTMLDivElement | null>(null);
   const mobileBandRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(false);
   const [activeScene, setActiveScene] = useState<number>(0);
-  const [scrollProgress, setScrollProgress] = useState<number>(0);
+
+  useEffect(() => {
+    if (!hasFetchedMutakhorijin) {
+      void fetchMutakhorijin(false);
+    }
+  }, [hasFetchedMutakhorijin, fetchMutakhorijin]);
+
+  const activeMutakhorijinImage = useMemo(() => {
+    const activeAlbum = getPublicNavbarAlbums(albums, 1)[0];
+    const cleanUrl = sanitizeMutakhorijinPhotoUrl(activeAlbum?.hero_image_url);
+    return cleanUrl || DEFAULT_MUTAKHORIJIN_IMAGE;
+  }, [albums]);
+
+  const scenes = useMemo(() => buildScenes(activeMutakhorijinImage), [activeMutakhorijinImage]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -131,7 +139,6 @@ export default function ParallaxShowcaseSection() {
         scrub: 0.55,
         onUpdate: (self) => {
           const p = Math.min(1, Math.max(0, self.progress));
-          setScrollProgress(p);
 
           if (p < 0.36) {
             setActiveScene(0);
@@ -151,11 +158,6 @@ export default function ParallaxShowcaseSection() {
             const scaleVal = 1.12 - Math.max(0, Math.min(1, clamped)) * 0.05; // 1.12 -> 1.07
             gsap.set(img, { yPercent: yPct, scale: scaleVal });
           });
-
-          // Lapisan tengah (indeks angka monumental) bergerak pada kecepatan menengah
-          if (desktopNumeralRef.current) {
-            gsap.set(desktopNumeralRef.current, { y: 36 - p * 72 });
-          }
         },
       });
     }, section);
@@ -194,18 +196,6 @@ export default function ParallaxShowcaseSection() {
     return () => ctx.revert();
   }, [isMobile, prefersReducedMotion]);
 
-  const jumpToScene = (progressValue: number) => {
-    const section = desktopSectionRef.current;
-    if (!section) return;
-    const maxScroll = Math.max(0, section.offsetHeight - window.innerHeight);
-    const targetY = section.offsetTop + maxScroll * progressValue;
-    if (berandaScroll) {
-      berandaScroll.scrollToY(targetY, 0.95);
-    } else {
-      window.scrollTo({ top: targetY, behavior: 'smooth' });
-    }
-  };
-
   const scrollToAnchor = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     if (!href.startsWith('#')) return;
     const id = href.slice(1);
@@ -234,15 +224,15 @@ export default function ParallaxShowcaseSection() {
               <span>Jejak Ekosistem Madina</span>
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold font-serif tracking-tight text-slate-900 dark:text-white">
-              Dari Pelataran Kitab hingga Kompleks Madrasah
+              Dari Pelataran Kitab hingga Jejak Mutakhorijin
             </h2>
             <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-              Potret kedisiplinan harian, majelis pembinaan asatidz, dan tata kelola ribuan santri di Ponpes Darussalam Blokagung.
+              Potret kedisiplinan harian, target hafalan muhafadzoh, dan album kenangan mutakhorijin di PP. Darussalam Blokagung.
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-7">
-            {SCENES.map((scene, idx) => (
+            {scenes.map((scene, idx) => (
               <article
                 key={scene.id}
                 className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden"
@@ -264,11 +254,6 @@ export default function ParallaxShowcaseSection() {
                     className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/60 to-transparent pointer-events-none"
                     aria-hidden="true"
                   />
-                  <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/95 dark:bg-slate-900/95 text-emerald-950 dark:text-amber-300 font-mono text-xs font-bold shadow-xs">
-                    <span>{scene.code}</span>
-                    <span className="text-slate-400">/</span>
-                    <span>{scene.navLabel}</span>
-                  </span>
                 </div>
 
                 <div className="p-5 sm:p-6 space-y-3">
@@ -306,23 +291,12 @@ export default function ParallaxShowcaseSection() {
               </article>
             ))}
           </div>
-
-          <div className="pt-2 flex justify-center">
-            <a
-              href="#berita"
-              onClick={(e) => scrollToAnchor(e, '#berita')}
-              className="min-h-[44px] inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-sm font-bold text-emerald-950 dark:text-amber-300 shadow-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <span>Lanjut ke Warta Madina</span>
-              <FastForward className="w-4 h-4" />
-            </a>
-          </div>
         </div>
       </section>
     );
   }
 
-  const currentScene = SCENES[activeScene] || SCENES[0];
+  const currentScene = scenes[activeScene] || scenes[0];
 
   // Jalur Desktop (>= 768px): Opsi 1 Sticky Multi-Layer Depth Showcase
   return (
@@ -334,7 +308,7 @@ export default function ParallaxShowcaseSection() {
       <div className="sticky top-[65px] h-[calc(100svh-65px)] min-h-[540px] w-full overflow-hidden bg-slate-950">
         {/* Layer 1: 3 Adegan Foto Latar Multi-Kecepatan */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-          {SCENES.map((scene, idx) => (
+          {scenes.map((scene, idx) => (
             <img
               key={scene.id}
               ref={(el) => {
@@ -361,30 +335,13 @@ export default function ParallaxShowcaseSection() {
           aria-hidden="true"
         />
 
-        {/* Layer 3 (Mid-Ground Depth): Angka Arsitektural & Label Sudut Pandang */}
-        <div
-          ref={desktopNumeralRef}
-          aria-hidden="true"
-          className="pointer-events-none absolute right-10 top-12 z-10 hidden lg:flex flex-col items-end select-none"
-        >
-          <span className="font-serif text-[7.5rem] leading-none font-extrabold text-white/15 tracking-tighter">
-            {currentScene.code}
-          </span>
-          <span className="mt-1 px-3 py-1 rounded-full bg-emerald-950/70 border border-amber-300/35 text-[11px] font-mono uppercase tracking-[0.22em] text-amber-300">
-            {currentScene.navLabel}
-          </span>
-        </div>
-
-        {/* Layer 4 (Foreground): Kartu Narasi Editorial Solid Kontras Tinggi */}
-        <div className="relative z-20 h-full max-w-7xl mx-auto px-6 lg:px-8 flex items-center pb-20">
+        {/* Layer 3 (Foreground): Kartu Narasi Editorial Solid Kontras Tinggi */}
+        <div className="relative z-20 h-full max-w-7xl mx-auto px-6 lg:px-8 flex items-center">
           <div className="max-w-xl w-full rounded-2xl bg-white/95 dark:bg-slate-900/95 text-slate-900 dark:text-white p-7 lg:p-9 border border-emerald-900/15 dark:border-emerald-500/25 shadow-2xl">
-            <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center mb-4">
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-amber-300 border border-emerald-300/40">
                 {renderSceneIcon(currentScene.icon)}
                 <span>{currentScene.eyebrow}</span>
-              </span>
-              <span className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400">
-                {currentScene.code} / 03
               </span>
             </div>
 
@@ -415,48 +372,6 @@ export default function ParallaxShowcaseSection() {
                 </a>
               )}
             </div>
-          </div>
-        </div>
-
-        {/* HUD Bawah Parallax Showcase */}
-        <div className="absolute inset-x-0 bottom-0 z-20 px-6 lg:px-8 pb-5">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2" role="group" aria-label="Babak Jejak Ekosistem">
-              {SCENES.map((scene) => {
-                const isActive = activeScene === scene.id;
-                return (
-                  <button
-                    key={scene.id}
-                    type="button"
-                    onClick={() => jumpToScene(scene.progressJump)}
-                    className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${
-                      isActive
-                        ? 'bg-[#0b5751] text-white border border-amber-300/40'
-                        : 'bg-white/92 dark:bg-slate-900/90 text-slate-900 dark:text-slate-100 hover:bg-white border border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <span className="font-mono mr-1.5 opacity-80">{scene.code}</span>
-                    <span>{scene.navLabel}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <a
-              href="#berita"
-              onClick={(e) => scrollToAnchor(e, '#berita')}
-              className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold bg-white/95 dark:bg-slate-900/90 hover:bg-white text-emerald-950 dark:text-amber-300 border border-slate-200 dark:border-slate-700 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
-            >
-              <span>Lanjut ke Warta Madina</span>
-              <FastForward className="w-3.5 h-3.5 text-emerald-700 dark:text-amber-300" />
-            </a>
-          </div>
-
-          <div className="max-w-7xl mx-auto mt-2.5 h-1 rounded-full bg-white/25 overflow-hidden">
-            <div
-              className="h-full bg-amber-400 transition-[width] duration-75"
-              style={{ width: `${Math.round(scrollProgress * 100)}%` }}
-            />
           </div>
         </div>
       </div>

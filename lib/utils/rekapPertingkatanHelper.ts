@@ -152,6 +152,87 @@ export function getKurikulumItemsForKelas(
   return items;
 }
 
+export interface KurikulumCatalogEntry extends KurikulumItemEntry {
+  idKey: string;
+  tingkat: string;
+  dinKls: string;
+  kelasKey: string;
+  kelasLabel: string;
+}
+
+const CATALOG_TINGKAT_ORDER: Record<string, number> = {
+  ULA: 1,
+  WUSTHO: 2,
+  WUSTHA: 2,
+  ULYA: 3,
+  "ISTI'DAD": 4,
+  ISTIDAD: 4,
+};
+
+/**
+ * Menghimpun seluruh katalog materi hafalan (Wajib, Sunnah, Wisuda, Kitab)
+ * lintas semua tingkat dan kelas dari konfigurasi serta fallback bawaan.
+ */
+export function getAllKurikulumCatalog(
+  config: HafalanConfig | undefined,
+  extraPairs: Array<{ tk: string; kls: string }> = []
+): KurikulumCatalogEntry[] {
+  const pairMap = new Map<string, { tk: string; kls: string }>();
+
+  const registerPair = (rawTk: string, rawKls: string) => {
+    const tk = norm(rawTk);
+    const kls = norm(rawKls);
+    if (!tk || !kls || tk === '-' || kls === '-') return;
+    const key = `${tk}_${kls}`;
+    if (!pairMap.has(key)) {
+      pairMap.set(key, { tk, kls });
+    }
+  };
+
+  extraPairs.forEach((p) => registerPair(p.tk, p.kls));
+
+  const registerConfigMapKeys = (mapObj?: Record<string, unknown>) => {
+    if (!mapObj || typeof mapObj !== 'object') return;
+    Object.keys(mapObj).forEach((k) => {
+      const idx = k.lastIndexOf('_');
+      if (idx <= 0) return;
+      registerPair(k.slice(0, idx), k.slice(idx + 1));
+    });
+  };
+
+  registerConfigMapKeys(DEFAULT_HAFALAN_WAJIB);
+  registerConfigMapKeys(config?.hafWajib);
+  registerConfigMapKeys(config?.hafSunnah);
+  registerConfigMapKeys(config?.hafWisuda);
+  registerConfigMapKeys(config?.hafKitab);
+
+  const sortedPairs = Array.from(pairMap.values()).sort((a, b) => {
+    const tA = CATALOG_TINGKAT_ORDER[a.tk] || 99;
+    const tB = CATALOG_TINGKAT_ORDER[b.tk] || 99;
+    if (tA !== tB) return tA - tB;
+    return a.kls.localeCompare(b.kls, 'id', { numeric: true });
+  });
+
+  const catalog: KurikulumCatalogEntry[] = [];
+  sortedPairs.forEach(({ tk, kls }) => {
+    const kelasKey = `${tk}_${kls}`;
+    const kelasLabel = `${kls} ${tk}`;
+    const items = getKurikulumItemsForKelas(config, tk, kls, { includeKitab: true });
+    items.forEach((it) => {
+      catalog.push({
+        ...it,
+        idKey: `${kelasKey}::${it.kriteria}::${norm(it.nama)}`,
+        tingkat: tk,
+        dinKls: kls,
+        kelasKey,
+        kelasLabel,
+      });
+    });
+  });
+
+  return catalog;
+}
+
 export interface BuildRekapPertingkatanParams {
   santriList: any[];
   asatidzList: any[];

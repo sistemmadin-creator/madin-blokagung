@@ -4,6 +4,7 @@ import {
   buildExcelSheetsRekapPertingkatan,
   buildRekapPertingkatanSections,
   formatPercentLabel,
+  getAllKurikulumCatalog,
   getKurikulumItemsForKelas,
 } from '@/lib/utils/rekapPertingkatanHelper';
 import {
@@ -297,5 +298,40 @@ describe('Rekap Hafalan Pertingkatan & Setoran Tampilan 1/2 Helpers', () => {
     });
     const buf = await wb.xlsx.writeBuffer();
     expect(buf.byteLength).toBeGreaterThan(1000);
+  });
+
+  it('collects cross-class curriculum catalog via getAllKurikulumCatalog and maps /setoran/riwayat to setoran RBAC', () => {
+    const config: HafalanConfig = {
+      hafWajib: {
+        ULA_4: [{ id: 'w-u4', nama: 'Nadhom Al-Imrithi', targetType: 'numeric' }],
+        WUSTHO_1: [{ id: 'w-w1', nama: 'Al-Fiyyah 350', targetType: 'numeric' }],
+      },
+      hafSunnah: {
+        ULA_4: [{ id: 's-u4', nama: 'Tashrif Lughowi', targetType: 'sentence' }],
+      },
+      hafKitab: {
+        ULYA_1: [{ id: 'k-y1', nama: 'Fathul Qorib', targetType: 'sentence' }],
+      },
+      hafWisuda: {},
+      penjagaBebas: [],
+    };
+
+    const catalog = getAllKurikulumCatalog(config, [
+      { tk: 'ULA', kls: '4' },
+      { tk: 'WUSTHO', kls: '1' },
+      { tk: 'ULYA', kls: '1' },
+    ]);
+
+    expect(
+      catalog.some(
+        (c) => c.tingkat === 'WUSTHO' && c.dinKls === '1' && c.nama === 'Al-Fiyyah 350' && c.kriteria === 'Wajib'
+      )
+    ).toBe(true);
+    expect(
+      catalog.some(
+        (c) => c.tingkat === 'ULYA' && c.dinKls === '1' && c.nama === 'Fathul Qorib' && c.kriteria === 'Kitab'
+      )
+    ).toBe(true);
+    expect(resolvePageIdFromPathname('/setoran/riwayat')).toBe('setoran');
   });
 });

@@ -96,6 +96,30 @@ async function syncSetoranToRelational(rawPayload: RiwayatSetoranRawRow[]) {
   }
 }
 
+let setoranMutationVersion = 0;
+let activeLocalMutationsCount = 0;
+let lastWrittenSignature: string | null = null;
+const supersededSignatures = new Map<string, number>();
+
+function getRawSetoranSignature(raw: unknown[]): string {
+  const first = Array.isArray(raw[0]) ? raw[0] : [];
+  return `${raw.length}|${String(first[1] || '')}|${String(first[2] || '')}|${String(first[17] || '')}`;
+}
+
+function markSupersededAndRecordSignature(rawPayload: unknown[]) {
+  const now = Date.now();
+  if (lastWrittenSignature) {
+    supersededSignatures.set(lastWrittenSignature, now);
+  }
+  const nextSig = getRawSetoranSignature(rawPayload);
+  supersededSignatures.delete(nextSig);
+  lastWrittenSignature = nextSig;
+
+  supersededSignatures.forEach((ts, key) => {
+    if (now - ts > 15_000) supersededSignatures.delete(key);
+  });
+}
+
 export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
   setoranList: [],
   rawRows: [],
@@ -108,6 +132,7 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
   editOldKey: null,
 
   fetchSetoranData: async () => {
+    const startMutationVersion = setoranMutationVersion;
     set({ isLoading: true });
 
     // 1. Muat dari localStorage terlebih dahulu
@@ -116,7 +141,7 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
         const rawMuh = localStorage.getItem(LS_RIWAYAT_MUHAFADZOH);
         if (rawMuh) {
           const parsed = JSON.parse(rawMuh);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed) && parsed.length > 0 && setoranMutationVersion === startMutationVersion) {
             const list: SetoranHafalan[] = parsed.map((item: any) =>
               Array.isArray(item) ? convertRawToSetoran(item) : item
             );
@@ -175,7 +200,7 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
       const { data: sRows, error: sErr } = await supabase
         .from('setoran_hafalan_records' as any)
         .select('*');
-      if (!sErr && sRows && sRows.length > 0) {
+      if (!sErr && sRows && sRows.length > 0 && setoranMutationVersion === startMutationVersion) {
         const rawRows = RelationalMigrationService.reconstructSetoranRawFromRecords(sRows as any);
         const list: SetoranHafalan[] = rawRows.map((r) => convertRawToSetoran(r));
         set({ setoranList: list, rawRows });
@@ -219,11 +244,13 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
             loadedList = val.map((item: any) =>
               Array.isArray(item) ? convertRawToSetoran(item) : item
             );
-            try {
-              if (typeof window !== 'undefined') {
-                localStorage.setItem(LS_RIWAYAT_MUHAFADZOH, JSON.stringify(val));
-              }
-            } catch (e) {}
+            if (setoranMutationVersion === startMutationVersion) {
+              try {
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem(LS_RIWAYAT_MUHAFADZOH, JSON.stringify(val));
+                }
+              } catch (e) {}
+            }
           } else if (
             (row.key === KEY_DB_HAFALAN_CONFIG || (!loadedConfig && row.key === KEY_DB_HAFALAN_CONFIG_LEGACY)) &&
             val &&
@@ -266,7 +293,7 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
           }
         });
 
-        if (loadedList) {
+        if (loadedList && setoranMutationVersion === startMutationVersion) {
           set({ setoranList: loadedList });
         }
         if (loadedConfig) {
@@ -297,9 +324,12 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
   },
 
   restoreSetoranList: async (targetList: SetoranHafalan[], logDesc?: string) => {
+    activeLocalMutationsCount += 1;
     try {
+      setoranMutationVersion += 1;
       set({ setoranList: targetList });
       const rawPayload = targetList.map(convertSetoranToRaw);
+      markSupersededAndRecordSignature(rawPayload);
       if (typeof window !== 'undefined') {
         localStorage.setItem(LS_RIWAYAT_MUHAFADZOH, JSON.stringify(rawPayload));
       }
@@ -323,22 +353,27 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
     } catch (err: any) {
       console.error('Gagal memulihkan setoran muhafadzoh:', err);
       return false;
+    } finally {
+      activeLocalMutationsCount = Math.max(0, activeLocalMutationsCount - 1);
     }
   },
 
   addSetoran: async (newEntry, skipHistory = false) => {
+    activeLocalMutationsCount += 1;
     try {
+      setoranMutationVersion += 1;
       const prevList = [...get().setoranList];
       const updatedList = [newEntry, ...prevList];
       set({ setoranList: updatedList });
 
       // Simpan ke localStorage & Supabase
       const rawPayload = updatedList.map(convertSetoranToRaw);
+      markSupersededAndRecordSignature(rawPayload);
       if (typeof window !== 'undefined') {
         localStorage.setItem(LS_RIWAYAT_MUHAFADZOH, JSON.stringify(rawPayload));
       }
 
-      await supabase
+      const { error: upsertError } = await supabase
         .from('app_settings')
         .upsert(
           [
@@ -347,6 +382,9 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
           ],
           { onConflict: 'key' }
         );
+      if (upsertError) {
+        console.warn('Upsert setoran app_settings error:', upsertError.message);
+      }
 
       syncSetoranToRelational(rawPayload);
 
@@ -380,11 +418,15 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
       console.error('Gagal menyimpan setoran:', err);
       alert('Gagal menyimpan setoran: ' + err.message);
       return false;
+    } finally {
+      activeLocalMutationsCount = Math.max(0, activeLocalMutationsCount - 1);
     }
   },
 
   updateSetoran: async (entry, oldKey, skipHistory = false) => {
+    activeLocalMutationsCount += 1;
     try {
+      setoranMutationVersion += 1;
       const prevList = [...get().setoranList];
       const idx = prevList.findIndex(
         (r) =>
@@ -402,6 +444,7 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
       set({ setoranList: updatedList, editingRecord: null, editOldKey: null });
 
       const rawPayload = updatedList.map(convertSetoranToRaw);
+      markSupersededAndRecordSignature(rawPayload);
       if (typeof window !== 'undefined') {
         localStorage.setItem(LS_RIWAYAT_MUHAFADZOH, JSON.stringify(rawPayload));
       }
@@ -453,11 +496,15 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
       console.error('Gagal memperbarui setoran:', err);
       alert('Gagal memperbarui setoran: ' + err.message);
       return false;
+    } finally {
+      activeLocalMutationsCount = Math.max(0, activeLocalMutationsCount - 1);
     }
   },
 
   deleteSetoran: async (idOrKey, skipHistory = false) => {
+    activeLocalMutationsCount += 1;
     try {
+      setoranMutationVersion += 1;
       const prevList = [...get().setoranList];
       let updatedList: SetoranHafalan[];
       let targetItem: SetoranHafalan | undefined;
@@ -485,6 +532,7 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
       set({ setoranList: updatedList });
 
       const rawPayload = updatedList.map(convertSetoranToRaw);
+      markSupersededAndRecordSignature(rawPayload);
       if (typeof window !== 'undefined') {
         localStorage.setItem(LS_RIWAYAT_MUHAFADZOH, JSON.stringify(rawPayload));
       }
@@ -531,11 +579,15 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
       console.error('Gagal menghapus setoran:', err);
       alert('Gagal menghapus setoran: ' + err.message);
       return false;
+    } finally {
+      activeLocalMutationsCount = Math.max(0, activeLocalMutationsCount - 1);
     }
   },
 
   bulkDeleteSetoran: async (noIndukList, skipHistory = false) => {
+    activeLocalMutationsCount += 1;
     try {
+      setoranMutationVersion += 1;
       const setDelete = new Set(noIndukList.map((s) => String(s).trim()));
       const prevList = [...get().setoranList];
       const updatedList = prevList.filter((r) => !setDelete.has(String(r.no_induk).trim()));
@@ -543,6 +595,7 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
       set({ setoranList: updatedList });
 
       const rawPayload = updatedList.map(convertSetoranToRaw);
+      markSupersededAndRecordSignature(rawPayload);
       if (typeof window !== 'undefined') {
         localStorage.setItem(LS_RIWAYAT_MUHAFADZOH, JSON.stringify(rawPayload));
       }
@@ -579,6 +632,8 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
       console.error('Gagal menghapus riwayat terpilih:', err);
       alert('Gagal menghapus setoran: ' + err.message);
       return false;
+    } finally {
+      activeLocalMutationsCount = Math.max(0, activeLocalMutationsCount - 1);
     }
   },
 
@@ -715,6 +770,10 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
 
   handleRealtimeMuhafadzoh: (newValue) => {
     try {
+      // Abaikan echo Realtime saat mutasi lokal sedang berlangsung atau snapshot sudah digantikan
+      if (activeLocalMutationsCount > 0) {
+        return;
+      }
       let list: SetoranHafalan[] | null = null;
       let rawArray: any = newValue;
       if (typeof rawArray === 'string') {
@@ -723,6 +782,11 @@ export const useMuhafadzohStore = create<MuhafadzohState>((set, get) => ({
         } catch {}
       }
       if (Array.isArray(rawArray)) {
+        const incomingSig = getRawSetoranSignature(rawArray);
+        const supersededAt = supersededSignatures.get(incomingSig);
+        if (supersededAt && Date.now() - supersededAt < 15_000) {
+          return;
+        }
         list = rawArray.map((item: any) =>
           Array.isArray(item) ? convertRawToSetoran(item) : item
         );

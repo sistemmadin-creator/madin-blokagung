@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { useSantriStore } from '@/stores/useSantriStore';
 import { useAsatidzStore } from '@/stores/useAsatidzStore';
@@ -9,23 +10,19 @@ import { usePagePermission } from '@/stores/useRbacStore';
 import { useTahunAjaranStore } from '@/stores/useTahunAjaranStore';
 import {
   Grid,
+  History,
   Save,
-  Search,
   Printer,
   Image as ImageIcon,
   Settings,
   Pencil,
   Sliders,
-  Trash2,
   Eye,
   RotateCcw,
 } from 'lucide-react';
 import ModalSettingsHafalan from '@/components/modules/setoran/ModalSettingsHafalan';
-import ModalDetailRiwayatSetoran from '@/components/modules/setoran/ModalDetailRiwayatSetoran';
 import KartuBuktiSetoran, { KartuData } from '@/components/modules/setoran/KartuBuktiSetoran';
 import SetoranTampilan1View from '@/components/modules/setoran/SetoranTampilan1View';
-import KonfirmasiHapusRelasiModal from '@/components/ui/KonfirmasiHapusRelasiModal';
-import { DeleteImpactAnalysis } from '@/lib/services/relationDeleteTypes';
 import {
   getNowLocalDateTimeString,
   formatDateTimeSetoran,
@@ -49,7 +46,6 @@ export default function SetoranPage() {
     addSetoran,
     updateSetoran,
     deleteSetoran,
-    bulkDeleteSetoran,
     openSettings,
     editingRecord,
     editOldKey,
@@ -93,11 +89,6 @@ export default function SetoranPage() {
 
   // Top Filter & Search
   const [filterGender, setFilterGender] = useState<'SEMUA' | 'PA' | 'PI'>('SEMUA');
-  const [searchHistory, setSearchHistory] = useState('');
-  const [selectedIndukList, setSelectedIndukList] = useState<string[]>([]);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isDeletingBulk, setIsDeletingBulk] = useState(false);
-  const [deleteAnalysis, setDeleteAnalysis] = useState<DeleteImpactAnalysis | null>(null);
 
   // Form State
   const [tglSetor, setTglSetor] = useState(getNowLocalDateTimeString());
@@ -124,19 +115,15 @@ export default function SetoranPage() {
   const [itemHafalan, setItemHafalan] = useState('');
   const [kategori, setKategori] = useState<'Wajib' | 'Sunnah' | 'Tahfidz' | 'Kitab' | 'Wisuda' | ''>('Wajib');
 
-  // Modal Detail State
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [selectedSetoranForDetail, setSelectedSetoranForDetail] = useState<SetoranHafalan | null>(null);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchSetoranData();
+    if (setoranList.length === 0) fetchSetoranData();
     fetchGlobalTahunAjaran();
     if (santriList.length === 0) fetchSantri();
     if (asatidzList.length === 0) fetchAsatidz();
     if (formasiList.length === 0) fetchFormasi();
-  }, [fetchSetoranData, fetchGlobalTahunAjaran, fetchSantri, fetchAsatidz, fetchFormasi, santriList.length, asatidzList.length, formasiList.length]);
+  }, [fetchSetoranData, fetchGlobalTahunAjaran, fetchSantri, fetchAsatidz, fetchFormasi, setoranList.length, santriList.length, asatidzList.length, formasiList.length]);
 
   // Load editing record into form if available
   useEffect(() => {
@@ -437,100 +424,6 @@ export default function SetoranPage() {
     }
   };
 
-  // Filtered History
-  const filteredHistory = useMemo(() => {
-    return setoranList.filter((s) => {
-      const found = santriList.find((item: any) => String(item.no_induk || item[1]).trim() === String(s.no_induk).trim());
-      if (found && !isPersonAllowed({ blok: found.blok, pa_pi: found.pa_pi })) return false;
-      if (filterGender !== 'SEMUA') {
-        if (found && norm(found.pa_pi || (found as any)[4]) !== filterGender) return false;
-      }
-      if (searchHistory.trim()) {
-        const q = searchHistory.toLowerCase().trim();
-        return (
-          (s.nama || '').toLowerCase().includes(q) ||
-          (s.no_induk || '').toLowerCase().includes(q) ||
-          (s.item_hafalan || '').toLowerCase().includes(q) ||
-          (s.penjaga || '').toLowerCase().includes(q) ||
-          (s.mustahiq || '').toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [setoranList, isPersonAllowed, filterGender, searchHistory, santriList]);
-
-  // Bulk Selection Checkbox Handlers
-  const handleSelectAllRows = (checked: boolean) => {
-    if (checked) {
-      const allIds = filteredHistory.map((s) => String(s.no_induk).trim());
-      setSelectedIndukList(Array.from(new Set(allIds)));
-    } else {
-      setSelectedIndukList([]);
-    }
-  };
-
-  const handleRowCheckboxToggle = (induk: string, checked: boolean) => {
-    const clean = String(induk).trim();
-    if (checked) {
-      setSelectedIndukList([...selectedIndukList, clean]);
-    } else {
-      setSelectedIndukList(selectedIndukList.filter((id) => id !== clean));
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedIndukList.length === 0) {
-      alert('Centang minimal satu data riwayat setoran terlebih dahulu!');
-      return;
-    }
-    const targetSet = new Set(selectedIndukList.map((n) => String(n).trim()));
-    const matchedRows = setoranList.filter((r) => targetSet.has(String(r.no_induk || '').trim()));
-    const summaryMap = new Map<string, { code: string; name: string; count: number }>();
-
-    selectedIndukList.forEach((nis) => {
-      const cleanNis = String(nis).trim();
-      const sample = matchedRows.find((r) => String(r.no_induk || '').trim() === cleanNis);
-      const count = matchedRows.filter((r) => String(r.no_induk || '').trim() === cleanNis).length;
-      summaryMap.set(cleanNis, {
-        code: cleanNis,
-        name: sample?.nama || `Santri NIS ${cleanNis}`,
-        count,
-      });
-    });
-
-    setDeleteAnalysis({
-      items: Array.from(summaryMap.values()).map((s) => ({
-        code: s.code,
-        name: s.name,
-        meta: `${s.count} catatan setoran`,
-      })),
-      impacts: [
-        `Sebanyak ${matchedRows.length} catatan riwayat setoran Muhafadzoh dari ${selectedIndukList.length} santri akan dihapus dari tabel riwayat.`,
-        'Sinkronisasi otomatis ke tabel relasional setoran_hafalan_records dan RIWAYAT_MUHAFADZOH_DATA.',
-      ],
-      activeWarnings: [
-        `Penghapusan ${matchedRows.length} riwayat hafalan ini dapat memengaruhi kalkulasi ketercapaian hafalan santri terpilih (dapat dipulihkan melalui fitur Undo).`,
-      ],
-      activeWarningTitle: 'Terdeteksi Riwayat Setoran Aktif',
-      activeRiskCheckboxLabel:
-        'Saya mengerti risikonya dan tetap ingin menghapus seluruh riwayat setoran santri terpilih di atas.',
-      safeArchiveNote:
-        'Data biodata induk santri di Database Santri tetap aman dan tidak ikut terhapus.',
-      hasHistoricalRecords: false,
-    });
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleConfirmBulkDelete = async () => {
-    setIsDeletingBulk(true);
-    const success = await bulkDeleteSetoran(selectedIndukList);
-    setIsDeletingBulk(false);
-    if (success) {
-      setSelectedIndukList([]);
-      setIsDeleteModalOpen(false);
-    }
-  };
-
   // Cetak Kartu
   const handlePrintKartu = () => {
     document.body.classList.add('printing-kartu-setoran');
@@ -566,63 +459,6 @@ export default function SetoranPage() {
     }
   };
 
-  // Edit from Modal Detail
-  const handleEditFromDetail = (record: SetoranHafalan) => {
-    setEditingRecord(record, {
-      noInduk: record.no_induk,
-      tglSetor: record.tanggal,
-      hafalan: record.item_hafalan,
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // Print from Modal Detail
-  const handlePrintFromDetail = (record: SetoranHafalan) => {
-    // Isi data preview kartu sementara
-    setNoInduk(record.no_induk);
-    setNamaSantri(record.nama);
-    setTglLahir(record.tgl_lahir || '');
-    setBlnLahir(record.bln_lahir || '');
-    setThnLahir(record.thn_lahir || '');
-    setTempatLahir(record.tempat_lahir || '');
-    setMustahiq(record.mustahiq || '');
-    setDinKls(record.din_kls || '');
-    setDinBag(record.din_bag || '');
-    setTingkat(record.tingkat || '');
-    setKecamatan(record.kecamatan || '');
-    setKabupaten(record.kabupaten || '');
-    setProvinsi(record.provinsi || '');
-    setBin(record.bin || '');
-    setPenjaga(record.penjaga || '');
-    setItemHafalan(record.item_hafalan || '');
-    setTglSetor(toDateTimeLocalInput(record.tanggal));
-
-    setDetailModalOpen(false);
-    setTimeout(() => {
-      handlePrintKartu();
-    }, 400);
-  };
-
-  // Delete from Modal Detail
-  const handleDeleteFromDetail = async (record: SetoranHafalan) => {
-    if (
-      !confirm(
-        `Hapus setoran hafalan ${record.item_hafalan} (${record.nama}) tanggal ${record.tanggal}?`
-      )
-    ) {
-      return;
-    }
-    const success = await deleteSetoran({
-      noInduk: record.no_induk,
-      tglSetor: record.tanggal,
-      hafalan: record.item_hafalan,
-    });
-    if (success) {
-      setDetailModalOpen(false);
-      alert('Data setoran berhasil dihapus.');
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* 1. Header Toolbar Sesuai setoran.html (Gambar 2) */}
@@ -643,6 +479,17 @@ export default function SetoranPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-2xs">
+            {/* Tombol menuju halaman Tabel Riwayat Hafalan */}
+            <Link
+              href="/setoran/riwayat"
+              data-testid="btn-riwayat-setoran"
+              title="Buka halaman Tabel Riwayat Hafalan"
+              className="min-h-[34px] px-3 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-200 text-xs font-bold inline-flex items-center gap-1.5 transition"
+            >
+              <History className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Riwayat</span>
+            </Link>
+
             {/* Switch Tampilan 1 vs Tampilan 2 */}
             <div
               role="group"
@@ -720,6 +567,11 @@ export default function SetoranPage() {
               <button
                 type="button"
                 onClick={openSettings}
+                aria-label={
+                  viewMode === 'tampilan1'
+                    ? 'Opsi Hafalan / Pengaturan Target & Akses Hafalan'
+                    : 'Pengaturan Target & Akses Hafalan'
+                }
                 title="Pengaturan Target & Akses Hafalan"
                 className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition border border-transparent hover:border-slate-200 cursor-pointer"
               >
@@ -992,159 +844,11 @@ export default function SetoranPage() {
           </div>
         </div>
       </div>
-
-      {/* 3. Kotak Bawah: TABEL RIWAYAT HAFALAN (11 Kolom Sesuai setoran.html) */}
-      <div className="card-panel border-0 p-5 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-200">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-              <Grid className="w-4 h-4" />
-            </div>
-            <h5 className="font-bold text-slate-800 text-sm m-0">Tabel Riwayat Hafalan</h5>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {canDelete && selectedIndukList.length > 0 && (
-              <button
-                type="button"
-                onClick={handleBulkDelete}
-                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 transition flex items-center gap-1.5"
-                title="Hapus Terpilih"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Hapus Terpilih ({selectedIndukList.length})</span>
-              </button>
-            )}
-
-            <div className="relative w-full sm:w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchHistory}
-                onChange={(e) => setSearchHistory(e.target.value)}
-                placeholder="Pencarian..."
-                className="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 focus:outline-none focus:border-emerald-600 bg-white"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="table-responsive overflow-x-auto">
-          <table className="tabel-kbm-resmi w-full text-xs">
-            <thead>
-              <tr>
-                <th style={{ width: 40 }} className="text-center">
-                  <input
-                    type="checkbox"
-                    checked={
-                      filteredHistory.length > 0 &&
-                      selectedIndukList.length >= filteredHistory.length
-                    }
-                    onChange={(e) => handleSelectAllRows(e.target.checked)}
-                    className="rounded border-slate-300 text-emerald-600 focus:ring-0 cursor-pointer"
-                  />
-                </th>
-                <th style={{ width: 40 }} className="text-center">NO</th>
-                <th style={{ width: 90 }}>NIS</th>
-                <th style={{ width: 130 }}>TGL SETOR</th>
-                <th style={{ minWidth: 160 }}>NAMA SANTRI</th>
-                <th style={{ minWidth: 150 }}>TEMPAT, TGL LAHIR</th>
-                <th style={{ minWidth: 130 }}>PENJAGA</th>
-                <th style={{ minWidth: 130 }}>ASATIDZ</th>
-                <th style={{ width: 100 }}>KELAS</th>
-                <th style={{ minWidth: 150 }}>HAFALAN</th>
-                <th style={{ width: 100 }} className="text-center">KATEGORI</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredHistory.length === 0 ? (
-                <tr>
-                  <td colSpan={11} className="text-center py-8 text-slate-400 italic">
-                    Belum ada data riwayat setoran hafalan.
-                  </td>
-                </tr>
-              ) : (
-                filteredHistory.map((row, idx) => {
-                  const sInduk = String(row.no_induk).trim();
-                  const isChecked = selectedIndukList.includes(sInduk);
-
-                  const ttlGabung = [
-                    row.tempat_lahir,
-                    [row.tgl_lahir, row.bln_lahir, row.thn_lahir].filter(Boolean).join(' '),
-                  ]
-                    .filter(Boolean)
-                    .join(', ');
-
-                  const klsGabung =
-                    row.kelas ||
-                    `${row.din_kls || ''} ${row.din_bag || ''} ${row.tingkat || ''}`.trim() ||
-                    '-';
-
-                  return (
-                    <tr
-                      key={row.id || `${sInduk}_${row.tanggal}_${idx}`}
-                      onClick={() => {
-                        setSelectedSetoranForDetail(row);
-                        setDetailModalOpen(true);
-                      }}
-                      className="hover:bg-slate-50 transition cursor-pointer select-none"
-                    >
-                      <td
-                        className="text-center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => handleRowCheckboxToggle(sInduk, e.target.checked)}
-                          className="rounded border-slate-300 text-emerald-600 focus:ring-0 cursor-pointer"
-                        />
-                      </td>
-                      <td className="text-center text-slate-400 font-mono">{idx + 1}</td>
-                      <td className="font-mono text-slate-600">{row.no_induk}</td>
-                      <td className="text-slate-700 whitespace-nowrap">{row.tanggal}</td>
-                      <td className="font-bold text-slate-900">{row.nama}</td>
-                      <td className="text-slate-600">{ttlGabung || '-'}</td>
-                      <td className="text-slate-700">{row.penjaga || '-'}</td>
-                      <td className="text-slate-700">{row.mustahiq || '-'}</td>
-                      <td className="text-slate-600 font-medium">{klsGabung}</td>
-                      <td className="text-emerald-700 font-bold">{row.item_hafalan}</td>
-                      <td className="text-center">
-                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                          {row.kategori || 'Wajib'}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
         </>
       )}
 
-      {/* 4. Modals */}
-      <KonfirmasiHapusRelasiModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        title="Konfirmasi Hapus Data Terpilih"
-        analysis={deleteAnalysis}
-        isDeleting={isDeletingBulk}
-        onConfirm={handleConfirmBulkDelete}
-      />
+      {/* 3. Modal Pengaturan Target & Penjaga */}
       <ModalSettingsHafalan />
-
-      <ModalDetailRiwayatSetoran
-        isOpen={detailModalOpen}
-        onClose={() => setDetailModalOpen(false)}
-        clickedSetoran={selectedSetoranForDetail}
-        allSetoranList={setoranList}
-        onEdit={handleEditFromDetail}
-        onPrint={handlePrintFromDetail}
-        onDelete={handleDeleteFromDetail}
-      />
     </div>
   );
 }
