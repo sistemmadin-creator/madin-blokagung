@@ -119,4 +119,88 @@ test.describe('E2E: Switch Silabus, Liburan Global, Minggu Kalender & Target Min
     await btnSilabus.click();
     await expect(page.getByText(/Jadwal Silabus Aktif/i)).toBeVisible({ timeout: 20_000 });
   });
+
+  test('4. Zoom bar (3-12 Bln), jumlah kelas dinamis, dan minimize minggu bulan (Agus (26))', async ({
+    page,
+  }) => {
+    await gotoWithAuth(page, '/linimasa-setor');
+
+    await expect(
+      page.getByRole('heading', { name: 'Linimasa Setor Santri' })
+    ).toBeVisible({ timeout: 25_000 });
+
+    // 1. Zoom Bar presets (3 Bln | 6 Bln | 9 Bln | 12 Bln) & Zoom Out/In buttons
+    const btn3Bln = page.getByRole('button', { name: '3 Bln', exact: true });
+    const btn12Bln = page.getByRole('button', { name: '12 Bln', exact: true });
+    const btnZoomOut = page.getByRole('button', { name: 'Zoom Out tabel', exact: true });
+    const btnZoomIn = page.getByRole('button', { name: 'Zoom In tabel', exact: true });
+
+    await expect(btn3Bln).toHaveAttribute('aria-pressed', 'true');
+    await btnZoomOut.click();
+    await expect(page.getByRole('button', { name: '6 Bln', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    await btn12Bln.click();
+    await expect(btn12Bln).toHaveAttribute('aria-pressed', 'true');
+
+    // Reset zoom back to 3 Bln via Zoom In -> 9 -> 6 -> 3
+    await btnZoomIn.click();
+    await expect(page.getByRole('button', { name: '9 Bln', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    await btn3Bln.click();
+    await expect(btn3Bln).toHaveAttribute('aria-pressed', 'true');
+
+    // 2. Dynamic Classes Per View: default Menampilkan 3 Kelas -> edit to 6 -> back to 3
+    const btnEditClasses = page.getByRole('button', { name: /Menampilkan 3 Kelas:/i });
+    await expect(btnEditClasses).toBeVisible();
+    await btnEditClasses.click();
+
+    const inputClasses = page.getByLabel('Jumlah kelas yang ditampilkan');
+    await expect(inputClasses).toBeVisible();
+    await inputClasses.fill('6');
+    await page.getByRole('button', { name: 'Terapkan jumlah kelas' }).click();
+
+    await expect(
+      page.getByRole('button', { name: /Menampilkan (6|\d+) Kelas:/i })
+    ).toBeVisible();
+
+    // Restore back to 3 kelas
+    await page.getByRole('button', { name: /Menampilkan \d+ Kelas:/i }).click();
+    await page.getByRole('button', { name: '3', exact: true }).click();
+    await expect(page.getByRole('button', { name: /Menampilkan 3 Kelas:/i })).toBeVisible();
+
+    // 3. Minimize weeks on Agustus -> label becomes 'Agus (26)' -> clicking minimized cell opens modal on Agustus
+    const btnMinimizeAgustus = page.getByRole('button', {
+      name: /Minimize minggu bulan AGUSTUS 2026/i,
+    });
+    await expect(btnMinimizeAgustus).toBeVisible();
+    await btnMinimizeAgustus.click();
+
+    const btnExpandAgustus = page.getByRole('button', {
+      name: /Tampilkan minggu bulan AGUSTUS 2026/i,
+    });
+    await expect(btnExpandAgustus).toBeVisible();
+    await expect(btnExpandAgustus).toContainText('Agus (26)');
+
+    // Click first cell in the minimized AGUSTUS 2026 column ('Agus (26)')
+    const agustusCell = page.locator('tbody td[title^="Agus (26)"]').first();
+    await expect(agustusCell).toBeVisible();
+    await agustusCell.click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(
+      dialog.getByRole('heading', { name: 'Detail Setoran Hafalan Santri' })
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(dialog.getByText(/Aktif:\s*2026-08-/)).toBeVisible();
+
+    // Close modal & expand AGUSTUS 2026 back
+    await dialog.locator('button').filter({ has: page.locator('svg') }).first().click();
+    await expect(dialog).toBeHidden();
+
+    await btnExpandAgustus.click();
+    await expect(btnMinimizeAgustus).toBeVisible();
+  });
 });

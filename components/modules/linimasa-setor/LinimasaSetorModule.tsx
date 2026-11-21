@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   CalendarDays,
   Calendar,
@@ -12,6 +12,13 @@ import {
   BookOpen,
   Table2,
   CalendarOff,
+  ZoomIn,
+  ZoomOut,
+  Minimize2,
+  Maximize2,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react';
 import { exportAoaToExcel, ExcelMergeRange } from '@/lib/utils/excel';
 import { useSantriStore } from '@/stores/useSantriStore';
@@ -19,6 +26,8 @@ import { useMuhafadzohStore } from '@/stores/useMuhafadzohStore';
 import { useFormasiStore } from '@/stores/useFormasiStore';
 import { useTahunAjaranStore, parseStartYearFromTA } from '@/stores/useTahunAjaranStore';
 import {
+  AcademicMonthInfo,
+  formatMonthMinimizedLabel,
   getAcademicYearMonths,
   sortSantriByFormasiHierarchy,
   formatKelasMadin,
@@ -42,7 +51,12 @@ import SilabusScheduleView, { exportSilabusToExcel } from './SilabusScheduleView
 
 type TingkatTab = 'SEMUA' | 'ULA' | 'WUSTHO' | 'ULYA';
 type LinimasaViewMode = 'matriks' | 'silabus';
+type MatrixZoomPreset = 3 | 6 | 9 | 12;
+const ZOOM_PRESETS: MatrixZoomPreset[] = [3, 6, 9, 12];
 const LS_LINIMASA_VIEW_MODE = 'madin_linimasa_view_mode_v1';
+const LS_LINIMASA_ZOOM_MONTHS = 'madin_linimasa_zoom_months_v1';
+const LS_LINIMASA_CLASSES_PER_VIEW = 'madin_linimasa_classes_per_view_v1';
+const LS_LINIMASA_MINIMIZED_MONTHS = 'madin_linimasa_minimized_months_v1';
 
 // Helper untuk normalisasi string tanggal ke ISO 'YYYY-MM-DD'
 function normalizeToIsoDate(raw: string): string {
@@ -134,14 +148,118 @@ export default function LinimasaSetorModule() {
   // Switch 2 Mode: Matriks Setoran vs Silabus
   const [viewMode, setViewMode] = useState<LinimasaViewMode>('matriks');
 
+  // State untuk Zoom Tabel Matriks (Panah Merah: 3 | 6 | 9 | 12 bulan),
+  // Jumlah Kelas per Tampilan (Panah Hitam: default 3), dan Minimize Minggu Bulan (Panah Hijau)
+  const [matrixZoomMonths, setMatrixZoomMonths] = useState<MatrixZoomPreset>(3);
+  const [classesPerView, setClassesPerView] = useState<number>(3);
+  const [isEditClassesOpen, setIsEditClassesOpen] = useState<boolean>(false);
+  const [classesInputDraft, setClassesInputDraft] = useState<string>('3');
+  const [minimizedMonthKeys, setMinimizedMonthKeys] = useState<Set<string>>(() => new Set());
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
+  const [tableContainerWidth, setTableContainerWidth] = useState<number>(0);
+
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(LS_LINIMASA_VIEW_MODE);
       if (saved === 'matriks' || saved === 'silabus') {
         setViewMode(saved);
       }
+      const savedZoom = Number(window.localStorage.getItem(LS_LINIMASA_ZOOM_MONTHS));
+      if (savedZoom === 3 || savedZoom === 6 || savedZoom === 9 || savedZoom === 12) {
+        setMatrixZoomMonths(savedZoom);
+      }
+      const savedClasses = parseInt(
+        window.localStorage.getItem(LS_LINIMASA_CLASSES_PER_VIEW) || '',
+        10
+      );
+      if (Number.isFinite(savedClasses) && savedClasses >= 1) {
+        setClassesPerView(savedClasses);
+        setClassesInputDraft(String(savedClasses));
+      }
+      const savedMin = window.localStorage.getItem(LS_LINIMASA_MINIMIZED_MONTHS);
+      if (savedMin) {
+        const arr = JSON.parse(savedMin);
+        if (Array.isArray(arr)) {
+          setMinimizedMonthKeys(new Set(arr.filter((x) => typeof x === 'string')));
+        }
+      }
     } catch {}
   }, []);
+
+  useEffect(() => {
+    const el = tableScrollRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const updateWidth = () => {
+      if (el.clientWidth > 0) setTableContainerWidth(el.clientWidth);
+    };
+    updateWidth();
+    const obs = new ResizeObserver(updateWidth);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [viewMode]);
+
+  const handleChangeZoomPreset = (preset: MatrixZoomPreset) => {
+    setMatrixZoomMonths(preset);
+    try {
+      window.localStorage.setItem(LS_LINIMASA_ZOOM_MONTHS, String(preset));
+    } catch {}
+  };
+
+  const handleZoomIn = () => {
+    const idx = ZOOM_PRESETS.indexOf(matrixZoomMonths);
+    if (idx > 0) handleChangeZoomPreset(ZOOM_PRESETS[idx - 1]);
+  };
+
+  const handleZoomOut = () => {
+    const idx = ZOOM_PRESETS.indexOf(matrixZoomMonths);
+    if (idx >= 0 && idx < ZOOM_PRESETS.length - 1) {
+      handleChangeZoomPreset(ZOOM_PRESETS[idx + 1]);
+    }
+  };
+
+  const updateClassesPerView = (nextCount: number, maxAllowed: number) => {
+    const clamped = Math.max(1, Math.min(Math.max(1, maxAllowed), Math.round(nextCount)));
+    setClassesPerView(clamped);
+    setClassesInputDraft(String(clamped));
+    setClassPage(0);
+    setIsEditClassesOpen(false);
+    try {
+      window.localStorage.setItem(LS_LINIMASA_CLASSES_PER_VIEW, String(clamped));
+    } catch {}
+  };
+
+  const handleToggleMinimizeMonth = (monthKey: string) => {
+    setMinimizedMonthKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(monthKey)) next.delete(monthKey);
+      else next.add(monthKey);
+      try {
+        window.localStorage.setItem(
+          LS_LINIMASA_MINIMIZED_MONTHS,
+          JSON.stringify(Array.from(next))
+        );
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleMinimizeAllMonths = (monthsToMin: AcademicMonthInfo[]) => {
+    const next = new Set(monthsToMin.map((m) => m.key));
+    setMinimizedMonthKeys(next);
+    try {
+      window.localStorage.setItem(
+        LS_LINIMASA_MINIMIZED_MONTHS,
+        JSON.stringify(Array.from(next))
+      );
+    } catch {}
+  };
+
+  const handleExpandAllMonths = () => {
+    setMinimizedMonthKeys(new Set());
+    try {
+      window.localStorage.setItem(LS_LINIMASA_MINIMIZED_MONTHS, JSON.stringify([]));
+    } catch {}
+  };
 
   const handleChangeViewMode = (mode: LinimasaViewMode) => {
     setViewMode(mode);
@@ -320,14 +438,13 @@ export default function LinimasaSetorModule() {
     return sortSantriByFormasiHierarchy(filtered);
   }, [parsedSantriList, activeTingkat, filterGender, searchQuery, filterSilabusStatus, santriSilabusStatusMap]);
 
-  // Batasi baris tabel hanya 3 kelas saja
+  // Pagination jumlah kelas dinamis (default: 3 kelas, dapat diklik & diubah sendiri)
   const [classPage, setClassPage] = useState<number>(0);
-  const CLASSES_PER_VIEW = 3;
 
   // Reset pagination kelas bila filter berubah
   useEffect(() => {
     setClassPage(0);
-  }, [activeTingkat, filterGender, searchQuery]);
+  }, [activeTingkat, filterGender, searchQuery, filterSilabusStatus]);
 
   // Daftar kelas unik berurutan sesuai hierarki formasi
   const distinctClasses = useMemo(() => {
@@ -342,18 +459,19 @@ export default function LinimasaSetorModule() {
     return list;
   }, [displayedSantri]);
 
-  const totalClassPages = Math.ceil(distinctClasses.length / CLASSES_PER_VIEW) || 1;
+  const effectiveClassesPerView = Math.max(1, classesPerView);
+  const totalClassPages = Math.ceil(distinctClasses.length / effectiveClassesPerView) || 1;
   const currentClassPage = Math.min(classPage, Math.max(0, totalClassPages - 1));
 
-  // 3 Kelas yang sedang aktif ditampilkan
+  // Kelas yang sedang aktif ditampilkan sesuai classesPerView
   const activeClasses = useMemo(() => {
-    const startIdx = currentClassPage * CLASSES_PER_VIEW;
-    return distinctClasses.slice(startIdx, startIdx + CLASSES_PER_VIEW);
-  }, [distinctClasses, currentClassPage]);
+    const startIdx = currentClassPage * effectiveClassesPerView;
+    return distinctClasses.slice(startIdx, startIdx + effectiveClassesPerView);
+  }, [distinctClasses, currentClassPage, effectiveClassesPerView]);
 
   const activeClassSet = useMemo(() => new Set(activeClasses), [activeClasses]);
 
-  // Santri yang dibatasi hanya dari 3 kelas aktif tersebut
+  // Santri yang dibatasi hanya dari kelas aktif tersebut
   const paginatedSantri = useMemo(() => {
     return displayedSantri.filter((s) => activeClassSet.has(s.displayKelas));
   }, [displayedSantri, activeClassSet]);
@@ -464,10 +582,79 @@ export default function LinimasaSetorModule() {
     return academicMonths.filter((m) => visibleMonthKeys.has(m.key));
   }, [academicMonths, visibleMonthKeys]);
 
-  // Total kolom minggu yang tampil
+  // Total kolom minggu penuh (untuk informasi ringkasan)
   const totalSundayColumns = useMemo(() => {
     return displayedMonths.reduce((acc, m) => acc + m.sundays.length, 0);
   }, [displayedMonths]);
+
+  // Total kolom aktual yang dirender (bulan ter-minimize dihitung 1 kolom)
+  const totalVisibleMatrixColumns = useMemo(() => {
+    return displayedMonths.reduce(
+      (acc, m) => acc + (minimizedMonthKeys.has(m.key) ? 1 : m.sundays.length),
+      0
+    );
+  }, [displayedMonths, minimizedMonthKeys]);
+
+  // Dimensi adaptif tabel matriks berdasarkan preset zoom (3 | 6 | 9 | 12 Bulan) & lebar kontainer
+  const zoomMetrics = useMemo(() => {
+    const isNarrowViewport = tableContainerWidth > 0 && tableContainerWidth < 640;
+    const containerW = tableContainerWidth > 0 ? tableContainerWidth : 980;
+
+    let noW = 44;
+    let namaW = 216;
+    let kelasW = 120;
+    let targetCols = 13;
+    let minWeekW = 54;
+    let density: 'normal' | 'compact' | 'dense' | 'micro' = 'normal';
+
+    if (matrixZoomMonths === 6) {
+      noW = 36;
+      namaW = 172;
+      kelasW = 98;
+      targetCols = 26;
+      minWeekW = 28;
+      density = 'compact';
+    } else if (matrixZoomMonths === 9) {
+      noW = 30;
+      namaW = 148;
+      kelasW = 86;
+      targetCols = 39;
+      minWeekW = 20;
+      density = 'dense';
+    } else if (matrixZoomMonths === 12) {
+      noW = 26;
+      namaW = 128;
+      kelasW = 74;
+      targetCols = Math.max(1, totalVisibleMatrixColumns);
+      minWeekW = 13;
+      density = 'micro';
+    }
+
+    if (isNarrowViewport) {
+      noW = Math.min(noW, 28);
+      namaW = Math.min(namaW, 128);
+      kelasW = Math.min(kelasW, 74);
+    }
+
+    const stickyTotal = noW + namaW + kelasW;
+    const availW = Math.max(220, containerW - stickyTotal);
+    const weekColW = Math.max(minWeekW, Math.floor(availW / targetCols));
+    const minMonthColW = Math.max(
+      weekColW,
+      density === 'micro' ? 40 : density === 'dense' ? 48 : 58
+    );
+
+    return {
+      noW,
+      namaW,
+      kelasW,
+      leftNama: noW,
+      leftKelas: noW + namaW,
+      weekColW,
+      minMonthColW,
+      density,
+    };
+  }, [matrixZoomMonths, tableContainerWidth, totalVisibleMatrixColumns]);
 
   // Handlers Filter Bulan
   const handleToggleMonth = (key: string) => {
@@ -513,6 +700,17 @@ export default function LinimasaSetorModule() {
       sunday,
       records,
     });
+  };
+
+  // Handler Klik Sel Bulan yang Ter-Minimize (langsung buka Modal dengan SundayDatePicker pada bulan tsb)
+  const handleMinimizedMonthCellClick = (santri: ParsedSantri, month: AcademicMonthInfo) => {
+    if (!month.sundays || month.sundays.length === 0) return;
+    const withRecord = month.sundays.find(
+      (s) => (setoranLookupMap.get(`${santri.no_induk}_${s.tanggal}`) || []).length > 0
+    );
+    const nonHoliday = month.sundays.find((s) => !holidaysForTA[s.tanggal]);
+    const targetSunday = withRecord || nonHoliday || month.sundays[0];
+    handleCellClick(santri, targetSunday);
   };
 
   // Ekspor ke Berkas Excel (.xlsx): Mode Matriks vs Mode Silabus
@@ -825,6 +1023,61 @@ export default function LinimasaSetorModule() {
               </>
             )}
 
+            {/* Bar Zoom Tabel Matriks (Panah Merah: 3 Bln | 6 Bln | 9 Bln | 12 Bln + - / +) */}
+            {viewMode === 'matriks' && (
+              <div
+                role="group"
+                aria-label="Zoom tampilan tabel matriks"
+                className="inline-flex items-center p-0.5 rounded-xl bg-slate-100 border border-slate-200 gap-0.5"
+              >
+                <button
+                  type="button"
+                  onClick={handleZoomOut}
+                  disabled={matrixZoomMonths === 12}
+                  title="Perkecil tabel (Zoom Out menuju 12 Bulan)"
+                  aria-label="Zoom Out tabel"
+                  className="p-1.5 rounded-lg text-slate-700 hover:bg-white disabled:opacity-35 disabled:cursor-not-allowed transition cursor-pointer"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </button>
+                {ZOOM_PRESETS.map((preset) => {
+                  const isActive = matrixZoomMonths === preset;
+                  return (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleChangeZoomPreset(preset)}
+                      aria-pressed={isActive}
+                      title={
+                        preset === 3
+                          ? 'Zoom In Maksimal (tampak ~3 Bulan)'
+                          : preset === 12
+                          ? 'Zoom Out Maksimal (tampak hingga 12 Bulan)'
+                          : `Tampilan sedang (~${preset} Bulan)`
+                      }
+                      className={`px-2 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition cursor-pointer ${
+                        isActive
+                          ? 'bg-emerald-700 text-white shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+                      }`}
+                    >
+                      {preset} Bln
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={handleZoomIn}
+                  disabled={matrixZoomMonths === 3}
+                  title="Perbesar tabel (Zoom In menuju 3 Bulan)"
+                  aria-label="Zoom In tabel"
+                  className="p-1.5 rounded-lg text-slate-700 hover:bg-white disabled:opacity-35 disabled:cursor-not-allowed transition cursor-pointer"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
             {/* Tombol Buka Popover Multi-select Bulan */}
             <button
               type="button"
@@ -883,6 +1136,26 @@ export default function LinimasaSetorModule() {
                 >
                   Sem. Genap (Jan-Jun)
                 </button>
+                {viewMode === 'matriks' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleMinimizeAllMonths(displayedMonths)}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-200 hover:bg-slate-300 text-slate-800 cursor-pointer"
+                    >
+                      Minimize Semua Minggu
+                    </button>
+                    {minimizedMonthKeys.size > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleExpandAllMonths}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-slate-100 text-emerald-800 border border-emerald-200 cursor-pointer"
+                      >
+                        Tampilkan Semua Minggu
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             </div>
 
@@ -933,13 +1206,93 @@ export default function LinimasaSetorModule() {
         />
       ) : (
         <>
-          {/* Kontrol Pembatasan 3 Kelas */}
+          {/* Kontrol Pembatasan Kelas Dinamis (Panah Hitam: default 3, dapat diklik & diubah) */}
       <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-600" />
-            <span>Menampilkan 3 Kelas:</span>
-          </span>
+          {!isEditClassesOpen ? (
+            <button
+              type="button"
+              onClick={() => {
+                setClassesInputDraft(String(effectiveClassesPerView));
+                setIsEditClassesOpen(true);
+              }}
+              title="Klik untuk menentukan sendiri jumlah kelas yang ingin ditampilkan"
+              className="text-xs font-bold text-slate-800 inline-flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-emerald-50 hover:text-emerald-800 border border-transparent hover:border-emerald-200 transition cursor-pointer"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-600" />
+              <span className="underline decoration-dashed decoration-slate-400 underline-offset-4">
+                Menampilkan {effectiveClassesPerView} Kelas:
+              </span>
+              <Pencil className="w-3 h-3 text-slate-400" />
+            </button>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const parsed = parseInt(classesInputDraft, 10);
+                updateClassesPerView(
+                  Number.isFinite(parsed) ? parsed : 3,
+                  Math.max(1, distinctClasses.length)
+                );
+              }}
+              className="inline-flex items-center gap-1.5 flex-wrap bg-emerald-50/70 border border-emerald-300 rounded-xl px-2.5 py-1"
+            >
+              <span className="text-xs font-bold text-emerald-950">Tampilkan</span>
+              <input
+                type="number"
+                autoFocus
+                min={1}
+                max={Math.max(1, distinctClasses.length)}
+                value={classesInputDraft}
+                onChange={(e) => setClassesInputDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setIsEditClassesOpen(false);
+                  }
+                }}
+                aria-label="Jumlah kelas yang ditampilkan"
+                className="w-16 h-7 px-2 rounded-lg border border-emerald-400 bg-white text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+              />
+              <span className="text-xs font-bold text-emerald-950">
+                / {distinctClasses.length} Kelas
+              </span>
+              {[
+                { label: '3', val: 3 },
+                { label: '6', val: 6 },
+                { label: '10', val: 10 },
+                { label: 'Semua', val: Math.max(1, distinctClasses.length) },
+              ].map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() =>
+                    updateClassesPerView(preset.val, Math.max(1, distinctClasses.length))
+                  }
+                  className="px-2 py-0.5 rounded-md bg-white border border-emerald-200 hover:bg-emerald-100 text-[11px] font-bold text-emerald-800 cursor-pointer"
+                >
+                  {preset.label}
+                </button>
+              ))}
+              <button
+                type="submit"
+                aria-label="Terapkan jumlah kelas"
+                className="p-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer"
+                title="Terapkan"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEditClassesOpen(false)}
+                aria-label="Batal ubah jumlah kelas"
+                className="p-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 cursor-pointer"
+                title="Batal"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </form>
+          )}
+
           <div className="flex items-center gap-1.5 flex-wrap">
             {activeClasses.map((cls) => (
               <span
@@ -964,7 +1317,7 @@ export default function LinimasaSetorModule() {
                 const targetClass = e.target.value;
                 const idx = distinctClasses.indexOf(targetClass);
                 if (idx >= 0) {
-                  setClassPage(Math.floor(idx / CLASSES_PER_VIEW));
+                  setClassPage(Math.floor(idx / effectiveClassesPerView));
                 }
               }}
               className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-semibold text-slate-700 focus:outline-none focus:border-emerald-600 cursor-pointer"
@@ -977,14 +1330,14 @@ export default function LinimasaSetorModule() {
             </select>
           )}
 
-          {/* Prev / Next 3 Kelas Buttons */}
+          {/* Prev / Next Kelas Buttons */}
           <div className="flex items-center gap-1">
             <button
               type="button"
               disabled={currentClassPage === 0}
               onClick={() => setClassPage((p) => Math.max(0, p - 1))}
               className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-slate-700 transition-colors"
-              title="3 Kelas Sebelumnya"
+              title={`${effectiveClassesPerView} Kelas Sebelumnya`}
             >
               ← Sebelumnya
             </button>
@@ -996,7 +1349,7 @@ export default function LinimasaSetorModule() {
               disabled={currentClassPage >= totalClassPages - 1}
               onClick={() => setClassPage((p) => Math.min(totalClassPages - 1, p + 1))}
               className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-slate-700 transition-colors"
-              title="3 Kelas Berikutnya"
+              title={`${effectiveClassesPerView} Kelas Berikutnya`}
             >
               Berikutnya →
             </button>
@@ -1012,11 +1365,15 @@ export default function LinimasaSetorModule() {
             <span className="font-bold text-slate-900">{paginatedSantri.length} Santri</span>
             <span>•</span>
             <span className="text-slate-600">
-              3 Kelas Terpilih dari total {distinctClasses.length} Kelas ({displayedSantri.length} Total Santri)
+              {activeClasses.length} Kelas Terpilih dari total {distinctClasses.length} Kelas ({displayedSantri.length} Total Santri)
             </span>
             <span>•</span>
             <span>
-              {displayedMonths.length} Bulan Aktif ({totalSundayColumns} Kolom Minggu)
+              {displayedMonths.length} Bulan Aktif ({totalSundayColumns} Minggu
+              {minimizedMonthKeys.size > 0
+                ? `, ${totalVisibleMatrixColumns} Kolom Tampil`
+                : ''}
+              )
             </span>
           </div>
 
@@ -1074,60 +1431,169 @@ export default function LinimasaSetorModule() {
         </div>
 
         {/* Container Tabel dengan Horizontal & Vertical Scroll */}
-        <div className="overflow-x-auto max-h-[75vh] relative">
-          <table className="w-full text-left text-xs border-collapse">
+        <div ref={tableScrollRef} className="overflow-x-auto max-h-[75vh] relative">
+          <table
+            className="text-left text-xs border-collapse"
+            style={{
+              tableLayout: 'fixed',
+              width:
+                zoomMetrics.noW +
+                zoomMetrics.namaW +
+                zoomMetrics.kelasW +
+                displayedMonths.reduce(
+                  (acc, m) =>
+                    acc +
+                    (minimizedMonthKeys.has(m.key)
+                      ? zoomMetrics.minMonthColW
+                      : m.sundays.length * zoomMetrics.weekColW),
+                  0
+                ),
+            }}
+          >
+            <colgroup>
+              <col style={{ width: zoomMetrics.noW }} />
+              <col style={{ width: zoomMetrics.namaW }} />
+              <col style={{ width: zoomMetrics.kelasW }} />
+              {displayedMonths.map((m) =>
+                minimizedMonthKeys.has(m.key) ? (
+                  <col key={`col_min_${m.key}`} style={{ width: zoomMetrics.minMonthColW }} />
+                ) : (
+                  m.sundays.map((s) => (
+                    <col key={`col_${s.tanggal}`} style={{ width: zoomMetrics.weekColW }} />
+                  ))
+                )
+              )}
+            </colgroup>
+
             {/* Multi-Level Sticky Header */}
             <thead className="bg-slate-100 text-slate-800 font-bold sticky top-0 z-30 select-none shadow-xs">
               {/* Tingkat 1: Bulan Header */}
               <tr className="border-b border-slate-200">
-                {/* Kolom Beku (Sticky Columns di Kiri) */}
+                {/* Kolom Beku (Sticky Columns di Kiri dengan left dinamis sesuai zoom) */}
                 <th
                   rowSpan={2}
-                  className="py-2.5 px-2 text-center w-12 sticky left-0 z-40 bg-slate-100 border-r border-slate-200"
+                  style={{ left: 0, width: zoomMetrics.noW }}
+                  className={`${
+                    zoomMetrics.density === 'micro' || zoomMetrics.density === 'dense'
+                      ? 'py-1.5 px-1 text-[10px]'
+                      : 'py-2.5 px-2'
+                  } text-center sticky z-40 bg-slate-100 border-r border-slate-200`}
                 >
                   NO
                 </th>
                 <th
                   rowSpan={2}
-                  className="py-2.5 px-3 w-56 sticky left-12 z-40 bg-slate-100 border-r border-slate-200 whitespace-nowrap"
+                  style={{ left: zoomMetrics.leftNama, width: zoomMetrics.namaW }}
+                  className={`${
+                    zoomMetrics.density === 'micro' || zoomMetrics.density === 'dense'
+                      ? 'py-1.5 px-2 text-[10px]'
+                      : 'py-2.5 px-3'
+                  } sticky z-40 bg-slate-100 border-r border-slate-200 whitespace-nowrap overflow-hidden text-ellipsis`}
                 >
                   NAMA SANTRI
                 </th>
                 <th
                   rowSpan={2}
-                  className="py-2.5 px-3 w-32 sticky left-68 z-40 bg-slate-100 border-r border-slate-300 whitespace-nowrap"
+                  style={{ left: zoomMetrics.leftKelas, width: zoomMetrics.kelasW }}
+                  className={`${
+                    zoomMetrics.density === 'micro' || zoomMetrics.density === 'dense'
+                      ? 'py-1.5 px-1.5 text-[10px]'
+                      : 'py-2.5 px-3'
+                  } sticky z-40 bg-slate-100 border-r border-slate-300 whitespace-nowrap overflow-hidden text-ellipsis`}
                 >
                   KELAS
                 </th>
 
-                {/* Kolom Bulan Bertingkat (colSpan dinamis 4 atau 5 Minggu) */}
-                {displayedMonths.map((m) => (
-                  <th
-                    key={m.key}
-                    colSpan={m.sundays.length}
-                    className="py-2 px-2 text-center border-r border-slate-300 bg-emerald-800 text-white font-bold tracking-wide"
-                  >
-                    <div className="flex items-center justify-center gap-1.5">
-                      <span>
-                        {m.monthName.toUpperCase()} {m.year}
-                      </span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 text-emerald-100 font-mono">
-                        {m.sundays.length} Minggu
-                      </span>
-                    </div>
-                  </th>
-                ))}
+                {/* Kolom Bulan Bertingkat (Normal vs Minimized: Panah Hijau) */}
+                {displayedMonths.map((m) => {
+                  const isMinimized = minimizedMonthKeys.has(m.key);
+                  const minLabel = formatMonthMinimizedLabel(m.monthIndex, m.year);
+
+                  if (isMinimized) {
+                    return (
+                      <th
+                        key={m.key}
+                        rowSpan={2}
+                        colSpan={1}
+                        className="p-0 text-center border-r border-slate-300 bg-emerald-900 text-white font-bold align-middle"
+                        title={`${m.monthName} ${m.year} (${m.sundays.length} Minggu) sedang diminimize. Klik untuk menampilkan minggu-minggunya kembali.`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleToggleMinimizeMonth(m.key)}
+                          className="w-full h-full py-2 px-1 flex flex-col items-center justify-center gap-0.5 hover:bg-emerald-700 transition cursor-pointer"
+                          aria-label={`Tampilkan minggu bulan ${m.monthName} ${m.year}`}
+                        >
+                          <span
+                            className={`${
+                              zoomMetrics.density === 'micro' ? 'text-[9px]' : 'text-[11px]'
+                            } font-bold leading-tight whitespace-nowrap`}
+                          >
+                            {minLabel}
+                          </span>
+                          <span className="inline-flex items-center gap-0.5 text-[9px] text-emerald-200 font-normal">
+                            <Maximize2 className="w-2.5 h-2.5" />
+                            {zoomMetrics.density !== 'micro' && (
+                              <span>{m.sundays.length}M</span>
+                            )}
+                          </span>
+                        </button>
+                      </th>
+                    );
+                  }
+
+                  return (
+                    <th
+                      key={m.key}
+                      colSpan={m.sundays.length}
+                      className="p-0 text-center border-r border-slate-300 bg-emerald-800 text-white font-bold tracking-wide"
+                      title={`Klik untuk minimize minggu bulan ${m.monthName} ${m.year} menjadi ${minLabel}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleToggleMinimizeMonth(m.key)}
+                        className={`w-full h-full ${
+                          zoomMetrics.density === 'micro' || zoomMetrics.density === 'dense'
+                            ? 'py-1 px-0.5'
+                            : 'py-2 px-2'
+                        } flex items-center justify-center gap-1 hover:bg-emerald-700/90 transition cursor-pointer overflow-hidden`}
+                        aria-label={`Minimize minggu bulan ${m.monthName} ${m.year}`}
+                      >
+                        {zoomMetrics.density === 'micro' || zoomMetrics.density === 'dense' ? (
+                          <span className="text-[10px] font-bold truncate">
+                            {minLabel}
+                          </span>
+                        ) : (
+                          <>
+                            <span className="truncate">
+                              {m.monthName.toUpperCase()} {m.year}
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 text-emerald-100 font-mono whitespace-nowrap shrink-0">
+                              {m.sundays.length} Minggu
+                            </span>
+                            <Minimize2 className="w-3 h-3 text-emerald-200 shrink-0" />
+                          </>
+                        )}
+                      </button>
+                    </th>
+                  );
+                })}
               </tr>
 
-              {/* Tingkat 2: Sub-Header Hari Minggu (Minggu 1, Minggu 2, ...) */}
+              {/* Tingkat 2: Sub-Header Hari Minggu (Hanya untuk bulan yang TIDAK diminimize) */}
               <tr className="border-b border-slate-300 bg-slate-50 text-[11px] text-slate-700">
-                {displayedMonths.map((m) =>
-                  m.sundays.map((s) => {
+                {displayedMonths.map((m) => {
+                  if (minimizedMonthKeys.has(m.key)) return null;
+                  return m.sundays.map((s) => {
                     const holidayInfo = holidaysForTA[s.tanggal];
+                    const isMicroOrDense =
+                      zoomMetrics.density === 'micro' || zoomMetrics.density === 'dense';
                     return (
                       <th
                         key={s.tanggal}
-                        className={`py-1.5 px-1.5 text-center min-w-[70px] border-r border-slate-200 ${
+                        className={`${
+                          isMicroOrDense ? 'py-1 px-0.5 text-[9px]' : 'py-1.5 px-1 text-[11px]'
+                        } text-center border-r border-slate-200 overflow-hidden ${
                           holidayInfo
                             ? 'bg-rose-100/80 font-bold text-rose-900'
                             : s.isCurrentWeek
@@ -1140,28 +1606,36 @@ export default function LinimasaSetorModule() {
                             : s.labelLengkap
                         }
                       >
-                        <div className="font-bold">M{s.mingguKe}</div>
-                        <div className="text-[10px] text-slate-500 font-mono font-normal">
-                          {s.dayNumber}/{m.monthIndex + 1}
-                        </div>
-                        {holidayInfo && (
-                          <div className="text-[8px] font-bold uppercase text-rose-700 tracking-wider">
-                            {holidayInfo.label || 'LIBUR'}
-                          </div>
+                        {zoomMetrics.density === 'micro' ? (
+                          <div className="font-bold leading-none">{s.mingguKe}</div>
+                        ) : zoomMetrics.density === 'dense' ? (
+                          <div className="font-bold leading-tight">M{s.mingguKe}</div>
+                        ) : (
+                          <>
+                            <div className="font-bold">M{s.mingguKe}</div>
+                            <div className="text-[10px] text-slate-500 font-mono font-normal">
+                              {s.dayNumber}/{m.monthIndex + 1}
+                            </div>
+                            {holidayInfo && zoomMetrics.density === 'normal' && (
+                              <div className="text-[8px] font-bold uppercase text-rose-700 tracking-wider truncate">
+                                {holidayInfo.label || 'LIBUR'}
+                              </div>
+                            )}
+                          </>
                         )}
                       </th>
                     );
-                  })
-                )}
+                  });
+                })}
               </tr>
             </thead>
 
-            {/* Body Data Santri (Dibatasi 3 Kelas Saja, Urutan Sesuai Gambar 3) */}
+            {/* Body Data Santri (Urutan Sesuai Formasi Kelas) */}
             <tbody className="divide-y divide-slate-100 font-medium">
               {paginatedSantri.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={3 + totalSundayColumns}
+                    colSpan={3 + totalVisibleMatrixColumns}
                     className="py-12 text-center text-slate-400 text-xs"
                   >
                     {loadingSantri
@@ -1185,6 +1659,9 @@ export default function LinimasaSetorModule() {
                   };
                   const isRed = silabusStatus.status === 'merah';
                   const isYellow = silabusStatus.status === 'kuning';
+                  const isMicro = zoomMetrics.density === 'micro';
+                  const isDense = zoomMetrics.density === 'dense';
+                  const isCompact = zoomMetrics.density === 'compact';
 
                   // Kelas Styling Stabilo Baris & Kolom Sticky
                   const rowClasses = isRed
@@ -1199,16 +1676,26 @@ export default function LinimasaSetorModule() {
                     ? 'bg-amber-50 group-hover:bg-amber-100/90 text-amber-950'
                     : 'bg-white group-hover:bg-emerald-50/50 text-slate-900';
 
+                  const cellPadY = isMicro
+                    ? 'py-0.5'
+                    : isDense
+                    ? 'py-1'
+                    : isCompact
+                    ? 'py-1.5'
+                    : 'py-2';
+
                   return (
                     <React.Fragment key={santri.no_induk || idx}>
                       {isNewClass && (
                         <tr className="bg-slate-100 border-y border-slate-300">
                           <td
-                            colSpan={3 + totalSundayColumns}
-                            className="py-1.5 px-3 font-bold text-slate-800 text-xs tracking-tight sticky left-0 z-20"
+                            colSpan={3 + totalVisibleMatrixColumns}
+                            className={`${
+                              isMicro || isDense ? 'py-1 px-2 text-[11px]' : 'py-1.5 px-3 text-xs'
+                            } font-bold text-slate-800 tracking-tight sticky left-0 z-20`}
                           >
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-3.5 bg-emerald-600 rounded-sm" />
+                              <span className="w-2 h-3.5 bg-emerald-600 rounded-sm shrink-0" />
                               <span>Kelas: {santri.displayKelas}</span>
                               <span className="text-[11px] text-slate-500 font-normal font-mono">
                                 ({countInClass} Santri)
@@ -1219,17 +1706,36 @@ export default function LinimasaSetorModule() {
                       )}
                       <tr className={rowClasses}>
                       {/* Kolom 1: No Urut (Sticky Left) */}
-                      <td className={`py-2 px-2 text-center sticky left-0 z-20 ${stickyColClasses} border-r border-slate-200 font-mono text-[11px]`}>
+                      <td
+                        style={{ left: 0 }}
+                        className={`${cellPadY} px-1 text-center sticky z-20 ${stickyColClasses} border-r border-slate-200 font-mono ${
+                          isMicro ? 'text-[10px]' : 'text-[11px]'
+                        }`}
+                      >
                         {idx + 1}
                       </td>
 
                       {/* Kolom 2: Nama Santri & Indikator Silabus (Sticky Left) */}
-                      <td className={`py-2 px-3 sticky left-12 z-20 ${stickyColClasses} border-r border-slate-200`}>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold truncate max-w-[190px]">
+                      <td
+                        style={{ left: zoomMetrics.leftNama }}
+                        className={`${cellPadY} ${
+                          isMicro || isDense ? 'px-1.5' : 'px-3'
+                        } sticky z-20 ${stickyColClasses} border-r border-slate-200 overflow-hidden`}
+                      >
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span
+                            className={`font-bold truncate ${
+                              isMicro
+                                ? 'text-[10px] max-w-[110px]'
+                                : isDense
+                                ? 'text-[11px] max-w-[130px]'
+                                : 'max-w-[190px]'
+                            }`}
+                            title={`${santri.nama} (NIS: ${santri.no_induk})`}
+                          >
                             {santri.nama}
                           </span>
-                          {isRed && (
+                          {!isMicro && !isDense && isRed && (
                             <span
                               className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-200 text-rose-900 border border-rose-300 shadow-2xs"
                               title={silabusStatus.reason}
@@ -1238,7 +1744,7 @@ export default function LinimasaSetorModule() {
                               <span>Melewati Target</span>
                             </span>
                           )}
-                          {isYellow && (
+                          {!isMicro && !isDense && isYellow && (
                             <span
                               className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-200 text-amber-950 border border-amber-300 shadow-2xs"
                               title={silabusStatus.reason}
@@ -1248,27 +1754,116 @@ export default function LinimasaSetorModule() {
                             </span>
                           )}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-mono">
-                          NIS: {santri.no_induk}
-                        </div>
+                        {!isMicro && !isDense && (
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            NIS: {santri.no_induk}
+                          </div>
+                        )}
                       </td>
 
                       {/* Kolom 3: Kelas (Sticky Left) */}
-                      <td className={`py-2 px-3 sticky left-68 z-20 ${stickyColClasses} border-r border-slate-300`}>
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
-                          isRed
-                            ? 'bg-rose-100 text-rose-800 border-rose-200'
-                            : isYellow
-                            ? 'bg-amber-100 text-amber-800 border-amber-200'
-                            : 'bg-slate-100 text-slate-700 border-slate-200'
-                        }`}>
+                      <td
+                        style={{ left: zoomMetrics.leftKelas }}
+                        className={`${cellPadY} ${
+                          isMicro || isDense ? 'px-1' : 'px-3'
+                        } sticky z-20 ${stickyColClasses} border-r border-slate-300 overflow-hidden`}
+                      >
+                        <span
+                          className={`inline-flex items-center px-1.5 py-0.5 rounded-md ${
+                            isMicro ? 'text-[9px]' : 'text-[10px]'
+                          } font-bold border truncate max-w-full ${
+                            isRed
+                              ? 'bg-rose-100 text-rose-800 border-rose-200'
+                              : isYellow
+                              ? 'bg-amber-100 text-amber-800 border-amber-200'
+                              : 'bg-slate-100 text-slate-700 border-slate-200'
+                          }`}
+                        >
                           {santri.displayKelas}
                         </span>
                       </td>
 
-                      {/* Sel-Sel Pertemuan Hari Minggu (Interaktif dengan Gradasi Warna Multi-Hafalan) */}
-                      {displayedMonths.map((m) =>
-                        m.sundays.map((sunday) => {
+                      {/* Sel-Sel Pertemuan (Bulan Ter-Minimize 1 sel ringkasan vs Normal per Minggu) */}
+                      {displayedMonths.map((m) => {
+                        if (minimizedMonthKeys.has(m.key)) {
+                          const monthRecords = m.sundays.flatMap(
+                            (sun) => setoranLookupMap.get(`${santri.no_induk}_${sun.tanggal}`) || []
+                          );
+                          const hasMonthSetoran = monthRecords.length > 0;
+                          const allHoliday =
+                            m.sundays.length > 0 &&
+                            m.sundays.every((sun) => Boolean(holidaysForTA[sun.tanggal]));
+                          const tahfidzRec = monthRecords.find(
+                            (r) =>
+                              r.kategori === 'Tahfidz' ||
+                              (r.materi_nama && r.materi_nama.toLowerCase().startsWith('juz '))
+                          );
+                          const nonTahfidzCount = monthRecords.filter((r) => r !== tahfidzRec).length;
+
+                          let monthMaxLvl = 0;
+                          if (hasMonthSetoran) {
+                            const sMap = santriMateriLevelMap.get(santri.no_induk);
+                            monthRecords.forEach((r) => {
+                              const matKey = norm(r.materi_nama || r.item_hafalan || '');
+                              const lvl = sMap?.get(matKey) || 1;
+                              if (lvl > monthMaxLvl) monthMaxLvl = lvl;
+                            });
+                            if (monthMaxLvl === 0) monthMaxLvl = 1;
+                          }
+                          const mLevelStyle = getHafalanLevelStyle(monthMaxLvl);
+                          const minLabel = formatMonthMinimizedLabel(m.monthIndex, m.year);
+
+                          return (
+                            <td
+                              key={`min_${santri.no_induk}_${m.key}`}
+                              onClick={() => handleMinimizedMonthCellClick(santri, m)}
+                              className={`${cellPadY} px-1 text-center border-r border-slate-200 cursor-pointer transition-all hover:ring-2 hover:ring-inset ${
+                                hasMonthSetoran
+                                  ? tahfidzRec && nonTahfidzCount === 0
+                                    ? 'bg-cyan-50/80 hover:ring-cyan-500'
+                                    : `${mLevelStyle.cellBg} ${mLevelStyle.ringColor}`
+                                  : allHoliday
+                                  ? 'bg-rose-50/50 hover:ring-rose-400'
+                                  : isRed
+                                  ? 'bg-rose-50/40 hover:ring-rose-400'
+                                  : isYellow
+                                  ? 'bg-amber-50/40 hover:ring-amber-400'
+                                  : 'bg-slate-50/40 hover:bg-slate-100/70 hover:ring-emerald-500'
+                              }`}
+                              title={
+                                hasMonthSetoran
+                                  ? `${minLabel} (${monthRecords.length}x setor): ${Array.from(
+                                      new Set(
+                                        monthRecords.map((r) => r.materi_nama || r.item_hafalan)
+                                      )
+                                    ).join(', ')} (Klik untuk input/detail minggu pada bulan ini)`
+                                  : allHoliday
+                                  ? `${minLabel}: Liburan Silabus (Klik untuk pilih minggu)`
+                                  : `${minLabel}: Belum ada setoran (Klik untuk pilih minggu & input)`
+                              }
+                            >
+                              {hasMonthSetoran ? (
+                                <span
+                                  className={`inline-flex items-center justify-center px-1.5 h-5 rounded-md font-bold text-[10px] shadow-2xs ${
+                                    tahfidzRec && nonTahfidzCount === 0
+                                      ? 'bg-cyan-700 text-white'
+                                      : `${mLevelStyle.badgeBg} ${mLevelStyle.badgeText}`
+                                  }`}
+                                >
+                                  {monthRecords.length}x
+                                </span>
+                              ) : allHoliday ? (
+                                <span className="inline-block px-1 py-0.5 rounded font-bold text-[9px] text-rose-600 bg-rose-100/80">
+                                  LBR
+                                </span>
+                              ) : (
+                                <span className="text-slate-300 font-bold text-xs">-</span>
+                              )}
+                            </td>
+                          );
+                        }
+
+                        return m.sundays.map((sunday) => {
                           const records =
                             setoranLookupMap.get(`${santri.no_induk}_${sunday.tanggal}`) || [];
                           const hasSetoran = records.length > 0;
@@ -1307,7 +1902,9 @@ export default function LinimasaSetorModule() {
                             <td
                               key={sunday.tanggal}
                               onClick={() => handleCellClick(santri, sunday)}
-                              className={`py-1.5 px-1 text-center border-r border-slate-100 cursor-pointer transition-all hover:ring-2 hover:ring-inset ${
+                              className={`${cellPadY} ${
+                                isMicro || isDense ? 'px-0' : 'px-1'
+                              } text-center border-r border-slate-100 cursor-pointer transition-all hover:ring-2 hover:ring-inset overflow-hidden ${
                                 isDual
                                   ? 'bg-gradient-to-r from-cyan-50 to-emerald-50 hover:ring-cyan-500'
                                   : isTahfidzOnly
@@ -1333,56 +1930,83 @@ export default function LinimasaSetorModule() {
                               }
                             >
                               {hasSetoran ? (
-                                <div className="inline-flex flex-col items-center justify-center">
-                                  {isDual ? (
-                                    /* Dual Badge: Ada Tahfidz DAN Hafalan Kurikulum/Sunnah */
-                                    <div className="flex items-center gap-0.5" title={`Tahfidz Juz ${juzNumber} + Hafalan Kurikulum`}>
-                                      <span className="inline-flex items-center justify-center px-1 h-5 rounded-md font-bold text-[10px] bg-cyan-700 text-white shadow-2xs">
+                                isMicro ? (
+                                  <span
+                                    className={`inline-block w-2.5 h-2.5 rounded-xs ${
+                                      isTahfidzOnly || isDual ? 'bg-cyan-700' : levelStyle.badgeBg
+                                    }`}
+                                  />
+                                ) : isDense ? (
+                                  <span
+                                    className={`inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-bold ${
+                                      isTahfidzOnly
+                                        ? 'bg-cyan-700 text-white'
+                                        : `${levelStyle.badgeBg} ${levelStyle.badgeText}`
+                                    }`}
+                                  >
+                                    {isTahfidzOnly ? `J${juzNumber}` : '✓'}
+                                  </span>
+                                ) : (
+                                  <div className="inline-flex flex-col items-center justify-center">
+                                    {isDual ? (
+                                      <div className="flex items-center gap-0.5" title={`Tahfidz Juz ${juzNumber} + Hafalan Kurikulum`}>
+                                        <span className="inline-flex items-center justify-center px-1 h-5 rounded-md font-bold text-[10px] bg-cyan-700 text-white shadow-2xs">
+                                          J{juzNumber}
+                                        </span>
+                                        <span
+                                          className={`inline-flex items-center justify-center w-5 h-5 rounded-md font-bold text-[10px] shadow-2xs ${levelStyle.badgeBg} ${levelStyle.badgeText}`}
+                                        >
+                                          ✓
+                                        </span>
+                                      </div>
+                                    ) : isTahfidzOnly ? (
+                                      <span
+                                        className="inline-flex items-center justify-center w-6 h-6 rounded-lg font-bold text-xs bg-cyan-700 text-white shadow-2xs"
+                                        title={`Setoran Tahfidz: Juz ${juzNumber}`}
+                                      >
                                         J{juzNumber}
                                       </span>
+                                    ) : (
                                       <span
-                                        className={`inline-flex items-center justify-center w-5 h-5 rounded-md font-bold text-[10px] shadow-2xs ${levelStyle.badgeBg} ${levelStyle.badgeText}`}
+                                        className={`inline-flex items-center justify-center w-6 h-6 rounded-lg font-bold text-xs shadow-2xs ${levelStyle.badgeBg} ${levelStyle.badgeText}`}
                                       >
                                         ✓
                                       </span>
-                                    </div>
-                                  ) : isTahfidzOnly ? (
-                                    /* Setoran Tahfidz Saja */
-                                    <span
-                                      className="inline-flex items-center justify-center w-6 h-6 rounded-lg font-bold text-xs bg-cyan-700 text-white shadow-2xs"
-                                      title={`Setoran Tahfidz: Juz ${juzNumber}`}
-                                    >
-                                      J{juzNumber}
-                                    </span>
-                                  ) : (
-                                    /* Setoran Reguler (Hijau/Biru/Biru Tua) */
-                                    <span
-                                      className={`inline-flex items-center justify-center w-6 h-6 rounded-lg font-bold text-xs shadow-2xs ${levelStyle.badgeBg} ${levelStyle.badgeText}`}
-                                    >
-                                      ✓
-                                    </span>
-                                  )}
-                                  {records.length > 2 && (
-                                    <span className="text-[9px] font-bold text-slate-700 font-mono mt-0.5">
-                                      {records.length}x
-                                    </span>
-                                  )}
-                                </div>
+                                    )}
+                                    {records.length > 2 && (
+                                      <span className="text-[9px] font-bold text-slate-700 font-mono mt-0.5">
+                                        {records.length}x
+                                      </span>
+                                    )}
+                                  </div>
+                                )
                               ) : holidayInfo ? (
-                                <span className="inline-block px-1 py-0.5 rounded font-bold text-[9px] text-rose-600 bg-rose-100/80">
-                                  LBR
-                                </span>
+                                isMicro ? (
+                                  <span className="inline-block w-2 h-2 rounded-full bg-rose-400" />
+                                ) : (
+                                  <span className="inline-block px-1 py-0.5 rounded font-bold text-[9px] text-rose-600 bg-rose-100/80">
+                                    LBR
+                                  </span>
+                                )
                               ) : (
-                                <span className={`inline-block w-4 h-4 rounded font-bold text-xs ${
-                                  isRed ? 'text-rose-400 group-hover:text-rose-600' : isYellow ? 'text-amber-400 group-hover:text-amber-600' : 'text-slate-300 group-hover:text-slate-400'
-                                }`}>
+                                <span
+                                  className={`inline-block font-bold ${
+                                    isMicro ? 'text-[9px]' : 'w-4 h-4 text-xs'
+                                  } ${
+                                    isRed
+                                      ? 'text-rose-400 group-hover:text-rose-600'
+                                      : isYellow
+                                      ? 'text-amber-400 group-hover:text-amber-600'
+                                      : 'text-slate-300 group-hover:text-slate-400'
+                                  }`}
+                                >
                                   -
                                 </span>
                               )}
                             </td>
                           );
-                        })
-                      )}
+                        });
+                      })}
                     </tr>
                   </React.Fragment>
                 );
@@ -1404,6 +2028,7 @@ export default function LinimasaSetorModule() {
           sunday={selectedCell.sunday}
           existingRecords={selectedCell.records}
           holidayLabel={holidaysForTA[selectedCell.sunday.tanggal]?.label}
+          holidaysMap={holidaysForTA}
           onSuccess={() => {
             fetchMustahiqData();
             fetchSetoranData();

@@ -5,6 +5,7 @@ import {
   sortSantriByFormasiHierarchy,
   formatKelasMadin,
   getHafalanLevelStyle,
+  formatMonthMinimizedLabel,
 } from '@/lib/utils/sundayHelper';
 
 describe('Sunday Helper & Linimasa Sorting (Unit Tests)', () => {
@@ -113,5 +114,11 @@ describe('Sunday Helper & Linimasa Sorting (Unit Tests)', () => {
     const lvl4 = getHafalanLevelStyle(4);
     expect(lvl4.label).toBe('Hafalan Ke-4');
     expect(lvl4.badgeBg).toBe('bg-slate-900');
+  });
+
+  it('memformat label bulan minimize dengan pola Agus (26), Jul (26), Jan (27)', () => {
+    expect(formatMonthMinimizedLabel(7, 2026)).toBe('Agus (26)');
+    expect(formatMonthMinimizedLabel(6, 2026)).toBe('Jul (26)');
+    expect(formatMonthMinimizedLabel(0, 2027)).toBe('Jan (27)');
   });
 });

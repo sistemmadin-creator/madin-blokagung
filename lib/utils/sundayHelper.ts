@@ -54,6 +54,31 @@ export const MONTH_NAMES_SHORT = [
   'Des',
 ];
 
+export const MONTH_NAMES_MINIMIZED = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agus',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+];
+
+/**
+ * Memformat header bulan saat di-minimize menjadi pola singkat + 2 digit tahun,
+ * contoh: Agustus 2026 -> 'Agus (26)', Juli 2026 -> 'Jul (26)'.
+ */
+export function formatMonthMinimizedLabel(monthIndex: number, year: number): string {
+  const shortName = MONTH_NAMES_MINIMIZED[monthIndex] || MONTH_NAMES_SHORT[monthIndex] || '';
+  const twoDigitYear = String(year).slice(-2);
+  return `${shortName} (${twoDigitYear})`;
+}
+
 /**
  * Mengembalikan tanggal lokal hari ini dalam format 'YYYY-MM-DD'
  * agar tidak bergeser mundur 1 hari pada dini hari WIB (00:00 - 06:59).

@@ -49,6 +49,7 @@ interface ModalInputSetorMingguProps {
   sunday: SundayOption;
   existingRecords?: any[];
   holidayLabel?: string;
+  holidaysMap?: Record<string, { label: string }>;
   onSuccess: () => void;
 }
 
@@ -58,6 +59,7 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
   santri,
   sunday,
   holidayLabel,
+  holidaysMap,
   onSuccess,
 }) => {
   const { config, fetchSetoranData, addSetoran } = useMuhafadzohStore();
@@ -74,7 +76,30 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
     deduplicateSantriLogs,
   } = useSetorMustahiqStore();
 
-  const tahun = inferAcademicStartYearFromDate(sunday.tanggal);
+  // State Form Input Setoran
+  // Tanggal setor otomatis terkunci/terpilih ke hari Minggu yang diklik
+  const [tglSetor, setTglSetor] = useState<string>(sunday.tanggal);
+  const tahun = inferAcademicStartYearFromDate(tglSetor || sunday.tanggal);
+  const activeHolidayLabel =
+    holidaysMap?.[tglSetor]?.label ||
+    (tglSetor === sunday.tanggal ? holidayLabel : undefined);
+  const [tambahAngka, setTambahAngka] = useState<string>('');
+  const [selectedKalimatList, setSelectedKalimatList] = useState<string[]>([]);
+  const [catatan, setCatatan] = useState<string>('');
+  const [isKalimatDropdownOpen, setIsKalimatDropdownOpen] = useState<boolean>(false);
+  const [kalimatSearch, setKalimatSearch] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string>('');
+
+  // State Khusus Setoran Tahfidz
+  const [selectedJuzTahfidz, setSelectedJuzTahfidz] = useState<number>(1);
+  const [catatanTahfidz, setCatatanTahfidz] = useState<string>('');
+  const [isSubmittingTahfidz, setIsSubmittingTahfidz] = useState<boolean>(false);
+
+  // Modal Ganti Hafalan Selanjutnya
+  const [isGantiHafalanOpen, setIsGantiHafalanOpen] = useState<boolean>(false);
+
+  const kalimatDropdownRef = useRef<HTMLDivElement>(null);
 
   // Load dependency stores if empty
   useEffect(() => {
@@ -115,27 +140,6 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
       tahun
     );
   }, [santri.no_induk, santriRow.config_key, config, logs, activeStates, tahun]);
-
-  // State Form Input Setoran
-  // Tanggal setor otomatis terkunci/terpilih ke hari Minggu yang diklik
-  const [tglSetor, setTglSetor] = useState<string>(sunday.tanggal);
-  const [tambahAngka, setTambahAngka] = useState<string>('');
-  const [selectedKalimatList, setSelectedKalimatList] = useState<string[]>([]);
-  const [catatan, setCatatan] = useState<string>('');
-  const [isKalimatDropdownOpen, setIsKalimatDropdownOpen] = useState<boolean>(false);
-  const [kalimatSearch, setKalimatSearch] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [errorMsg, setErrorMsg] = useState<string>('');
-
-  // State Khusus Setoran Tahfidz
-  const [selectedJuzTahfidz, setSelectedJuzTahfidz] = useState<number>(1);
-  const [catatanTahfidz, setCatatanTahfidz] = useState<string>('');
-  const [isSubmittingTahfidz, setIsSubmittingTahfidz] = useState<boolean>(false);
-
-  // Modal Ganti Hafalan Selanjutnya
-  const [isGantiHafalanOpen, setIsGantiHafalanOpen] = useState<boolean>(false);
-
-  const kalimatDropdownRef = useRef<HTMLDivElement>(null);
 
   // Sync tanggal bila sunday prop berganti
   useEffect(() => {
@@ -469,13 +473,13 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
 
         {/* ================= MODAL BODY (Gambar 2) ================= */}
         <div className="p-6 overflow-y-auto space-y-5 flex-1">
-          {holidayLabel && (
+          {activeHolidayLabel && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2.5 text-xs text-rose-900">
               <CalendarOff className="w-4 h-4 text-rose-600 shrink-0" />
               <div>
-                <span className="font-bold">Minggu Liburan Silabus ({holidayLabel}): </span>
+                <span className="font-bold">Minggu Liburan Silabus ({activeHolidayLabel}): </span>
                 <span>
-                  Tanggal {sunday.labelLengkap} ditandai libur pada pengaturan silabus. Anda tetap dapat mencatat setoran susulan/khusus jika diperlukan.
+                  Tanggal {tglSetor} ditandai libur pada pengaturan silabus. Anda tetap dapat mencatat setoran susulan/khusus jika diperlukan.
                 </span>
               </div>
             </div>
@@ -670,7 +674,7 @@ export const ModalInputSetorMinggu: React.FC<ModalInputSetorMingguProps> = ({
               <SundayDatePicker
                 value={tglSetor}
                 onChange={(dateIso) => setTglSetor(dateIso)}
-                label={`Tanggal Setor (Hari Minggu ${sunday.mingguKe} - ${sunday.labelLengkap})`}
+                label={`Tanggal Setor (Pilih Hari Minggu - Aktif: ${tglSetor})`}
               />
             </div>
 
