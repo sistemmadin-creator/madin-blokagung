@@ -14,6 +14,7 @@ interface SubKategoriFilterBarProps {
   onSelectSubTopic: (subId: string | 'all') => void;
   getCount?: (subId: string) => number;
   variant?: 'pill' | 'rounded';
+  layout?: 'horizontal' | 'vertical';
 }
 
 export default function SubKategoriFilterBar({
@@ -22,6 +23,7 @@ export default function SubKategoriFilterBar({
   onSelectSubTopic,
   getCount,
   variant = 'rounded',
+  layout = 'horizontal',
 }: SubKategoriFilterBarProps) {
   const { subKategoriList, fetchSubKategori } = useMediaKategoriStore();
 
@@ -42,6 +44,54 @@ export default function SubKategoriFilterBar({
 
   const parentMeta = TOPIK_BERITA_MAP[activeTopic];
   const radiusClass = variant === 'pill' ? 'rounded-full' : 'rounded-xl';
+
+  if (layout === 'vertical') {
+    return (
+      <div className="space-y-2 pt-3 border-t border-slate-200/80 dark:border-slate-800">
+        <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          Sub-{parentMeta.title}
+        </span>
+
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => onSelectSubTopic('all')}
+            className={`min-h-[34px] px-3 py-1.5 ${radiusClass} text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+              selectedSubTopic === 'all'
+                ? `${parentMeta.badgeBg} ${parentMeta.badgeText} shadow-2xs`
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            Semua {parentMeta.title}
+          </button>
+
+          {subs.map((sub) => {
+            const isSelected = selectedSubTopic === sub.id;
+            const count = getCount ? getCount(sub.id) : undefined;
+            return (
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => onSelectSubTopic(sub.id)}
+                className={`min-h-[34px] px-3 py-1.5 ${radiusClass} text-xs font-semibold transition inline-flex items-center gap-1.5 cursor-pointer border ${
+                  isSelected
+                    ? 'bg-[#0b5751] text-white border-[#0b5751] shadow-2xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-emerald-500'
+                }`}
+              >
+                <span>{sub.nama}</span>
+                {typeof count === 'number' && (
+                  <span className="text-[10px] opacity-80 px-1.5 py-0.2 rounded-full bg-black/10">
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-1.5 overflow-x-auto pt-1.5 pb-0.5 border-t border-slate-100 dark:border-slate-800/80">

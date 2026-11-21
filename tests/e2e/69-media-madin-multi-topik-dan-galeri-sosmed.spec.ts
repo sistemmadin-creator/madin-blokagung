@@ -81,7 +81,7 @@ test.describe('69 - Media Madin, Multi-Topik Berita (Umum + Jenjang), & Portofol
     await expect(page.locator('#program').getByRole('heading', { name: 'Kelas Reguler' })).toBeVisible();
     await expect(page.locator('#kurikulum').getByRole('button', { name: /Jenjang Ula/i })).toBeVisible();
 
-    // 6. Switcher Mode ke 'Galeri Sosmed' di Beranda (layout Masonry ala /galeri-sosmed)
+    // 6. Switcher Mode ke 'Galeri Sosmed' di Beranda (SideFilter di kiri + layout Masonry)
     const btnGaleriSosmedTab = beritaSection.getByRole('button', { name: 'Galeri Sosmed' });
     await btnGaleriSosmedTab.click();
     await expect(
@@ -92,7 +92,17 @@ test.describe('69 - Media Madin, Multi-Topik Berita (Umum + Jenjang), & Portofol
     ).toBeVisible();
     await expect(beritaSection.getByText('Official Creator Studio')).toHaveCount(0);
 
-    // 7. Klik ke halaman penuh /galeri-sosmed dan uji filter + Lightbox Modal + Escape
+    // Pastikan SideFilter Beranda berada di sebelah kiri papan Masonry di desktop
+    const berandaSide = beritaSection.getByTestId('galeri-sidefilter');
+    const berandaBoard = beritaSection.getByTestId('galeri-masonry-area');
+    await expect(berandaSide).toBeVisible();
+    const boxBerandaSide = await berandaSide.boundingBox();
+    const boxBerandaBoard = await berandaBoard.boundingBox();
+    expect(boxBerandaSide).not.toBeNull();
+    expect(boxBerandaBoard).not.toBeNull();
+    expect(boxBerandaSide!.x).toBeLessThan(boxBerandaBoard!.x);
+
+    // 7. Klik ke halaman penuh /galeri-sosmed dan uji SideFilter + Lightbox Modal + Escape
     const fullPortfolioLink = beritaSection.getByRole('link', {
       name: /Buka Halaman Penuh Portofolio Galeri Sosmed/i,
     });
@@ -103,6 +113,16 @@ test.describe('69 - Media Madin, Multi-Topik Berita (Umum + Jenjang), & Portofol
         name: /Portofolio Kreator & Galeri Sosmed Media Madin/i,
       })
     ).toBeVisible();
+
+    // Pastikan SideFilter /galeri-sosmed juga berada di sebelah kiri papan Masonry di desktop
+    const pageSide = page.getByTestId('galeri-sidefilter');
+    const pageBoard = page.getByTestId('galeri-masonry-area');
+    await expect(pageSide).toBeVisible();
+    const boxPageSide = await pageSide.boundingBox();
+    const boxPageBoard = await pageBoard.boundingBox();
+    expect(boxPageSide).not.toBeNull();
+    expect(boxPageBoard).not.toBeNull();
+    expect(boxPageSide!.x).toBeLessThan(boxPageBoard!.x);
 
     // Uji tombol filter platform (YouTube, Instagram, TikTok, Semua Platform) sesuai data aktual DB
     for (const labelPrefix of ['YouTube', 'Instagram', 'TikTok']) {
@@ -119,17 +139,14 @@ test.describe('69 - Media Madin, Multi-Topik Berita (Umum + Jenjang), & Portofol
     }
     await page.getByRole('button', { name: /Semua Platform/i }).click();
 
-    // Uji tombol filter kategori topik & sub-kategori di Galeri Sosmed
+    // Uji tombol filter kategori topik & sub-kategori di SideFilter Galeri Sosmed
     await page.getByRole('button', { name: 'Umum', exact: true }).click();
     await page.getByRole('button', { name: 'Kegiatan', exact: true }).click();
-    await expect(page.getByRole('button', { name: /UUB/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Semua Kegiatan', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /Daur Awwal/i }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /EBTADIN/i }).first()).toBeVisible();
     await page.getByRole('button', { name: 'Event', exact: true }).click();
-    await expect(page.getByRole('button', { name: /Lalaran Kubro/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Semua Event', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Acara', exact: true }).click();
-    await expect(page.getByRole('button', { name: /APEL Daur Tsani/i }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /Imtihan/i }).first()).toBeVisible();
     await page.getByRole('button', { name: 'Semua Topik', exact: true }).click();
 
     // Klik pin karya pertama di papan Masonry untuk membuka Lightbox pemutar
@@ -141,8 +158,16 @@ test.describe('69 - Media Madin, Multi-Topik Berita (Umum + Jenjang), & Portofol
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
 
-    // Verifikasi responsivitas 2-kolom mobile (375px) pada /galeri-sosmed tanpa overflow
+    // Verifikasi responsivitas mobile (375px): SideFilter terlipat via toggle & bebas horizontal overflow
     await page.setViewportSize({ width: 375, height: 812 });
+    const mobileFilterBtn = page.getByTestId('btn-toggle-mobile-sidefilter');
+    await expect(mobileFilterBtn).toBeVisible();
+    await expect(pageSide).toBeHidden();
+    await mobileFilterBtn.click();
+    await expect(pageSide).toBeVisible();
+    await mobileFilterBtn.click();
+    await expect(pageSide).toBeHidden();
+
     const sosmedOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth
     );

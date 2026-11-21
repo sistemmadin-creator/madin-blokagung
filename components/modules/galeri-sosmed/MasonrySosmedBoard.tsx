@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Play,
   ExternalLink,
@@ -36,9 +36,9 @@ const FORMAT_WEIGHT: Record<ContentFormatSosmed, number> = {
   vertical: 1.72,
 };
 
-function getColumnCountForWidth(width: number): number {
-  if (width >= 1024) return 4;
-  if (width >= 768) return 3;
+function getColumnCountForContainerWidth(width: number): number {
+  if (width >= 1020) return 4;
+  if (width >= 680) return 3;
   return 2;
 }
 
@@ -75,19 +75,42 @@ export default function MasonrySosmedBoard({
   items,
   onOpenItem,
 }: MasonrySosmedBoardProps) {
-  const [columnCount, setColumnCount] = useState<number>(4);
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const [columnCount, setColumnCount] = useState<number>(3);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const syncColumns = () => {
-      if (typeof window === 'undefined') return;
-      setColumnCount(getColumnCountForWidth(window.innerWidth));
+      const el = boardRef.current;
+      const measured =
+        el && el.clientWidth > 0
+          ? el.clientWidth
+          : typeof window !== 'undefined'
+          ? window.innerWidth
+          : 1024;
+      setColumnCount(getColumnCountForContainerWidth(measured));
     };
+
     syncColumns();
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && boardRef.current) {
+      observer = new ResizeObserver((entries) => {
+        const w = entries[0]?.contentRect?.width;
+        if (typeof w === 'number' && w > 0) {
+          setColumnCount(getColumnCountForContainerWidth(w));
+        }
+      });
+      observer.observe(boardRef.current);
+    }
+
     window.addEventListener('resize', syncColumns);
-    return () => window.removeEventListener('resize', syncColumns);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', syncColumns);
+    };
   }, []);
 
   useEffect(() => {
@@ -122,7 +145,8 @@ export default function MasonrySosmedBoard({
 
   return (
     <div
-      className="grid gap-3 sm:gap-4 lg:gap-5 items-start"
+      ref={boardRef}
+      className="grid gap-3 sm:gap-4 lg:gap-5 items-start w-full min-w-0"
       style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
     >
       {columns.map((colItems, colIdx) => (
